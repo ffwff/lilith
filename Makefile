@@ -16,7 +16,8 @@ QEMUFLAGS += \
 	-rtc base=localtime \
 	-monitor telnet:127.0.0.1:7777,server,nowait \
 	-m 256 \
-	-serial stdio
+	-serial stdio \
+	-no-shutdown -no-reboot
 
 .PHONY: kernel
 all: build/kernel

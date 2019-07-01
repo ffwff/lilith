@@ -1,6 +1,5 @@
 require "../core/pointer.cr"
 require "../core/static_array.cr"
-require "./pmalloc.cr"
 
 private lib Kernel
     $kernel_start : UInt32
@@ -52,7 +51,7 @@ module X86
 
     # current page dir
     def init_paging
-        dir = Pointer(PageDirectory).new(pmalloc_a(sizeof(PageDirectory)).address)
+        dir = Pointer(PageDirectory).pmalloc_a
         memset dir.to_byte_ptr, 0.to_u8!, sizeof(PageDirectory).to_u32
         switch_page_directory dir
         asm("

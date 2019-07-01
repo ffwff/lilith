@@ -1,3 +1,4 @@
+/*
 private lib Kernel
     $kernel_end : UInt32
 end
@@ -23,4 +24,21 @@ def pmalloc_a(sz) : Pointer(Void)
         INTERNAL.addr = x
     end
     pmalloc sz
-end
+end */
+
+extern void *kernel_end;
+static unsigned int pmalloc_addr = 0;
+
+void *pmalloc(unsigned int sz) {
+    if(pmalloc_addr == 0) pmalloc_addr = (unsigned int)kernel_end;
+    void *ptr = (void*)pmalloc_addr;
+    pmalloc_addr += sz;
+    return ptr;
+}
+
+void *pmalloc_a(unsigned int sz) {
+    if (pmalloc_addr & 0xFFFFF000) {
+        pmalloc_addr = pmalloc_addr & 0xFFFFF000 + 0x1000;
+    }
+    return pmalloc(sz);
+}
