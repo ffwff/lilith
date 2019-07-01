@@ -15,4 +15,8 @@ class String
             yield bytes[i], i
         end
     end
+
+    def to_s
+        self
+    end
 end

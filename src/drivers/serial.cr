@@ -28,8 +28,6 @@ private struct SerialImpl
     end
 
     def write_char(a)
-        while self.transmit_empty?
-        end
         X86.outb(PORT.to_u16, a)
     end
 
