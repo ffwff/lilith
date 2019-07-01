@@ -3,9 +3,10 @@ AS=$(ARCH)-as
 LD=$(ARCH)-ld
 CC=gcc
 LDFLAGS=-T link.ld
-CCFLAGS=-m32
+CCFLAGS=-c -m32
 CRFLAGS=--cross-compile --target "i686-elf" --prelude empty -d -p
 KERNEL_OBJ=build/main.cr.o \
+	$(patsubst src/mem/%.c,build/mem.%.o,$(wildcard src/mem/*.c)) \
 	build/boot.o
 
 
@@ -23,6 +24,10 @@ all: build/kernel
 build/%.cr.o: src/%.cr
 	@crystal build $(CRFLAGS) $< -o $(patsubst src/%.cr,build/%.cr,$<) >/dev/null
 	@echo "CR $<"
+
+build/mem.%.o: src/mem/%.c
+	@$(CC) $(CCFLAGS) -Isrc -o $@ $<
+	@echo "CC $<"
 
 build/boot.o: boot.s
 	@$(AS) $^ -o $@

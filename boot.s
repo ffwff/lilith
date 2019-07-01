@@ -15,7 +15,7 @@
 # code
 .global _start
 .global load_idt
-.global load_gdt
+.global kload_gdt
 .global read_eip
 # start
 .extern kmain            # this is defined in the c file
@@ -23,9 +23,22 @@
 _start:
     cli
     mov $stack_top, %esp # set stack pointer
-    ;push %ebx            # multiboot header location
+    push %ebx            # multiboot header location
+    push %eax            # multiboot magic value
     call kmain
     hlt 		         # halt the CPU
+
+# -- utils
+# gdt
+kload_gdt:
+    mov 4(%esp), %eax    # Get the pointer to the GDT, passed as a parameter.
+    lgdt (%eax)          # Load the GDT pointer.
+    mov %cr0, %eax
+    or $1, %al           # Set Protected Mode flag
+    mov %eax, %cr0
+    ljmp $0x08, $.flush
+.flush:
+    ret
 
 # stack
 .section .bss
