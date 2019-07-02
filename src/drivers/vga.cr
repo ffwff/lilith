@@ -37,23 +37,43 @@ private struct VgaInstance < IoDriver
                 BUFFER[y*SCREEN_WIDTH + x] = 0
             end
         end
-        @cx = 0
-        @cy = 0
-        @fg = VgaColor::White
-        @bg = VgaColor::Black
     end
 
     def putc(x, y, fg, bg, a)
         BUFFER[y * SCREEN_WIDTH + x] = color_code(fg, bg, a)
     end
 
-    def putc(ch)
+    def putc(ch : UInt8)
         if ch == '\n'.ord.to_u8
-            @cy += 1
-            @cx = 0
+            VGA_STATE.newline
             return
         end
-        putc(@cx, @cy, @fg, @bg, ch)
+        putc(VGA_STATE.cx, VGA_STATE.cy, VGA_STATE.fg, VGA_STATE.bg, ch)
+        VGA_STATE.advance
+    end
+
+    def getc
+        0
+    end
+
+end
+
+# HACK?: store VgaState separate from VgaInstance
+# because for some reason its state variables get reset
+# whenever puts is called
+private struct VgaState
+    @cx : UInt8 = 0
+    @cy : UInt8 = 0
+    @fg : VgaColor = VgaColor::White
+    @bg : VgaColor = VgaColor::Black
+
+    def cx; @cx; end
+    def cy; @cy; end
+    def fg; @fg; end
+    def bg; @bg; end
+
+    @[AlwaysInline]
+    def advance
         if @cx == SCREEN_WIDTH
             @cx = 0
             @cy += 1
@@ -65,10 +85,13 @@ private struct VgaInstance < IoDriver
         end
     end
 
-    def getc
-        0
+    @[AlwaysInline]
+    def newline
+        @cx = 0
+        @cy += 1
     end
 
 end
 
-Vga = VgaInstance.new
+VGA = VgaInstance.new
+VGA_STATE = VgaState.new

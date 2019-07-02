@@ -23,23 +23,20 @@ fun kmain(kernel_end : Void*,
     # setup memory management
     Kernel.pmalloc_start = kernel_end
 
-    Serial.puts "initializing gdtr...\n"
+    VGA.puts "initializing gdtr...\n"
     Gdt.init_table
 
     # interrupt tables
-    Serial.puts "initializing idt...\n"
+    VGA.puts "initializing idt...\n"
     Idt.init_table
 
     # paging
-    Serial.puts "initializing paging...\n"
+    VGA.puts "initializing paging...\n"
     Paging.init_table(text_start, text_end,
                     data_start, data_end,
                     stack_start, stack_end)
 
-    Vga.puts "Hello World\n"
-    Vga.puts "ABC"
-
-    Serial.puts "done...\n"
+    VGA.puts "done...\n"
     while true
     end
 end

@@ -11,13 +11,16 @@ SECTIONS
         _TEXT_END = .;
     }
     . = . + 0x1000;
+    _DATA_START = .;
     .data BLOCK(4K) : ALIGN(4K)
     {
-        _DATA_START = .;
         *(.data)
-        *(.bss)
-        _DATA_END = .;
     }
+    .bss BLOCK(4K) : ALIGN(4K)
+    {
+        *(.bss)
+    }
+    _DATA_END = .;
     . = . + 0x1000;
     .stack BLOCK(4K) : ALIGN(4K)
     {
