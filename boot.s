@@ -25,6 +25,10 @@ _start:
     mov $stack_top, %esp # set stack pointer
     push %ebx            # multiboot header location
     push %eax            # multiboot magic value
+    push $stack_bottom
+    push $stack_top
+    push $_TEXT_START
+    push $_TEXT_END
     call kmain
     hlt 		         # halt the CPU
 
@@ -43,6 +47,7 @@ kload_gdt:
 # stack
 .section .bss
 .align 16
+.skip 4096 # skip a page in case the stack gets overflown
 stack_bottom:
 .skip 16384 # 16 KiB
 stack_top:

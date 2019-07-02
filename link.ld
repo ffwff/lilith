@@ -3,11 +3,12 @@ ENTRY(_start)
 SECTIONS
 {
     . = 1M;
+    kernel_end = .;
     .text BLOCK(4K) : ALIGN(4K)
     {
-        kernel_end = .;
+        _TEXT_END = .;
         *(.text)
-        kernel_start = .;
+        _TEXT_START = .;
     }
     .data BLOCK(4K) : ALIGN(4K)
     {
@@ -21,5 +22,5 @@ SECTIONS
         *(.bss)
         _BSS_END = .;
     }
-    . = ALIGN(4k);
+    . = ALIGN(4K);
 }

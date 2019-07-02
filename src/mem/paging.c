@@ -67,16 +67,19 @@ static void alloc_page(struct page_directory *dir, uint32_t address) {
     dir->tables[table_idx]->pages[address % 1024] = page_create((phys & 0xFFFFF000) >> 8);
 }
 
-extern void *kernel_start;
-extern void *kernel_end;
+#define ALIGNED(x) ((((uint32_t)x)&0xFFFFF000)+0x1000)
+
 struct page_directory *kernel_dir;
-void kinit_paging() {
+void kinit_paging(void *text_start, void *text_end, void *stack_start, void *stack_end) {
     kernel_dir = pmalloc_a(sizeof(struct page_directory), 0);
     memset(kernel_dir, 0, sizeof(struct page_directory));
-    for (uint32_t i = (uint32_t)kernel_start; i < (uint32_t)kernel_end; i += 0x1000) {
+    for (uint32_t i = text_start; i <= ALIGNED(text_end); i += 0x1000) {
         alloc_page(kernel_dir, i);
     }
-    for (uint32_t i = (uint32_t)kernel_end; i < pmalloc_addr; i += 0x1000) {
+    for (uint32_t i = stack_start; i <= ALIGNED(stack_end); i += 0x1000) {
+        alloc_page(kernel_dir, i);
+    }
+    for (uint32_t i = pmalloc_start; i < pmalloc_addr; i += 0x1000) {
         alloc_page(kernel_dir, i);
     }
     // switch page directory
