@@ -1,9 +1,11 @@
-require "./cpuio.cr"
 require "../core/string.cr"
+require "./cpuio.cr"
+require "./io_driver.cr"
 
 private PORT = 0x3F8
 
-private struct SerialImpl
+private struct SerialImpl < IoDriver
+
     def initialize
         X86.outb((PORT + 1).to_u16, 0x00.to_u8) # Disable all interrupts
         X86.outb((PORT + 3).to_u16, 0x80.to_u8) # Enable DLAB (set baud rate divisor)
@@ -23,17 +25,12 @@ private struct SerialImpl
         (X86.inb((PORT + 5).to_u16) & 0x20) == 0
     end
 
-    def read_char
+    def getc
         X86.inb(PORT.to_u16).to_char
     end
 
-    def write_char(a)
+    def putc(a)
         X86.outb(PORT.to_u16, a)
-    end
-
-    #
-    def puts(str)
-        str.to_s.each_char {|char| self.write_char(char)}
     end
 end
 

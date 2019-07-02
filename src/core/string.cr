@@ -19,4 +19,10 @@ class String
     def to_s
         self
     end
+
+    def to_s(io)
+        each_char do |char|
+            io.putc char
+        end
+    end
 end

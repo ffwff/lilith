@@ -19,15 +19,20 @@ fun kmain(kernel_end : Void*,
         panic "Kernel should be booted from a multiboot bootloader!"
     end
 
+    # setup memory management
     Kernel.pmalloc_start = kernel_end
 
-    Serial.puts "initializing gdtr...\n"
-    X86.init_gdtr
+    Serial.puts "initializing gdtr...\n", 0
+    Gdt.init_table
 
+    # interrupt tables
+
+    # paging
     Serial.puts "initializing paging...\n"
-    X86.init_paging(text_start, text_end,
+    Paging.init_table(text_start, text_end,
                     data_start, data_end,
                     stack_start, stack_end)
+
 
     Serial.puts "done...\n"
     while true

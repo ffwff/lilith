@@ -6,9 +6,10 @@ private lib Kernel
     )
 end
 
-module X86
+module Paging
+    extend self
 
-    def init_paging(
+    def init_table(
         text_start : Void*, text_end : Void*,
         data_start : Void*, data_end : Void*,
         stack_end : Void*, stack_start : Void*

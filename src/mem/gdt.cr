@@ -2,10 +2,10 @@ private lib Kernel
     fun kinit_gdtr()
 end
 
-module X86
+module Gdt
     extend self
 
-    def init_gdtr
+    def init_table
         Kernel.kinit_gdtr()
     end
 

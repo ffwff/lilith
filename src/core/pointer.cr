@@ -15,6 +15,11 @@ struct Pointer(T)
         new (Kernel.pmalloc_a sizeof(T).to_u32).to_u64
     end
 
+    def to_byte_ptr : UInt8*
+        Pointer(UInt8).new(address)
+    end
+
+    # operators
     def [](offset : Int)
         (self + offset.to_i64).value
     end
@@ -23,15 +28,11 @@ struct Pointer(T)
         (self + offset.to_i64).value = data
     end
 
-    def to_byte_ptr : UInt8*
-        Pointer(UInt8).new(address)
+    def +(offset : Int)
+        Pointer(T).new(self + offset.to_i64)
     end
-
-    def deref : T
-        self.value
-    end
-    def deref=(data : T) : T
-        self.value = data
+    def -(offset : Int)
+        Pointer(T).new(self - offset.to_i64)
     end
 
 end
