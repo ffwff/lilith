@@ -3,7 +3,7 @@ require "../core/static_array.cr"
 
 private lib Kernel
 
-    fun kinit_idt()
+    fun kinit_idtr()
 
 end
 
@@ -11,7 +11,7 @@ module Idt
     extend self
 
     def init_table
-        Kernel.kinit_idt()
+        Kernel.kinit_idtr()
     end
 
 end

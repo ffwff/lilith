@@ -36,6 +36,8 @@ fun kmain(kernel_end : Void*,
                     data_start, data_end,
                     stack_start, stack_end)
 
+    Vga.puts "Hello World\n"
+    Vga.puts "ABC"
 
     Serial.puts "done...\n"
     while true

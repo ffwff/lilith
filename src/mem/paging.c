@@ -75,6 +75,7 @@ void kinit_paging(void *text_start, void *text_end,
                 void *stack_start, void *stack_end) {
     kernel_dir = pmalloc_a(sizeof(struct page_directory), 0);
     memset(kernel_dir, 0, sizeof(struct page_directory));
+    alloc_page(kernel_dir, 0, 0, 0xb8000); // VGA
     for (uint32_t i = (uint32_t)text_start; i <= ALIGNED(text_end); i += 0x1000) {
         alloc_page(kernel_dir, 0, 0, i);
     }

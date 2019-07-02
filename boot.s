@@ -1,5 +1,4 @@
-.section .text
-
+.section .multiboot
 .set MBOOT_HEADER_MAGIC, 0x1BADB002
 .set MBOOT_PAGE_ALIGN,   1 << 0
 .set MBOOT_MEM_INFO,     1 << 1
@@ -12,6 +11,7 @@
 .long MBOOT_HEADER_FLAGS        # flags
 .long MBOOT_CHECKSUM            # checksum. m+f+c should be zero
 
+.section .text
 # code
 .global _start
 .global load_idt

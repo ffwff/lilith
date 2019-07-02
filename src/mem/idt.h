@@ -24,6 +24,6 @@ struct idt_entry {
 struct idt_entry kidt[IDT_SIZE];
 struct idtr kidtr;
 
-void init_idtr();
-void init_idt(int num, uint16_t select, uint32_t offset, uint16_t type);
-void irq_install(uint16_t num, uint32_t offset);
+void kinit_idtr();
+void kinit_idt(int num, uint16_t select, uint32_t offset, uint16_t type);
+void kirq_install(uint16_t num, uint32_t offset);

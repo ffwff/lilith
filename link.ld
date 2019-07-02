@@ -6,6 +6,7 @@ SECTIONS
     .text BLOCK(4K) : ALIGN(4K)
     {
         _TEXT_START = .;
+        *(.multiboot)
         *(.text)
         _TEXT_END = .;
     }

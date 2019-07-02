@@ -3,7 +3,7 @@ AS=$(ARCH)-as
 LD=ld
 CC=gcc
 LDFLAGS=-m elf_i386 -T link.ld
-CCFLAGS=-c -m32 -g -nostdlib -nostdinc -fno-stack-protector -Wall -Wno-unused-function
+CCFLAGS=-c -m32 -g -nostdlib -nostdinc -fno-stack-protector -ffreestanding -Wall -Wno-unused-function
 CRFLAGS=--cross-compile --target "i686-elf" --prelude empty -d -p
 KERNEL_OBJ=build/main.cr.o \
 	$(patsubst src/mem/%.c,build/mem.%.o,$(wildcard src/mem/*.c)) \
@@ -47,8 +47,15 @@ rungdb: build/kernel
 	gdb -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
 	-@pkill qemu
 
-runiso: build/kernel
-	-qemu-system-i386 -kernel $^ $(QEMUFLAGS) -hda test.img
+runiso: os.iso
+os.iso: build/kernel
+	rm -r /tmp/iso && mkdir -p /tmp/iso/boot/grub
+	cp $^ /tmp/iso
+	cp grub.cfg /tmp/iso/boot/grub
+	grub-mkrescue -o os.iso /tmp/iso
+	qemu-system-i386 -S -cdrom os.iso $(QEMUFLAGS) -gdb tcp::9000 &
+	gdb -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
+	-@pkill qemu
 
 clean:
 	rm -f */*.o
