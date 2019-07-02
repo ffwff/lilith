@@ -16,6 +16,7 @@
 .global _start
 .global load_idt
 .global kload_gdt
+.global kload_idt
 .global read_eip
 # start
 .extern kmain            # this is defined in the c file
@@ -45,6 +46,10 @@ kload_gdt:
     mov %eax, %cr0
     ljmp $0x08, $.flush
 .flush:
+    ret
+kload_idt:
+    mov 4(%esp), %eax    # Get the pointer to the IDT, passed as a parameter.
+    lidt (%eax)          # Load the IDT pointer.
     ret
 
 # stack

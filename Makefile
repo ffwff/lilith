@@ -23,7 +23,7 @@ QEMUFLAGS += \
 all: build/kernel
 
 build/%.cr.o: src/%.cr
-	@crystal build $(CRFLAGS) $< -o $(patsubst src/%.cr,build/%.cr,$<) >/dev/null
+	@crystal build $(CRFLAGS) $< -o $(patsubst src/%.cr,build/%.cr,$<)
 	@echo "CR $<"
 
 build/mem.%.o: src/mem/%.c

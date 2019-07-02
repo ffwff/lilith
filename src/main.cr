@@ -1,8 +1,9 @@
+require "./core/panic.cr"
 require "./drivers/serial.cr"
 require "./drivers/vga.cr"
 require "./mem/gdt.cr"
+require "./mem/idt.cr"
 require "./mem/paging.cr"
-require "./core/panic.cr"
 
 MULTIBOOT_BOOTLOADER_MAGIC = 0x2BADB002
 
@@ -22,10 +23,12 @@ fun kmain(kernel_end : Void*,
     # setup memory management
     Kernel.pmalloc_start = kernel_end
 
-    Serial.puts "initializing gdtr...\n", 0
+    Serial.puts "initializing gdtr...\n"
     Gdt.init_table
 
     # interrupt tables
+    Serial.puts "initializing idt...\n"
+    Idt.init_table
 
     # paging
     Serial.puts "initializing paging...\n"
