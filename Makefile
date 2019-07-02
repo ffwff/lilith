@@ -1,9 +1,9 @@
 ARCH=i686-elf
 AS=$(ARCH)-as
-LD=$(ARCH)-ld
+LD=ld
 CC=gcc
-LDFLAGS=-T link.ld
-CCFLAGS=-c -m32
+LDFLAGS=-m elf_i386 -T link.ld
+CCFLAGS=-c -m32 -g -nostdlib -nostdinc -fno-stack-protector
 CRFLAGS=--cross-compile --target "i686-elf" --prelude empty -d -p
 KERNEL_OBJ=build/main.cr.o \
 	$(patsubst src/mem/%.c,build/mem.%.o,$(wildcard src/mem/*.c)) \

@@ -4,4 +4,9 @@ struct StaticArray(T, N)
         pointerof(@buffer)
     end
 
+    @[AlwaysInline]
+    def []=(index : Int, value : T)
+        to_unsafe[index] = value
+    end
+
 end

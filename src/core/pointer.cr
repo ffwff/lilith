@@ -27,11 +27,11 @@ struct Pointer(T)
         Pointer(UInt8).new(address)
     end
 
-end
-
-fun memset(dst : UInt8*, c : UInt8, n : UInt32) : UInt8*
-    n.times do |i|
-        dst[i] = c
+    def deref : T
+        self.value
     end
-    dst
+    def deref=(data : T) : T
+        self.value = data
+    end
+
 end
