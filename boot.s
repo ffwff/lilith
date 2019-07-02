@@ -27,8 +27,11 @@ _start:
     push %eax            # multiboot magic value
     push $stack_bottom
     push $stack_top
-    push $_TEXT_START
+    push $_DATA_END
+    push $_DATA_START
     push $_TEXT_END
+    push $_TEXT_START
+    push $_KERNEL_END
     call kmain
     hlt 		         # halt the CPU
 
@@ -45,9 +48,9 @@ kload_gdt:
     ret
 
 # stack
-.section .bss
+.section .stack
+.skip 4096
 .align 16
-.skip 4096 # skip a page in case the stack gets overflown
 stack_bottom:
 .skip 16384 # 16 KiB
 stack_top:

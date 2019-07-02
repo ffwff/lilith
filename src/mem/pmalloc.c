@@ -4,7 +4,7 @@ unsigned int pmalloc_start = 0;
 
 void *pmalloc(unsigned int sz) {
     if (pmalloc_addr == 0) {
-        pmalloc_start = pmalloc_addr = (unsigned int)kernel_end;
+        pmalloc_addr = pmalloc_start;
     }
     void *ptr = (void*)pmalloc_addr;
     pmalloc_addr += sz;
@@ -13,7 +13,7 @@ void *pmalloc(unsigned int sz) {
 
 void *pmalloc_a(unsigned int sz, unsigned int *addr) {
     if (pmalloc_addr == 0) {
-        pmalloc_start = pmalloc_addr = (unsigned int)kernel_end;
+        pmalloc_addr = pmalloc_start;
     }
     if (pmalloc_addr & 0xFFFFF000) {
         pmalloc_addr = (pmalloc_addr & 0xFFFFF000) + 0x1000;

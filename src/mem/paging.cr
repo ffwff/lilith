@@ -1,11 +1,21 @@
 private lib Kernel
-    fun kinit_paging(text_start : UInt32, text_end : UInt32, stack_start : UInt32, stack_end : UInt32)
+    fun kinit_paging(
+        text_start : Void*, text_end : Void*,
+        data_start : Void*, data_end : Void*,
+        stack_end : Void*, stack_start : Void*
+    )
 end
 
 module X86
 
-    def init_paging(text_start : UInt32, text_end : UInt32, stack_start : UInt32, stack_end : UInt32)
-        Kernel.kinit_paging text_start, text_end, stack_start, stack_end
+    def init_paging(
+        text_start : Void*, text_end : Void*,
+        data_start : Void*, data_end : Void*,
+        stack_end : Void*, stack_start : Void*
+    )
+        Kernel.kinit_paging(text_start, text_end,
+                    data_start, data_end,
+                    stack_start, stack_end)
     end
 
 end
