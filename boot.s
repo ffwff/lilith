@@ -55,13 +55,10 @@ kload_idt:
 # irq stub
 # leaks 48 bytes?
 kirq_stub:
-    cli
     pusha
     cld
-    push $0
     call kirq_handler
     popa
-    sti
     iret
 
 

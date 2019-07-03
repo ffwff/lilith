@@ -29,7 +29,7 @@ private struct SerialImpl < IoDriver
         X86.inb(PORT.to_u16).to_char
     end
 
-    def putc(a)
+    def putc(a : UInt8)
         X86.outb(PORT.to_u16, a)
     end
 end

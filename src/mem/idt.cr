@@ -33,18 +33,6 @@ module Idt
 
 end
 
-struct IdtState
-    @times = 0
-    def times; @times; end
-    def up; @times = @times + 1; end
-end
-
-private IDT_STATE = IdtState.new
-
-fun other
-end
-
-@[Naked]
 fun kirq_handler
-    other
+    Serial.puts "."
 end
