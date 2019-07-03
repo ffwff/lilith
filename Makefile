@@ -49,7 +49,7 @@ rungdb: build/kernel
 
 runiso: os.iso
 os.iso: build/kernel
-	rm -r /tmp/iso && mkdir -p /tmp/iso/boot/grub
+	rm -rf /tmp/iso && mkdir -p /tmp/iso/boot/grub
 	cp $^ /tmp/iso
 	cp grub.cfg /tmp/iso/boot/grub
 	grub-mkrescue -o os.iso /tmp/iso

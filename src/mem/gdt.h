@@ -10,13 +10,12 @@ struct gdtr {
 } __attribute__((packed));
 
 struct gdt_entry {
-    uint16_t lim0_15;
-    uint16_t base0_15;
-    uint8_t base16_23;
-    uint8_t acces;
-    uint8_t lim16_19 : 4;
-    uint8_t other : 4;
-    uint8_t base24_31;
+    uint16_t limit_low;
+    uint16_t base_low;
+    uint8_t base_middle;
+    uint8_t access;
+    uint8_t granularity;
+    uint8_t base_high;
 } __attribute__((packed));
 
 struct gdtr kgdtr;

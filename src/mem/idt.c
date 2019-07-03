@@ -1,22 +1,24 @@
 #include "mem/idt.h"
+#include "mem/mem.h"
 
 // IDT
 extern void kload_idt(uint32_t idt_ptr);
+extern void kirq_stub();
 
-void kinit_idt(int num, uint16_t select, uint32_t offset, uint16_t type) {
+void kinit_idt(uint32_t num, uint16_t select, uint32_t offset, uint16_t type) {
     kidt[num].offset_1 = (offset & 0xffff);
     kidt[num].offset_2 = (offset & 0xffff0000) >> 16;
     kidt[num].selector = select;
-    kidt[num].type_attr = type;
     kidt[num].zero = 0;
-}
-
-void kirq_install(uint16_t num, uint32_t offset) {
-    kinit_idt(0x20 + num, KERNEL_CODE_SEGMENT_OFFSET, offset, INTERRUPT_GATE);
+    kidt[num].type_attr = type;
 }
 
 void kinit_idtr() {
     kidtr.limit = sizeof(struct idt_entry) * IDT_SIZE - 1;
     kidtr.base = (uint32_t)&kidt;
+    // irqs
+    for(int i = 0; i < 31; i++) {
+        kinit_idt(i, KERNEL_CODE_SEGMENT_OFFSET, (uint32_t)kirq_stub, INTERRUPT_GATE);
+    }
     kload_idt((uint32_t)&kidtr);
 }

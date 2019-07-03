@@ -17,7 +17,7 @@
 .global load_idt
 .global kload_gdt
 .global kload_idt
-.global read_eip
+.global kirq_stub
 # start
 .extern kmain            # this is defined in the c file
 
@@ -47,12 +47,34 @@ kload_gdt:
     ljmp $0x08, $.flush
 .flush:
     ret
+# idt
 kload_idt:
     mov 4(%esp), %eax    # Get the pointer to the IDT, passed as a parameter.
     lidt (%eax)          # Load the IDT pointer.
     ret
+# irq stub
+kirq_stub:
+    pusha
+    mov %ds, %eax
+    push %eax
+    mov 0x10, %ax # load kernel data segment descriptor
+    mov %ax, %ds
+    mov %ax, %es
+    mov %ax, %fs
+    mov %ax, %gs
+    call kirq_handler
+    pop %ebx
+    mov %bx, %ds
+    mov %bx, %es
+    mov %bx, %fs
+    mov %bx, %gs
+    popa
+    add $8, %esp
+    sti
+    iret
 
-# stack
+
+# -- stack
 .section .stack
 .skip 4096
 .align 16

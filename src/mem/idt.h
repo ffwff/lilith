@@ -1,7 +1,6 @@
 #pragma once
 
 #define IDT_SIZE 256
-#define IDT_BASE 0x00000000
 #define INTERRUPT_GATE 0x8e
 #define TRAP_GATE 0x8f
 #define KERNEL_CODE_SEGMENT_OFFSET 0x08
@@ -21,9 +20,8 @@ struct idt_entry {
     uint16_t offset_2;  // offset bits 16..31
 } __attribute__((packed));
 
-struct idt_entry kidt[IDT_SIZE];
-struct idtr kidtr;
+struct idt_entry kidt[IDT_SIZE] = {0};
+struct idtr kidtr = {0};
 
 void kinit_idtr();
-void kinit_idt(int num, uint16_t select, uint32_t offset, uint16_t type);
-void kirq_install(uint16_t num, uint32_t offset);
+void kinit_idt(uint32_t num, uint16_t select, uint32_t offset, uint16_t type);
