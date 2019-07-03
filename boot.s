@@ -53,9 +53,12 @@ kload_idt:
     lidt (%eax)          # Load the IDT pointer.
     ret
 # irq stub
+# leaks 48 bytes?
 kirq_stub:
     cli
     pusha
+    cld
+    push $0
     call kirq_handler
     popa
     sti

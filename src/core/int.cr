@@ -17,17 +17,22 @@ struct Int
     end
 
     # format
+    private BASE = "0123456789abcdefghijklmnopqrstuvwxyz"
     private def internal_to_s(base = 10)
         s = uninitialized UInt8[128]
         sign = self < 0
         n = self.abs
         i = 0
         while true
-            s[i] = (n.unsafe_mod(base) + '0'.ord).to_u8
+            s[i] = BASE.bytes[n.unsafe_mod(base)]
             i += 1
             break if (n = n.unsafe_div(base)) == 0
         end
-        s[i] = '-'.ord.to_u8 if sign
+        if sign
+            yield '-'.ord.to_u8
+        else
+            i -= 1
+        end
         while true
             yield s[i]
             break if i == 0

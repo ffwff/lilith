@@ -16,6 +16,7 @@ void kinit_idt(uint32_t num, uint16_t select, uint32_t offset, uint16_t type) {
 void kinit_idtr() {
     kidtr.limit = sizeof(struct idt_entry) * IDT_SIZE - 1;
     kidtr.base = (uint32_t)&kidt;
+    memset(&kidt, 0, sizeof(struct idt_entry)*IDT_SIZE);
     // irqs
     for(int i = 0; i < 31; i++) {
         kinit_idt(i, KERNEL_CODE_SEGMENT_OFFSET, (uint32_t)kirq_stub, INTERRUPT_GATE);

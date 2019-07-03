@@ -41,5 +41,6 @@ fun kmain(kernel_end : Void*,
 
     Idt.enable
     VGA.puts "done...\n"
-    while true; end
+    while true
+    end
 end

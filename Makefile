@@ -44,7 +44,7 @@ run: build/kernel
 
 rungdb: build/kernel
 	qemu-system-i386 -S -kernel $^ $(QEMUFLAGS) -gdb tcp::9000 &
-	gdb -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
+	gdb -quiet -ex 'target remote localhost:9000' -ex 'b kirq_handler' -ex 'continue' build/kernel
 	-@pkill qemu
 
 runiso: os.iso

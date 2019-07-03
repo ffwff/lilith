@@ -12,12 +12,6 @@ private lib Kernel
     fun kinit_idtr()
     fun kinit_idt(num : UInt32, selector : UInt16, offset : UInt32, type : UInt16)
 
-    @[Packed]
-    struct Registers
-        # Pushed by pushad:
-        edi, esi, ebp, esp, ebx, edx, ecx, eax : UInt32
-    end
-
 end
 
 module Idt
@@ -27,16 +21,30 @@ module Idt
         Kernel.kinit_idtr()
     end
 
+    @[AlwaysInline]
     def enable
         asm("sti")
     end
+
+    @[AlwaysInline]
     def disable
         asm("cli")
     end
 
 end
 
+struct IdtState
+    @times = 0
+    def times; @times; end
+    def up; @times = @times + 1; end
+end
+
+private IDT_STATE = IdtState.new
+
+fun other
+end
+
 @[Naked]
-fun kirq_handler(registers : Kernel::Registers)
-    VGA.puts "."
+fun kirq_handler
+    other
 end
