@@ -44,5 +44,13 @@ module Idt
 end
 
 fun kirq_handler(frame : Kernel::Registers)
-    Serial.puts frame.int_no
+    # send EOI signal to PICs
+    if frame.int_no >= 8
+        # send to slave
+        X86.outb 0xA0, 0x20
+    end
+    # send to master
+    X86.outb 0x20, 0x20
+
+    VGA.puts "."
 end
