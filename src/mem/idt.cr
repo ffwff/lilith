@@ -12,6 +12,16 @@ private lib Kernel
     fun kinit_idtr()
     fun kinit_idt(num : UInt32, selector : UInt16, offset : UInt32, type : UInt16)
 
+    @[Packed]
+    struct Registers
+        # Pushed by pushad:
+        edi, esi, ebp, esp, ebx, edx, ecx, eax : UInt32
+        # Interrupt number
+        int_no : UInt32
+        # Pushed by the processor automatically.
+        eip, cs, eflags, useresp, ss : UInt32
+    end
+
 end
 
 module Idt
@@ -33,6 +43,6 @@ module Idt
 
 end
 
-fun kirq_handler
-    Serial.puts "."
+fun kirq_handler(frame : Kernel::Registers)
+    Serial.puts frame.int_no
 end

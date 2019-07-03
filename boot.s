@@ -59,8 +59,22 @@ kirq_stub:
     cld
     call kirq_handler
     popa
+    add $4, %esp
     iret
+# irq
+.altmacro
+.macro kirq_handler_label number
+.global kirq_stub\number
+kirq_stub\number:
+    push $\number
+    jmp kirq_stub
+.endm
 
+.set i, 0
+.rept 31
+    kirq_handler_label %i
+    .set i, i+1
+.endr
 
 # -- stack
 .section .stack
