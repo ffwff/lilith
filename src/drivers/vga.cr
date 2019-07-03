@@ -1,7 +1,8 @@
 require "./io_driver.cr"
 
-SCREEN_WIDTH = 80
-SCREEN_HEIGHT = 25
+VGA_WIDTH = 80
+VGA_HEIGHT = 25
+VGA_SIZE = VGA_WIDTH * VGA_HEIGHT
 
 enum VgaColor : UInt16
     Black = 0
@@ -29,24 +30,34 @@ private struct VgaInstance < IoDriver
         attrib.unsafe_shl(8) | char.to_u8!
     end
 
+    @[AlwaysInline]
+    private def offset(x : Int, y : Int)
+        y * VGA_WIDTH + x
+    end
+
     # init
-    BUFFER = Pointer(UInt16).new(0xb8000)
+    @buffer : UInt16* = Pointer(UInt16).new(0xb8000)
     def initialize
-        SCREEN_WIDTH.times do |x|
-            SCREEN_HEIGHT.times do |y|
-                BUFFER[y*SCREEN_WIDTH + x] = 0
+        blank = color_code VgaColor::White, VgaColor::Black, ' '.ord.to_u8
+        VGA_HEIGHT.times do |y|
+            VGA_WIDTH.times do |x|
+                @buffer[offset x, y] = blank
             end
         end
     end
 
-    def putc(x, y, fg, bg, a)
-        BUFFER[y * SCREEN_WIDTH + x] = color_code(fg, bg, a)
+    def putc(x : Int32, y : Int32, fg : VgaColor, bg : VgaColor, a : UInt8)
+        panic "drawing out of bounds (80x25)!" if x > VGA_WIDTH || y > VGA_HEIGHT
+        @buffer[offset x, y] = color_code(fg, bg, a)
     end
 
     def putc(ch : UInt8)
         if ch == '\n'.ord.to_u8
             VGA_STATE.newline
             return
+        end
+        if VGA_STATE.cy >= VGA_HEIGHT
+            scroll
         end
         putc(VGA_STATE.cx, VGA_STATE.cy, VGA_STATE.fg, VGA_STATE.bg, ch)
         VGA_STATE.advance
@@ -56,14 +67,29 @@ private struct VgaInstance < IoDriver
         0
     end
 
+    # Scrolls the terminal
+    private def scroll
+        blank = color_code VGA_STATE.fg, VGA_STATE.bg, ' '.ord.to_u8
+        (VGA_HEIGHT - 1).times do |y|
+            VGA_WIDTH.times do |x|
+                @buffer[offset x, y] = @buffer[offset x, (y + 1)]
+            end
+        end
+        VGA_WIDTH.times do |x|
+            @buffer[VGA_SIZE - VGA_WIDTH + x] = blank
+        end
+        VGA_STATE.wrapback
+    end
+
 end
 
 # HACK?: store VgaState separate from VgaInstance
 # because for some reason its state variables get reset
 # whenever puts is called
 private struct VgaState
-    @cx : UInt8 = 0
-    @cy : UInt8 = 0
+
+    @cx : Int32 = 0
+    @cy : Int32 = 0
     @fg : VgaColor = VgaColor::White
     @bg : VgaColor = VgaColor::Black
 
@@ -74,21 +100,25 @@ private struct VgaState
 
     @[AlwaysInline]
     def advance
-        if @cx == SCREEN_WIDTH
-            @cx = 0
-            @cy += 1
+        if @cx >= VGA_WIDTH
+            newline
         else
             @cx += 1
         end
-        if @cy == SCREEN_HEIGHT
-            return
+    end
+
+    def newline
+        if @cy == VGA_HEIGHT
+            wrapback
         end
+        @cx = 0
+        @cy += 1
     end
 
     @[AlwaysInline]
-    def newline
+    def wrapback
         @cx = 0
-        @cy += 1
+        @cy = VGA_HEIGHT - 1
     end
 
 end

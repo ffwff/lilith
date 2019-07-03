@@ -14,10 +14,8 @@ private lib Kernel
 
     @[Packed]
     struct Registers
-        ds                                     : UInt32 # Data segment selector
-        edi, esi, ebp, esp, ebx, edx, ecx, eax : UInt32 # Pushed by pusha.
-        int_no, err_code                       : UInt32 # Interrupt number and error code (if applicable)
-        eip, cs, eflags, useresp, ss           : UInt32 # Pushed by the processor automatically.
+        # Pushed by pushad:
+        edi, esi, ebp, esp, ebx, edx, ecx, eax : UInt32
     end
 
 end
@@ -40,5 +38,5 @@ end
 
 @[Naked]
 fun kirq_handler(registers : Kernel::Registers)
-    asm("nop")
+    VGA.puts "."
 end

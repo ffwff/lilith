@@ -29,10 +29,10 @@ struct Pointer(T)
     end
 
     def +(offset : Int)
-        Pointer(T).new(self + offset.to_i64)
+        self + offset.to_i64
     end
     def -(offset : Int)
-        Pointer(T).new(self - offset.to_i64)
+        self - offset.to_i64
     end
 
 end

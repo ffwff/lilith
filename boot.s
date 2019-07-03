@@ -54,22 +54,10 @@ kload_idt:
     ret
 # irq stub
 kirq_stub:
+    cli
     pusha
-    mov %ds, %eax
-    push %eax
-    mov 0x10, %ax # load kernel data segment descriptor
-    mov %ax, %ds
-    mov %ax, %es
-    mov %ax, %fs
-    mov %ax, %gs
     call kirq_handler
-    pop %ebx
-    mov %bx, %ds
-    mov %bx, %es
-    mov %bx, %fs
-    mov %bx, %gs
     popa
-    add $8, %esp
     sti
     iret
 

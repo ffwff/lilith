@@ -40,7 +40,6 @@ fun kmain(kernel_end : Void*,
                     stack_start, stack_end)
 
     Idt.enable
-    Serial.puts "done...\n"
-    while true
-    end
+    VGA.puts "done...\n"
+    while true; end
 end
