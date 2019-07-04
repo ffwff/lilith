@@ -6,7 +6,7 @@ LDFLAGS=-m elf_i386 -T link.ld
 CCFLAGS=-c -m32 -g -nostdlib -nostdinc -fno-stack-protector -ffreestanding -Wall -Wno-unused-function -Wno-unknown-pragmas
 CRFLAGS=--cross-compile --target "i686-elf" --prelude empty -d -p
 KERNEL_OBJ=build/main.cr.o \
-	$(patsubst src/mem/%.c,build/mem.%.o,$(wildcard src/mem/*.c)) \
+	$(patsubst src/arch/%.c,build/arch.%.o,$(wildcard src/arch/*.c)) \
 	build/boot.o
 
 
@@ -26,7 +26,7 @@ build/%.cr.o: src/%.cr
 	@crystal build $(CRFLAGS) $< -o $(patsubst src/%.cr,build/%.cr,$<)
 	@echo "CR $<"
 
-build/mem.%.o: src/mem/%.c
+build/arch.%.o: src/arch/%.c
 	@$(CC) $(CCFLAGS) -Isrc -o $@ $<
 	@echo "CC $<"
 

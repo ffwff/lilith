@@ -1,4 +1,4 @@
-require "../mem/idt.cr"
+require "../arch/idt.cr"
 
 private PIT_TIME = 1193180
 

@@ -1,5 +1,5 @@
-#include "mem/mem.h"
-#include "mem/pmalloc.h"
+#include "arch/mem.h"
+#include "arch/pmalloc.h"
 #include "stdint.h"
 
 // NOTE: we only do identity paging

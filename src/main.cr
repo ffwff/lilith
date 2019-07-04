@@ -3,11 +3,10 @@ require "./drivers/serial.cr"
 require "./drivers/vga.cr"
 require "./drivers/pit_timer.cr"
 require "./drivers/keyboard.cr"
-require "./mem/gdt.cr"
-require "./mem/idt.cr"
-require "./mem/paging.cr"
-
-MULTIBOOT_BOOTLOADER_MAGIC = 0x2BADB002
+require "./arch/gdt.cr"
+require "./arch/idt.cr"
+require "./arch/paging.cr"
+require "./arch/multiboot.cr"
 
 private lib Kernel
     $pmalloc_start : Void*
@@ -17,7 +16,7 @@ fun kmain(kernel_end : Void*,
         text_start : Void*, text_end : Void*,
         data_start : Void*, data_end : Void*,
         stack_start : Void*, stack_end : Void*,
-        mboot_magic : UInt32, mboot_header : Void*)
+        mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     if mboot_magic != MULTIBOOT_BOOTLOADER_MAGIC
         panic "Kernel should be booted from a multiboot bootloader!"
     end

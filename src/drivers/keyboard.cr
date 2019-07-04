@@ -1,4 +1,4 @@
-require "../mem/idt.cr"
+require "../arch/idt.cr"
 
 KEYBOARD_MAP = StaticArray[
     0, 27, '1', '2', '3', '4', '5', '6', '7', '8',    # 9

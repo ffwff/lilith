@@ -1,5 +1,5 @@
-#include "mem/idt.h"
-#include "mem/mem.h"
+#include "arch/idt.h"
+#include "arch/mem.h"
 
 // IDT
 extern void kload_idt(uint32_t idt_ptr);
