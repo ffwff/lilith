@@ -1,25 +1,21 @@
 module X86
     extend self
 
-    @[Naked]
     @[AlwaysInline]
     def outb(port : UInt16, val : UInt8)
         asm("outb $1, $0" :: "{dx}"(port), "{al}"(val) :: "volatile")
     end
 
-    @[Naked]
     @[AlwaysInline]
     def outw(port : UInt16, val : UInt16)
         asm("outw $1, $0" :: "{dx}"(port), "{ax}"(val) :: "volatile")
     end
 
-    @[Naked]
     @[AlwaysInline]
     def outl(port : UInt16, val : UInt32)
         asm("outl $1, $0" :: "{dx}"(port), "{eax}"(val) :: "volatile")
     end
 
-    @[Naked]
     @[AlwaysInline]
     def inb(port : UInt16) : UInt8
         result = 0_u8
@@ -27,7 +23,6 @@ module X86
         result
     end
 
-    @[Naked]
     @[AlwaysInline]
     def inw(port : UInt16) : UInt16
         result = 0_u16
@@ -35,7 +30,6 @@ module X86
         result
     end
 
-    @[Naked]
     @[AlwaysInline]
     def inl(port : UInt16) : UInt32
         result = 0_u32

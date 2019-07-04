@@ -58,6 +58,5 @@ os.iso: build/kernel
 	-@pkill qemu
 
 clean:
-	rm -f */*.o
-	rm -f *.o
+	rm -f build/*.o
 	rm -f kernel

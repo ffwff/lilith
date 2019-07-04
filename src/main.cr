@@ -2,6 +2,7 @@ require "./core/panic.cr"
 require "./drivers/serial.cr"
 require "./drivers/vga.cr"
 require "./drivers/pit_timer.cr"
+require "./drivers/keyboard.cr"
 require "./mem/gdt.cr"
 require "./mem/idt.cr"
 require "./mem/paging.cr"
@@ -21,7 +22,9 @@ fun kmain(kernel_end : Void*,
         panic "Kernel should be booted from a multiboot bootloader!"
     end
 
+    # drivers
     pit = PitInstance.new
+    keyboard = KeyboardInstance.new
 
     # setup memory management
     Kernel.pmalloc_start = kernel_end
