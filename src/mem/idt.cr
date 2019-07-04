@@ -79,7 +79,7 @@ module Idt
 
 end
 
-fun kirq_handler(frame : IdtData::Registers)
+fun kirq_handler(frame : IdtData::Registers) : Nil
     # send EOI signal to PICs
     if frame.int_no >= 8
         # send to slave

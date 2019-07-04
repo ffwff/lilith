@@ -58,8 +58,8 @@ kirq_stub:
     pusha
     cld
     call kirq_handler
-    popa
     add $4, %esp
+    popa
     iret
 # irq
 .altmacro
