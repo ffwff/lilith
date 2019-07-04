@@ -1,4 +1,3 @@
-require "../core/char.cr"
 require "../mem/idt.cr"
 
 KEYBOARD_MAP = StaticArray[

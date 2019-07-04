@@ -1,4 +1,3 @@
-require "../core/string.cr"
 require "./cpuio.cr"
 require "./io_driver.cr"
 

@@ -1,6 +1,3 @@
-require "../core/proc.cr"
-require "../core/static_array.cr"
-
 IDT_SIZE = 256
 IRQ = 0x20
 INTERRUPT_GATE = 0x8e

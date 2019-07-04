@@ -1,5 +1,3 @@
-require "../core/tuple.cr"
-
 abstract struct IoDriver
 
     abstract def putc(c : UInt8)

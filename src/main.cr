@@ -1,4 +1,4 @@
-require "./core/panic.cr"
+require "./core.cr"
 require "./drivers/serial.cr"
 require "./drivers/vga.cr"
 require "./drivers/pit_timer.cr"
@@ -17,7 +17,7 @@ fun kmain(kernel_end : Void*,
         text_start : Void*, text_end : Void*,
         data_start : Void*, data_end : Void*,
         stack_start : Void*, stack_end : Void*,
-        mboot_magic : UInt32, mboot_header : UInt8*)
+        mboot_magic : UInt32, mboot_header : Void*)
     if mboot_magic != MULTIBOOT_BOOTLOADER_MAGIC
         panic "Kernel should be booted from a multiboot bootloader!"
     end
