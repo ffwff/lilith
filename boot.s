@@ -64,14 +64,14 @@ kirq_stub:
 # irq
 .altmacro
 .macro kirq_handler_label number
-.global kirq_stub\number
-kirq_stub\number:
+.global kirq\number
+kirq\number:
     push $\number
     jmp kirq_stub
 .endm
 
 .set i, 0
-.rept 31
+.rept 16
     kirq_handler_label %i
     .set i, i+1
 .endr

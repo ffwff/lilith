@@ -5,7 +5,7 @@ private PIT_TIME = 1193180
 struct PitInstance
 
     def initialize
-        Idt.register_handler 8, ->callback
+        Idt.register_irq 0, ->callback
         X86.outb(0x43, 0x36)
         divisor = PIT_TIME.unsafe_div(50)
         l = (divisor & 0xFF).to_u8

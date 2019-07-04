@@ -31,6 +31,7 @@ fun kmain(kernel_end : Void*,
 
     # interrupt tables
     VGA.puts "initializing idt...\n"
+    Idt.init_interrupts
     Idt.init_table
 
     # paging

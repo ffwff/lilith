@@ -34,11 +34,11 @@ module Idt
     extend self
 
     # initialize
-    INT_COUNT = 32
-    @@handlers = uninitialized InterruptHandler[INT_COUNT]
+    IRQ_COUNT = 16
+    @@irq_handlers = uninitialized InterruptHandler[IRQ_COUNT]
     def initialize
-        {% for i in 0...INT_COUNT %}
-            @@handlers[{{ i }}] = ->{ nil }
+        {% for i in 0...IRQ_COUNT %}
+            @@irq_handlers[{{ i }}] = ->{ nil }
         {% end %}
     end
 
@@ -46,11 +46,24 @@ module Idt
         Kernel.kinit_idtr()
     end
 
-    # handlers
-    def handlers; @@handlers; end
+    def init_interrupts
+        X86.outb 0x20, 0x11
+        X86.outb 0xA0, 0x11
+        X86.outb 0x21, 0x20
+        X86.outb 0xA1, 0x28
+        X86.outb 0x21, 0x04
+        X86.outb 0xA1, 0x02
+        X86.outb 0x21, 0x01
+        X86.outb 0xA1, 0x01
+        X86.outb 0x21, 0x0
+        X86.outb 0xA1, 0x0
+    end
 
-    def register_handler(idx : Int, handler : InterruptHandler)
-        @@handlers[idx] = handler
+    # handlers
+    def irq_handlers; @@irq_handlers; end
+
+    def register_irq(idx : Int, handler : InterruptHandler)
+        @@irq_handlers[idx] = handler
     end
 
     # status
@@ -75,5 +88,5 @@ fun kirq_handler(frame : IdtData::Registers)
     # send to master
     X86.outb 0x20, 0x20
 
-    Idt.handlers[frame.int_no].call
+    Idt.irq_handlers[frame.int_no].call
 end
