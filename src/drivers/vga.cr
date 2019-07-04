@@ -63,10 +63,6 @@ private struct VgaInstance < IoDriver
         VGA_STATE.advance
     end
 
-    def getc
-        0
-    end
-
     # Scrolls the terminal
     private def scroll
         blank = color_code VGA_STATE.fg, VGA_STATE.bg, ' '.ord.to_u8

@@ -12,6 +12,10 @@ private lib Kernel
     fun kinit_idtr()
     fun kinit_idt(num : UInt32, selector : UInt16, offset : UInt32, type : UInt16)
 
+end
+
+lib IdtData
+
     @[Packed]
     struct Registers
         # Pushed by pushad:
@@ -24,13 +28,32 @@ private lib Kernel
 
 end
 
+alias InterruptHandler = ->Nil
+
 module Idt
     extend self
+
+    # initialize
+    INT_COUNT = 32
+    @@handlers = uninitialized InterruptHandler[INT_COUNT]
+    def initialize
+        {% for i in 0...INT_COUNT %}
+            @@handlers[{{ i }}] = ->{ nil }
+        {% end %}
+    end
 
     def init_table
         Kernel.kinit_idtr()
     end
 
+    # handlers
+    def handlers; @@handlers; end
+
+    def register_handler(idx : Int, handler : InterruptHandler)
+        @@handlers[idx] = handler
+    end
+
+    # status
     @[AlwaysInline]
     def enable
         asm("sti")
@@ -43,7 +66,7 @@ module Idt
 
 end
 
-fun kirq_handler(frame : Kernel::Registers)
+fun kirq_handler(frame : IdtData::Registers)
     # send EOI signal to PICs
     if frame.int_no >= 8
         # send to slave
@@ -52,5 +75,5 @@ fun kirq_handler(frame : Kernel::Registers)
     # send to master
     X86.outb 0x20, 0x20
 
-    VGA.puts "."
+    Idt.handlers[frame.int_no].call
 end
