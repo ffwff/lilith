@@ -11,6 +11,9 @@ struct Pointer(T)
     def self.pmalloc
         new (Kernel.pmalloc sizeof(T).to_u32).to_u64
     end
+    def self.pmalloc(size : Int)
+        new Kernel.pmalloc(size).to_u64
+    end
     def self.pmalloc_a
         new (Kernel.pmalloc_a sizeof(T).to_u32).to_u64
     end

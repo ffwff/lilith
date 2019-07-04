@@ -17,6 +17,7 @@ fun kmain(kernel_end : Void*,
         data_start : Void*, data_end : Void*,
         stack_start : Void*, stack_end : Void*,
         mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
+
     if mboot_magic != MULTIBOOT_BOOTLOADER_MAGIC
         panic "Kernel should be booted from a multiboot bootloader!"
     end
@@ -40,10 +41,13 @@ fun kmain(kernel_end : Void*,
     VGA.puts "initializing paging...\n"
     Paging.init_table(text_start, text_end,
                     data_start, data_end,
-                    stack_start, stack_end)
+                    stack_start, stack_end,
+                    mboot_header)
 
     Idt.enable
+
     VGA.puts "done...\n"
     while true
     end
+
 end

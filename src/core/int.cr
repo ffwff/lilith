@@ -16,6 +16,17 @@ struct Int
         self >= 0 ? self : self * -1
     end
 
+    def bsf : Int
+        # get least significant set bit
+        # useful for bit arrays
+        return -1 if self == 0
+        idx = 0
+        asm("
+            bsf $1, $0
+        " : "={eax}"(idx) : "{edx}"(self) :: "volatile")
+        idx
+    end
+
     # format
     private BASE = "0123456789abcdefghijklmnopqrstuvwxyz"
     private def internal_to_s(base = 10)

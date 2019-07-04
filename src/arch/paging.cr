@@ -14,9 +14,14 @@ module Paging
     def init_table(
         text_start : Void*, text_end : Void*,
         data_start : Void*, data_end : Void*,
-        stack_end : Void*, stack_start : Void*
+        stack_end : Void*, stack_start : Void*,
+        mboot_header : Multiboot::MultibootInfo*
     )
-        Kernel.kinit_paging()
+        Kernel.kinit_paging
+
+        @@frames = PBitArray.new 0
+
+        # vga
         alloc_page 0, 0, 0xb8000
         # text segment
         i = text_start.address.to_u32

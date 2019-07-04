@@ -3,8 +3,9 @@ AS=$(ARCH)-as
 LD=ld
 CC=gcc
 LDFLAGS=-m elf_i386 -T link.ld
-CCFLAGS=-c -m32 -g -nostdlib -nostdinc -fno-stack-protector -ffreestanding -Wall -Wno-unused-function -Wno-unknown-pragmas
-CRFLAGS=--cross-compile --target "i686-elf" --prelude empty -d -p
+CCFLAGS=-c -m32 -g -nostdlib -nostdinc -fno-stack-protector -ffreestanding -O2 \
+	-Wall -Wno-unused-function -Wno-unknown-pragmas
+CRFLAGS=--cross-compile --target "i686-elf" --prelude empty -d --release -p
 KERNEL_OBJ=build/main.cr.o \
 	$(patsubst src/arch/%.c,build/arch.%.o,$(wildcard src/arch/*.c)) \
 	build/boot.o
