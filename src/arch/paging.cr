@@ -114,6 +114,7 @@ module Paging
             return addr
         end
 
+        Idt.disable
         disable
         # claim
         @@frames[iaddr] = true
@@ -131,6 +132,7 @@ module Paging
         end
         Kernel.kalloc_page_no_make 1, 0, addr
         enable
+        Idt.enable
 
         # return page
         addr

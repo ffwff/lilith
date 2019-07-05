@@ -76,7 +76,7 @@ module Idt
 
 end
 
-fun kirq_handler(frame : IdtData::Registers) : Nil
+fun kirq_handler(frame : IdtData::Registers) : Int32
     # send EOI signal to PICs
     if frame.int_no >= 8
         # send to slave
@@ -86,4 +86,5 @@ fun kirq_handler(frame : IdtData::Registers) : Nil
     X86.outb 0x20, 0x20
 
     Idt.irq_handlers[frame.int_no].call
+    0
 end

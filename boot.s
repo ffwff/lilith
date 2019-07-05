@@ -58,9 +58,10 @@ kirq_stub:
     pusha
     cld
     call kirq_handler
-    add $4, %esp
     popa
+    add $4, %esp
     iret
+
 # irq
 .altmacro
 .macro kirq_handler_label number
