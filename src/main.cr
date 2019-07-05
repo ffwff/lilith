@@ -7,7 +7,6 @@ require "./arch/gdt.cr"
 require "./arch/idt.cr"
 require "./arch/paging.cr"
 require "./arch/multiboot.cr"
-require "./gc.cr"
 
 private lib Kernel
     $pmalloc_start : Void*
@@ -28,7 +27,7 @@ fun kmain(kernel_end : Void*,
     keyboard = KeyboardInstance.new
 
     # setup memory management
-    Kernel.pmalloc_start = kernel_end
+    Kernel.pmalloc_start = Pointer(Void).new(Paging.aligned(kernel_end.address.to_u32).to_u64)
 
     VGA.puts "initializing gdtr...\n"
     Gdt.init_table

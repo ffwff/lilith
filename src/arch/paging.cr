@@ -51,39 +51,36 @@ module Paging
 
         # vga
         alloc_page false, false, 0xb8000
+
         # text segment
         i = text_start.address.to_u32
-        while i <= aligned(text_end.address.to_u32)
+        while i < text_end.address.to_u32
             alloc_frame false, false, i
             i += 0x1000
         end
         # data segment
-        i = aligned(data_start.address.to_u32)
-        while i <= aligned(data_end.address.to_u32)
+        i = data_start.address.to_u32
+        while i < data_end.address.to_u32
             alloc_frame true, false, i
             i += 0x1000
         end
-        # reserve unallocated stack protection pages
-        while i <= aligned(stack_start.address.to_u32)
-            @@frames[frame_index_for_address i] = true
-            i += 0x1000
-        end
         # stack segment
-        while i < aligned(stack_end.address.to_u32)
+        i = stack_start.address.to_u32
+        while i < stack_end.address.to_u32
             alloc_frame true, false, i
             i += 0x1000
         end
         # heap
         i = Kernel.pmalloc_start.address.to_u32
         while i <= aligned(Kernel.pmalloc_addr.address.to_u32)
-            alloc_frame true, false, i
+            alloc_frame false, false, i
             i += 0x1000
         end
         # -- switch page directory
         enable
     end
 
-    private def aligned(x : UInt32) : UInt32
+    def aligned(x : UInt32) : UInt32
         (x & 0xFFFFF000) + 0x1000
     end
 
@@ -128,7 +125,7 @@ module Paging
             pt_addr = pt_iaddr.to_u32 * 0x1000 + @@frame_base_addr
             memset Pointer(UInt8).new(pt_addr.to_u64), 0, 4096
             Kernel.kpage_dir_set_table table_idx, pt_addr
-            alloc_frame(true, false, pt_addr)
+            alloc_frame(false, false, pt_addr)
         end
         Kernel.kalloc_page_no_make 1, 0, addr
         enable

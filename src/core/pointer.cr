@@ -19,6 +19,13 @@ struct Pointer(T)
         new (Kernel.pmalloc_a sizeof(T).to_u32).to_u64
     end
 
+    # methods
+    def to_s(io)
+        io.puts "[0x"
+        self.address.to_s io, 16
+        io.puts "]"
+    end
+
     # operators
     def [](offset : Int)
         (self + offset.to_i64).value

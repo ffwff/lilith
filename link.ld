@@ -3,14 +3,17 @@ ENTRY(_start)
 SECTIONS
 {
     . = 1M;
+
+    _TEXT_START = .;
     .text BLOCK(4K) : ALIGN(4K)
     {
-        _TEXT_START = .;
         *(.multiboot)
         *(.text)
-        _TEXT_END = .;
     }
-    . = . + 0x1000;
+    . = ALIGN(4K);
+    _TEXT_END = .;
+
+    . = ALIGN(4K);
     _DATA_START = .;
     .data BLOCK(4K) : ALIGN(4K)
     {
@@ -20,8 +23,9 @@ SECTIONS
     {
         *(.bss)
     }
+    . = ALIGN(4K);
     _DATA_END = .;
-    . = . + 0x1000;
+
     .stack BLOCK(4K) : ALIGN(4K)
     {
         *(.stack)
