@@ -20,7 +20,7 @@ struct idt_entry {
     uint16_t offset_2;  // offset bits 16..31
 } __attribute__((packed));
 
-struct idt_entry kidt[IDT_SIZE] = {0};
+struct idt_entry kidt[IDT_SIZE] = {{0}};
 struct idtr kidtr = {0};
 
 void kinit_idtr();

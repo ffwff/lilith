@@ -1,11 +1,12 @@
 ARCH=i686-elf
 AS=$(ARCH)-as
-LD=ld
-CC=gcc
+LD=$(ARCH)-ld
+CC=clang
 LDFLAGS=-m elf_i386 -T link.ld
-CCFLAGS=-c -m32 -g -nostdlib -nostdinc -fno-stack-protector -ffreestanding -O2 \
+CCFLAGS=-c -target $(ARCH) -nostdlib -nostdinc \
+	-fno-stack-protector -ffreestanding -O2 \
 	-Wall -Wno-unused-function -Wno-unknown-pragmas
-CRFLAGS=--cross-compile --target "i686-elf" --prelude empty -d -p --release
+CRFLAGS=--cross-compile --target $(ARCH) --prelude empty -d -p --release
 KERNEL_OBJ=build/main.cr.o \
 	$(patsubst src/arch/%.c,build/arch.%.o,$(wildcard src/arch/*.c)) \
 	build/boot.o
@@ -24,20 +25,20 @@ QEMUFLAGS += \
 all: build/kernel
 
 build/%.cr.o: src/%.cr
-	@crystal build $(CRFLAGS) $< -o $(patsubst src/%.cr,build/%.cr,$<)
 	@echo "CR $<"
+	@crystal build $(CRFLAGS) $< -o $(patsubst src/%.cr,build/%.cr,$<)
 
 build/arch.%.o: src/arch/%.c
-	@$(CC) $(CCFLAGS) -Isrc -o $@ $<
 	@echo "CC $<"
+	@$(CC) $(CCFLAGS) -Isrc -o $@ $<
 
 build/boot.o: boot.s
-	@$(AS) $^ -o $@
 	@echo "AS $<"
+	@$(AS) $^ -o $@
 
 build/kernel: $(KERNEL_OBJ)
-	@$(LD) $(LDFLAGS) -o $@ $^
 	@echo "LD $^ => $@"
+	@$(LD) $(LDFLAGS) -o $@ $^ $(LIBGCC)
 
 #
 run: build/kernel

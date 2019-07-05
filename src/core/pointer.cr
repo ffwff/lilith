@@ -8,6 +8,7 @@ struct Pointer(T)
         new 0u64
     end
 
+    # pre-pg malloc
     def self.pmalloc
         new (Kernel.pmalloc sizeof(T).to_u32).to_u64
     end
@@ -16,10 +17,6 @@ struct Pointer(T)
     end
     def self.pmalloc_a
         new (Kernel.pmalloc_a sizeof(T).to_u32).to_u64
-    end
-
-    def to_byte_ptr : UInt8*
-        Pointer(UInt8).new(address)
     end
 
     # operators

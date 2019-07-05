@@ -77,7 +77,7 @@ int kpage_table_present(uint32_t table_idx) {
 }
 
 void kpage_dir_set_table(uint32_t table_idx, uint32_t address) {
-    kernel_page_dir->tables[table_idx] = address;
+    kernel_page_dir->tables[table_idx] = (struct page_table*)address;
     kernel_page_dir->tables_physical[table_idx] = address | 0x7;
 }
 
