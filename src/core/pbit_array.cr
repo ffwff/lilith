@@ -32,15 +32,15 @@ struct PBitArray
         end
     end
 
-    def first_set_index
+    def first_unset
         i = 0
         while i < malloc_size
-            bsf = self.pointer[i].bsf
-            if bsf != -1
-                return Tuple.new(i, bsf + 1)
+            if @pointer[i].to_u8 != (~0).to_u8
+                return i * 8 + @pointer[i].ffz
             end
+            i += 1
         end
-        Tuple.new(-1, 0)
+        -1
     end
 
     # to_s

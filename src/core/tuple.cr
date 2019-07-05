@@ -10,4 +10,12 @@ struct Tuple
         {% end %}
     end
 
+    def to_s(io)
+        io.puts "Tuple("
+        each do |x|
+            io.puts x, ","
+        end
+        io.puts ")"
+    end
+
 end

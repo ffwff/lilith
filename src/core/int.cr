@@ -20,14 +20,14 @@ struct Int
         self >= 0 ? self : self * -1
     end
 
-    def bsf : Int
-        # get least significant set bit
-        # useful for bit arrays
-        return -1 if self == 0
+    @[AlwaysInline]
+    def ffz : Int
+        # find first zero bit, useful for bit arrays
+        # NOTE: should check for zero first
         idx = 0
         asm("
-            bsf $1, $0
-        " : "={eax}"(idx) : "{edx}"(self) :: "volatile")
+            bsfl $1, $0
+        " : "={eax}"(idx) : "{edx}"(~self.to_i32) :: "volatile")
         idx
     end
 

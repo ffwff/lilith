@@ -48,25 +48,30 @@ module Paging
         alloc_page false, false, 0xb8000
         # text segment
         i = text_start.address.to_u32
-        while i <= aligned(text_end.address.to_u32)
+        while i < aligned(text_end.address.to_u32)
             alloc_frame false, false, i
             i += 0x1000
         end
         # data segment
         i = data_start.address.to_u32
-        while i <= aligned(data_end.address.to_u32)
+        while i < aligned(data_end.address.to_u32)
             alloc_frame true, false, i
+            i += 0x1000
+        end
+        # unallocated stack protection pages
+        while i < stack_start.address.to_u32
+            @@frames[frame_index_for_address i] = true
             i += 0x1000
         end
         # stack segment
         i = stack_start.address.to_u32
-        while i <= aligned(stack_end.address.to_u32)
+        while i < aligned(stack_end.address.to_u32)
             alloc_frame true, false, i
             i += 0x1000
         end
         # heap
         i = Kernel.pmalloc_start.address.to_u32
-        while i <= Kernel.pmalloc_addr.address.to_u32
+        while i < aligned(Kernel.pmalloc_addr.address.to_u32)
             alloc_frame true, false, i
             i += 0x1000
         end
@@ -97,10 +102,14 @@ module Paging
 
     # frame alloc
     def alloc_frame(rw : Bool, user : Bool, address : UInt32)
-        idx = (address - @@frame_base_addr).unsafe_div(0x1000)
-        Serial.puts idx, "\n"
+        idx = frame_index_for_address address
+        panic "already allocated" if @@frames[idx]
         @@frames[idx] = true
         alloc_page(rw, user, address)
+    end
+
+    private def frame_index_for_address(address : Int)
+        (address - @@frame_base_addr).unsafe_div(0x1000)
     end
 
 end
