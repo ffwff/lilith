@@ -38,7 +38,7 @@ struct Int
         sign = self < 0
         n = self.abs
         i = 0
-        while true
+        while i < 128
             s[i] = BASE.bytes[n.unsafe_mod(base)]
             i += 1
             break if (n = n.unsafe_div(base)) == 0

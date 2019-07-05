@@ -1,5 +1,8 @@
 #include "arch/pmalloc.h"
 
+// placement malloc functions
+// NOTE: should only be used when paging is disabled
+
 extern void *kernel_end;
 unsigned int pmalloc_addr = 0;
 unsigned int pmalloc_start = 0;

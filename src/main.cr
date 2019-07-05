@@ -44,9 +44,21 @@ fun kmain(kernel_end : Void*,
                     stack_start, stack_end,
                     mboot_header)
 
-    Idt.enable
+    #Idt.enable
 
-    VGA.puts "done...\n"
+    Serial.puts "\n----\n"
+
+    i = 0
+    while i < 1024
+        Serial.puts i, ": "
+        x = Paging.alloc_page_pg
+        x.to_s Serial, 16
+        Serial.puts "\n"
+        i += 1
+    end
+    Serial.puts "done\n"
+
+    #VGA.puts "done...\n"
     while true
     end
 

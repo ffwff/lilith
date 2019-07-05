@@ -48,9 +48,37 @@ void kalloc_page(int rw, int user, uint32_t address) {
     kernel_page_dir->tables[table_idx]->pages[address % 1024] = page_create(rw, user, (phys & 0xFFFFF000) >> 8);
 }
 
+void kalloc_page_no_make(int rw, int user, uint32_t address) {
+    uint32_t phys = address;
+    address /= 0x1000;
+    uint32_t table_idx = address / 1024;
+    kernel_page_dir->tables[table_idx]->pages[address % 1024] = page_create(rw, user, (phys & 0xFFFFF000) >> 8);
+}
+
 void kinit_paging() {
     kernel_page_dir = pmalloc_a(sizeof(struct page_directory), 0);
     memset(kernel_page_dir, 0, sizeof(struct page_directory));
+}
+
+int kpage_present(uint32_t address) {
+    address /= 0x1000;
+    uint32_t table_idx = address / 1024;
+    if (kernel_page_dir->tables[table_idx] == 0) {
+        return 0;
+    }
+    return kernel_page_dir->tables[table_idx]->pages[address % 1024].present;
+}
+
+int kpage_table_present(uint32_t table_idx) {
+    if (kernel_page_dir->tables[table_idx] == 0) {
+        return 0;
+    }
+    return 1;
+}
+
+void kpage_dir_set_table(uint32_t table_idx, uint32_t address) {
+    kernel_page_dir->tables[table_idx] = address;
+    kernel_page_dir->tables_physical[table_idx] = address | 0x7;
 }
 
 // paging control

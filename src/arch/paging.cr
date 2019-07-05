@@ -1,8 +1,14 @@
+# NOTE: we only do identity paging
+
 private lib Kernel
     fun kinit_paging()
     fun kenable_paging()
     fun kdisable_paging()
     fun kalloc_page(rw : Int32, user : Int32, address : UInt32)
+    fun kalloc_page_no_make(rw : Int32, user : Int32, address : UInt32)
+    fun kpage_present(address : UInt32) : Int32
+    fun kpage_dir_set_table(idx : UInt32, address : UInt32)
+    fun kpage_table_present(address : UInt32) : Int32
     $kernel_page_dir : Void*
     $pmalloc_start : Void*
     $pmalloc_addr : Void*
@@ -26,7 +32,6 @@ module Paging
         cur_mmap_addr = mboot_header[0].mmap_addr
         mmap_end_addr = cur_mmap_addr + mboot_header[0].mmap_length
 
-
         while cur_mmap_addr < mmap_end_addr
             cur_entry = Pointer(Multiboot::MemoryMapTable).new(cur_mmap_addr.to_u64)
 
@@ -48,30 +53,29 @@ module Paging
         alloc_page false, false, 0xb8000
         # text segment
         i = text_start.address.to_u32
-        while i < aligned(text_end.address.to_u32)
+        while i <= aligned(text_end.address.to_u32)
             alloc_frame false, false, i
             i += 0x1000
         end
         # data segment
-        i = data_start.address.to_u32
-        while i < aligned(data_end.address.to_u32)
+        i = aligned(data_start.address.to_u32)
+        while i <= aligned(data_end.address.to_u32)
             alloc_frame true, false, i
             i += 0x1000
         end
-        # unallocated stack protection pages
-        while i < stack_start.address.to_u32
+        # reserve unallocated stack protection pages
+        while i <= aligned(stack_start.address.to_u32)
             @@frames[frame_index_for_address i] = true
             i += 0x1000
         end
         # stack segment
-        i = stack_start.address.to_u32
         while i < aligned(stack_end.address.to_u32)
             alloc_frame true, false, i
             i += 0x1000
         end
         # heap
         i = Kernel.pmalloc_start.address.to_u32
-        while i < aligned(Kernel.pmalloc_addr.address.to_u32)
+        while i <= aligned(Kernel.pmalloc_addr.address.to_u32)
             alloc_frame true, false, i
             i += 0x1000
         end
@@ -96,8 +100,44 @@ module Paging
 
     # page alloc
     @[AlwaysInline]
-    def alloc_page(rw : Bool, user : Bool, address : UInt32)
+    private def alloc_page(rw : Bool, user : Bool, address : UInt32)
         Kernel.kalloc_page (rw ? 1 : 0), (user ? 1 : 0), address
+    end
+
+    # allocate page when pg is enabled
+    # returns page address
+    def alloc_page_pg : UInt32
+        # reuse page if table is already allocated
+        iaddr = @@frames.first_unset
+        addr = iaddr.to_u32 * 0x1000 + @@frame_base_addr
+        if Kernel.kpage_present(addr) != 0
+            return addr
+        end
+
+        disable
+        # claim
+        @@frames[iaddr] = true
+        # create new page
+        page_addr = addr.unsafe_div 0x1000
+        table_idx = page_addr.unsafe_div 1024
+        if Kernel.kpage_table_present(table_idx) == 0
+            # page table isn't present
+            # claim a page for storing the page table
+            pt_iaddr = @@frames.first_unset
+            pt_addr = pt_iaddr.to_u32 * 0x1000 + @@frame_base_addr
+            memset Pointer(UInt8).new(pt_addr.to_u64), 0, 4096
+            Kernel.kpage_dir_set_table table_idx, pt_addr
+            alloc_frame(true, false, pt_addr)
+        end
+        Kernel.kalloc_page_no_make 1, 0, addr
+        enable
+
+        # return page
+        addr
+    end
+
+    def free_page_pg(address : UInt32)
+        @@frames[frame_index_for_address address] = false
     end
 
     # frame alloc
@@ -108,7 +148,7 @@ module Paging
         alloc_page(rw, user, address)
     end
 
-    private def frame_index_for_address(address : Int)
+    private def frame_index_for_address(address : UInt32)
         (address - @@frame_base_addr).unsafe_div(0x1000)
     end
 
