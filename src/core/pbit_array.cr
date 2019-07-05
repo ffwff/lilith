@@ -7,9 +7,15 @@ struct PBitArray
         @pointer = Pointer(UInt8).pmalloc malloc_size
     end
 
+    def self.null
+        new 0, Pointer(UInt8).null
+    end
+    private def initialize(@size, @pointer)
+    end
+
     # methods
     def []=(k : Int, value : Bool)
-        panic "pbitarray: out of range" if index > size
+        panic "pbitarray: out of range" if k > size || k < 0
         if value
             @pointer[index_position k] |= 1.unsafe_shl(bit_position k)
         else
@@ -18,8 +24,12 @@ struct PBitArray
     end
 
     def [](k : Int) : Bool
-        panic "pbitarray: out of range" if index > size
-        @pointer[index_position k] & 1.unsafe_shl(bit_position k)
+        panic "pbitarray: out of range" if k > size || k < 0
+        if (@pointer[index_position k] & 1.unsafe_shl(bit_position k)) != 0
+            true
+        else
+            false
+        end
     end
 
     def first_set_index
@@ -35,9 +45,11 @@ struct PBitArray
 
     # to_s
     def to_s(io)
+        io.puts "PBitArray ["
         size.times do |i|
             io.puts (self[i] ? '1' : '0')
         end
+        io.puts "]"
     end
 
     # size
@@ -46,10 +58,10 @@ struct PBitArray
     end
 
     # position
-    private def index_position(k : Int32)
+    private def index_position(k : Int)
         k.unsafe_div 8
     end
-    private def bit_position(k : Int32)
+    private def bit_position(k : Int)
         k.unsafe_mod 8
     end
 

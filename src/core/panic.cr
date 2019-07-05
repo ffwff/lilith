@@ -6,6 +6,3 @@ def panic(s)
     while true
     end
 end
-
-def raise(*args)
-end

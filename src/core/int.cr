@@ -12,6 +12,10 @@ struct Int
     end
 
     # math
+    def ~
+        self ^ -1
+    end
+
     def abs
         self >= 0 ? self : self * -1
     end
