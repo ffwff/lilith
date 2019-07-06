@@ -48,11 +48,10 @@ void kalloc_page(int rw, int user, uint32_t address) {
     kernel_page_dir->tables[table_idx]->pages[address % 1024] = page_create(rw, user, (phys & 0xFFFFF000) >> 8);
 }
 
-void kalloc_page_no_make(int rw, int user, uint32_t address) {
-    uint32_t phys = address;
-    address /= 0x1000;
-    uint32_t table_idx = address / 1024;
-    kernel_page_dir->tables[table_idx]->pages[address % 1024] = page_create(rw, user, (phys & 0xFFFFF000) >> 8);
+void kalloc_page_mapping(int rw, int user, uint32_t virt, uint32_t phys) {
+    virt /= 0x1000;
+    uint32_t table_idx = virt / 1024;
+    kernel_page_dir->tables[table_idx]->pages[virt % 1024] = page_create(rw, user, (phys & 0xFFFFF000) >> 8);
 }
 
 void kinit_paging() {

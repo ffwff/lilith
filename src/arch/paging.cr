@@ -5,7 +5,7 @@ private lib Kernel
     fun kenable_paging()
     fun kdisable_paging()
     fun kalloc_page(rw : Int32, user : Int32, address : UInt32)
-    fun kalloc_page_no_make(rw : Int32, user : Int32, address : UInt32)
+    fun kalloc_page_mapping(rw : Int32, user : Int32, virt : UInt32, phys : UInt32)
     fun kpage_present(address : UInt32) : Int32
     fun kpage_dir_set_table(idx : UInt32, address : UInt32)
     fun kpage_table_present(address : UInt32) : Int32
@@ -17,6 +17,9 @@ end
 module Paging
     extend self
 
+    # NOTE: paging module should not be used after
+    # it is set up, any memory allocated in the pmalloc
+    # functions is unmapped
     @@frame_base_addr : UInt32 = 0
     @@frame_length    : UInt32 = 0
     @@frames = PBitArray.null
@@ -64,26 +67,10 @@ module Paging
             alloc_frame true, false, i
             i += 0x1000
         end
-        # claim guard "pages" for overflows
-        while i < stack_start.address.to_u32
-            @@frames[frame_index_for_address i] = true
-            i += 0x1000
-        end
         # stack segment
         i = stack_start.address.to_u32
         while i < stack_end.address.to_u32
             alloc_frame true, false, i
-            i += 0x1000
-        end
-        # claim guard "pages" for underflows
-        while i < Kernel.pmalloc_start.address.to_u32
-            @@frames[frame_index_for_address i] = true
-            i += 0x1000
-        end
-        # heap
-        i = Kernel.pmalloc_start.address.to_u32
-        while i <= aligned(Kernel.pmalloc_addr.address.to_u32)
-            alloc_frame false, false, i
             i += 0x1000
         end
         # -- switch page directory
@@ -113,44 +100,42 @@ module Paging
 
     # allocate page when pg is enabled
     # returns page address
-    def alloc_page_pg : UInt32
-        # reuse page if table is already allocated
-        iaddr = @@frames.first_unset
-        addr = iaddr.to_u32 * 0x1000 + @@frame_base_addr
-        if Kernel.kpage_present(addr) != 0
-            return addr
-        end
-
+    def alloc_page_pg(virt_addr : UInt32, rw : Bool, user : Bool) : UInt32
         Idt.disable
         disable
+
         # claim
+        iaddr = @@frames.first_unset
+        panic "no more physical memory!" if iaddr == -1
+        addr = iaddr * 0x1000 + @@frame_base_addr
         @@frames[iaddr] = true
         # create new page
-        page_addr = addr.unsafe_div 0x1000
+        page_addr = virt_addr.unsafe_div 0x1000
         table_idx = page_addr.unsafe_div 1024
         if Kernel.kpage_table_present(table_idx) == 0
             # page table isn't present
             # claim a page for storing the page table
             pt_iaddr = @@frames.first_unset
+            panic "no more physical memory!" if pt_iaddr == -1
             pt_addr = pt_iaddr.to_u32 * 0x1000 + @@frame_base_addr
             memset Pointer(UInt8).new(pt_addr.to_u64), 0, 4096
             Kernel.kpage_dir_set_table table_idx, pt_addr
-            alloc_frame(false, false, pt_addr)
+            @@frames[pt_iaddr] = true
         end
-        Kernel.kalloc_page_no_make 1, 0, addr
+        Kernel.kalloc_page_mapping (rw ? 1 : 0), (user ? 1 : 0), virt_addr, addr
         enable
         Idt.enable
 
         # return page
-        addr
+        virt_addr
     end
 
-    def free_page_pg(address : UInt32)
-        @@frames[frame_index_for_address address] = false
-    end
+    #def free_page_pg(address : UInt32)
+    #    @@frames[frame_index_for_address address] = false
+    #end
 
     # frame alloc
-    def alloc_frame(rw : Bool, user : Bool, address : UInt32)
+    private def alloc_frame(rw : Bool, user : Bool, address : UInt32)
         idx = frame_index_for_address address
         panic "already allocated" if @@frames[idx]
         @@frames[idx] = true
