@@ -30,6 +30,6 @@ SECTIONS
     {
         *(.stack)
     }
-    . = ALIGN(4K) + 0x1000;
+    . = ALIGN(4K);
     _KERNEL_END = .;
 }

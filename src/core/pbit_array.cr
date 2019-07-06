@@ -4,11 +4,11 @@ struct PBitArray
     def size; @size; end
 
     def initialize(@size)
-        @pointer = Pointer(UInt8).pmalloc malloc_size
+        @pointer = Pointer(UInt32).pmalloc malloc_size
     end
 
     def self.null
-        new 0, Pointer(UInt8).null
+        new 0, Pointer(UInt32).null
     end
     private def initialize(@size, @pointer)
     end
@@ -35,8 +35,29 @@ struct PBitArray
     def first_unset
         i = 0
         while i < malloc_size
-            if @pointer[i].to_u8 != (~0).to_u8
-                return i * 8 + @pointer[i].ffz
+            if @pointer[i] != (~0).to_u32
+                return i * 32 + @pointer[i].ffz
+            end
+            i += 1
+        end
+        -1
+    end
+
+    # TODO: find a better algorithm
+    def first_unset_bits(n : Int)
+        panic "unsupported" if n > 8
+        max_words = 1
+        i = 0
+        while i < malloc_size
+            first_idx = i * 32 + @pointer[i].ffz
+            next_idx = begin
+                j = i
+                while j < malloc_size
+                    if @pointer[i] == 0
+                        return 1
+                    end
+                    j += 1
+                end
             end
             i += 1
         end
@@ -54,15 +75,15 @@ struct PBitArray
 
     # size
     private def malloc_size : Int32
-        (@size + 7).unsafe_div 8
+        (@size + 31).unsafe_div 32
     end
 
     # position
     private def index_position(k : Int)
-        k.unsafe_div 8
+        k.unsafe_div 32
     end
     private def bit_position(k : Int)
-        k.unsafe_mod 8
+        k.unsafe_mod 32
     end
 
 end

@@ -64,10 +64,20 @@ module Paging
             alloc_frame true, false, i
             i += 0x1000
         end
+        # claim guard "pages" for overflows
+        while i < stack_start.address.to_u32
+            @@frames[frame_index_for_address i] = true
+            i += 0x1000
+        end
         # stack segment
         i = stack_start.address.to_u32
         while i < stack_end.address.to_u32
             alloc_frame true, false, i
+            i += 0x1000
+        end
+        # claim guard "pages" for underflows
+        while i < Kernel.pmalloc_start.address.to_u32
+            @@frames[frame_index_for_address i] = true
             i += 0x1000
         end
         # heap

@@ -20,6 +20,7 @@ struct Int
         self >= 0 ? self : self * -1
     end
 
+    # bit manips
     @[AlwaysInline]
     def ffz : Int
         # find first zero bit, useful for bit arrays
@@ -28,6 +29,17 @@ struct Int
         asm("
             bsfl $1, $0
         " : "={eax}"(idx) : "{edx}"(~self.to_i32) :: "volatile")
+        idx
+    end
+
+    @[AlwaysInline]
+    def fls : Int
+        # find last set bit in word
+        # NOTE: should check for zero first
+        idx = 0
+        asm("
+            bsrl $1, $0
+        " : "={eax}"(idx) : "{edx}"(self.to_i32) :: "volatile")
         idx
     end
 
@@ -45,9 +57,8 @@ struct Int
         end
         if sign
             yield '-'.ord.to_u8
-        else
-            i -= 1
         end
+        i -= 1
         while true
             yield s[i]
             break if i == 0

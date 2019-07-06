@@ -7,9 +7,20 @@ require "./arch/gdt.cr"
 require "./arch/idt.cr"
 require "./arch/paging.cr"
 require "./arch/multiboot.cr"
+require "./gc/box.cr"
 
 private lib Kernel
     $pmalloc_start : Void*
+end
+
+struct X
+
+    def initialize
+        @a = Box(Int32).new
+        @b = 100
+        @c = Box(Int32).new
+    end
+
 end
 
 fun kmain(kernel_end : Void*,
