@@ -8,20 +8,14 @@ require "./arch/idt.cr"
 require "./arch/paging.cr"
 require "./arch/multiboot.cr"
 require "./alloc/alloc.cr"
-require "./gc/box.cr"
+require "./alloc/gc.cr"
 
 private lib Kernel
     $pmalloc_start : Void*
 end
 
-struct X
-
-    def initialize
-        @a = Box(Int32).new
-        @b = 100
-        @c = Box(Int32).new
-    end
-
+class Kurasu
+    @dbg = 0xdeadbeef
 end
 
 fun kmain(kernel_end : Void*,
@@ -59,6 +53,7 @@ fun kmain(kernel_end : Void*,
     Idt.enable
 
     #
+    x = Kurasu.new
     #x = KERNEL_ARENA.malloc(16)
     #Serial.puts "ptr: ", Pointer(Void).new(x.to_u64), "\n"
     #KERNEL_ARENA.free x.to_u32

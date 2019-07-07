@@ -20,8 +20,11 @@ struct Pointer(T)
     end
 
     # pg malloc
-    def self.malloc
-        new (Kernel.malloc sizeof(T).to_u32).to_u64
+    def self.malloc(size)
+        new (Kernel.malloc size.to_u32).to_u64
+    end
+    def self.free
+        new (Kernel.free self.address.to_u32).to_u64
     end
 
     # methods

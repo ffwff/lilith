@@ -4,6 +4,8 @@
 
 require "../arch/paging.cr"
 
+private MAGIC_POOL_HEADER = 0xC0FEC0FE
+
 private lib Kernel
 
     @[Packed]
@@ -11,7 +13,7 @@ private lib Kernel
         block_buffer_size : UInt32
         next_pool : PoolHeader*
         first_free_block : PoolBlockHeader*
-        padding : UInt32
+        magic_number : UInt32
     end
 
     @[Packed]
@@ -25,7 +27,11 @@ private struct Pool
 
     POOL_SIZE = 0x1000
     HEADER_SIZE = sizeof(Kernel::PoolHeader)
-    def initialize(@header : Kernel::PoolHeader*); end
+    def initialize(@header : Kernel::PoolHeader*)
+        if @header.value.magic_number != MAGIC_POOL_HEADER
+            panic "magic pool number is overwritten!"
+        end
+    end
     def header; @header; end
 
     # size of an object stored in each block
@@ -87,7 +93,7 @@ struct KernelArena
     @first_pool = Pointer(Kernel::PoolHeader).null
     @last_pool  = Pointer(Kernel::PoolHeader).null
     # linked list free pools for sizes of 2^4, 2^5 ... 2^10
-    @free_pools = uninitialized Kernel::PoolHeader*[6]
+    @free_pools = uninitialized Kernel::PoolHeader*[7]
     @placement_addr : UInt32 = 0x1000_0000
 
     # free pool chaining
@@ -122,6 +128,7 @@ struct KernelArena
         pool_hdr.value.block_buffer_size = buffer_size
         pool_hdr.value.next_pool = Pointer(Kernel::PoolHeader).null
         pool_hdr.value.first_free_block = Pointer(Kernel::PoolBlockHeader).new(addr.to_u64 + Pool::HEADER_SIZE)
+        pool_hdr.value.magic_number = MAGIC_POOL_HEADER
         if @first_pool.null?
             @first_pool = @last_pool = pool_hdr
         else
