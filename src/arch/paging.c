@@ -54,6 +54,14 @@ void kalloc_page_mapping(int rw, int user, uint32_t virt, uint32_t phys) {
     kernel_page_dir->tables[table_idx]->pages[virt % 1024] = page_create(rw, user, (phys & 0xFFFFF000) >> 8);
 }
 
+uint32_t kfree_page(uint32_t virt) {
+    virt /= 0x1000;
+    uint32_t table_idx = virt / 1024;
+    uint32_t phys = kernel_page_dir->tables[table_idx]->pages[virt % 1024].frame << 8;
+    kernel_page_dir->tables[table_idx]->pages[virt % 1024] = (struct page){0};
+    return phys;
+}
+
 void kinit_paging() {
     kernel_page_dir = pmalloc_a(sizeof(struct page_directory), 0);
     memset(kernel_page_dir, 0, sizeof(struct page_directory));

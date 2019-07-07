@@ -26,6 +26,10 @@ struct Pointer(T)
         io.puts "]"
     end
 
+    def is_null
+        self.address == 0
+    end
+
     # operators
     def [](offset : Int)
         (self + offset.to_i64).value
