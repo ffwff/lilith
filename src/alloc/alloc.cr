@@ -21,7 +21,7 @@ private lib Kernel
 
 end
 
-struct Pool
+private struct Pool
 
     POOL_SIZE = 0x1000
     HEADER_SIZE = sizeof(Kernel::PoolHeader)
@@ -106,7 +106,7 @@ struct KernelArena
 
     private def chain_pool(pool)
         idx = idx_for_pool_size pool.block_buffer_size
-        if !@free_pools[idx].is_null
+        if !@free_pools[idx].null?
             pool.header.value.next_pool = @free_pools[idx]
         end
         @free_pools[idx] = pool.header
@@ -122,7 +122,7 @@ struct KernelArena
         pool_hdr.value.block_buffer_size = buffer_size
         pool_hdr.value.next_pool = Pointer(Kernel::PoolHeader).null
         pool_hdr.value.first_free_block = Pointer(Kernel::PoolBlockHeader).new(addr.to_u64 + Pool::HEADER_SIZE)
-        if @first_pool.is_null
+        if @first_pool.null?
             @first_pool = @last_pool = pool_hdr
         else
             @last_pool.value.next_pool = pool_hdr
@@ -138,7 +138,7 @@ struct KernelArena
         panic "only supports sizes of <= 1024" if sz > 1024
         pool_size = max(16, sz.nearest_power_of_2).to_u32
         idx = idx_for_pool_size pool_size
-        if @free_pools[idx].is_null
+        if @free_pools[idx].null?
             # create a new pool if there isn't any freed
             pool = new_pool(pool_size)
             Serial.puts pool
@@ -148,7 +148,7 @@ struct KernelArena
             # reuse existing pool
             pool = Pool.new @free_pools[idx]
             addr = pool.get_free_block
-            if pool.first_free_block.is_null
+            if pool.first_free_block.null?
                 # pop if pool is full
                 @free_pools[idx] = pool.header.value.next_pool
             end

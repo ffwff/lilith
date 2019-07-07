@@ -19,6 +19,11 @@ struct Pointer(T)
         new (Kernel.pmalloc_a sizeof(T).to_u32).to_u64
     end
 
+    # pg malloc
+    def self.malloc
+        new (Kernel.malloc sizeof(T).to_u32).to_u64
+    end
+
     # methods
     def to_s(io)
         io.puts "[0x"
@@ -26,7 +31,7 @@ struct Pointer(T)
         io.puts "]"
     end
 
-    def is_null
+    def null?
         self.address == 0
     end
 
