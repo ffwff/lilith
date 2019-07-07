@@ -7,6 +7,7 @@ require "./arch/gdt.cr"
 require "./arch/idt.cr"
 require "./arch/paging.cr"
 require "./arch/multiboot.cr"
+require "./alloc/alloc.cr"
 require "./gc/box.cr"
 
 private lib Kernel
@@ -56,6 +57,9 @@ fun kmain(kernel_end : Void*,
                     mboot_header)
 
     Idt.enable
+
+    #
+    KERNEL_ARENA.malloc 4
 
     VGA.puts "done...\n"
     while true
