@@ -26,6 +26,7 @@ struct Pool
     POOL_SIZE = 0x1000
     HEADER_SIZE = sizeof(Kernel::PoolHeader)
     def initialize(@header : Kernel::PoolHeader*); end
+    def header; @header; end
 
     # size of an object stored in each block
     def block_buffer_size; @header.value.block_buffer_size; end
@@ -38,7 +39,6 @@ struct Pool
 
     # first free block in linked list
     def first_free_block; @header.value.first_free_block; end
-    def first_free_block=(x : PoolBlockHeader*); @header.value.first_free_block = x; end
 
     # methods
     def init_blocks
@@ -54,7 +54,6 @@ struct Pool
         # fill last one with zero
         ptr = Pointer(Kernel::PoolBlockHeader).new i.to_u64
         ptr.value.next_free_block = Pointer(Kernel::PoolBlockHeader).null
-        Serial.puts ptr, "\n"
     end
 
     def to_s(io)
@@ -70,15 +69,15 @@ struct Pool
     # returns a pointer to the buffer
     def get_free_block : UInt32
         block = first_free_block
-        first_free_block = block.value.next_free_block
-        block.addr.to_u32 + HEADER_SIZE
+        @header.value.first_free_block = block.value.next_free_block
+        block.address.to_u32 + HEADER_SIZE
     end
 
     # release a free block
     def release_block(addr : UInt32)
-        block = Pointer(Kernel::PoolBlockHeader).new(addr - HEADER_SIZE)
-        block.value.next = first_free_block
-        first_free_block = block
+        block = Pointer(Kernel::PoolBlockHeader).new(addr.to_u64 - HEADER_SIZE)
+        block.value.next_free_block = first_free_block
+        @header.value.first_free_block = block
     end
 
 
@@ -87,16 +86,40 @@ end
 struct KernelArena
     @first_pool = Pointer(Kernel::PoolHeader).null
     @last_pool  = Pointer(Kernel::PoolHeader).null
+    # linked list free pools for sizes of 2^4, 2^5 ... 2^10
+    @free_pools = uninitialized Kernel::PoolHeader*[6]
     @placement_addr : UInt32 = 0x1000_0000
 
-    # expose
-    def new_pool(size : UInt32) : Pool
+    # free pool chaining
+    @[AlwaysInline]
+    private def idx_for_pool_size(sz : UInt32)
+        case sz
+        when 16;    0
+        when 32;    1
+        when 64;    2
+        when 128;   3
+        when 256;   4
+        when 512;   5
+        else;       6
+        end
+    end
+
+    private def chain_pool(pool)
+        idx = idx_for_pool_size pool.block_buffer_size
+        if !@free_pools[idx].is_null
+            pool.header.value.next_pool = @free_pools[idx]
+        end
+        @free_pools[idx] = pool.header
+    end
+
+    # pool
+    private def new_pool(buffer_size : UInt32) : Pool
         addr = @placement_addr
         Paging.alloc_page_pg(@placement_addr, true, false)
         @placement_addr += 0x1000
 
         pool_hdr = Pointer(Kernel::PoolHeader).new(addr.to_u64)
-        pool_hdr.value.block_buffer_size = size
+        pool_hdr.value.block_buffer_size = buffer_size
         pool_hdr.value.next_pool = Pointer(Kernel::PoolHeader).null
         pool_hdr.value.first_free_block = Pointer(Kernel::PoolBlockHeader).new(addr.to_u64 + Pool::HEADER_SIZE)
         if @first_pool.is_null
@@ -112,12 +135,32 @@ struct KernelArena
 
     # manual functions
     def malloc(sz : UInt32) : UInt32
-        pool = new_pool(4)
-        Serial.puts pool
-        0.to_u32
+        panic "only supports sizes of <= 1024" if sz > 1024
+        pool_size = max(16, sz.nearest_power_of_2).to_u32
+        idx = idx_for_pool_size pool_size
+        if @free_pools[idx].is_null
+            # create a new pool if there isn't any freed
+            pool = new_pool(pool_size)
+            Serial.puts pool
+            chain_pool pool
+            pool.get_free_block
+        else
+            # reuse existing pool
+            pool = Pool.new @free_pools[idx]
+            addr = pool.get_free_block
+            if pool.first_free_block.is_null
+                # pop if pool is full
+                @free_pools[idx] = pool.header.value.next_pool
+            end
+            addr
+        end
     end
 
     def free(ptr : UInt32)
+        pool_hdr = Pointer(Kernel::PoolHeader).new(ptr.to_u64 & 0xFFFF_F000)
+        pool = Pool.new pool_hdr
+        pool.release_block ptr
+        chain_pool pool
     end
 
 end

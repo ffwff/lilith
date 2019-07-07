@@ -16,6 +16,10 @@ struct Int
         self ^ -1
     end
 
+    def ===(other)
+        self == other
+    end
+
     def abs
         self >= 0 ? self : self * -1
     end
@@ -41,6 +45,15 @@ struct Int
             bsrl $1, $0
         " : "={eax}"(idx) : "{edx}"(self.to_i32) :: "volatile")
         idx
+    end
+
+    @[AlwaysInline]
+    def nearest_power_of_2
+        n = self - 1
+        while (n & (n - 1)) != 0
+            n = n & (n - 1)
+        end
+        n.unsafe_shl 1
     end
 
     # format
@@ -76,4 +89,8 @@ end
 
 def min(a, b)
     a < b ? a : b
+end
+
+def max(a, b)
+    a > b ? a : b
 end
