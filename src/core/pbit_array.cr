@@ -43,6 +43,17 @@ struct PBitArray
         -1
     end
 
+    def first_unset_from(idx : Int32)
+        i = idx
+        while i < malloc_size
+            if @pointer[i] != (~0).to_u32
+                return i * 32 + @pointer[i].ffz
+            end
+            i += 1
+        end
+        -1
+    end
+
     # TODO: find a better algorithm
     def first_unset_bits(n : Int)
         panic "unsupported" if n > 8

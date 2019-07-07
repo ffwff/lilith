@@ -24,6 +24,7 @@ module Paging
     @@frame_base_addr : UInt32 = 0
     @@frame_length    : UInt32 = 0
     @@frames = PBitArray.null
+    @@frames_search_from : Int32 = 0
 
     def init_table(
         text_start : Void*, text_end : Void*,
@@ -111,7 +112,7 @@ module Paging
         # claim
         while virt_addr < virt_addr_end
             # allocate page frame
-            iaddr = @@frames.first_unset
+            iaddr = @@frames.first_unset_from @@frames_search_from
             panic "no more physical memory!" if iaddr == -1
             addr = iaddr * 0x1000 + @@frame_base_addr
             @@frames[iaddr] = true
@@ -122,7 +123,7 @@ module Paging
             if Kernel.kpage_table_present(table_idx) == 0
                 # page table isn't present
                 # claim a page for storing the page table
-                pt_iaddr = @@frames.first_unset
+                pt_iaddr = @@frames.first_unset_from @@frames_search_from
                 panic "no more physical memory!" if pt_iaddr == -1
                 pt_addr = pt_iaddr.to_u32 * 0x1000 + @@frame_base_addr
                 memset Pointer(UInt8).new(pt_addr.to_u64), 0, 4096
@@ -149,7 +150,9 @@ module Paging
 
         while virt_addr < virt_addr_end
             address = Kernel.kfree_page virt_addr
-            @@frames[frame_index_for_address address] = false
+            idx = frame_index_for_address address
+            @@frames_search_from = min idx, @@frames_search_from
+            @@frames[idx] = false
             virt_addr += 0x1000
         end
 
