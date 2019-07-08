@@ -141,7 +141,7 @@ struct KernelArena
         if @free_pools[idx].null?
             # create a new pool if there isn't any freed
             pool = new_pool(pool_size)
-            Serial.puts pool
+            # Serial.puts pool
             chain_pool pool
             pool.get_free_block
         else
