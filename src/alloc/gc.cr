@@ -17,7 +17,8 @@ private GC_NODE_MAGIC_ATOMIC = 0x45564101
 private GC_NODE_MAGIC_GRAY = 0x45564102
 private GC_NODE_MAGIC_GRAY_ATOMIC = 0x45564103
 # black
-private GC_NODE_BLACK = 0x45564104
+private GC_NODE_MAGIC_BLACK = 0x45564104
+private GC_NODE_MAGIC_BLACK_ATOMIC = 0x45564104
 
 private lib Kernel
 
@@ -28,14 +29,14 @@ private lib Kernel
 
 end
 
-private def check_gc_node(node : GcNode*)
-    case node.value.magic
-    when GC_NODE_MAGIC | GC_NODE_MAGIC_ATOMIC | GC_NODE_MAGIC_GRAY | GC_NODE_MAGIC_GRAY_ATOMIC | GC_NODE_BLACK
-        true
-    else
-        false
-    end
-end
+# private def check_gc_node(node : GcNode*)
+#     case node.value.magic
+#     when GC_NODE_MAGIC | GC_NODE_MAGIC_ATOMIC | GC_NODE_MAGIC_GRAY | GC_NODE_MAGIC_GRAY_ATOMIC | GC_NODE_MAGIC_BLACK |
+#         true
+#     else
+#         false
+#     end
+# end
 
 module LibGc
     extend self
@@ -71,6 +72,19 @@ module LibGc
         @@enabled = true
     end
 
+    macro push(list, node)
+        if {{ list }}.null?
+            # first node
+            {{ node }}.value.next_node = Pointer(Kernel::GcNode).null
+            {{ list }} = {{ node }}
+        else
+            # middle node
+            {{ node }}.value.next_node = {{ list }}
+            {{ list }} = {{ node }}
+        end
+    end
+
+    # gc algorithm
     private def scan_region(start_addr, end_addr)
         word_size = 4 # 4*8 = 32bits
         Serial.puts "from: ", Pointer(Void).new(start_addr.to_u64), Pointer(Void).new(end_addr.to_u64),"\n"
@@ -85,6 +99,27 @@ module LibGc
                 while !node.null?
                     if node.address.to_u32 == word
                         # word looks like a valid gc header pointer!
+                        # remove from current list
+                        if !prev.null?
+                            prev.value.next_node = node.value.next_node
+                        else
+                            @@first_white_node = node.value.next_node
+                        end
+                        # add to gray list
+                        case node.value.magic
+                        when GC_NODE_MAGIC
+                            node.value.magic = GC_NODE_MAGIC_GRAY
+                            push(@@first_gray_node, node)
+                        when GC_NODE_MAGIC_ATOMIC
+                            node.value.magic = GC_NODE_MAGIC_GRAY_ATOMIC
+                            push(@@first_gray_node, node)
+                        when GC_NODE_MAGIC_BLACK | GC_NODE_MAGIC_BLACK_ATOMIC
+                            panic "broken invariance"
+                        else
+                            # this node is gray
+                        end
+                        Serial.puts "found: "
+                        break
                     end
                     # next it
                     prev = node
@@ -97,24 +132,6 @@ module LibGc
         end
     end
 
-    macro push(list, node)
-        if {{ list }}.null?
-            # first node
-            {{ node }}.value.next_node = Pointer(Kernel::GcNode).null
-            {{ list }} = {{ node }}
-        else
-            # middle node
-            {{ node }}.value.next_node = {{ list }}
-            {{ list }} = {{ node }}
-        end
-    end
-
-    macro push_black(node)
-        {{ node }}.value.magic = GC_NODE_BLACK
-        push(@@first_black_node, node)
-    end
-
-    # gc algorithm
     def cycle
         # marking phase
         if @@bytes_allocated == 0
@@ -123,26 +140,29 @@ module LibGc
         elsif @@first_gray_node.null? && @@first_black_node.null?
             # we don't have any gray/black nodes at the beginning of a cycle
             # conservatively scan the stack for pointers
-            # scan_region @@data_start.not_nil!, @@data_end.not_nil!
-            # stack_start = 0
-            # asm("mov %esp, $0;" : "=r"(stack_start) :: "volatile")
-            # scan_region stack_start, @@stack_end.not_nil!
+            scan_region @@data_start.not_nil!, @@data_end.not_nil!
+            stack_start = 0
+            asm("mov %esp, $0;" : "=r"(stack_start) :: "volatile")
+            scan_region stack_start, @@stack_end.not_nil!
         elsif !@@first_gray_node.null?
             # second stage of marking phase: precisely marking gray nodes
             type_info = @@type_info.not_nil!
-            new_first_gray_node = Pointer(Kernel::GcNode).null
+            #new_first_gray_node = Pointer(Kernel::GcNode).null
 
+            fix_white = false
             node = @@first_gray_node
             while !node.null?
                 Serial.puts "node: ", node, "\n"
                 if node.value.magic == GC_NODE_MAGIC_GRAY_ATOMIC
                     # skip atomic nodes
-                    next_node = node.value.next_node
-                    #push_black(node)
-                    node = next_node
+                    node.value.magic = GC_NODE_MAGIC_BLACK_ATOMIC
+                    node = node.value.next_node
                     next
                 end
                 panic "gc invariance broken!" if node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
+
+                next_node = node.value.next_node
+                node.value.magic = GC_NODE_MAGIC_BLACK
 
                 buffer_addr = node.address.to_u64 + sizeof(Kernel::GcNode) + TYPE_ID_SIZE
                 # get its typeid
@@ -164,10 +184,10 @@ module LibGc
                         case header.value.magic
                         when GC_NODE_MAGIC
                             header.value.magic = GC_NODE_MAGIC_GRAY
-                            push(new_first_gray_node, header)
+                            fix_white = true
                         when GC_NODE_MAGIC_ATOMIC
                             header.value.magic = GC_NODE_MAGIC_GRAY_ATOMIC
-                            push(new_first_gray_node, header)
+                            fix_white = true
                         else
                             # this node is either gray or black
                         end
@@ -175,25 +195,61 @@ module LibGc
                     pos += 1
                     offsets = offsets.unsafe_shr 1
                 end
-
-                # next it
-                next_node = node.value.next_node
-                push_black(node) if node.value.magic != GC_NODE_BLACK
-                node.value.magic = GC_NODE_BLACK
                 node = next_node
             end
-            @@first_gray_node = new_first_gray_node
+
+            # nodes in @@first_gray_node are now black
+            node = @@first_gray_node
+            while !node.null?
+                next_node = node.value.next_node
+                push(@@first_black_node, node)
+                node = next_node
+            end
+            @@first_gray_node = Pointer(Kernel::GcNode).null
+            ## some nodes in @@first_white_node are now gray
+            Serial.puts self, '\n'
+            if fix_white
+                node = @@first_white_node
+                new_first_white_node = Pointer(Kernel::GcNode).null
+                while !node.null?
+                    next_node = node.value.next_node
+                    if node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
+                        push(new_first_white_node, node)
+                        node = next_node
+                    elsif node.value.magic == GC_NODE_MAGIC_GRAY || node.value.magic == GC_NODE_MAGIC_GRAY_ATOMIC
+                        push(@@first_gray_node, node)
+                        node = next_node
+                    else
+                        Serial.puts node, "\n"
+                        panic "wtf"
+                    end
+                    node = next_node
+                end
+                @@first_white_node = new_first_white_node
+            end
+
         else
             # sweeping phase
             Serial.puts "sweeping phase\n"
             node = @@first_white_node
             while !node.null?
                 Serial.puts "free ", node, "\n"
-                node.value.magic = 0
                 KERNEL_ARENA.free node.address.to_u32
                 node = node.value.next_node
             end
             @@first_white_node = @@first_black_node
+            node = @@first_white_node
+            while !node.null?
+                case node.value.magic
+                when GC_NODE_MAGIC_BLACK
+                    node.value.magic = GC_NODE_MAGIC
+                when GC_NODE_MAGIC_BLACK_ATOMIC
+                    node.value.magic = GC_NODE_MAGIC_ATOMIC
+                else
+                    panic "broken gc invariance"
+                end
+                node = node.value.next_node
+            end
             @@first_black_node = Pointer(Kernel::GcNode).null
         end
     end
