@@ -14,8 +14,16 @@ private lib Kernel
     $pmalloc_start : Void*
 end
 
-class Kurasu
-    @dbg = 0xdeadbeef
+class Kurasu < Gc
+    def initialize(@dbg = 0xdeadbeef)
+    end
+end
+
+class A2 < Gc
+    def initialize
+        @dbg1 = Kurasu.new 0xa0baa0ba
+        @dbg2 = Kurasu.new 0xabababab
+    end
 end
 
 fun kmain(kernel_end : Void*,
@@ -50,10 +58,21 @@ fun kmain(kernel_end : Void*,
                     stack_start, stack_end,
                     mboot_header)
 
-    Idt.enable
+
+    VGA.puts "enabling interrupts...\n"
+    #Idt.enable
 
     #
-    #Serial.puts x.crystal_type_id
+    VGA.puts "initializing kernel garbage collector...\n"
+    LibGc.init
+
+    #
+    x = Kurasu.new
+    Serial.puts "x: ",x.crystal_type_id, "\n"
+    y = A2.new
+    Serial.puts "y: ",y.crystal_type_id, "\n"
+    Serial.puts "z: ",Kurasu.new.crystal_type_id, "\n"
+
     #x = KERNEL_ARENA.malloc(16)
     #Serial.puts "ptr: ", Pointer(Void).new(x.to_u64), "\n"
     #KERNEL_ARENA.free x.to_u32

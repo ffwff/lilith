@@ -93,7 +93,11 @@ end
 struct KernelArena
     # linked list free pools for sizes of 2^4, 2^5 ... 2^10
     @free_pools = uninitialized Kernel::PoolHeader*[7]
-    @placement_addr : UInt32 = 0x1000_0000
+    START_ADDR = 0x1000_0000.to_u32
+    @placement_addr : UInt32 = START_ADDR
+
+    def start_addr; START_ADDR; end
+    def placement_addr; @placement_addr; end
 
     # free pool chaining
     @[AlwaysInline]
