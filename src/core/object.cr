@@ -12,4 +12,8 @@ struct Nil
         panic "casting nil to not-nil!"
     end
 
+    def to_s(io)
+        io.puts "nil"
+    end
+
 end

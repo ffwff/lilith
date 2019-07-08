@@ -8,7 +8,7 @@ CCFLAGS=-c -g -target $(ARCH) -nostdlib -nostdinc \
 	-fno-stack-protector -ffreestanding -O2 \
 	-Wall -Wno-unused-function -Wno-unknown-pragmas \
 	-mno-sse
-CRFLAGS=--cross-compile --target $(ARCH) --prelude empty -d -p
+CRFLAGS=--cross-compile --target $(ARCH) --prelude empty -d
 KERNEL_OBJ=build/main.cr.o \
 	$(patsubst src/arch/%.c,build/arch.%.o,$(wildcard src/arch/*.c)) \
 	build/boot.o
