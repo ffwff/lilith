@@ -14,18 +14,6 @@ private lib Kernel
     $pmalloc_start : Void*
 end
 
-class Kurasu < Gc
-    def initialize(@dbg = 0xdeadbeef)
-    end
-end
-
-class A2 < Gc
-    def initialize
-        @dbg1 = Kurasu.new 0xa0baa0ba
-        @dbg2 = Kurasu.new 0xabababab
-    end
-end
-
 fun kmain(kernel_end : Void*,
         text_start : Void*, text_end : Void*,
         data_start : Void*, data_end : Void*,
@@ -60,46 +48,11 @@ fun kmain(kernel_end : Void*,
 
 
     VGA.puts "enabling interrupts...\n"
-    #Idt.enable
+    Idt.enable
 
     #
     VGA.puts "initializing kernel garbage collector...\n"
     LibGc.init data_start.address.to_u32, data_end.address.to_u32, stack_start.address.to_u32
-
-    #
-    x = Kurasu.new # 1
-    Serial.puts "x: ",x.crystal_type_id, "\n"
-    y = A2.new # 2, 3, 4?
-    Serial.puts "y: ", pointerof(y), " ",y.crystal_type_id, "\n"
-    z = Kurasu.new(0xFFFFFFFF) # 5
-
-    Serial.puts LibGc, "\n---\n"
-    LibGc.cycle
-    Serial.puts LibGc, "\n---\n"
-    LibGc.cycle
-    Serial.puts LibGc, "\n---\n"
-    x = 0
-    LibGc.cycle
-    Serial.puts LibGc, "\n--\n"
-    LibGc.cycle
-    Serial.puts LibGc, "\n--\n"
-    Serial.puts "y: ", pointerof(y), " ",y.crystal_type_id, "\n"
-    LibGc.cycle
-    Serial.puts LibGc, "\n"
-
-    LibGc.cycle
-    Serial.puts LibGc, "\n"
-
-    #x = KERNEL_ARENA.malloc(16)
-    #Serial.puts "ptr: ", Pointer(Void).new(x.to_u64), "\n"
-    #KERNEL_ARENA.free x.to_u32
-    #x = KERNEL_ARENA.malloc(16)
-    #Serial.puts "ptr: ", Pointer(Void).new(x.to_u64), "\n"
-    #KERNEL_ARENA.free x.to_u32
-
-    #Serial.puts "ptr: ", Pointer(Void).new(KERNEL_ARENA.malloc(16).to_u64), "\n"
-    #Serial.puts "ptr: ", Pointer(Void).new(KERNEL_ARENA.malloc(16).to_u64), "\n"
-    #Serial.puts "ptr: ", Pointer(Void).new(KERNEL_ARENA.malloc(32).to_u64), "\n"
 
     VGA.puts "done...\n"
     while true
