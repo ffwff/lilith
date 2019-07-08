@@ -16,6 +16,7 @@
 .global _start
 .global load_idt
 .global kload_gdt
+.global kload_tss
 .global kload_idt
 .global kirq_stub
 # start
@@ -47,17 +48,37 @@ kload_gdt:
     ljmp $0x08, $.flush
 .flush:
     ret
+# tss
+kload_tss:
+    mov $0x2b, %ax
+    ltr %ax
+    ret
 # idt
 kload_idt:
     mov 4(%esp), %eax    # Get the pointer to the IDT, passed as a parameter.
     lidt (%eax)          # Load the IDT pointer.
     ret
 # irq stub
-# leaks 48 bytes?
 kirq_stub:
     pusha
+    # save data segment descriptor
+    mov %ds, %ax
+    push %ax
+    # load kernel segment descriptor
+    mov $0x10, %ax
+    mov %ax, %ds
+    mov %ax, %es
+    mov %ax, %fs
+    mov %ax, %gs
     cld
     call kirq_handler
+    # reload original data segment selector
+    pop %bx
+    mov %bx, %ds
+    mov %bx, %es
+    mov %bx, %fs
+    mov %bx, %gs
+    # return
     popa
     add $4, %esp
     iret

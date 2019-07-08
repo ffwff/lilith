@@ -15,6 +15,8 @@ lib IdtData
 
     @[Packed]
     struct Registers
+        # Data segment selector
+        ds : UInt16
         # Pushed by pushad:
         edi, esi, ebp, esp, ebx, edx, ecx, eax : UInt32
         # Interrupt number

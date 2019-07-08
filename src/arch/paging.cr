@@ -113,6 +113,7 @@ module Paging
         while virt_addr < virt_addr_end
             # allocate page frame
             iaddr = @@frames.first_unset_from @@frames_search_from
+            @@frames_search_from = max iaddr, @@frames_search_from
             panic "no more physical memory!" if iaddr == -1
             addr = iaddr * 0x1000 + @@frame_base_addr
             @@frames[iaddr] = true
@@ -124,6 +125,7 @@ module Paging
                 # page table isn't present
                 # claim a page for storing the page table
                 pt_iaddr = @@frames.first_unset_from @@frames_search_from
+                @@frames_search_from = max pt_iaddr, @@frames_search_from
                 panic "no more physical memory!" if pt_iaddr == -1
                 pt_addr = pt_iaddr.to_u32 * 0x1000 + @@frame_base_addr
                 memset Pointer(UInt8).new(pt_addr.to_u64), 0, 4096

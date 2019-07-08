@@ -4,9 +4,10 @@ LD=$(ARCH)-ld
 CC=clang
 LIBGCC=$(shell $(ARCH)-gcc -print-libgcc-file-name)
 LDFLAGS=-m elf_i386 -T link.ld
-CCFLAGS=-c -target $(ARCH) -nostdlib -nostdinc \
+CCFLAGS=-c -g -target $(ARCH) -nostdlib -nostdinc \
 	-fno-stack-protector -ffreestanding -O2 \
-	-Wall -Wno-unused-function -Wno-unknown-pragmas
+	-Wall -Wno-unused-function -Wno-unknown-pragmas \
+	-mno-sse
 CRFLAGS=--cross-compile --target $(ARCH) --prelude empty -d -p
 KERNEL_OBJ=build/main.cr.o \
 	$(patsubst src/arch/%.c,build/arch.%.o,$(wildcard src/arch/*.c)) \

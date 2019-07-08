@@ -53,7 +53,7 @@ fun kmain(kernel_end : Void*,
     Idt.enable
 
     #
-    x = Kurasu.new
+    #Serial.puts x.crystal_type_id
     #x = KERNEL_ARENA.malloc(16)
     #Serial.puts "ptr: ", Pointer(Void).new(x.to_u64), "\n"
     #KERNEL_ARENA.free x.to_u32
