@@ -64,14 +64,30 @@ fun kmain(kernel_end : Void*,
 
     #
     VGA.puts "initializing kernel garbage collector...\n"
-    LibGc.init
+    LibGc.init data_start.address.to_u32, data_end.address.to_u32, stack_start.address.to_u32
 
     #
     x = Kurasu.new
     Serial.puts "x: ",x.crystal_type_id, "\n"
     y = A2.new
     Serial.puts "y: ",y.crystal_type_id, "\n"
-    Serial.puts "z: ",Kurasu.new.crystal_type_id, "\n"
+    Serial.puts "z: ",Kurasu.new(0xFFFFFFFF).crystal_type_id, "\n"
+    z = Kurasu.new(0xFFFFFFFF)
+    Serial.puts "a: ",z.crystal_type_id, "\n"
+
+    # LibGc.cycle
+    # Serial.puts LibGc, "\n---\n"
+    # LibGc.cycle
+    # Serial.puts LibGc, "\n---\n"
+    # x = 0
+    # LibGc.cycle
+    # Serial.puts LibGc, "\n"
+    # Serial.puts pointerof(x), " ", pointerof(y), " ", pointerof(z), "\n"
+    # LibGc.cycle
+    # Serial.puts LibGc, "\n"
+
+    #LibGc.cycle
+    #Serial.puts LibGc, "\n"
 
     #x = KERNEL_ARENA.malloc(16)
     #Serial.puts "ptr: ", Pointer(Void).new(x.to_u64), "\n"
