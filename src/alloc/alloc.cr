@@ -27,6 +27,7 @@ private struct Pool
 
     POOL_SIZE = 0x1000
     HEADER_SIZE = sizeof(Kernel::PoolHeader)
+    BLOCK_HEADER_SIZE = sizeof(Kernel::PoolBlockHeader)
     def initialize(@header : Kernel::PoolHeader*)
         if @header.value.magic_number != MAGIC_POOL_HEADER
             panic "magic pool number is overwritten!"
@@ -76,12 +77,12 @@ private struct Pool
     def get_free_block : UInt32
         block = first_free_block
         @header.value.first_free_block = block.value.next_free_block
-        block.address.to_u32 + HEADER_SIZE
+        block.address.to_u32 + BLOCK_HEADER_SIZE
     end
 
     # release a free block
     def release_block(addr : UInt32)
-        block = Pointer(Kernel::PoolBlockHeader).new(addr.to_u64 - HEADER_SIZE)
+        block = Pointer(Kernel::PoolBlockHeader).new(addr.to_u64 - BLOCK_HEADER_SIZE)
         block.value.next_free_block = first_free_block
         @header.value.first_free_block = block
     end
@@ -90,8 +91,6 @@ private struct Pool
 end
 
 struct KernelArena
-    @first_pool = Pointer(Kernel::PoolHeader).null
-    @last_pool  = Pointer(Kernel::PoolHeader).null
     # linked list free pools for sizes of 2^4, 2^5 ... 2^10
     @free_pools = uninitialized Kernel::PoolHeader*[7]
     @placement_addr : UInt32 = 0x1000_0000
@@ -129,13 +128,7 @@ struct KernelArena
         pool_hdr.value.next_pool = Pointer(Kernel::PoolHeader).null
         pool_hdr.value.first_free_block = Pointer(Kernel::PoolBlockHeader).new(addr.to_u64 + Pool::HEADER_SIZE)
         pool_hdr.value.magic_number = MAGIC_POOL_HEADER
-        if @first_pool.null?
-            @first_pool = @last_pool = pool_hdr
-        else
-            @last_pool.value.next_pool = pool_hdr
-            @last_pool = pool_hdr
-        end
-        pool = Pool.new @last_pool
+        pool = Pool.new pool_hdr
         pool.init_blocks
         pool
     end
@@ -168,6 +161,10 @@ struct KernelArena
         pool = Pool.new pool_hdr
         pool.release_block ptr
         chain_pool pool
+    end
+
+    def to_s(io)
+        io.puts
     end
 
 end

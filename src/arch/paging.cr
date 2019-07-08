@@ -112,9 +112,7 @@ module Paging
         # claim
         while virt_addr < virt_addr_end
             # allocate page frame
-            iaddr = @@frames.first_unset_from @@frames_search_from
-            @@frames_search_from = max iaddr, @@frames_search_from
-            panic "no more physical memory!" if iaddr == -1
+            iaddr = claim_frame
             addr = iaddr * 0x1000 + @@frame_base_addr
             @@frames[iaddr] = true
 
@@ -124,9 +122,7 @@ module Paging
             if Kernel.kpage_table_present(table_idx) == 0
                 # page table isn't present
                 # claim a page for storing the page table
-                pt_iaddr = @@frames.first_unset_from @@frames_search_from
-                @@frames_search_from = max pt_iaddr, @@frames_search_from
-                panic "no more physical memory!" if pt_iaddr == -1
+                pt_iaddr = claim_frame
                 pt_addr = pt_iaddr.to_u32 * 0x1000 + @@frame_base_addr
                 memset Pointer(UInt8).new(pt_addr.to_u64), 0, 4096
                 Kernel.kpage_dir_set_table table_idx, pt_addr
@@ -172,6 +168,13 @@ module Paging
 
     private def frame_index_for_address(address : UInt32)
         (address - @@frame_base_addr).unsafe_div(0x1000)
+    end
+
+    private def claim_frame
+        idx, iaddr = @@frames.first_unset_from @@frames_search_from
+        @@frames_search_from = max idx, @@frames_search_from
+        panic "no more physical memory!" if iaddr == -1
+        iaddr
     end
 
 end
