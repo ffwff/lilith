@@ -255,7 +255,9 @@ module LibGc
     end
 
     def malloc(size : UInt32, atomic = false)
-        cycle if @@enabled
+        if @@enabled
+            2.times {|x| cycle}
+        end
         size += sizeof(Kernel::GcNode)
         header = Pointer(Kernel::GcNode).new(KERNEL_ARENA.malloc(size).to_u64)
         header.value.magic = atomic ? GC_NODE_MAGIC_GRAY : GC_NODE_MAGIC_GRAY_ATOMIC

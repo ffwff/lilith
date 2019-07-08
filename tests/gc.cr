@@ -84,3 +84,9 @@ def test_gc4
         panic "failed" if a.dbg != 0xd
     end
 end
+
+def test_gc5
+    while true
+        x = A1.new 0xa.to_i64
+    end
+end

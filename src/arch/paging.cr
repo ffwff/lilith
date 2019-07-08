@@ -75,6 +75,13 @@ module Paging
             alloc_frame true, false, i
             i += 0x1000
         end
+        # claim placement heap segment
+        # we do this because the kernel's page table lies here:
+        i = Kernel.pmalloc_start.address.to_u32
+        while i <= aligned(Kernel.pmalloc_addr.address.to_u32)
+            @@frames[frame_index_for_address i] = true
+            i += 0x1000
+        end
         # -- switch page directory
         enable
     end
@@ -114,7 +121,6 @@ module Paging
             # allocate page frame
             iaddr = claim_frame
             addr = iaddr * 0x1000 + @@frame_base_addr
-            @@frames[iaddr] = true
 
             # create new page
             page_addr = virt_addr.unsafe_div 0x1000
@@ -126,17 +132,21 @@ module Paging
                 pt_addr = pt_iaddr.to_u32 * 0x1000 + @@frame_base_addr
                 memset Pointer(UInt8).new(pt_addr.to_u64), 0, 4096
                 Kernel.kpage_dir_set_table table_idx, pt_addr
-                @@frames[pt_iaddr] = true
             end
             Kernel.kalloc_page_mapping (rw ? 1 : 0), (user ? 1 : 0), virt_addr, addr
 
             virt_addr += 0x1000
         end
+
+        if virt_addr == 0x10003000
+            asm("nop")
+        end
+
         enable
         Idt.enable
 
         # return page
-        virt_addr
+        virt_addr_start
     end
 
     def free_page_pg(virt_addr_start : UInt32, npages : UInt32 = 1)
@@ -174,6 +184,7 @@ module Paging
         idx, iaddr = @@frames.first_unset_from @@frames_search_from
         @@frames_search_from = max idx, @@frames_search_from
         panic "no more physical memory!" if iaddr == -1
+        @@frames[iaddr] = true
         iaddr
     end
 

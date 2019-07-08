@@ -90,7 +90,7 @@ private struct Pool
 
 end
 
-struct KernelArena
+private struct KernelArena
     # linked list free pools for sizes of 2^4, 2^5 ... 2^10
     @free_pools = uninitialized Kernel::PoolHeader*[7]
     START_ADDR = 0x1000_0000.to_u32
@@ -124,6 +124,8 @@ struct KernelArena
     # pool
     private def new_pool(buffer_size : UInt32) : Pool
         addr = @placement_addr
+        addr.to_s Serial, 16
+        Serial.puts "\n"
         Paging.alloc_page_pg(@placement_addr, true, false)
         @placement_addr += 0x1000
 
@@ -142,7 +144,9 @@ struct KernelArena
         panic "only supports sizes of <= 1024" if sz > 1024
         pool_size = max(16, sz.nearest_power_of_2).to_u32
         idx = idx_for_pool_size pool_size
+        Serial.puts idx, "\n"
         if @free_pools[idx].null?
+            Serial.puts "null\n"
             # create a new pool if there isn't any freed
             pool = new_pool(pool_size)
             # Serial.puts pool
