@@ -331,7 +331,7 @@ module LibGc
     end
 
     private def debug(*args)
-        #VGA.puts "GC: ", *args
+        #VGA.puts *args
     end
 
 end

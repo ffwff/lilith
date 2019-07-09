@@ -46,6 +46,9 @@ build/kernel: $(KERNEL_OBJ)
 run: build/kernel
 	-qemu-system-i386 -kernel $^ $(QEMUFLAGS)
 
+run_img: build/kernel drive.img
+	qemu-system-i386 -kernel build/kernel $(QEMUFLAGS) -drive id=disk,file=drive.img,if=none -device ide-drive,drive=disk
+
 rungdb: build/kernel
 	qemu-system-i386 -S -kernel $^ $(QEMUFLAGS) -gdb tcp::9000 &
 	gdb -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
@@ -64,3 +67,7 @@ os.iso: build/kernel
 clean:
 	rm -f build/*.o
 	rm -f kernel
+
+# debug
+drive.img:
+	qemu-img create -f qcow2 $@ 10M

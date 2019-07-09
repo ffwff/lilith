@@ -3,6 +3,7 @@ require "./drivers/serial.cr"
 require "./drivers/vga.cr"
 require "./drivers/pit_timer.cr"
 require "./drivers/keyboard.cr"
+require "./drivers/pci.cr"
 require "./arch/gdt.cr"
 require "./arch/idt.cr"
 require "./arch/paging.cr"
@@ -32,6 +33,8 @@ fun kmain(kernel_end : Void*,
     # setup memory management
     Kernel.pmalloc_start = Pointer(Void).new(Paging.aligned(kernel_end.address.to_u32).to_u64)
 
+    VGA.puts "Booting crystal-os...\n"
+
     VGA.puts "initializing gdtr...\n"
     Gdt.init_table
 
@@ -57,7 +60,8 @@ fun kmain(kernel_end : Void*,
     LibGc.init data_start.address.to_u32, data_end.address.to_u32, stack_start.address.to_u32
 
     #
-    test_gc6
+    VGA.puts "checking PCI buses...\n"
+    PCI.check_all_buses
 
     VGA.puts "done...\n"
     while true
