@@ -120,6 +120,7 @@ private struct Pci
 
     # print
     private def debug_pci(slot, device, func)
+        return
         VGA.puts "["
         slot.to_s VGA, 16
         VGA.puts ":"
@@ -129,6 +130,7 @@ private struct Pci
         VGA.puts "]"
     end
     private def debug_pci_device(klass, subclass, progif)
+        return
         VGA.puts "("
         klass.to_s VGA, 16
         VGA.puts ":"
@@ -138,6 +140,7 @@ private struct Pci
         VGA.puts ")"
     end
     private def debug(*args)
+        return
         VGA.puts *args
     end
 
