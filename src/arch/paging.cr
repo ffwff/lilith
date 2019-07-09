@@ -26,6 +26,8 @@ module Paging
     @@frames = PBitArray.null
     @@frames_search_from : Int32 = 0
 
+    def usable_physical_memory; @@frame_length; end
+
     def init_table(
         text_start : Void*, text_end : Void*,
         data_start : Void*, data_end : Void*,

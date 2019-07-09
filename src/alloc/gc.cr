@@ -1,6 +1,6 @@
 require "./alloc.cr"
 
-class Gc; end
+abstract class Gc; end
 
 fun __crystal_malloc64(size : UInt64) : Void*
     LibGc.malloc size.to_u32
@@ -84,7 +84,6 @@ module LibGc
                 type_info.insert({{ klass }}.crystal_instance_type_id.to_u32, TypeInfo.new(offsets, sizeof({{ klass }}).to_u32))
             end
         {% end %}
-        # Serial.puts type_info, "\n"
         @@enabled = true
     end
 
@@ -105,7 +104,7 @@ module LibGc
         # due to the way this rechains the linked list of white nodes
         # please set move_list=false when not scanning for root nodes
         word_size = 4 # 4*8 = 32bits
-        Serial.puts "from: ", Pointer(Void).new(start_addr.to_u64), Pointer(Void).new(end_addr.to_u64),"\n"
+        debug "from: ", Pointer(Void).new(start_addr.to_u64), Pointer(Void).new(end_addr.to_u64),"\n"
         i = start_addr
         fix_white = false
         while i < end_addr - word_size + 1
@@ -115,6 +114,7 @@ module LibGc
             if word >= KERNEL_ARENA.start_addr && word <= KERNEL_ARENA.placement_addr
                 node = @@first_white_node
                 prev = Pointer(Kernel::GcNode).null
+                found = false
                 while !node.null?
                     if node.address.to_u32 == word
                         # word looks like a valid gc header pointer!
@@ -141,15 +141,14 @@ module LibGc
                         else
                             # this node is gray
                         end
-                        Serial.puts "found: "
+                        found = true
                         break
                     end
                     # next it
                     prev = node
                     node = node.value.next_node
                 end
-                word.to_s Serial, 16
-                Serial.puts "\n"
+                debug Pointer(Void).new(word.to_u64), found ? " (found)" : "", "\n"
             end
             i += 1
         end
@@ -179,7 +178,7 @@ module LibGc
             fix_white = false
             node = @@first_gray_node
             while !node.null?
-                Serial.puts "node: ", node, "\n"
+                debug "node: ", node, "\n"
                 if node.value.magic == GC_NODE_MAGIC_GRAY_ATOMIC
                     # skip atomic nodes
                     node.value.magic = GC_NODE_MAGIC_BLACK_ATOMIC
@@ -193,7 +192,7 @@ module LibGc
                 buffer_addr = node.address.to_u64 + sizeof(Kernel::GcNode) + TYPE_ID_SIZE
                 # get its typeid
                 type_id = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode)).value
-                Serial.puts "type: ", type_id, "\n"
+                debug "type: ", type_id, "\n"
                 # lookup its offsets
                 info = type_info.search(type_id).not_nil!
                 offsets, size = info.offsets, info.size
@@ -210,9 +209,7 @@ module LibGc
                         if offsets & 1
                             # lookup the buffer address in its offset
                             addr = Pointer(UInt32).new(buffer_addr + pos.to_u64 * 4).value
-                            Serial.puts "pointer@", pos, " ", Pointer(Void).new(buffer_addr + pos.to_u64 * 4), " = 0x"
-                            addr.to_s Serial, 16
-                            Serial.puts "\n"
+                            debug "pointer@", pos, " ", Pointer(Void).new(buffer_addr + pos.to_u64 * 4), " = ", Pointer(Void).new(addr.to_u64), "\n"
 
                             # rechain the offset on to the first gray node
                             header = Pointer(Kernel::GcNode).new(addr.to_u64 - sizeof(Kernel::GcNode))
@@ -243,7 +240,6 @@ module LibGc
             end
             @@first_gray_node = Pointer(Kernel::GcNode).null
             ## some nodes in @@first_white_node are now gray
-            Serial.puts "1: ",self, '\n'
             if fix_white
                 node = @@first_white_node
                 new_first_white_node = Pointer(Kernel::GcNode).null
@@ -256,7 +252,6 @@ module LibGc
                         push(@@first_gray_node, node)
                         node = next_node
                     else
-                        Serial.puts node, "\n"
                         panic "invariance broken"
                     end
                     node = next_node
@@ -266,11 +261,10 @@ module LibGc
 
             if @@first_gray_node.null?
                 # sweeping phase
-                Serial.puts "sweeping phase\n"
-                Serial.puts "2: ",self, '\n'
+                debug "sweeping phase\n"
                 node = @@first_white_node
                 while !node.null?
-                    Serial.puts "free ", node, "\n"
+                    debug "free ", node, "\n"
                     next_node = node.value.next_node
                     KERNEL_ARENA.free node.address.to_u32
                     node = next_node
@@ -309,11 +303,10 @@ module LibGc
         end
         # return
         ptr = Pointer(Void).new(header.address.to_u64 + sizeof(Kernel::GcNode))
-        Serial.puts "self: ", self, "\n" if @@enabled
-        Serial.puts "ret: ",header, ptr, "\n---\n" if @@enabled
         ptr
     end
 
+    # printing
     private def out_nodes(io, first_node)
         node = first_node
         while !node.null?
@@ -335,6 +328,10 @@ module LibGc
         out_nodes(io, @@first_black_node)
         io.puts "\n"
         io.puts "}"
+    end
+
+    private def debug(*args)
+        #VGA.puts "GC: ", *args
     end
 
 end

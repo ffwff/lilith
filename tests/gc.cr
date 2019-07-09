@@ -124,4 +124,8 @@ def test_gc6
     Serial.puts tree, "\n", LibGc, "\n---\n"
     LibGc.cycle
     Serial.puts tree, "\n", LibGc, "\n---\n"
+    LibGc.cycle
+    Serial.puts tree, "\n", LibGc, "\n---\n"
+    LibGc.cycle
+    Serial.puts tree, "\n", LibGc, "\n---\n"
 end

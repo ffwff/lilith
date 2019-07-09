@@ -19,7 +19,7 @@ QEMUFLAGS ?=
 QEMUFLAGS += \
 	-rtc base=localtime \
 	-monitor telnet:127.0.0.1:7777,server,nowait \
-	-m 64M \
+	-m 256M \
 	-serial stdio \
 	-no-shutdown -no-reboot
 

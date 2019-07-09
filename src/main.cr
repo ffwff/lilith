@@ -46,6 +46,7 @@ fun kmain(kernel_end : Void*,
                     data_start, data_end,
                     stack_start, stack_end,
                     mboot_header)
+    VGA.puts "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
 
 
     VGA.puts "enabling interrupts...\n"
