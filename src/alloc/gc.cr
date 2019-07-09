@@ -51,22 +51,37 @@ module LibGc
     @@first_black_node = Pointer(Kernel::GcNode).null
     @@enabled = false
 
+    struct TypeInfo
+        def initialize(@offsets : UInt32, @size : UInt32); end
+        def offsets; @offsets; end
+        def size; @size; end
+    end
+
     def init(@@data_start : UInt32, @@data_end : UInt32, @@stack_end : UInt32)
-        @@type_info = BTree(UInt32, UInt32).new
+        @@type_info = BTree(UInt32, TypeInfo).new
         type_info = @@type_info.not_nil!
         offsets : UInt32 = 0
         {% for klass in Gc.all_subclasses %}
             offsets = 0
+            # set zero offset if any of the field isn't 32-bit aligned
+            zero_offset = false
             {% for ivar in klass.instance_vars %}
                 {% if ivar.type < Gc %}
                     {{ puts klass.stringify + " = " + ivar.stringify }}
-                    field_offset = offsetof({{ klass }}, @{{ ivar }}).unsafe_div(4)
-                    panic "struct pointer outside of 32-bit range!" if field_offset > 32
-                    # Serial.puts "offset @{{ ivar }}: ", field_offset, "\n"
-                    offsets |= 1.unsafe_shl(field_offset)
+                    if offsetof({{ klass }}, @{{ ivar }}).unsafe_mod(4) == 0
+                        field_offset = offsetof({{ klass }}, @{{ ivar }}).unsafe_div(4)
+                        panic "struct pointer outside of 32-bit range!" if field_offset > 32
+                       offsets |= 1.unsafe_shl(field_offset)
+                    else
+                        zero_offset = true
+                    end
                 {% end %}
             {% end %}
-            type_info.insert({{ klass }}.crystal_instance_type_id.to_u32, offsets)
+            if zero_offset
+                type_info.insert({{ klass }}.crystal_instance_type_id.to_u32, TypeInfo.new(0, sizeof({{ klass }}).to_u32))
+            else
+                type_info.insert({{ klass }}.crystal_instance_type_id.to_u32, TypeInfo.new(offsets, sizeof({{ klass }}).to_u32))
+            end
         {% end %}
         # Serial.puts type_info, "\n"
         @@enabled = true
@@ -85,10 +100,11 @@ module LibGc
     end
 
     # gc algorithm
-    private def scan_region(start_addr, end_addr)
+    private def scan_region(start_addr, end_addr, move_list=true)
         word_size = 4 # 4*8 = 32bits
         Serial.puts "from: ", Pointer(Void).new(start_addr.to_u64), Pointer(Void).new(end_addr.to_u64),"\n"
         i = start_addr
+        fix_white = false
         while i < end_addr - word_size + 1
             word = Pointer(UInt32).new(i.to_u64).value
             # subtract to get the pointer to the header
@@ -100,21 +116,25 @@ module LibGc
                     if node.address.to_u32 == word
                         # word looks like a valid gc header pointer!
                         # remove from current list
-                        if !prev.null?
-                            prev.value.next_node = node.value.next_node
-                        else
-                            @@first_white_node = node.value.next_node
+                        if move_list
+                            if !prev.null?
+                                prev.value.next_node = node.value.next_node
+                            else
+                                @@first_white_node = node.value.next_node
+                            end
                         end
                         # add to gray list
                         case node.value.magic
                         when GC_NODE_MAGIC
                             node.value.magic = GC_NODE_MAGIC_GRAY
-                            push(@@first_gray_node, node)
+                            push(@@first_gray_node, node) if move_list
+                            fix_white = true
                         when GC_NODE_MAGIC_ATOMIC
                             node.value.magic = GC_NODE_MAGIC_GRAY_ATOMIC
-                            push(@@first_gray_node, node)
+                            push(@@first_gray_node, node) if move_list
+                            fix_white = true
                         when GC_NODE_MAGIC_BLACK | GC_NODE_MAGIC_BLACK_ATOMIC
-                            panic "broken invariance"
+                            panic "invariance broken"
                         else
                             # this node is gray
                         end
@@ -130,6 +150,7 @@ module LibGc
             end
             i += 1
         end
+        fix_white
     end
 
     def cycle
@@ -159,9 +180,8 @@ module LibGc
                     node = node.value.next_node
                     next
                 end
-                panic "gc invariance broken!" if node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
+                panic "invariance broken" if node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
 
-                next_node = node.value.next_node
                 node.value.magic = GC_NODE_MAGIC_BLACK
 
                 buffer_addr = node.address.to_u64 + sizeof(Kernel::GcNode) + TYPE_ID_SIZE
@@ -169,33 +189,43 @@ module LibGc
                 type_id = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode)).value
                 Serial.puts "type: ", type_id, "\n"
                 # lookup its offsets
-                offsets = type_info.search(type_id).not_nil!
-                pos = 0
-                while offsets != 0
-                    if offsets & 1
-                        # lookup the buffer address in its offset
-                        addr = Pointer(UInt32).new(buffer_addr + pos.to_u64 * 4).value
-                        Serial.puts "pointer@", pos, " ", Pointer(Void).new(buffer_addr + pos.to_u64 * 4), " = 0x"
-                        addr.to_s Serial, 16
-                        Serial.puts "\n"
-
-                        # rechain the offset on to the first gray node
-                        header = Pointer(Kernel::GcNode).new(addr.to_u64 - sizeof(Kernel::GcNode))
-                        case header.value.magic
-                        when GC_NODE_MAGIC
-                            header.value.magic = GC_NODE_MAGIC_GRAY
-                            fix_white = true
-                        when GC_NODE_MAGIC_ATOMIC
-                            header.value.magic = GC_NODE_MAGIC_GRAY_ATOMIC
-                            fix_white = true
-                        else
-                            # this node is either gray or black
-                        end
+                info = type_info.search(type_id).not_nil!
+                offsets, size = info.offsets, info.size
+                if offsets == 0
+                    # since there is no offset found for this type, conservatively scan the region
+                    buffer_end = buffer_addr + size
+                    if scan_region buffer_addr, buffer_end, false
+                        fix_white = true
                     end
-                    pos += 1
-                    offsets = offsets.unsafe_shr 1
+                else
+                    # precisely scan the struct based on the offsets
+                    pos = 0
+                    while offsets != 0
+                        if offsets & 1
+                            # lookup the buffer address in its offset
+                            addr = Pointer(UInt32).new(buffer_addr + pos.to_u64 * 4).value
+                            Serial.puts "pointer@", pos, " ", Pointer(Void).new(buffer_addr + pos.to_u64 * 4), " = 0x"
+                            addr.to_s Serial, 16
+                            Serial.puts "\n"
+
+                            # rechain the offset on to the first gray node
+                            header = Pointer(Kernel::GcNode).new(addr.to_u64 - sizeof(Kernel::GcNode))
+                            case header.value.magic
+                            when GC_NODE_MAGIC
+                                header.value.magic = GC_NODE_MAGIC_GRAY
+                                fix_white = true
+                            when GC_NODE_MAGIC_ATOMIC
+                                header.value.magic = GC_NODE_MAGIC_GRAY_ATOMIC
+                                fix_white = true
+                            else
+                                # this node is either gray or black
+                            end
+                        end
+                        pos += 1
+                        offsets = offsets.unsafe_shr 1
+                    end
                 end
-                node = next_node
+                node = node.value.next_node
             end
 
             # nodes in @@first_gray_node are now black
@@ -221,7 +251,7 @@ module LibGc
                         node = next_node
                     else
                         Serial.puts node, "\n"
-                        panic "wtf"
+                        panic "invariance broken"
                     end
                     node = next_node
                 end
@@ -246,7 +276,7 @@ module LibGc
                 when GC_NODE_MAGIC_BLACK_ATOMIC
                     node.value.magic = GC_NODE_MAGIC_ATOMIC
                 else
-                    panic "broken gc invariance"
+                    panic "invariance broken"
                 end
                 node = node.value.next_node
             end
@@ -256,7 +286,7 @@ module LibGc
 
     def malloc(size : UInt32, atomic = false)
         if @@enabled
-            2.times {|x| cycle}
+            cycle
         end
         size += sizeof(Kernel::GcNode)
         header = Pointer(Kernel::GcNode).new(KERNEL_ARENA.malloc(size).to_u64)

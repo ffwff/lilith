@@ -90,3 +90,61 @@ def test_gc5
         x = A1.new 0xa.to_i64
     end
 end
+
+class GcTree < Gc
+
+    @left : (GcTree | Nil) = nil
+    @right : (GcTree | Nil) = nil
+    def initialize(@depth : Int32); end
+    def left=(x); @left = x; end
+    def right=(x); @right = x; end
+
+    def to_s(io)
+        io.puts "("
+        io.puts @depth
+        io.puts " "
+        io.puts @left
+        io.puts " "
+        io.puts @right
+        io.puts " "
+        io.puts ")"
+    end
+
+end
+
+def mktree(i)
+    if i == 0
+        return nil
+    end
+    r = GcTree.new i
+    r.left = mktree(i - 1)
+    r.right = mktree(i - 1)
+    r
+end
+
+def test_gc6
+    tree= mktree(4).not_nil!
+    Serial.puts tree, '\n'
+    LibGc.cycle
+    Serial.puts tree, '\n'
+    LibGc.cycle
+    tree.right = nil
+    Serial.puts tree, '\n'
+    LibGc.cycle
+    Serial.puts LibGc, "\n---\n"
+    LibGc.cycle
+    Serial.puts LibGc, "\n---\n"
+    LibGc.cycle
+    Serial.puts tree, "\n", LibGc, "\n---\n"
+    LibGc.cycle
+    Serial.puts tree, "\n", LibGc, "\n---\n"
+    LibGc.cycle
+    Serial.puts tree, "\n", LibGc, "\n---\n"
+    LibGc.cycle
+    Serial.puts tree, "\n", LibGc, "\n---\n"
+    tree.left = nil
+    LibGc.cycle
+    Serial.puts tree, "\n", LibGc, "\n---\n"
+    LibGc.cycle
+    Serial.puts tree, "\n", LibGc, "\n---\n"
+end

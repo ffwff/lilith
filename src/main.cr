@@ -9,7 +9,7 @@ require "./arch/paging.cr"
 require "./arch/multiboot.cr"
 require "./alloc/alloc.cr"
 require "./alloc/gc.cr"
-require "../tests/alloc.cr"
+require "../tests/gc.cr"
 
 private lib Kernel
     $pmalloc_start : Void*
@@ -56,7 +56,7 @@ fun kmain(kernel_end : Void*,
     LibGc.init data_start.address.to_u32, data_end.address.to_u32, stack_start.address.to_u32
 
     #
-    test_alloc2
+    test_gc6
 
     VGA.puts "done...\n"
     while true
