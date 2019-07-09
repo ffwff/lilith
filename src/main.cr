@@ -5,13 +5,13 @@ require "./drivers/pit_timer.cr"
 require "./drivers/keyboard.cr"
 require "./drivers/pci.cr"
 require "./drivers/ide.cr"
+require "./drivers/mbr.cr"
 require "./arch/gdt.cr"
 require "./arch/idt.cr"
 require "./arch/paging.cr"
 require "./arch/multiboot.cr"
 require "./alloc/alloc.cr"
 require "./alloc/gc.cr"
-require "../tests/gc.cr"
 
 private lib Kernel
     $pmalloc_start : Void*
@@ -63,6 +63,11 @@ fun kmain(kernel_end : Void*,
     #
     VGA.puts "enabling interrupts...\n"
     Idt.enable
+
+    mbr = MBR.read_ide
+    if mbr.header[0] == 0x55 && mbr.header[1] == 0xaa
+        VGA.puts "found MBR header...\n"
+    end
 
     VGA.puts "done...\n"
     while true

@@ -75,4 +75,4 @@ clean:
 
 # debug
 drive.img:
-	qemu-img create -f qcow2 $@ 10M
+	qemu-img create -f raw $@ 50M

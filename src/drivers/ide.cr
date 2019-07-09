@@ -130,7 +130,7 @@ private struct Ata
         4.times {|i| X86.inb(bus + REG_ALTSTATUS) }
     end
     def wait_ready
-        while (status = X86.inb(bus + REG_STATUS) & SR_BUSY) != 0
+        while (status = X86.inb(bus + REG_STATUS) & SR_BSY) != 0
         end
         status
     end
@@ -154,13 +154,13 @@ private struct Ata
 
         wait_ready
 
-        X86.outb(bus + REG_HDDEVSEL,  0xe0 | slave << 4 |
-                                    (sector_28 & 0x0f000000) >> 24)
+        X86.outb(bus + REG_HDDEVSEL,  (0xe0 | slave.unsafe_shl(4) |
+                            (sector_28 & 0x0f000000).unsafe_shr(24)).to_u8)
         X86.outb(bus + REG_FEATURES, 0x00)
         X86.outb(bus + REG_SECCOUNT0, 1)
-        X86.outb(bus + REG_LBA0, (sector_28 & 0x000000ff))
-        X86.outb(bus + REG_LBA1, (sector_28 & 0x0000ff00).unsafe_shr  8)
-        X86.outb(bus + REG_LBA2, (sector_28 & 0x00ff0000).unsafe_shr 16)
+        X86.outb(bus + REG_LBA0, (sector_28 & 0x000000ff).to_u8)
+        X86.outb(bus + REG_LBA1, (sector_28 & 0x0000ff00).unsafe_shr(8).to_u8)
+        X86.outb(bus + REG_LBA2, (sector_28 & 0x00ff0000).unsafe_shr(16).to_u8)
         X86.outb(bus + REG_COMMAND, CMD_READ_PIO)
 
         wait true
@@ -231,7 +231,7 @@ module Ide
     end
 
     # read/write
-    def read_sector(sector_28, bus=DISK_PORT, slave=0)
+    def read_sector(sector_28, bus=DISK_PORT, slave=0, &block)
         @@ata.bus = bus
         @@ata.read_cmd sector_28, slave
         256.times do |i|
