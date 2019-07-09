@@ -50,6 +50,7 @@ module LibGc
     @@first_gray_node  = Pointer(Kernel::GcNode).null
     @@first_black_node = Pointer(Kernel::GcNode).null
     @@enabled = false
+    @@root_scanned = false
 
     struct TypeInfo
         def initialize(@offsets : UInt32, @size : UInt32); end
@@ -101,6 +102,8 @@ module LibGc
 
     # gc algorithm
     private def scan_region(start_addr, end_addr, move_list=true)
+        # due to the way this rechains the linked list of white nodes
+        # please set move_list=false when not scanning for root nodes
         word_size = 4 # 4*8 = 32bits
         Serial.puts "from: ", Pointer(Void).new(start_addr.to_u64), Pointer(Void).new(end_addr.to_u64),"\n"
         i = start_addr
@@ -154,17 +157,20 @@ module LibGc
     end
 
     def cycle
-        # marking phase
         if @@bytes_allocated == 0
             # nothing's allocated
             return
-        elsif @@first_gray_node.null? && @@first_black_node.null?
+        end
+
+        # marking phase
+        if !@@root_scanned
             # we don't have any gray/black nodes at the beginning of a cycle
             # conservatively scan the stack for pointers
             scan_region @@data_start.not_nil!, @@data_end.not_nil!
             stack_start = 0
             asm("mov %esp, $0;" : "=r"(stack_start) :: "volatile")
             scan_region stack_start, @@stack_end.not_nil!
+            @@root_scanned = true
         elsif !@@first_gray_node.null?
             # second stage of marking phase: precisely marking gray nodes
             type_info = @@type_info.not_nil!
@@ -237,7 +243,7 @@ module LibGc
             end
             @@first_gray_node = Pointer(Kernel::GcNode).null
             ## some nodes in @@first_white_node are now gray
-            Serial.puts self, '\n'
+            Serial.puts "1: ",self, '\n'
             if fix_white
                 node = @@first_white_node
                 new_first_white_node = Pointer(Kernel::GcNode).null
@@ -258,29 +264,34 @@ module LibGc
                 @@first_white_node = new_first_white_node
             end
 
-        else
-            # sweeping phase
-            Serial.puts "sweeping phase\n"
-            node = @@first_white_node
-            while !node.null?
-                Serial.puts "free ", node, "\n"
-                KERNEL_ARENA.free node.address.to_u32
-                node = node.value.next_node
-            end
-            @@first_white_node = @@first_black_node
-            node = @@first_white_node
-            while !node.null?
-                case node.value.magic
-                when GC_NODE_MAGIC_BLACK
-                    node.value.magic = GC_NODE_MAGIC
-                when GC_NODE_MAGIC_BLACK_ATOMIC
-                    node.value.magic = GC_NODE_MAGIC_ATOMIC
-                else
-                    panic "invariance broken"
+            if @@first_gray_node.null?
+                # sweeping phase
+                Serial.puts "sweeping phase\n"
+                Serial.puts "2: ",self, '\n'
+                node = @@first_white_node
+                while !node.null?
+                    Serial.puts "free ", node, "\n"
+                    next_node = node.value.next_node
+                    KERNEL_ARENA.free node.address.to_u32
+                    node = next_node
                 end
-                node = node.value.next_node
+                @@first_white_node = @@first_black_node
+                node = @@first_white_node
+                while !node.null?
+                    case node.value.magic
+                    when GC_NODE_MAGIC_BLACK
+                        node.value.magic = GC_NODE_MAGIC
+                    when GC_NODE_MAGIC_BLACK_ATOMIC
+                        node.value.magic = GC_NODE_MAGIC_ATOMIC
+                    else
+                        panic "invariance broken"
+                    end
+                    node = node.value.next_node
+                end
+                @@first_black_node = Pointer(Kernel::GcNode).null
+                @@root_scanned = false
+                # begins a new cycle
             end
-            @@first_black_node = Pointer(Kernel::GcNode).null
         end
     end
 
@@ -293,13 +304,12 @@ module LibGc
         header.value.magic = atomic ? GC_NODE_MAGIC_GRAY : GC_NODE_MAGIC_GRAY_ATOMIC
         # append node to linked list
         if @@enabled
-            header.value.next_node = @@first_gray_node
-            @@first_gray_node = header
+            push(@@first_gray_node, header)
             @@bytes_allocated += size
         end
         # return
         ptr = Pointer(Void).new(header.address.to_u64 + sizeof(Kernel::GcNode))
-        Serial.puts self, "\n" if @@enabled
+        Serial.puts "self: ", self, "\n" if @@enabled
         Serial.puts "ret: ",header, ptr, "\n---\n" if @@enabled
         ptr
     end

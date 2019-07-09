@@ -16,24 +16,12 @@ def test_gc1
     Serial.puts "x: ",x.crystal_type_id, "\n"
     y = A2.new # 2, 3, 4?
     Serial.puts "y: ", pointerof(y), " ",y.crystal_type_id, "\n"
+    y = nil
     z = A1.new(0xFFFFFFFF) # 5
-
-    Serial.puts LibGc, "\n---\n"
-    LibGc.cycle
-    Serial.puts LibGc, "\n---\n"
-    LibGc.cycle
-    Serial.puts LibGc, "\n---\n"
-    x = 0
     LibGc.cycle
     Serial.puts LibGc, "\n--\n"
     LibGc.cycle
     Serial.puts LibGc, "\n--\n"
-    Serial.puts "y: ", pointerof(y), " ",y.crystal_type_id, "\n"
-    LibGc.cycle
-    Serial.puts LibGc, "\n"
-
-    LibGc.cycle
-    Serial.puts LibGc, "\n"
 end
 
 class A3 < Gc
@@ -44,24 +32,13 @@ def test_gc2
     x = A1.new
     y = A3.new x
     z = A3.new x
-    LibGc.cycle
-    Serial.puts LibGc, "\n--\n"
-    LibGc.cycle
-    Serial.puts LibGc, "\n--\n"
-    x = 0
-    LibGc.cycle
-    Serial.puts LibGc, "\n--\n"
-    LibGc.cycle
-    Serial.puts LibGc, "\n--\n"
+    x = nil
+    y = A1.new
 end
 
 def test_gc3
     x = A3.new(A3.new(A1.new))
-    LibGc.cycle
-    Serial.puts LibGc, "\n--\n"
-    LibGc.cycle
-    Serial.puts LibGc, "\n--\n"
-    x = 0
+    x = nil
     LibGc.cycle
     Serial.puts LibGc, "\n--\n"
     LibGc.cycle
