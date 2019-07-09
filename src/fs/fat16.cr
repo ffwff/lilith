@@ -43,10 +43,35 @@ private lib Fat16Structs
 
 end
 
+class Fat16Node < Gc
+
+    @parent : Fat16Node | Nil = nil
+    def parent; @parent; end
+    def parent=(@parent); end
+
+    @next : Fat16Node | Nil = nil
+    def next; @next; end
+    def next=(@next); end
+
+    @first_child : Fat16Node | Nil = nil
+
+    def initialize(@name = StaticArray(UInt8, 8).new,
+            @next = nil, @first_child = nil)
+    end
+
+    def add_child(child : Fat16Node)
+        return if @parent == self
+        child.next = @first_child
+        @first_child = child
+        child.parent = self
+    end
+
+end
 
 class Fat16FS < VFS
 
     FS_TYPE = "FAT16   "
+    @@root = Fat16Node.new
 
     def initialize(partition)
         debug "initializing FAT16 filesystem\n"
@@ -77,6 +102,7 @@ class Fat16FS < VFS
                     debug ch.unsafe_chr
                 end
                 debug "\n"
+                @@root.add_child Fat16Node.new(entry.name)
             end
         end
     end

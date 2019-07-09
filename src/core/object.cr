@@ -16,4 +16,8 @@ struct Nil
         io.puts "nil"
     end
 
+    def ==(other)
+        false
+    end
+
 end

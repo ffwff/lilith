@@ -78,10 +78,12 @@ module LibGc
                     end
                 {% end %}
             {% end %}
+            type_id = {{ klass }}.crystal_instance_type_id.to_u32
+            debug "id: ", type_id, "\n"
             if zero_offset
-                type_info.insert({{ klass }}.crystal_instance_type_id.to_u32, TypeInfo.new(0, sizeof({{ klass }}).to_u32))
+                type_info.insert(type_id, TypeInfo.new(0, sizeof({{ klass }}).to_u32))
             else
-                type_info.insert({{ klass }}.crystal_instance_type_id.to_u32, TypeInfo.new(offsets, sizeof({{ klass }}).to_u32))
+                type_info.insert(type_id, TypeInfo.new(offsets, sizeof({{ klass }}).to_u32))
             end
         {% end %}
         @@enabled = true
@@ -194,6 +196,11 @@ module LibGc
                 type_id = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode)).value
                 debug "type: ", type_id, "\n"
                 # lookup its offsets
+                if type_info.search(type_id).nil?
+                    # this is probably a nil union, skip it
+                    node = node.value.next_node
+                    next
+                end
                 info = type_info.search(type_id).not_nil!
                 offsets, size = info.offsets, info.size
                 if offsets == 0
@@ -303,6 +310,7 @@ module LibGc
         end
         # return
         ptr = Pointer(Void).new(header.address.to_u64 + sizeof(Kernel::GcNode))
+        debug self, '\n' if @@enabled
         ptr
     end
 
@@ -331,7 +339,7 @@ module LibGc
     end
 
     private def debug(*args)
-        Serial.puts *args
+        # Serial.puts *args
     end
 
 end
