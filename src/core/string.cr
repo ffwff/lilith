@@ -25,4 +25,9 @@ class String
             io.putc char
         end
     end
+
+    @[AlwaysInline]
+    def [](index : Int)
+        bytes[index]
+    end
 end

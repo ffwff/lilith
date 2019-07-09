@@ -331,7 +331,7 @@ module LibGc
     end
 
     private def debug(*args)
-        #VGA.puts *args
+        Serial.puts *args
     end
 
 end

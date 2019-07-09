@@ -6,7 +6,7 @@ lib MBRStructs
         chs_first_sector : UInt8[3]
         type             : UInt8
         chs_last_sector  : UInt8[3]
-        start_sector     : UInt32
+        first_sector     : UInt32
         n_sectors        : UInt32
     end
 
@@ -26,12 +26,7 @@ module MBR
 
     def read_ide
         mbr = uninitialized MBRStructs::MBR
-        pointer = Pointer(UInt16).new(pointerof(mbr).address)
-        idx = 0
-        Ide.read_sector(0) do |word|
-            pointer[idx] = word
-            idx += 1
-        end
+        Ide.read_sector_pointer(Pointer(UInt16).new(pointerof(mbr).address), 0)
         mbr
     end
 

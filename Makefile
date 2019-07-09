@@ -74,5 +74,5 @@ clean:
 	rm -f kernel
 
 # debug
-drive.img:
-	qemu-img create -f raw $@ 50M
+#drive.img:
+#	qemu-img create -f raw $@ 50M

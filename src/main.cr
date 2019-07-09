@@ -12,6 +12,7 @@ require "./arch/paging.cr"
 require "./arch/multiboot.cr"
 require "./alloc/alloc.cr"
 require "./alloc/gc.cr"
+require "./fs/fat16.cr"
 
 private lib Kernel
     $pmalloc_start : Void*
@@ -67,6 +68,8 @@ fun kmain(kernel_end : Void*,
     mbr = MBR.read_ide
     if mbr.header[0] == 0x55 && mbr.header[1] == 0xaa
         VGA.puts "found MBR header...\n"
+        fs = Fat16FS.new mbr.partitions[0]
+        Serial.puts pointerof(fs), "\n"
     end
 
     VGA.puts "done...\n"

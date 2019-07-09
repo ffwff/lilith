@@ -2,6 +2,7 @@ private lib Kernel
 
     # T13/1699-D Revision 3f
     # 7.16 IDENTIFY DEVICE, pg 90
+    # also see ftp://ftp.seagate.com/acrobat/reference/111-1c.pdf
     @[Packed]
     struct AtaIdentify
         flags            : UInt16
@@ -113,6 +114,10 @@ private struct Ata
     def bus; @bus; end
     def bus=(x); @bus = x; end
 
+    @cmd = 0u16
+    def cmd; @cmd; end
+    def cmd=(x); @cmd = x; end
+
     def select
         X86.outb(bus + REG_HDDEVSEL, 0xA0)
     end
@@ -150,7 +155,7 @@ private struct Ata
 
     # read functions
     def read_cmd(sector_28, slave)
-        X86.outb(bus + REG_CONTROL, 0x02);
+        X86.outb(cmd, 0x82)
 
         wait_ready
 
@@ -172,6 +177,7 @@ module Ide
     extend self
 
     DISK_PORT = 0x1F0u16
+    CMD_PORT = 0x3F6u16
 
     @@ata = Ata.new
     @@device : (Kernel::AtaIdentify | Nil) = nil
@@ -181,6 +187,7 @@ module Ide
         debug "Initializing IDE device...\n"
 
         @@ata.bus = DISK_PORT
+        @@ata.cmd = CMD_PORT
 
         X86.outb @@ata.bus + 1, 1
         X86.outb @@ata.bus + 0x306, 0
@@ -238,6 +245,14 @@ module Ide
             yield X86.inw @@ata.bus
         end
         @@ata.wait
+    end
+
+    def read_sector_pointer(ptr : UInt16*, sector_28, bus=DISK_PORT, slave=0)
+        idx = 0
+        read_sector(sector_28, bus, slave) do |i|
+            ptr[idx] = i
+            idx += 1
+        end
     end
 
 end
