@@ -65,6 +65,16 @@ private struct Pci
         debug_pci bus, device, func
         debug " "
         debug_pci_device klass, subclass, progif
+        debug " "
+
+        # filter functions
+        if klass == 0x01 && subclass == 0x01 &&
+            (progif == 0x8A || progif == 0x80)
+            debug "(ide device)\n"
+            Ide.init_controller
+            return
+        end
+
         debug "\n"
     end
 
@@ -110,25 +120,25 @@ private struct Pci
 
     # print
     private def debug_pci(slot, device, func)
-        Serial.puts "["
-        slot.to_s Serial, 16
-        Serial.puts ":"
-        device.to_s Serial, 16
-        Serial.puts "."
-        func.to_s Serial, 16
-        Serial.puts "]"
+        VGA.puts "["
+        slot.to_s VGA, 16
+        VGA.puts ":"
+        device.to_s VGA, 16
+        VGA.puts "."
+        func.to_s VGA, 16
+        VGA.puts "]"
     end
     private def debug_pci_device(klass, subclass, progif)
-        Serial.puts "("
-        klass.to_s Serial, 16
-        Serial.puts ":"
-        subclass.to_s Serial, 16
-        Serial.puts "."
-        progif.to_s Serial, 16
-        Serial.puts ")"
+        VGA.puts "("
+        klass.to_s VGA, 16
+        VGA.puts ":"
+        subclass.to_s VGA, 16
+        VGA.puts "."
+        progif.to_s VGA, 16
+        VGA.puts ")"
     end
     private def debug(*args)
-        Serial.puts *args
+        VGA.puts *args
     end
 
 end

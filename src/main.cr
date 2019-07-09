@@ -4,6 +4,7 @@ require "./drivers/vga.cr"
 require "./drivers/pit_timer.cr"
 require "./drivers/keyboard.cr"
 require "./drivers/pci.cr"
+require "./drivers/ide.cr"
 require "./arch/gdt.cr"
 require "./arch/idt.cr"
 require "./arch/paging.cr"
@@ -51,10 +52,6 @@ fun kmain(kernel_end : Void*,
                     mboot_header)
     VGA.puts "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
 
-
-    VGA.puts "enabling interrupts...\n"
-    Idt.enable
-
     #
     VGA.puts "initializing kernel garbage collector...\n"
     LibGc.init data_start.address.to_u32, data_end.address.to_u32, stack_start.address.to_u32
@@ -62,6 +59,10 @@ fun kmain(kernel_end : Void*,
     #
     VGA.puts "checking PCI buses...\n"
     PCI.check_all_buses
+
+    #
+    VGA.puts "enabling interrupts...\n"
+    Idt.enable
 
     VGA.puts "done...\n"
     while true

@@ -87,6 +87,11 @@ fun kirq_handler(frame : IdtData::Registers) : Int32
     # send to master
     X86.outb 0x20, 0x20
 
-    Idt.irq_handlers[frame.int_no].call
+    if Idt.irq_handlers[frame.int_no].pointer.null?
+        Serial.puts "no handler for ", frame.int_no, "\n"
+        return 0
+    else
+        Idt.irq_handlers[frame.int_no].call
+    end
     0
 end

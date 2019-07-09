@@ -47,10 +47,15 @@ run: build/kernel
 	-qemu-system-i386 -kernel $^ $(QEMUFLAGS)
 
 run_img: build/kernel drive.img
-	qemu-system-i386 -kernel build/kernel $(QEMUFLAGS) -drive id=disk,file=drive.img,if=none -device ide-drive,drive=disk
+	qemu-system-i386 -kernel build/kernel $(QEMUFLAGS) -hda drive.img
 
 rungdb: build/kernel
 	qemu-system-i386 -S -kernel $^ $(QEMUFLAGS) -gdb tcp::9000 &
+	gdb -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
+	-@pkill qemu
+
+rungdb_img: build/kernel drive.img
+	qemu-system-i386 -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
 	gdb -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
 	-@pkill qemu
 

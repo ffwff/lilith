@@ -10,7 +10,6 @@ struct StaticArray(T, N)
     def to_unsafe : Pointer(T)
         pointerof(@buffer)
     end
-
     @[AlwaysInline]
     def []=(index : Int, value : T)
         panic "setting out of bounds!" if index > N
@@ -21,6 +20,16 @@ struct StaticArray(T, N)
     def [](index : Int) T
         panic "accessing out of bounds!" if index > N
         to_unsafe[index]
+    end
+
+    def size
+        N
+    end
+
+    def each : Nil
+        {% for i in 0...N %}
+            yield self[{{i}}]
+        {% end %}
     end
 
 end

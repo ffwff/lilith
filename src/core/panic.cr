@@ -1,8 +1,8 @@
 require "../drivers/serial.cr"
 
-def panic(s)
+def panic(*args)
     # TODO
-    Serial.puts s
+    Serial.puts *args
     while true
     end
 end
