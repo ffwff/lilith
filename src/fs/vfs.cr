@@ -1,4 +1,4 @@
-abstract class VFS
+abstract struct VFS
 
     def read(path, &block)
     end

@@ -1,7 +1,7 @@
 struct PBitArray
 
     @size = 0
-    def size; @size; end
+    getter size
 
     def initialize(@size)
         @pointer = Pointer(UInt32).pmalloc malloc_size

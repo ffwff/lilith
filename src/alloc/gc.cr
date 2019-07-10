@@ -29,15 +29,6 @@ private lib Kernel
 
 end
 
-# private def check_gc_node(node : GcNode*)
-#     case node.value.magic
-#     when GC_NODE_MAGIC | GC_NODE_MAGIC_ATOMIC | GC_NODE_MAGIC_GRAY | GC_NODE_MAGIC_GRAY_ATOMIC | GC_NODE_MAGIC_BLACK |
-#         true
-#     else
-#         false
-#     end
-# end
-
 module LibGc
     extend self
 
@@ -150,7 +141,7 @@ module LibGc
                     prev = node
                     node = node.value.next_node
                 end
-                debug Pointer(Void).new(word.to_u64), found ? " (found)" : "", "\n"
+                #debug Pointer(Void).new(word.to_u64), found ? " (found)" : "", "\n"
             end
             i += 1
         end
@@ -187,6 +178,8 @@ module LibGc
                     node = node.value.next_node
                     next
                 end
+
+                debug "magic: ", node.value.magic, "\n"
                 panic "invariance broken" if node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
 
                 node.value.magic = GC_NODE_MAGIC_BLACK
@@ -196,11 +189,6 @@ module LibGc
                 type_id = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode)).value
                 debug "type: ", type_id, "\n"
                 # lookup its offsets
-                if type_info.search(type_id).nil?
-                    # this is probably a nil union, skip it
-                    node = node.value.next_node
-                    next
-                end
                 info = type_info.search(type_id).not_nil!
                 offsets, size = info.offsets, info.size
                 if offsets == 0
@@ -302,7 +290,7 @@ module LibGc
         end
         size += sizeof(Kernel::GcNode)
         header = Pointer(Kernel::GcNode).new(KERNEL_ARENA.malloc(size).to_u64)
-        header.value.magic = atomic ? GC_NODE_MAGIC_GRAY : GC_NODE_MAGIC_GRAY_ATOMIC
+        header.value.magic = atomic ? GC_NODE_MAGIC_GRAY_ATOMIC : GC_NODE_MAGIC_GRAY
         # append node to linked list
         if @@enabled
             push(@@first_gray_node, header)
@@ -339,7 +327,7 @@ module LibGc
     end
 
     private def debug(*args)
-        # Serial.puts *args
+        Serial.puts *args
     end
 
 end

@@ -46,29 +46,32 @@ end
 class Fat16Node < Gc
 
     @parent : Fat16Node | Nil = nil
-    def parent; @parent; end
-    def parent=(@parent); end
+    property parent
 
-    @next : Fat16Node | Nil = nil
-    def next; @next; end
-    def next=(@next); end
+    @next_node : Fat16Node | Nil = nil
+    property next_node
+    property name
+
+    @name : CString | Nil = nil
+    property name
 
     @first_child : Fat16Node | Nil = nil
+    getter first_child
 
-    def initialize(@name = StaticArray(UInt8, 8).new,
-            @next = nil, @first_child = nil)
+    def initialize(@name = nil,
+            @next_node = nil, @first_child = nil)
     end
 
     def add_child(child : Fat16Node)
         return if @parent == self
-        child.next = @first_child
+        child.next_node = @first_child
         @first_child = child
         child.parent = self
     end
 
 end
 
-class Fat16FS < VFS
+struct Fat16FS < VFS
 
     FS_TYPE = "FAT16   "
     @@root = Fat16Node.new
@@ -97,14 +100,16 @@ class Fat16FS < VFS
             Ide.read_sector_pointer(ptr, sector + i)
             entries.each do |entry|
                 next if !dir_entry_exists entry
+                next if is_volume_label entry
                 debug "name: "
                 entry.name.each do |ch|
                     debug ch.unsafe_chr
                 end
                 debug "\n"
-                @@root.add_child Fat16Node.new(entry.name)
+                @@root.add_child Fat16Node.new(CString.new(entry.name, 8))
             end
         end
+        debug "root: ", @@root.first_child.not_nil!.name, "\n"
     end
 
     def read(path, &block)
@@ -118,6 +123,18 @@ class Fat16FS < VFS
     private def dir_entry_exists(entry : Fat16Structs::Fat16Entry)
         # 0x0 : null entry, 0xE5 : deleted
         entry.name[0] != 0x0 && entry.name[0] != 0xE5
+    end
+
+    private def is_volume_label(entry : Fat16Structs::Fat16Entry)
+        (entry.attributes & 0x08) == 0x08
+    end
+
+    private def is_file(entry : Fat16Structs::Fat16Entry)
+        (entry.attributes & 0x18) == 0
+    end
+
+    private def is_dir(entry : Fat16Structs::Fat16Entry)
+        (entry.attributes & 0x18) == 0x10
     end
 
 end

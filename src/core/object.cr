@@ -4,6 +4,24 @@ class Object
         self
     end
 
+    macro getter(*names)
+        {% for name in names %}
+        def {{ name.id }}
+            @{{ name.id }}
+        end
+        {% end %}
+    end
+
+    macro property(*names)
+        {% for name in names %}
+        def {{ name.id }}
+            @{{ name.id }}
+        end
+        def {{ name.id }}=(@{{ name.id }})
+        end
+        {% end %}
+    end
+
 end
 
 struct Nil

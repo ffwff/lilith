@@ -33,7 +33,8 @@ private struct Pool
             panic "magic pool number is overwritten!"
         end
     end
-    def header; @header; end
+
+    getter header
 
     # size of an object stored in each block
     def block_buffer_size; @header.value.block_buffer_size; end
@@ -97,7 +98,7 @@ private struct KernelArena
     @placement_addr : UInt32 = START_ADDR
 
     def start_addr; START_ADDR; end
-    def placement_addr; @placement_addr; end
+    getter placement_addr
 
     # free pool chaining
     @[AlwaysInline]
