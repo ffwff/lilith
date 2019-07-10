@@ -19,6 +19,8 @@
 .global kload_tss
 .global kload_idt
 .global kirq_stub
+.global kenable_paging
+.global kdisable_paging
 # start
 .extern kmain            # this is defined in the c file
 
@@ -82,6 +84,19 @@ kirq_stub:
     popa
     add $4, %esp
     iret
+# paging
+kenable_paging:
+    mov 4(%esp), %eax
+    mov %eax, %cr3
+    mov %cr0, %eax
+    or $0x80000000, %eax # Enable paging!
+    mov %eax, %cr0
+    ret
+kdisable_paging:
+    mov %cr0, %eax
+    and $0x7fffffff, %eax
+    mov %eax, %cr0
+    ret
 
 # irq
 .altmacro

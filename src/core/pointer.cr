@@ -1,7 +1,26 @@
-private lib Kernel
-    fun pmalloc(sz : UInt32) : UInt32
-    fun pmalloc_a(sz : UInt32) : UInt32
+struct PMallocState
+
+    @addr = 0u32
+    property addr
+    @start = 0u32
+    property start
+
+    def alloc(size : Int)
+        last = @addr
+        @addr += size.to_u32
+        last
+    end
+
+    def alloca(size : Int)
+        if (@addr & 0xFFFF_F000) != 0
+            @addr = (@addr & 0xFFFF_F000) + 0x1000
+        end
+        alloc(size)
+    end
+
 end
+
+PMALLOC_STATE = PMallocState.new
 
 struct Pointer(T)
     def self.null
@@ -9,14 +28,14 @@ struct Pointer(T)
     end
 
     # pre-pg malloc
-    def self.pmalloc
-        new (Kernel.pmalloc sizeof(T).to_u32).to_u64
-    end
     def self.pmalloc(size : Int)
-        new Kernel.pmalloc(size).to_u64
+        new PMALLOC_STATE.alloc(size).to_u64
+    end
+    def self.pmalloc
+        pmalloc(sizeof(T))
     end
     def self.pmalloc_a
-        new (Kernel.pmalloc_a sizeof(T).to_u32).to_u64
+        new PMALLOC_STATE.alloca(sizeof(T)).to_u64
     end
 
     # pg malloc

@@ -14,10 +14,6 @@ require "./alloc/alloc.cr"
 require "./alloc/gc.cr"
 require "./fs/fat16.cr"
 
-private lib Kernel
-    $pmalloc_start : Void*
-end
-
 fun kmain(kernel_end : Void*,
         text_start : Void*, text_end : Void*,
         data_start : Void*, data_end : Void*,
@@ -33,8 +29,6 @@ fun kmain(kernel_end : Void*,
     keyboard = KeyboardInstance.new
 
     # setup memory management
-    Kernel.pmalloc_start = Pointer(Void).new(Paging.aligned(kernel_end.address.to_u32).to_u64)
-
     VGA.puts "Booting crystal-os...\n"
 
     VGA.puts "initializing gdtr...\n"
@@ -47,6 +41,8 @@ fun kmain(kernel_end : Void*,
 
     # paging
     VGA.puts "initializing paging...\n"
+    PMALLOC_STATE.start = Paging.aligned(kernel_end.address.to_u32)
+    PMALLOC_STATE.addr = Paging.aligned(kernel_end.address.to_u32)
     Paging.init_table(text_start, text_end,
                     data_start, data_end,
                     stack_start, stack_end,
