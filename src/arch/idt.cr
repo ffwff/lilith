@@ -1,3 +1,4 @@
+# TODO: figure out how to port idt.c over without crashing
 IDT_SIZE = 256
 IRQ = 0x20
 INTERRUPT_GATE = 0x8e
