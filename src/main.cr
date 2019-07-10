@@ -62,17 +62,27 @@ fun kmain(kernel_end : Void*,
     Idt.enable
 
     mbr = MBR.read_ide
+    fs : VFS | Nil = nil
     if mbr.header[0] == 0x55 && mbr.header[1] == 0xaa
         VGA.puts "found MBR header...\n"
         fs = Fat16FS.new mbr.partitions[0]
-        fs.root.each_child do |node|
-            VGA.puts "node: ", node.name, "\n"
-            VGA.puts "contents: "
-            node.read(fs) do |ch|
-                VGA.puts ch.unsafe_chr
-            end
-            VGA.puts "\n"
+        fs.not_nil!.root.each_child do |node|
+            Serial.puts "node: ", node.name, "\n"
+            #next if node.name == "MAIN.BIN"
+            #VGA.puts "contents: "
+            #node.read(fs) do |ch|
+            #    VGA.puts ch.unsafe_chr
+            #end
+            #VGA.puts "\n"
         end
+    end
+
+    if fs.nil?
+        VGA.puts "no rootfs detected.\n"
+    else
+        VGA.puts "executing MAIN.BIN...\n"
+        fs = fs.not_nil!
+        #fs.open("MAIN.BIN").read(fs)
     end
 
     VGA.puts "done...\n"

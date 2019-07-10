@@ -1,6 +1,13 @@
+abstract class VFSNode < Gc
+
+    def read(vfs : VFS, &block)
+    end
+
+end
+
 abstract struct VFS
 
-    def read(path, &block)
+    def open(path) : VFSNode
     end
 
 end

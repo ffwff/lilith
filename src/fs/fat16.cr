@@ -43,20 +43,19 @@ private lib Fat16Structs
 
 end
 
-class Fat16Node < Gc
+class Fat16Node < VFSNode
 
     @parent : Fat16Node | Nil = nil
-    property parent
+    gc_property parent
 
     @next_node : Fat16Node | Nil = nil
-    property next_node
-    property name
+    gc_property next_node
 
     @name : CString | Nil = nil
-    property name
+    gc_property name
 
     @first_child : Fat16Node | Nil = nil
-    getter first_child
+    gc_getter first_child
 
     @starting_cluster = 0
     property starting_cluster
@@ -70,7 +69,7 @@ class Fat16Node < Gc
 
     # children
     def each_child(&block)
-        node = @first_child
+        node = first_child
         while !node.nil?
             yield node.not_nil!
             node = node.next_node
@@ -78,9 +77,15 @@ class Fat16Node < Gc
     end
 
     def add_child(child : Fat16Node)
-        return if @parent == self
-        child.next_node = @first_child
-        @first_child = child
+        if first_child.nil?
+            # first node
+            child.next_node = nil
+            first_child = child
+        else
+            # middle node
+            child.next_node = @first_child
+            first_child = child
+        end
         child.parent = self
     end
 
@@ -171,6 +176,8 @@ struct Fat16FS < VFS
                     end
                 end
 
+                Serial.puts fname, "\n"
+
                 # append children
                 node = Fat16Node.new fname
                 node.starting_cluster = entry.starting_cluster.to_i32
@@ -178,9 +185,6 @@ struct Fat16FS < VFS
                 @root.add_child node
             end
         end
-    end
-
-    def read(path, &block)
     end
 
     def debug(*args)
@@ -203,6 +207,11 @@ struct Fat16FS < VFS
 
     private def is_dir(entry : Fat16Structs::Fat16Entry)
         (entry.attributes & 0x18) == 0x10
+    end
+
+    #
+    def open(path)
+        @root
     end
 
 end

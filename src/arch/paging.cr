@@ -1,14 +1,13 @@
 # NOTE: we only do identity paging
 
-private lib PageStructs
+lib PageStructs
 
     alias Page = UInt32
     struct PageTable
         pages : Page[1024]
     end
     struct PageDirectory
-        tables : Pointer(PageTable)[1024]
-        tables_physical : UInt32[1024]
+        tables : UInt32[1024]
     end
 
     fun kenable_paging(addr : UInt32)
@@ -30,6 +29,8 @@ module Paging
     def usable_physical_memory; @@frame_length; end
 
     @@current_page_dir = Pointer(PageStructs::PageDirectory).null
+    def current_page_dir=(@@current_page_dir); end
+    @@kernel_page_dir = Pointer(PageStructs::PageDirectory).null
 
     def init_table(
         text_start : Void*, text_end : Void*,
@@ -58,6 +59,7 @@ module Paging
         @@frames = PBitArray.new nframes
 
         @@current_page_dir = Pointer(PageStructs::PageDirectory).pmalloc_a
+        @@kernel_page_dir = @@current_page_dir
 
         # vga
         alloc_page_init true, false, 0xb8000
@@ -98,7 +100,7 @@ module Paging
     # state
     @[AlwaysInline]
     def enable
-        addr = @@current_page_dir.address.to_u32 + offsetof(PageStructs::PageDirectory, @tables_physical)
+        addr = @@current_page_dir.address.to_u32
         PageStructs.kenable_paging(addr)
     end
 
@@ -109,9 +111,11 @@ module Paging
 
     # allocate page when pg is enabled
     # returns page address
-    def alloc_page_pg(virt_addr_start : UInt32, rw : Bool, user : Bool, npages : UInt32 = 1) : UInt32
-        Idt.disable
-        disable
+    def alloc_page_pg(virt_addr_start : UInt32, rw : Bool, user : Bool, npages : UInt32 = 1, disable_paging=true) : UInt32
+        if disable_paging
+            Idt.disable
+            disable
+        end
 
         virt_addr_end = virt_addr_start + npages * 0x1000
         virt_addr = virt_addr_start
@@ -125,23 +129,23 @@ module Paging
             # create new page
             page_addr = virt_addr.unsafe_div 0x1000
             table_idx = page_addr.unsafe_div 1024
-            if @@current_page_dir.value.tables[table_idx].null?
+            if @@current_page_dir.value.tables[table_idx] == 0
                 # page table isn't present
                 # claim a page for storing the page table
                 pt_iaddr = claim_frame
                 pt_addr = pt_iaddr.to_u32 * 0x1000 + @@frame_base_addr
                 memset Pointer(UInt8).new(pt_addr.to_u64), 0, 4096
-                @@current_page_dir.value.tables[table_idx] = Pointer(PageStructs::PageTable).new(pt_addr.to_u64)
-                @@current_page_dir.value.tables_physical[table_idx] = pt_addr | 0x7
+                @@current_page_dir.value.tables[table_idx] = pt_addr | 0x7
             end
             alloc_page(rw, user, virt_addr, addr)
 
             virt_addr += 0x1000
         end
 
-
-        enable
-        Idt.enable
+        if disable_paging
+            enable
+            Idt.enable
+        end
 
         # return page
         virt_addr_start
@@ -157,13 +161,21 @@ module Paging
         while virt_addr < virt_addr_end
             address = free_page virt_addr
             idx = frame_index_for_address address
-            @@frames_search_from = min idx, @@frames_search_from
-            @@frames[idx] = false
+            declaim_frame idx
             virt_addr += 0x1000
         end
 
         enable
         Idt.enable
+    end
+
+    # allocate page directories for processes
+    def alloc_process_page_dir
+        # claim frame for page directory
+        iaddr = claim_frame
+        pd_addr = iaddr.to_u32 * 0x1000 + @@frame_base_addr
+        pd = Pointer(PageStructs::PageDirectory).new(pd_addr.to_u64)
+        pd.value = @@kernel_page_dir.value
     end
 
     # frame alloc
@@ -177,6 +189,11 @@ module Paging
         panic "no more physical memory!" if iaddr == -1
         @@frames[iaddr] = true
         iaddr
+    end
+
+    private def declaim_frame(idx)
+        @@frames_search_from = min idx, @@frames_search_from
+        @@frames[idx] = false
     end
 
     # page creation
@@ -197,13 +214,14 @@ module Paging
         phys = address
         address = address.unsafe_div(0x1000)
         table_idx = address.unsafe_div(1024).to_i32
-        if @@current_page_dir.value.tables[table_idx].null?
+        if @@current_page_dir.value.tables[table_idx] == 0
             ptr = Pointer(PageStructs::PageTable).pmalloc_a
-            @@current_page_dir.value.tables[table_idx] = ptr
-            @@current_page_dir.value.tables_physical[table_idx] = ptr.address.to_u32 | 0x7
+            @@current_page_dir.value.tables[table_idx] = ptr.address.to_u32 | 0x7
+        else
+            ptr = Pointer(PageStructs::PageTable).new((@@current_page_dir.value.tables[table_idx] & 0xFFFF_F000).to_u64)
         end
         page = page_create(rw, user, phys)
-        @@current_page_dir.value.tables[table_idx].value.pages[address.unsafe_mod 1024] = page
+        ptr.value.pages[address.unsafe_mod 1024] = page
     end
 
     private def alloc_frame(rw : Bool, user : Bool, address : UInt32)
@@ -218,8 +236,9 @@ module Paging
         address = address.unsafe_div(0x1000)
         table_idx = address.unsafe_div(1024).to_i32
         page = page_create(rw, user, phys)
-        panic "no table for page" if @@current_page_dir.value.tables[table_idx].null?
-        @@current_page_dir.value.tables[table_idx].value.pages[address.unsafe_mod 1024] = page
+        panic "no table for page" if @@current_page_dir.value.tables[table_idx] == 0
+        ptr = Pointer(PageStructs::PageTable).new((@@current_page_dir.value.tables[table_idx] & 0xFFFF_F000).to_u64)
+        ptr.value.pages[address.unsafe_mod 1024] = page
     end
 
     private def free_page(address : UInt32)

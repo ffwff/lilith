@@ -249,9 +249,7 @@ module Ide
     def read_sector(sector_28, bus=DISK_PORT, slave=0, &block)
         @@ata.bus = bus
         @@ata.read_cmd sector_28, slave
-        if !@@ata.wait(true)
-            Serial.puts "error\n"
-        end
+        return false if !@@ata.wait(true)
         256.times do |i|
             yield X86.inw @@ata.bus
         end

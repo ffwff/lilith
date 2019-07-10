@@ -1,6 +1,46 @@
+# NOTE! We dont have write barriers
+
 require "./alloc.cr"
 
-abstract class Gc; end
+abstract class Gc
+
+    macro gc_property(*names)
+        {% for name in names %}
+        {{ name.id.upcase }}_WRITE_BARRIER = true
+        def {{ name.id }}
+            @{{ name.id }}
+        end
+        def {{ name.id }}=(@{{ name.id }})
+            LibGc.write_barrier self.object_id
+        end
+        {% end %}
+    end
+
+    macro gc_getter(*names)
+        {% for name in names %}
+        {{ name.id.upcase }}_WRITE_BARRIER = true
+        def {{ name.id }}
+            @{{ name.id }}
+        end
+        private def {{ name.id }}=(@{{ name.id }})
+            LibGc.write_barrier self.object_id
+        end
+        {% end %}
+    end
+
+    macro gc_private(*names)
+        {% for name in names %}
+        {{ name.id.upcase }}_WRITE_BARRIER = true
+        private def {{ name.id }}
+            @{{ name.id }}
+        end
+        private def {{ name.id }}=(@{{ name.id }})
+            LibGc.write_barrier self.object_id
+        end
+        {% end %}
+    end
+
+end
 
 fun __crystal_malloc64(size : UInt64) : Void*
     LibGc.malloc size.to_u32
@@ -54,28 +94,33 @@ module LibGc
         type_info = @@type_info.not_nil!
         offsets : UInt32 = 0
         {% for klass in Gc.all_subclasses %}
-            offsets = 0
-            # set zero offset if any of the field isn't 32-bit aligned
-            zero_offset = false
-            {% for ivar in klass.instance_vars %}
-                {% if ivar.type < Gc %}
-                    {{ puts klass.stringify + " = " + ivar.stringify }}
-                    if offsetof({{ klass }}, @{{ ivar }}).unsafe_mod(4) == 0
-                        field_offset = offsetof({{ klass }}, @{{ ivar }}).unsafe_div(4)
-                        panic "struct pointer outside of 32-bit range!" if field_offset > 32
-                       offsets |= 1.unsafe_shl(field_offset)
-                    else
-                        zero_offset = true
-                    end
+            {% if !klass.abstract? %}
+                offsets = 0
+                # set zero offset if any of the field isn't 32-bit aligned
+                zero_offset = false
+                {% for ivar in klass.instance_vars %}
+                    {% puts ivar.type %}
+                    {% if ivar.type < Gc || (ivar.type.union? && ivar.type.union_types.any? {|x| x < Gc }) %}
+                        {% raise "variable #{ivar} has no write barrier" if !klass.has_constant?(ivar.id.stringify.upcase + "_WRITE_BARRIER") %}
+                        {% puts klass.stringify + " = " + ivar.stringify %}
+                        if offsetof({{ klass }}, @{{ ivar }}).unsafe_mod(4) == 0
+                            field_offset = offsetof({{ klass }}, @{{ ivar }}).unsafe_div(4)
+                            #debug "{{ ivar.type }}: ", sizeof({{ ivar.type }}), "\n"
+                            panic "struct pointer outside of 32-bit range!" if field_offset > 32
+                            offsets |= 1.unsafe_shl(field_offset)
+                        else
+                            zero_offset = true
+                        end
+                    {% end %}
                 {% end %}
+                type_id = {{ klass }}.crystal_instance_type_id.to_u32
+                # debug "id: ", type_id, "\n"
+                if zero_offset
+                    type_info.insert(type_id, TypeInfo.new(0, sizeof({{ klass }}).to_u32))
+                else
+                    type_info.insert(type_id, TypeInfo.new(offsets, sizeof({{ klass }}).to_u32))
+                end
             {% end %}
-            type_id = {{ klass }}.crystal_instance_type_id.to_u32
-            debug "id: ", type_id, "\n"
-            if zero_offset
-                type_info.insert(type_id, TypeInfo.new(0, sizeof({{ klass }}).to_u32))
-            else
-                type_info.insert(type_id, TypeInfo.new(offsets, sizeof({{ klass }}).to_u32))
-            end
         {% end %}
         @@enabled = true
     end
@@ -205,6 +250,12 @@ module LibGc
                         if offsets & 1
                             # lookup the buffer address in its offset
                             addr = Pointer(UInt32).new(buffer_addr + pos.to_u64 * 4).value
+                            if addr == 0
+                                # must be a nil union, skip
+                                pos += 1
+                                offsets = offsets.unsafe_shr 1
+                                next
+                            end
                             debug "pointer@", pos, " ", Pointer(Void).new(buffer_addr + pos.to_u64 * 4), " = ", Pointer(Void).new(addr.to_u64), "\n"
 
                             # rechain the offset on to the first gray node
@@ -303,6 +354,11 @@ module LibGc
         ptr
     end
 
+    # write barriers
+    def write_barrier(ptr : UInt64)
+        panic "barrier: ", ptr, "\n"
+    end
+
     # printing
     private def out_nodes(io, first_node)
         node = first_node
@@ -328,7 +384,6 @@ module LibGc
     end
 
     private def debug(*args)
-        return
         Serial.puts *args
     end
 
