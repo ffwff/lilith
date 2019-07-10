@@ -18,7 +18,7 @@ private GC_NODE_MAGIC_GRAY = 0x45564102
 private GC_NODE_MAGIC_GRAY_ATOMIC = 0x45564103
 # black
 private GC_NODE_MAGIC_BLACK = 0x45564104
-private GC_NODE_MAGIC_BLACK_ATOMIC = 0x45564104
+private GC_NODE_MAGIC_BLACK_ATOMIC = 0x45564105
 
 private lib Kernel
 
@@ -174,12 +174,13 @@ module LibGc
                 debug "node: ", node, "\n"
                 if node.value.magic == GC_NODE_MAGIC_GRAY_ATOMIC
                     # skip atomic nodes
+                    debug "skip\n"
                     node.value.magic = GC_NODE_MAGIC_BLACK_ATOMIC
                     node = node.value.next_node
                     next
                 end
 
-                debug "magic: ", node.value.magic, "\n"
+                debug "magic: ", node, node.value.magic, "\n"
                 panic "invariance broken" if node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
 
                 node.value.magic = GC_NODE_MAGIC_BLACK

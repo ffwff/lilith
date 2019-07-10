@@ -65,13 +65,14 @@ fun kmain(kernel_end : Void*,
     if mbr.header[0] == 0x55 && mbr.header[1] == 0xaa
         VGA.puts "found MBR header...\n"
         fs = Fat16FS.new mbr.partitions[0]
-        node = fs.root.first_child.not_nil!
-        VGA.puts "node: ", node.name, "\n"
-        VGA.puts "contents: "
-        node.read(fs) do |ch|
-            VGA.puts ch.unsafe_chr
+        fs.root.each_child do |node|
+            VGA.puts "node: ", node.name, "\n"
+            VGA.puts "contents: "
+            node.read(fs) do |ch|
+                VGA.puts ch.unsafe_chr
+            end
+            VGA.puts "\n"
         end
-        VGA.puts "\n"
     end
 
     VGA.puts "done...\n"

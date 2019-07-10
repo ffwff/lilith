@@ -68,6 +68,15 @@ class Fat16Node < Gc
             @next_node = nil, @first_child = nil)
     end
 
+    # children
+    def each_child(&block)
+        node = @first_child
+        while !node.nil?
+            yield node.not_nil!
+            node = node.next_node
+        end
+    end
+
     def add_child(child : Fat16Node)
         return if @parent == self
         child.next_node = @first_child
@@ -75,6 +84,7 @@ class Fat16Node < Gc
         child.parent = self
     end
 
+    # read
     def read(fs : Fat16FS, &block)
         sector = fs.data_sector + fs.sectors_per_cluster * (starting_cluster - 2)
         i = 0
