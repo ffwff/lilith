@@ -94,10 +94,8 @@ class Fat16Node < Gc
             Ide.read_sector(s) do |word|
                 u8 = word.unsafe_shr(8) & 0xFF
                 u8_1 = word & 0xFF
-                return if j >= size
-                yield u8_1
-                return if j >= size
-                yield u8
+                yield u8_1 if j < size
+                yield u8 if j < size
                 j += 2
             end
             i += 512
@@ -145,8 +143,36 @@ struct Fat16FS < VFS
                 next if !dir_entry_exists entry
                 next if is_volume_label entry
 
+                # name
+                name_len = 7
+                while name_len >= 0
+                    break if entry.name[name_len] != ' '.ord.to_u8
+                    name_len -= 1
+                end
+
+                # extension
+                ext_len = 2
+                while ext_len >= 0
+                    break if entry.ext[ext_len] != ' '.ord.to_u8
+                    ext_len -= 1
+                end
+
+                # filename
+                fname = CString.new(name_len + 2 + ext_len + 1)
+                (name_len + 1).times do |i|
+                    fname[i] = entry.name[i]
+                end
+                if ext_len > 0
+                    name_len += 1
+                    fname[name_len] = '.'.ord.to_u8
+                    name_len += 1
+                    (ext_len + 1).times do |i|
+                        fname[name_len + i] = entry.ext[i]
+                    end
+                end
+
                 # append children
-                node = Fat16Node.new(CString.new(entry.name, 8))
+                node = Fat16Node.new fname
                 node.starting_cluster = entry.starting_cluster.to_i32
                 node.size = entry.file_size
                 @root.add_child node

@@ -135,7 +135,7 @@ private struct Ata
         4.times {|i| X86.inb(bus + REG_ALTSTATUS) }
     end
     def wait_ready
-        while (status = X86.inb(bus + REG_STATUS) & SR_BSY) != 0
+        while ((status = X86.inb(bus + REG_STATUS)) & SR_BSY) != 0
         end
         status
     end
@@ -143,20 +143,17 @@ private struct Ata
         wait_io
         status = wait_ready
         if advanced
-            status = X86.inb(bus + REG_STATUS);
             if (status & SR_ERR) != 0 ||
                (status & SR_DF)  != 0 ||
                (status & SR_DRQ) == 0
-               return true
+               return false
             end
         end
-        false
+        true
     end
 
     # read functions
     def read_cmd(sector_28, slave)
-        X86.outb(cmd, 0x82)
-
         wait_ready
 
         X86.outb(bus + REG_HDDEVSEL,  (0xe0 | slave.unsafe_shl(4) |
@@ -167,8 +164,15 @@ private struct Ata
         X86.outb(bus + REG_LBA1, (sector_28 & 0x0000ff00).unsafe_shr(8).to_u8)
         X86.outb(bus + REG_LBA2, (sector_28 & 0x00ff0000).unsafe_shr(16).to_u8)
         X86.outb(bus + REG_COMMAND, CMD_READ_PIO)
+    end
 
-        wait true
+    def flush_cache
+        X86.outb(bus + REG_COMMAND, CMD_CACHE_FLUSH)
+    end
+
+    # irq handler
+    def irq_handler(bus)
+        X86.inb(bus + REG_STATUS)
     end
 
 end
@@ -186,6 +190,8 @@ module Ide
         Serial.puts offsetof(Kernel::AtaIdentify, @sectors_per_int), '\n'
         debug "Initializing IDE device...\n"
 
+        Idt.register_irq 14, ->ata_primary_irq_handler
+
         @@ata.bus = DISK_PORT
         @@ata.cmd = CMD_PORT
 
@@ -201,6 +207,8 @@ module Ide
         status = @@ata.status
         debug "status: ", status, '\n'
         return if status == 0
+
+        X86.outb @@ata.cmd, 0x02
 
         # read device identifier
         device = uninitialized Kernel::AtaIdentify
@@ -241,9 +249,13 @@ module Ide
     def read_sector(sector_28, bus=DISK_PORT, slave=0, &block)
         @@ata.bus = bus
         @@ata.read_cmd sector_28, slave
+        if !@@ata.wait(true)
+            Serial.puts "error\n"
+        end
         256.times do |i|
             yield X86.inw @@ata.bus
         end
+        @@ata.flush_cache
         @@ata.wait
     end
 
@@ -253,6 +265,11 @@ module Ide
             ptr[idx] = i
             idx += 1
         end
+    end
+
+    # interrupts
+    def ata_primary_irq_handler
+        @@ata.irq_handler DISK_PORT
     end
 
 end
