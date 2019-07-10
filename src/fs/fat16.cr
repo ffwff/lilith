@@ -58,6 +58,12 @@ class Fat16Node < Gc
     @first_child : Fat16Node | Nil = nil
     getter first_child
 
+    @starting_cluster = 0
+    property starting_cluster
+
+    @size = 0u32
+    property size
+
     def initialize(@name = nil,
             @next_node = nil, @first_child = nil)
     end
@@ -69,12 +75,38 @@ class Fat16Node < Gc
         child.parent = self
     end
 
+    def read(fs : Fat16FS, &block)
+        sector = fs.data_sector + fs.sectors_per_cluster * (starting_cluster - 2)
+        i = 0
+        j = 0
+        while i < size
+            s = sector + i.unsafe_div(512)
+            Ide.read_sector(s) do |word|
+                u8 = word.unsafe_shr(8) & 0xFF
+                u8_1 = word & 0xFF
+                return if j >= size
+                yield u8_1
+                return if j >= size
+                yield u8
+                j += 2
+            end
+            i += 512
+        end
+    end
+
 end
 
 struct Fat16FS < VFS
 
     FS_TYPE = "FAT16   "
-    @@root = Fat16Node.new
+    @root = Fat16Node.new
+    getter root
+
+    @data_sector = 0u32
+    getter data_sector
+
+    @sectors_per_cluster = 0u32
+    getter sectors_per_cluster
 
     def initialize(partition)
         debug "initializing FAT16 filesystem\n"
@@ -91,32 +123,32 @@ struct Fat16FS < VFS
 
         root_dir_sectors = ((bs.root_dir_entries * 32) + (bs.sector_size - 1)).unsafe_div bs.sector_size
         sector = partition.first_sector + bs.reserved_sectors + bs.fat_size_sectors * bs.number_of_fats
-        data_sector = sector + root_dir_sectors
+        @data_sector = sector + root_dir_sectors
+        @sectors_per_cluster = bs.sectors_per_cluster.to_u32
 
         bs.root_dir_entries.times do |i|
             entries = uninitialized Fat16Structs::Fat16Entry[16]
             ptr = Pointer(UInt16).new pointerof(entries).address
-            break if sector + i > data_sector
+            break if sector + i > @data_sector
             Ide.read_sector_pointer(ptr, sector + i)
             entries.each do |entry|
                 next if !dir_entry_exists entry
                 next if is_volume_label entry
-                debug "name: "
-                entry.name.each do |ch|
-                    debug ch.unsafe_chr
-                end
-                debug "\n"
-                @@root.add_child Fat16Node.new(CString.new(entry.name, 8))
+
+                # append children
+                node = Fat16Node.new(CString.new(entry.name, 8))
+                node.starting_cluster = entry.starting_cluster.to_i32
+                node.size = entry.file_size
+                @root.add_child node
             end
         end
-        debug "root: ", @@root.first_child.not_nil!.name, "\n"
     end
 
     def read(path, &block)
     end
 
     def debug(*args)
-        Serial.puts *args
+        VGA.puts *args
     end
 
     #
