@@ -139,9 +139,6 @@ module Paging
             virt_addr += 0x1000
         end
 
-        if virt_addr == 0x10003000
-            asm("nop")
-        end
 
         enable
         Idt.enable
