@@ -21,6 +21,9 @@
 .global kirq_stub
 .global kenable_paging
 .global kdisable_paging
+.global ksyscall_setup
+.global kswitch_usermode
+.global ksyscall_stub
 # start
 .extern kmain            # this is defined in the c file
 
@@ -47,8 +50,8 @@ kload_gdt:
     mov %cr0, %eax
     or $1, %al           # Set Protected Mode flag
     mov %eax, %cr0
-    ljmp $0x08, $.flush
-.flush:
+    ljmp $0x08, $.flush_gdt
+.flush_gdt:
     ret
 # tss
 kload_tss:
@@ -72,6 +75,7 @@ kirq_stub:
     mov %ax, %es
     mov %ax, %fs
     mov %ax, %gs
+    # call the handler
     cld
     call kirq_handler
     # reload original data segment selector
@@ -84,20 +88,6 @@ kirq_stub:
     popa
     add $4, %esp
     iret
-# paging
-kenable_paging:
-    mov 4(%esp), %eax
-    mov %eax, %cr3
-    mov %cr0, %eax
-    or $0x80000000, %eax # Enable paging!
-    mov %eax, %cr0
-    ret
-kdisable_paging:
-    mov %cr0, %eax
-    and $0x7fffffff, %eax
-    mov %eax, %cr0
-    ret
-
 # irq
 .altmacro
 .macro kirq_handler_label number
@@ -112,6 +102,72 @@ kirq\number:
     kirq_handler_label %i
     .set i, i+1
 .endr
+# paging
+kenable_paging:
+    mov 4(%esp), %eax
+    mov %eax, %cr3
+    mov %cr0, %eax
+    or $0x80000000, %eax # Enable paging!
+    mov %eax, %cr0
+    ret
+kdisable_paging:
+    mov %cr0, %eax
+    and $0x7fffffff, %eax
+    mov %eax, %cr0
+    ret
+# userspace
+kswitch_usermode:
+    cli
+    mov $0x23, %ax
+    mov %ax, %ds
+    mov %ax, %es
+    mov %ax, %fs
+    mov %ax, %gs
+    # data selector
+    pushl $0x23
+    # setup stack
+    mov $0x80003000, %ebp
+    pushl $0x80003000
+    # eflags
+    pushf
+    # code selector
+    pushl $0x1B
+    # instruction pointer
+    push $0x80000000
+    iret
+.extern ksyscall_handler
+ksyscall_setup:
+    xor %edx, %edx
+    # MSR[SYSENTER_CS_MSR] = cs
+    mov $0x1F, %eax
+    mov $0x174, %ecx
+    wrmsr
+    # MSR[SYSENTER_ESP_MSR] = %esp
+    mov %esp, %eax
+    mov $0x175, %ecx
+    wrmsr
+    # MSR[SYSENTER_EIP_MSR] = ksyscall_stub
+    mov $ksyscall_stub, %eax
+    mov $0x176, %ecx
+    wrmsr
+    ret
+ksyscall_stub:
+    # load kernel segment descriptor
+    push %ax
+    mov $0x10, %ax
+    mov %ax, %ds
+    mov %ax, %es
+    mov %ax, %fs
+    mov %ax, %gs
+    pop %ax
+    # call the handler
+    pusha
+    cld
+    call ksyscall_handler
+    popa
+    add $4, %esp
+    # TODO return & setup stack
+
 
 # -- stack
 .section .stack

@@ -100,8 +100,8 @@ class Fat16Node < VFSNode
             Ide.read_sector(s) do |word|
                 u8 = word.unsafe_shr(8) & 0xFF
                 u8_1 = word & 0xFF
-                yield u8_1 if j < size
-                yield u8 if j < size
+                yield u8_1.to_u8 if j < size
+                yield u8.to_u8 if j < size
                 j += 2
             end
             i += 512
@@ -183,7 +183,6 @@ struct Fat16FS < VFS
                 node.starting_cluster = entry.starting_cluster.to_i32
                 node.size = entry.file_size
                 @root.add_child node
-                breakpoint
             end
         end
     end

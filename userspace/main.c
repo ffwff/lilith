@@ -4,7 +4,8 @@ static unsigned long sysenter(unsigned long eax, unsigned long ebx) {
     return ret;
 }
 
-char *str = "ABCDE";
+char *str = "Hello from userspace!";
 void _start() {
     sysenter(0, (unsigned long)str);
+    while(1);
 }
