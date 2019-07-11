@@ -13,6 +13,7 @@
 
 .section .text
 USER_STACK_TOP = 0xf0000000
+USER_STACK_BOTTOM = 0x80000000
 # code
 .global _start
 .global load_idt
@@ -127,7 +128,7 @@ kswitch_usermode:
     # data selector
     pushl $0x23
     # setup stack
-    mov $0x80000000, %ebp
+    mov $USER_STACK_BOTTOM, %ebp
     pushl $USER_STACK_TOP
     # eflags
     pushf
@@ -169,32 +170,9 @@ ksyscall_stub:
     pusha
     cld
     call ksyscall_handler
-    # return:
     popa
     add $4, %esp
-    # eax contains the return value
-    # ecx contains the old pointer pos
-    mov $0x23, %bx
-    mov %bx, %ds
-    mov %bx, %es
-    mov %bx, %fs
-    mov %bx, %gs
-    # data selector
-    pushl $0x23
-    # setup stack
-    mov $USER_STACK_TOP, %ebp
-    pushl %ecx
-    # eflags
-    pushf
-    # enable interrupts
-    pop %ebx
-    or $0x200, %ebx
-    push %ebx
-    # code selector
-    pushl $0x1B
-    # instruction pointer
-    push (%ecx)
-    iret
+    sysexit
 
 
 # -- stack
