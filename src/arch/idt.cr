@@ -89,7 +89,7 @@ fun kirq_handler(frame : IdtData::Registers)
     X86.outb 0x20, 0x20
 
     # interrupt must happen in user mode
-    if frame.int_no == 0 && frame.cs == 0x1B && !Multiprocessing.current_process.nil?
+    if frame.int_no == 0 && !Multiprocessing.current_process.nil?
         # preemptive multitasking...
         # get the pointer to the literal frame argument
         esp = 0u32

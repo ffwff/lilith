@@ -66,7 +66,6 @@ fun kmain(kernel_end : Void*,
     mbr = MBR.read_ide
     fs : VFS | Nil = nil
     main_bin : VFSNode | Nil = nil
-    penpen_bin : VFSNode | Nil = nil
     if mbr.header[0] == 0x55 && mbr.header[1] == 0xaa
         VGA.puts "found MBR header...\n"
         fs = Fat16FS.new mbr.partitions[0]
@@ -74,14 +73,7 @@ fun kmain(kernel_end : Void*,
             VGA.puts "node: ", node.name, "\n"
             if node.name == "MAIN.BIN"
                 main_bin = node
-            elsif node.name == "PENPEN.BIN"
-                penpen_bin = node
             end
-            #VGA.puts "contents: "
-            #node.read(fs) do |ch|
-            #    VGA.puts ch.unsafe_chr
-            #end
-            #VGA.puts "\n"
         end
     end
 
@@ -92,12 +84,26 @@ fun kmain(kernel_end : Void*,
         VGA.puts "no rootfs detected.\n"
     else
         VGA.puts "executing MAIN.BIN...\n"
-        m_process = Multiprocessing::Process.new main_bin.not_nil!, fs.not_nil!
+        m_process = Multiprocessing::Process.new do |proc|
+            vfs = main_bin.not_nil!
+            fs = fs.not_nil!
+
+            # map code pages
+            code_pages = vfs.size.div_ceil 0x1000
+            page = Paging.alloc_page_pg 0x8000_0000, true, true, code_pages
+            ptr = Pointer(UInt8).new(page.to_u64)
+            i = 0
+            vfs.read(fs) do |ch|
+                ptr[i] = ch
+                i += 1
+            end
+
+            # map stack
+            stack_top = Paging.alloc_page_pg proc.stack_bottom, true, true, 1
+        end
         Serial.puts "M_PR: ", m_process.phys_page_dir, "\n"
-        p_process = Multiprocessing::Process.new penpen_bin.not_nil!, fs.not_nil!
-        Serial.puts "P_PR: ", p_process.phys_page_dir, "\n"
         Multiprocessing.setup_tss
-        p_process.switch
+        m_process.switch
     end
 
     VGA.puts "done...\n"

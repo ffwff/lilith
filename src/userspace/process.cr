@@ -25,6 +25,7 @@ module Multiprocessing
         getter next_process
 
         @stack_bottom : UInt32 = USER_STACK_TOP - 0x1000u32
+        property stack_bottom
 
         # physical location of the process' page directory
         @phys_page_dir : UInt32 = 0
@@ -34,11 +35,7 @@ module Multiprocessing
         @frame : IdtData::Registers | Nil = nil
         property frame
 
-        def initialize(vfs : VFSNode, fs : VFS)
-            # TODO support something other than flat binaries
-            code_pages = vfs.size.div_ceil 0x1000
-            panic "no pages" if code_pages < 1
-
+        def initialize(&on_setup_paging)
             Idt.disable
 
             @pid = Multiprocessing.pids
@@ -56,16 +53,7 @@ module Multiprocessing
             Multiprocessing.pids += 1
 
             # text pages
-            page = Paging.alloc_page_pg 0x8000_0000, true, true, code_pages
-            ptr = Pointer(UInt8).new(page.to_u64)
-            i = 0
-            vfs.read(fs) do |ch|
-                ptr[i] = ch
-                i += 1
-            end
-
-            # stack
-            stack_top = Paging.alloc_page_pg @stack_bottom, true, true, 1
+            yield self
 
             if Multiprocessing.first_process.nil?
                 Multiprocessing.first_process = self
