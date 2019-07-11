@@ -8,6 +8,7 @@ module Multiprocessing
     extend self
 
     USER_STACK_TOP = 0xf000_0000u32
+    USER_STACK_BOTTOM = 0x8000_0000u32
 
     @@current_process : Process | Nil = nil
     mod_property current_process
@@ -28,6 +29,10 @@ module Multiprocessing
         # physical location of the process' page directory
         @phys_page_dir : UInt32 = 0
         getter phys_page_dir
+
+        # interrupt frame
+        @frame : IdtData::Registers | Nil = nil
+        property frame
 
         def initialize(vfs : VFSNode, fs : VFS)
             # TODO support something other than flat binaries
@@ -50,7 +55,7 @@ module Multiprocessing
             end
             Multiprocessing.pids += 1
 
-            # data pages
+            # text pages
             page = Paging.alloc_page_pg 0x8000_0000, true, true, code_pages
             ptr = Pointer(UInt8).new(page.to_u64)
             i = 0
@@ -94,6 +99,33 @@ module Multiprocessing
             Kernel.kswitch_usermode
         end
 
+        # new register frame for multitasking
+        def new_frame
+            frame = IdtData::Registers.new
+            # Data segment selector
+            frame.ds = 0x23u32
+            # Stack
+            frame.useresp = USER_STACK_TOP
+            # Pushed by the processor automatically.
+            frame.eip = 0x8000_0000u32
+            frame.cs = 0x1Bu32
+            frame.eflags = 0u32
+            frame.ss = 0x23u32
+            @frame = frame
+            frame
+        end
+
+    end
+
+    # round robin scheduling algorithm
+    def next_process : Process | Nil
+        return nil if @@current_process.nil?
+        proc = @@current_process.not_nil!
+        @@current_process = proc.next_process
+        if @@current_process.nil?
+            @@current_process = @@first_process
+        end
+        @@current_process
     end
 
 end

@@ -17,6 +17,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     if frame.eax == 0
         # write
         ptr = Pointer(UInt8).new(frame.ebx.to_u64)
+        Serial.puts "ebx ptr:", ptr, '\n'
         i = 0
         while ptr[i] != 0
             VGA.puts ptr[i].unsafe_chr

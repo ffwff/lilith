@@ -92,8 +92,8 @@ fun kmain(kernel_end : Void*,
         VGA.puts "no rootfs detected.\n"
     else
         VGA.puts "executing MAIN.BIN...\n"
-        m_process = Multiprocessing::Process.new main_bin.not_nil!, fs.not_nil!
-        Serial.puts "M_PR: ", m_process.phys_page_dir, "\n"
+        #m_process = Multiprocessing::Process.new main_bin.not_nil!, fs.not_nil!
+        #Serial.puts "M_PR: ", m_process.phys_page_dir, "\n"
         p_process = Multiprocessing::Process.new penpen_bin.not_nil!, fs.not_nil!
         Serial.puts "P_PR: ", p_process.phys_page_dir, "\n"
         p_process.switch
