@@ -13,6 +13,6 @@ static void write(const char *s) {
 }
 
 void _start() {
-    write("Omedeto");
+    write("Quack quack");
     while(1);
 }

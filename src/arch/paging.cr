@@ -29,6 +29,7 @@ module Paging
     def usable_physical_memory; @@frame_length; end
 
     @@current_page_dir = Pointer(PageStructs::PageDirectory).null
+    def current_page_dir; @@current_page_dir; end
     def current_page_dir=(@@current_page_dir); end
     @@kernel_page_dir = Pointer(PageStructs::PageDirectory).null
 
@@ -122,6 +123,7 @@ module Paging
 
         # claim
         while virt_addr < virt_addr_end
+            Serial.puts "virt addr: ", Pointer(Void).new(virt_addr.to_u64), "\n"
             # allocate page frame
             iaddr = claim_frame
             addr = iaddr.to_u32 * 0x1000 + @@frame_base_addr
@@ -175,7 +177,14 @@ module Paging
         iaddr = claim_frame
         pd_addr = iaddr.to_u32 * 0x1000 + @@frame_base_addr
         pd = Pointer(PageStructs::PageDirectory).new(pd_addr.to_u64)
-        pd.value = @@kernel_page_dir.value
+
+        # copy lower half (kernel half)
+        512.times do |i|
+            pd.value.tables[i] = @@kernel_page_dir.value.tables[i]
+        end
+
+        # return
+        pd.address
     end
 
     # frame alloc

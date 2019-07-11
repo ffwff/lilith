@@ -66,6 +66,7 @@ fun kmain(kernel_end : Void*,
     mbr = MBR.read_ide
     fs : VFS | Nil = nil
     main_bin : VFSNode | Nil = nil
+    penpen_bin : VFSNode | Nil = nil
     if mbr.header[0] == 0x55 && mbr.header[1] == 0xaa
         VGA.puts "found MBR header...\n"
         fs = Fat16FS.new mbr.partitions[0]
@@ -73,6 +74,8 @@ fun kmain(kernel_end : Void*,
             VGA.puts "node: ", node.name, "\n"
             if node.name == "MAIN.BIN"
                 main_bin = node
+            elsif node.name == "PENPEN.BIN"
+                penpen_bin = node
             end
             #VGA.puts "contents: "
             #node.read(fs) do |ch|
@@ -82,10 +85,6 @@ fun kmain(kernel_end : Void*,
         end
     end
 
-    #
-    VGA.puts "enabling interrupts...\n"
-    Idt.enable
-
     VGA.puts "setting up syscalls...\n"
     Kernel.ksyscall_setup
 
@@ -93,8 +92,11 @@ fun kmain(kernel_end : Void*,
         VGA.puts "no rootfs detected.\n"
     else
         VGA.puts "executing MAIN.BIN...\n"
-        process = Multiprocessing::Process.new main_bin.not_nil!, fs.not_nil!
-        process.switch
+        m_process = Multiprocessing::Process.new main_bin.not_nil!, fs.not_nil!
+        Serial.puts "M_PR: ", m_process.phys_page_dir, "\n"
+        p_process = Multiprocessing::Process.new penpen_bin.not_nil!, fs.not_nil!
+        Serial.puts "P_PR: ", p_process.phys_page_dir, "\n"
+        p_process.switch
     end
 
     VGA.puts "done...\n"
