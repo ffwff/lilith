@@ -345,6 +345,7 @@ module LibGc
     end
 
     private def debug(*args)
+        return
         Serial.puts *args
     end
 

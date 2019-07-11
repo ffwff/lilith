@@ -96,6 +96,7 @@ fun kmain(kernel_end : Void*,
         Serial.puts "M_PR: ", m_process.phys_page_dir, "\n"
         p_process = Multiprocessing::Process.new penpen_bin.not_nil!, fs.not_nil!
         Serial.puts "P_PR: ", p_process.phys_page_dir, "\n"
+        Multiprocessing.setup_tss
         p_process.switch
     end
 

@@ -74,13 +74,13 @@ module Multiprocessing
                 Multiprocessing.first_process = self
             end
 
-            Idt.enable
-
             if !last_page_dir.null?
                 Paging.disable
                 Paging.current_page_dir = last_page_dir
                 Paging.enable
             end
+
+            Idt.enable
         end
 
         def switch
@@ -93,9 +93,7 @@ module Multiprocessing
             Paging.disable
             Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
             Paging.enable
-            esp0 = 0u32
-            asm("mov %esp, $0;" : "=r"(esp0) :: "volatile")
-            Kernel.kset_stack esp0
+            Idt.enable
             Kernel.kswitch_usermode
         end
 
@@ -109,7 +107,7 @@ module Multiprocessing
             # Pushed by the processor automatically.
             frame.eip = 0x8000_0000u32
             frame.cs = 0x1Bu32
-            frame.eflags = 0u32
+            frame.eflags = 0x212u32
             frame.ss = 0x23u32
             @frame = frame
             frame
@@ -126,6 +124,12 @@ module Multiprocessing
             @@current_process = @@first_process
         end
         @@current_process
+    end
+
+    def setup_tss
+        esp0 = 0u32
+        asm("mov %esp, $0;" : "=r"(esp0) :: "volatile")
+        Kernel.kset_stack esp0
     end
 
 end

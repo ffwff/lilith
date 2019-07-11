@@ -119,7 +119,6 @@ kdisable_paging:
     ret
 # userspace
 kswitch_usermode:
-    cli
     mov $0x23, %ax
     mov %ax, %ds
     mov %ax, %es
@@ -172,8 +171,28 @@ ksyscall_stub:
     call ksyscall_handler
     popa
     add $4, %esp
-    sysexit
-
+    # segments
+    mov $0x23, %ax
+    mov %ax, %ds
+    mov %ax, %es
+    mov %ax, %fs
+    mov %ax, %gs
+    # data selector
+    pushl $0x23
+    # setup stack
+    mov $USER_STACK_BOTTOM, %ebp
+    pushl %ecx
+    # eflags
+    pushf
+    # enable interrupts
+    pop %eax
+    or $0x200, %eax
+    push %eax
+    # code selector
+    pushl $0x1B
+    # instruction pointer
+    push (%ecx)
+    iret
 
 # -- stack
 .section .stack

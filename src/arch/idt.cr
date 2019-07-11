@@ -89,9 +89,7 @@ fun kirq_handler(frame : IdtData::Registers)
     X86.outb 0x20, 0x20
 
     # interrupt must happen in user mode
-    Serial.puts "int: ", frame.eax, "\n"
     if frame.int_no == 0 && frame.cs == 0x1B && !Multiprocessing.current_process.nil?
-        panic "nak?"
         # preemptive multitasking...
         # get the pointer to the literal frame argument
         esp = 0u32
@@ -112,7 +110,7 @@ fun kirq_handler(frame : IdtData::Registers)
         ] %}
         frame.{{ id.id }} = process_frame.{{ id.id }}
         {% end %}
-        Serial.puts "frame: ", Pointer(Void).new(frame.eip.to_u64), "\n"
+        # Serial.puts "frame: ", Pointer(Void).new(frame.eip.to_u64), "\n"
 
         dir = next_process.not_nil!.phys_page_dir # this must be stack allocated
         # because it's placed in the virtual kernel heap
