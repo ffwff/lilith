@@ -12,6 +12,7 @@
 .long MBOOT_CHECKSUM            # checksum. m+f+c should be zero
 
 .section .text
+USER_STACK_TOP = 0xf0000000
 # code
 .global _start
 .global load_idt
@@ -126,10 +127,14 @@ kswitch_usermode:
     # data selector
     pushl $0x23
     # setup stack
-    mov $0x80002000, %ebp
-    pushl $0x80003000
+    mov $0x80000000, %ebp
+    pushl $USER_STACK_TOP
     # eflags
     pushf
+    # enable interrupts
+    pop %eax
+    or $0x200, %eax
+    push %eax
     # code selector
     pushl $0x1B
     # instruction pointer
@@ -177,10 +182,14 @@ ksyscall_stub:
     # data selector
     pushl $0x23
     # setup stack
-    mov $0x80002000, %ebp
+    mov $USER_STACK_TOP, %ebp
     pushl %ecx
     # eflags
     pushf
+    # enable interrupts
+    pop %ebx
+    or $0x200, %ebx
+    push %ebx
     # code selector
     pushl $0x1B
     # instruction pointer

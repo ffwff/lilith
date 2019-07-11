@@ -22,6 +22,16 @@ class Object
         {% end %}
     end
 
+    macro mod_property(*names)
+        {% for name in names %}
+        def {{ name.id }}
+            @@{{ name.id }}
+        end
+        protected def {{ name.id }}=(@@{{ name.id }})
+        end
+        {% end %}
+    end
+
 end
 
 struct Nil

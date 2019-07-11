@@ -87,7 +87,7 @@ struct PBitArray
 
     # size
     private def malloc_size : Int32
-        (@size + 31).unsafe_div 32
+        @size.div_ceil 32
     end
 
     # position

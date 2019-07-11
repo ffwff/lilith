@@ -14,10 +14,10 @@ require "./alloc/alloc.cr"
 require "./alloc/gc.cr"
 require "./fs/fat16.cr"
 require "./userspace/syscall.cr"
+require "./userspace/process.cr"
 
 lib Kernel
     fun ksyscall_setup()
-    fun kswitch_usermode()
 end
 
 fun kmain(kernel_end : Void*,
@@ -63,10 +63,6 @@ fun kmain(kernel_end : Void*,
     VGA.puts "checking PCI buses...\n"
     PCI.check_all_buses
 
-    #
-    VGA.puts "enabling interrupts...\n"
-    Idt.enable
-
     mbr = MBR.read_ide
     fs : VFS | Nil = nil
     main_bin : VFSNode | Nil = nil
@@ -86,23 +82,19 @@ fun kmain(kernel_end : Void*,
         end
     end
 
+    #
+    VGA.puts "enabling interrupts...\n"
+    Idt.enable
+
+    VGA.puts "setting up syscalls...\n"
+    Kernel.ksyscall_setup
+
     if main_bin.nil?
         VGA.puts "no rootfs detected.\n"
     else
         VGA.puts "executing MAIN.BIN...\n"
-        page = Paging.alloc_page_pg(0x8000_0000, true, true)
-        ptr = Pointer(UInt8).new(page.to_u64)
-        i = 0
-        Serial.puts "node: ", main_bin.name, "\n"
-        main_bin.read(fs.not_nil!) do |ch|
-            ptr[i] = ch
-            i += 1
-        end
-
-        stack_bottom = Paging.alloc_page_pg(0x8000_2000, true, true, 4)
-        stack_end = stack_bottom + 0x1000
-        Kernel.ksyscall_setup
-        Kernel.kswitch_usermode
+        process = Multiprocessing::Process.new main_bin.not_nil!, fs.not_nil!
+        process.switch
     end
 
     VGA.puts "done...\n"

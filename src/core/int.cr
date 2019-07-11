@@ -24,6 +24,10 @@ struct Int
         self >= 0 ? self : self * -1
     end
 
+    def div_ceil(other : Int)
+        (self + (other - 1)).unsafe_div other
+    end
+
     # bit manips
     @[AlwaysInline]
     def ffz : Int
