@@ -5,7 +5,8 @@ lib SyscallData
     @[Packed]
     struct Registers
         # Pushed by pushad:
-        edi, esi, ebp, esp, ebx, edx, ecx, eax : UInt32
+        # ecx is unused
+        edi, esi, ebp, esp, ebx, edx, retval, eax : UInt32
     end
 
 end
@@ -22,7 +23,5 @@ fun ksyscall_handler(frame : SyscallData::Registers)
             i += 1
         end
         VGA.puts "\n"
-    end
-    while true
     end
 end

@@ -126,7 +126,7 @@ kswitch_usermode:
     # data selector
     pushl $0x23
     # setup stack
-    mov $0x80003000, %ebp
+    mov $0x80002000, %ebp
     pushl $0x80003000
     # eflags
     pushf
@@ -164,9 +164,28 @@ ksyscall_stub:
     pusha
     cld
     call ksyscall_handler
+    # return:
     popa
     add $4, %esp
-    # TODO return & setup stack
+    # eax contains the return value
+    # ecx contains the old pointer pos
+    mov $0x23, %bx
+    mov %bx, %ds
+    mov %bx, %es
+    mov %bx, %fs
+    mov %bx, %gs
+    # data selector
+    pushl $0x23
+    # setup stack
+    mov $0x80002000, %ebp
+    pushl %ecx
+    # eflags
+    pushf
+    # code selector
+    pushl $0x1B
+    # instruction pointer
+    push (%ecx)
+    iret
 
 
 # -- stack

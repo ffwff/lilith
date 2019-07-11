@@ -1,11 +1,19 @@
 static unsigned long sysenter(unsigned long eax, unsigned long ebx) {
     unsigned long ret;
-    asm volatile("sysenter" : "=a"(ret) : "a"(eax), "b"(ebx));
+    __asm__ volatile(
+        "push $1f\n"
+        "mov %%esp, %%ecx\n"
+        "sysenter\n"
+        "1: add $4, %%esp\n" : "=a"(ret) : "a"(eax), "b"(ebx));
     return ret;
 }
 
-char *str = "Hello from userspace!";
+static void write(const char *s) {
+    sysenter(0, (unsigned long)s);
+}
+
 void _start() {
-    sysenter(0, (unsigned long)str);
+    write("Omedeto");
+    write("omedeto");
     while(1);
 }
