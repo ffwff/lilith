@@ -180,7 +180,6 @@ ksyscall_stub:
     # data selector
     pushl $0x23
     # setup stack
-    mov $USER_STACK_BOTTOM, %ebp
     pushl %ecx
     # eflags
     pushf
