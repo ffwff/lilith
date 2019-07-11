@@ -38,4 +38,8 @@ struct Nil
         false
     end
 
+    def object_id
+        0u64
+    end
+
 end

@@ -67,7 +67,7 @@ fun kmain(kernel_end : Void*,
         VGA.puts "found MBR header...\n"
         fs = Fat16FS.new mbr.partitions[0]
         fs.not_nil!.root.each_child do |node|
-            Serial.puts "node: ", node.name, "\n"
+            VGA.puts "node: ", node.name, "\n"
             #next if node.name == "MAIN.BIN"
             #VGA.puts "contents: "
             #node.read(fs) do |ch|

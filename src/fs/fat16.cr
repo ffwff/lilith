@@ -46,16 +46,16 @@ end
 class Fat16Node < VFSNode
 
     @parent : Fat16Node | Nil = nil
-    gc_property parent
+    property parent
 
     @next_node : Fat16Node | Nil = nil
-    gc_property next_node
+    property next_node
 
     @name : CString | Nil = nil
-    gc_property name
+    property name
 
     @first_child : Fat16Node | Nil = nil
-    gc_getter first_child
+    property first_child
 
     @starting_cluster = 0
     property starting_cluster
@@ -70,6 +70,7 @@ class Fat16Node < VFSNode
     # children
     def each_child(&block)
         node = first_child
+        Serial.puts "child: ", node.nil?, "\n"
         while !node.nil?
             yield node.not_nil!
             node = node.next_node
@@ -77,14 +78,14 @@ class Fat16Node < VFSNode
     end
 
     def add_child(child : Fat16Node)
-        if first_child.nil?
+        if @first_child.nil?
             # first node
             child.next_node = nil
-            first_child = child
+            @first_child = child
         else
             # middle node
             child.next_node = @first_child
-            first_child = child
+            @first_child = child
         end
         child.parent = self
     end
@@ -176,19 +177,19 @@ struct Fat16FS < VFS
                     end
                 end
 
-                Serial.puts fname, "\n"
 
                 # append children
                 node = Fat16Node.new fname
                 node.starting_cluster = entry.starting_cluster.to_i32
                 node.size = entry.file_size
                 @root.add_child node
+                breakpoint
             end
         end
     end
 
     def debug(*args)
-        VGA.puts *args
+        Serial.puts *args
     end
 
     #

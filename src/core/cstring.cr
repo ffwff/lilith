@@ -1,4 +1,6 @@
-struct CString
+require "../alloc/gc.cr"
+
+class CString < Gc
 
     getter size
 

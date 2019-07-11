@@ -9,3 +9,7 @@ end
 
 def raise(*args)
 end
+
+fun breakpoint
+    asm("nop")
+end

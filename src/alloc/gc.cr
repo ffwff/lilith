@@ -3,43 +3,6 @@
 require "./alloc.cr"
 
 abstract class Gc
-
-    macro gc_property(*names)
-        {% for name in names %}
-        {{ name.id.upcase }}_WRITE_BARRIER = true
-        def {{ name.id }}
-            @{{ name.id }}
-        end
-        def {{ name.id }}=(@{{ name.id }})
-            LibGc.write_barrier self.object_id
-        end
-        {% end %}
-    end
-
-    macro gc_getter(*names)
-        {% for name in names %}
-        {{ name.id.upcase }}_WRITE_BARRIER = true
-        def {{ name.id }}
-            @{{ name.id }}
-        end
-        private def {{ name.id }}=(@{{ name.id }})
-            LibGc.write_barrier self.object_id
-        end
-        {% end %}
-    end
-
-    macro gc_private(*names)
-        {% for name in names %}
-        {{ name.id.upcase }}_WRITE_BARRIER = true
-        private def {{ name.id }}
-            @{{ name.id }}
-        end
-        private def {{ name.id }}=(@{{ name.id }})
-            LibGc.write_barrier self.object_id
-        end
-        {% end %}
-    end
-
 end
 
 fun __crystal_malloc64(size : UInt64) : Void*
@@ -100,12 +63,12 @@ module LibGc
                 zero_offset = false
                 {% for ivar in klass.instance_vars %}
                     {% puts ivar.type %}
-                    {% if ivar.type < Gc || (ivar.type.union? && ivar.type.union_types.any? {|x| x < Gc }) %}
-                        {% raise "variable #{ivar} has no write barrier" if !klass.has_constant?(ivar.id.stringify.upcase + "_WRITE_BARRIER") %}
+                    {% if ivar.type < Gc || ivar.type < Pointer ||
+                        (ivar.type.union? && ivar.type.union_types.any? {|x| x < Gc }) %}
                         {% puts klass.stringify + " = " + ivar.stringify %}
                         if offsetof({{ klass }}, @{{ ivar }}).unsafe_mod(4) == 0
                             field_offset = offsetof({{ klass }}, @{{ ivar }}).unsafe_div(4)
-                            #debug "{{ ivar.type }}: ", sizeof({{ ivar.type }}), "\n"
+                            debug "{{ ivar.type }}: ", offsetof({{ klass }}, @{{ ivar }}), " ", "{{ ivar.type }}", " ", sizeof({{ ivar.type }}), "\n"
                             panic "struct pointer outside of 32-bit range!" if field_offset > 32
                             offsets |= 1.unsafe_shl(field_offset)
                         else
@@ -250,13 +213,13 @@ module LibGc
                         if offsets & 1
                             # lookup the buffer address in its offset
                             addr = Pointer(UInt32).new(buffer_addr + pos.to_u64 * 4).value
-                            if addr == 0
+                            debug "pointer@", pos, " ", Pointer(Void).new(buffer_addr + pos.to_u64 * 4), " = ", Pointer(Void).new(addr.to_u64), "\n"
+                            unless addr >= KERNEL_ARENA.start_addr && addr <= KERNEL_ARENA.placement_addr
                                 # must be a nil union, skip
                                 pos += 1
                                 offsets = offsets.unsafe_shr 1
                                 next
                             end
-                            debug "pointer@", pos, " ", Pointer(Void).new(buffer_addr + pos.to_u64 * 4), " = ", Pointer(Void).new(addr.to_u64), "\n"
 
                             # rechain the offset on to the first gray node
                             header = Pointer(Kernel::GcNode).new(addr.to_u64 - sizeof(Kernel::GcNode))
@@ -288,6 +251,7 @@ module LibGc
             @@first_gray_node = Pointer(Kernel::GcNode).null
             ## some nodes in @@first_white_node are now gray
             if fix_white
+                debug "fix white nodes\n"
                 node = @@first_white_node
                 new_first_white_node = Pointer(Kernel::GcNode).null
                 while !node.null?
@@ -308,9 +272,10 @@ module LibGc
 
             if @@first_gray_node.null?
                 # sweeping phase
-                debug "sweeping phase\n"
+                debug "sweeping phase: ", self, "\n"
                 node = @@first_white_node
                 while !node.null?
+                    panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
                     debug "free ", node, "\n"
                     next_node = node.value.next_node
                     KERNEL_ARENA.free node.address.to_u32
@@ -342,6 +307,7 @@ module LibGc
         end
         size += sizeof(Kernel::GcNode)
         header = Pointer(Kernel::GcNode).new(KERNEL_ARENA.malloc(size).to_u64)
+        # move the barrier forwards by immediately graying out the header
         header.value.magic = atomic ? GC_NODE_MAGIC_GRAY_ATOMIC : GC_NODE_MAGIC_GRAY
         # append node to linked list
         if @@enabled
@@ -352,11 +318,6 @@ module LibGc
         ptr = Pointer(Void).new(header.address.to_u64 + sizeof(Kernel::GcNode))
         debug self, '\n' if @@enabled
         ptr
-    end
-
-    # write barriers
-    def write_barrier(ptr : UInt64)
-        panic "barrier: ", ptr, "\n"
     end
 
     # printing
