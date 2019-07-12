@@ -110,38 +110,32 @@ private struct Ata
     DIR_READ =      0x00
     DIR_WRITE =     0x01
 
-    @bus = 0u16
-    def bus; @bus; end
-    def bus=(x); @bus = x; end
-
-    @cmd = 0u16
-    def cmd; @cmd; end
-    def cmd=(x); @cmd = x; end
-
-    def select
-        X86.outb(bus + REG_HDDEVSEL, 0xA0)
+    # drive = 0 => primary
+    # drive = 1 => secondary
+    def select(bus, slave=0u8)
+        X86.outb(bus + REG_HDDEVSEL, 0xA0.to_u8 | slave.unsafe_shl(4))
     end
 
-    def identify
+    def identify(bus)
         X86.outb(bus + REG_COMMAND, CMD_IDENTIFY)
     end
 
-    def status
+    def status(bus)
         X86.inb(bus + REG_COMMAND)
     end
 
     # wait functions
-    def wait_io
+    def wait_io(bus)
         4.times {|i| X86.inb(bus + REG_ALTSTATUS) }
     end
-    def wait_ready
+    def wait_ready(bus)
         while ((status = X86.inb(bus + REG_STATUS)) & SR_BSY) != 0
         end
         status
     end
-    def wait(advanced=false)
-        wait_io
-        status = wait_ready
+    def wait(bus, advanced=false)
+        wait_io bus
+        status = wait_ready bus
         if advanced
             if (status & SR_ERR) != 0 ||
                (status & SR_DF)  != 0 ||
@@ -153,8 +147,8 @@ private struct Ata
     end
 
     # read functions
-    def read_cmd(sector_28, slave)
-        wait_ready
+    def read_cmd(sector_28, bus, slave)
+        wait_ready bus
 
         X86.outb(bus + REG_HDDEVSEL,  (0xe0 | slave.unsafe_shl(4) |
                             (sector_28 & 0x0f000000).unsafe_shr(24)).to_u8)
@@ -166,7 +160,7 @@ private struct Ata
         X86.outb(bus + REG_COMMAND, CMD_READ_PIO)
     end
 
-    def flush_cache
+    def flush_cache(bus)
         X86.outb(bus + REG_COMMAND, CMD_CACHE_FLUSH)
     end
 
@@ -192,30 +186,27 @@ module Ide
 
         Idt.register_irq 14, ->ata_primary_irq_handler
 
-        @@ata.bus = DISK_PORT
-        @@ata.cmd = CMD_PORT
+        X86.outb DISK_PORT + 1, 1
+        X86.outb DISK_PORT + 0x306, 0
 
-        X86.outb @@ata.bus + 1, 1
-        X86.outb @@ata.bus + 0x306, 0
+        @@ata.select DISK_PORT
+        @@ata.wait_io DISK_PORT
 
-        @@ata.select
-        @@ata.wait_io
+        @@ata.identify DISK_PORT
+        @@ata.wait_io DISK_PORT
 
-        @@ata.identify
-        @@ata.wait_io
-
-        status = @@ata.status
+        status = @@ata.status DISK_PORT
         debug "status: ", status, '\n'
         return if status == 0
 
-        X86.outb @@ata.cmd, 0x02
+        X86.outb CMD_PORT, 0x02
 
         # read device identifier
         device = uninitialized Kernel::AtaIdentify
         begin
             buf = Pointer(UInt16).new(pointerof(device).address)
             256.times do |i|
-                buf[i] = X86.inw @@ata.bus
+                buf[i] = X86.inw DISK_PORT
             end
         end
 
@@ -247,14 +238,13 @@ module Ide
 
     # read/write
     def read_sector(sector_28, bus=DISK_PORT, slave=0, &block)
-        @@ata.bus = bus
-        @@ata.read_cmd sector_28, slave
-        return false if !@@ata.wait(true)
+        @@ata.read_cmd sector_28, bus, slave
+        return false if !@@ata.wait(bus, true)
         256.times do |i|
-            yield X86.inw @@ata.bus
+            yield X86.inw bus
         end
-        @@ata.flush_cache
-        @@ata.wait
+        @@ata.flush_cache bus
+        @@ata.wait bus
     end
 
     def read_sector_pointer(ptr : UInt16*, sector_28, bus=DISK_PORT, slave=0)
