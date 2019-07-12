@@ -22,6 +22,66 @@ struct GcPointer(T)
 
 end
 
+GC_ARRAY_HEADER_TYPE = 0xFFFF_FFFF
+
+struct GcArray(T)
+
+    HEADER_SIZE = 8
+    # one long for typeid, one long for length
+    getter size
+    def initialize(@size)
+        malloc_size = @size.to_u32 * sizeof(Void*) + HEADER_SIZE
+        ptr = LibGc.unsafe_malloc(malloc_size).as(UInt32*)
+        ptr[0] = GC_ARRAY_HEADER_TYPE
+        ptr[1] = @size
+        @buffer = Pointer(T).new((ptr.address + HEADER_SIZE).to_u64)
+    end
+
+    def [](idx : Int)
+        panic "GcArray: out of range" if idx < 0 && idx > @size
+        @buffer[idx]
+    end
+
+    def []=(idx : Int, value : T)
+        panic "GcArray: out of range" if idx < 0 && idx > @size
+        @buffer[idx] = value
+    end
+
+    private def resize(new_size)
+        if new_size < @size
+            panic "unimplemented!"
+        end
+        bufsize = KERNEL_ARENA.block_size_for_ptr(@buffer.address.to_u32)
+        malloc_size = new_size * sizeof(Void*) + HEADER_SIZE
+        if bufsize > malloc_size
+            # arena block supports this, grow to new size
+            ptr = @buffer.as(UInt8*)
+            ptr[1] = new_size
+            @size = new_size
+        else
+            # arena can't support this, allocate a new one and copy it over
+            # malloc new buffer
+            ptr = LibGc.unsafe_malloc(malloc_size).as(UInt32*)
+            ptr[0] = GC_ARRAY_HEADER_TYPE
+            ptr[1] = new_size
+            new_buffer = Pointer(T).new((ptr.address + HEADER_SIZE).to_u64)
+            # copy over
+            i = 0
+            while i < @size
+                new_buffer[i] = @buffer[i]
+                i += 1
+            end
+            # set buffer
+            @buffer = new_buffer
+            @size = new_size
+        end
+    end
+
+end
+
+
+# ---
+
 fun __crystal_malloc64(size : UInt64) : Void*
     LibGc.unsafe_malloc size.to_u32
 end
@@ -83,6 +143,7 @@ module LibGc
                 zero_offset = false
                 {% for ivar in klass.instance_vars %}
                     {% if ivar.type < Gc || ivar.type < GcPointer ||
+                        ivar.type < GcArray ||
                         (ivar.type.union? && ivar.type.union_types.any? {|x| x < Gc }) %}
                         {% puts klass.stringify + " = " + ivar.stringify + " <" + ivar.type.stringify + ">" %}
                         if offsetof({{ klass }}, @{{ ivar }}).unsafe_mod(4) == 0
@@ -113,7 +174,7 @@ module LibGc
             {% end %}
         {% end %}
         type_info.balance n_classes
-        Serial.puts type_info, '\n'
+        # debug type_info, '\n'
         @@enabled = true
     end
 

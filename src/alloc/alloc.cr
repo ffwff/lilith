@@ -173,6 +173,12 @@ private struct KernelArena
         io.puts
     end
 
+    # utils
+    def block_size_for_ptr(ptr : UInt32) : UInt32
+        ptr = Pointer(Kernel::PoolHeader).new(ptr.to_u64 & 0xFFFF_F000)
+        ptr.value.block_buffer_size
+    end
+
 end
 
 KERNEL_ARENA = KernelArena.new
