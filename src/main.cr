@@ -140,8 +140,4 @@ fun kmain(kernel_end : Void*,
         m_process.switch
     end
 
-    VGA.puts "done...\n"
-    while true
-    end
-
 end

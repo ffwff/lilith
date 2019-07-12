@@ -5,33 +5,33 @@ class CString < Gc
     getter size
 
     def initialize(buffer, @size : Int32)
-        @buffer = Pointer(UInt8).new(LibGc.malloc(@size.to_u32, true).address)
+        @buffer = GcPointer(UInt8).malloc(@size.to_u32)
         @size.times do |i|
             @buffer[i] = buffer[i]
         end
     end
 
     def initialize(@size : Int32)
-        @buffer = Pointer(UInt8).new(LibGc.malloc(@size.to_u32, true).address)
+        @buffer = GcPointer(UInt8).malloc(@size.to_u32)
         @size.times do |i|
-            @buffer[i] = 0u8
+            @buffer.ptr[i] = 0u8
         end
     end
 
     # methods
     def []=(k : Int, value : UInt8)
         panic "cstring: out of range" if k > size || k < 0
-        @buffer[k] = value
+        @buffer.ptr[k] = value
     end
 
     def [](k : Int) : UInt8
         panic "cstring: out of range" if k > size || k < 0
-        @buffer[k]
+        @buffer.ptr[k]
     end
 
     def ==(other : String)
         @size.times do |i|
-            return false if @buffer[i] != other[i]
+            return false if @buffer.ptr[i] != other[i]
         end
         true
     end
@@ -39,7 +39,7 @@ class CString < Gc
     #
     def each(&block)
         @size.times do |i|
-            yield @buffer[i]
+            yield @buffer.ptr[i]
         end
     end
 

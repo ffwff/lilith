@@ -5,12 +5,29 @@ require "./alloc.cr"
 abstract class Gc
 end
 
+struct GcPointer(T)
+
+    getter ptr
+
+    def initialize(@ptr : Pointer(T))
+    end
+
+    def self.malloc
+        new LibGc.unsafe_malloc(sizeof(T), false)
+    end
+    def self.malloc(size)
+        {% raise "must not be garbage collected type" if T < Gc %}
+        new LibGc.unsafe_malloc(size.to_u32 * sizeof(T), true).as(Pointer(T))
+    end
+
+end
+
 fun __crystal_malloc64(size : UInt64) : Void*
-    LibGc.malloc size.to_u32
+    LibGc.unsafe_malloc size.to_u32
 end
 
 fun __crystal_malloc_atomic64(size : UInt64) : Void*
-    LibGc.malloc size.to_u32, true
+    LibGc.unsafe_malloc size.to_u32, true
 end
 
 # white nodes
@@ -62,10 +79,9 @@ module LibGc
                 # set zero offset if any of the field isn't 32-bit aligned
                 zero_offset = false
                 {% for ivar in klass.instance_vars %}
-                    {% puts ivar.type %}
-                    {% if ivar.type < Gc || ivar.type < Pointer ||
+                    {% if ivar.type < Gc || ivar.type < GcPointer ||
                         (ivar.type.union? && ivar.type.union_types.any? {|x| x < Gc }) %}
-                        {% puts klass.stringify + " = " + ivar.stringify %}
+                        {% puts klass.stringify + " = " + ivar.stringify + " <" + ivar.type.stringify + ">" %}
                         if offsetof({{ klass }}, @{{ ivar }}).unsafe_mod(4) == 0
                             field_offset = offsetof({{ klass }}, @{{ ivar }}).unsafe_div(4)
                             debug "{{ ivar.type }}: ", offsetof({{ klass }}, @{{ ivar }}), " ", "{{ ivar.type }}", " ", sizeof({{ ivar.type }}), "\n"
@@ -301,7 +317,7 @@ module LibGc
         end
     end
 
-    def malloc(size : UInt32, atomic = false)
+    def unsafe_malloc(size : UInt32, atomic = false)
         if @@enabled
             cycle
         end
