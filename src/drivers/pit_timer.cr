@@ -15,7 +15,7 @@ struct PitInstance
     end
 
     def callback
-        Serial.puts "."
+        # Serial.puts "."
     end
 
 end

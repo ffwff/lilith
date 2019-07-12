@@ -1,11 +1,12 @@
 lib ElfStructs
 
     # http://www.skyfree.org/linux/references/ELF_Format.pdf
+    # https://0x00sec.org/t/dissecting-and-exploiting-elf-files/7267
 
     @[Packed]
     struct Elf32Header
         e_ident     : UInt8[16]
-        e_type      : UInt16
+        e_type      : Elf32EType
         e_machine   : UInt16
         e_version   : UInt32
         e_entry     : UInt32
@@ -20,9 +21,17 @@ lib ElfStructs
         e_shstrndx  : UInt16
     end
 
+    enum Elf32EType : UInt16
+        ET_NONE = 0
+        ET_REL  = 1
+        ET_EXEC = 2
+        ET_DYN  = 3
+        ET_CORE = 4
+    end
+
     @[Packed]
     struct Elf32ProgramHeader
-        p_type   : UInt32
+        p_type   : Elf32PType
         p_offset : UInt32
         p_vaddr  : UInt32
         p_paddr  : UInt32
@@ -32,9 +41,42 @@ lib ElfStructs
         p_align  : UInt32
     end
 
+    enum Elf32PType : UInt32
+        NULL_TYPE    = 0
+        LOAD         = 1
+        DYNAMIC      = 2
+        INTERP       = 3
+        NOTE         = 4
+        SHLIB        = 5
+        PHDR         = 6
+        TLS          = 7
+        GNU_EH_FRAME = 1685382480
+        GNU_STACK    = 1685382481
+        GNU_RELRO    = 1685382482
+        PAX_FLAGS    = 1694766464
+        HIOS         = 1879048191
+        ARM_EXIDX    = 1879048193
+    end
+
+    #
+    @[Packed]
+    struct Elf32SectionHeader
+        sh_name      : UInt32
+        sh_type      : Elf32PType
+        sh_flags     : UInt32
+        sh_addr      : UInt32
+        sh_offset    : UInt32
+        sh_size      : UInt32
+        sh_link      : UInt32
+        sh_info      : UInt32
+        sh_addralign : UInt32
+        sh_entsize   : UInt32
+    end
+
 end
 
 module ElfReader
+    extend self
 
     EI_MAG0       = 0 # 0x7F
     EI_MAG1       = 1 # 'E'
@@ -47,8 +89,62 @@ module ElfReader
     EI_ABIVERSION = 8 # OS Specific
     EI_PAD        = 9 # Padding
 
-    def read(node : VFSNode, fs : VFS)
+    private enum ParserState
+        Byte
+        ElfHeader
+        ProgramHeader
+        SegmentHeader
+    end
+
+    def read(node : VFSNode, fs : VFS, &block)
+        state = ParserState::ElfHeader
+        header = uninitialized ElfStructs::Elf32Header
+        pheader = uninitialized ElfStructs::Elf32ProgramHeader
+
+        idx_h = 0u32
+        n_pheader = 0u32
+        total_bytes = 0u32
         node.read(fs) do |byte|
+            case state
+            when ParserState::ElfHeader
+                pointerof(header).as(UInt8*)[idx_h] = byte
+                idx_h += 1
+                if idx_h == sizeof(ElfStructs::Elf32Header)
+                    unless header.e_ident[0] == 127 &&
+                           header.e_ident[1] == 69  &&
+                           header.e_ident[2] == 76  &&
+                           header.e_ident[3] == 70
+                        panic "invalid ELF header"
+                    end
+                    yield header
+                    panic "e_phentsize isn't equal to sizeof(ProgramHeader)" if header.e_phentsize != sizeof(ElfStructs::Elf32ProgramHeader)
+                    if header.e_phoff == total_bytes + 1
+                        state = ParserState::ProgramHeader
+                        idx_h = 0
+                    else
+                        panic "expected program header"
+                    end
+                end
+            when ParserState::ProgramHeader
+                pointerof(pheader).as(UInt8*)[idx_h] = byte
+                idx_h += 1
+                if idx_h == sizeof(ElfStructs::Elf32ProgramHeader)
+                    yield pheader
+                    n_pheader += 1
+                    idx_h = 0
+                end
+                if n_pheader == header.e_phnum
+                    state = ParserState::Byte
+                    idx_h = 0
+                end
+            when ParserState::Byte
+                if total_bytes < header.e_shoff
+                    yield Tuple.new(total_bytes, byte)
+                end
+            else
+                panic "unknown"
+            end
+            total_bytes += 1
         end
     end
 

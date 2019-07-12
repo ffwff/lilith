@@ -161,6 +161,7 @@ private struct KernelArena
         end
     end
 
+    # TODO reuse empty free pools to different size
     def free(ptr : UInt32)
         pool_hdr = Pointer(Kernel::PoolHeader).new(ptr.to_u64 & 0xFFFF_F000)
         pool = Pool.new pool_hdr

@@ -1,5 +1,6 @@
 require "./core/object.cr"
 require "./core/reference.cr"
+require "./core/enum.cr"
 require "./core/char.cr"
 require "./core/int.cr"
 require "./core/bool.cr"

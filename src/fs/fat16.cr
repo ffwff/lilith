@@ -92,20 +92,63 @@ class Fat16Node < VFSNode
 
     # read
     def read(fs : Fat16FS, &block)
-        sector = fs.data_sector + fs.sectors_per_cluster * (starting_cluster - 2)
-        i = 0
-        j = 0
-        while i < size
-            s = sector + i.unsafe_div(512)
-            Ide.read_sector(s) do |word|
+        if size < 512 * fs.sectors_per_cluster
+            sector = ((starting_cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
+            j = 0
+            Ide.read_sector(sector) do |word|
                 u8 = word.unsafe_shr(8) & 0xFF
                 u8_1 = word & 0xFF
                 yield u8_1.to_u8 if j < size
                 yield u8.to_u8 if j < size
                 j += 2
             end
-            i += 512
+            return
         end
+
+        fat_table = Pointer(UInt16).malloc(fs.fat_sector_size)
+        fat_offset = starting_cluster * 2
+        fat_sector = fs.fat_sector + fat_offset.unsafe_div(fs.fat_sector_size)
+        ent_offset = fat_offset.unsafe_mod(fs.fat_sector_size)
+
+        # read fat table
+        idx = 0
+        #Serial.puts "word:"
+        Ide.read_sector(fat_sector) do |word|
+            fat_table[idx] = word
+            #Serial.puts word, " "
+            idx += 2
+        end
+        # Serial.puts "\n"
+
+        # read file
+        remaining_bytes = size
+        cluster = starting_cluster
+        # Serial.puts "remaining: ", remaining_bytes, "\n"
+        while remaining_bytes > 0 && cluster < 0xFFF8
+            # Serial.puts "remain: ", remaining_bytes, "\n"
+            sector = ((cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
+            read_sector = 0
+            while remaining_bytes > 0 && read_sector < fs.sectors_per_cluster
+                Ide.read_sector(sector + read_sector) do |word|
+                    u8 = word.unsafe_shr(8) & 0xFF
+                    u8_1 = word & 0xFF
+                    if remaining_bytes > 0
+                        yield u8_1.to_u8
+                        remaining_bytes -= 1
+                        if remaining_bytes > 0
+                            yield u8.to_u8 if remaining_bytes > 0
+                            remaining_bytes -= 1
+                        end
+                    end
+                end
+                read_sector += 1
+            end
+            cluster = fat_table[cluster*2]
+        end
+        # Serial.puts "remain: ", remaining_bytes, "\n"
+
+        # cleanup
+        fat_table.free
     end
 
 end
@@ -116,6 +159,11 @@ struct Fat16FS < VFS
     @root = Fat16Node.new
     getter root
 
+    @fat_sector = 0u32
+    getter fat_sector
+    @fat_sector_size = 0u32
+    getter fat_sector_size
+
     @data_sector = 0u32
     getter data_sector
 
@@ -125,26 +173,26 @@ struct Fat16FS < VFS
     def initialize(partition)
         debug "initializing FAT16 filesystem\n"
         bs = uninitialized Fat16Structs::Fat16BootSector
-        begin
-            ptr = Pointer(UInt16).new pointerof(bs).address
-            Ide.read_sector_pointer(ptr, partition.first_sector)
-        end
+        Ide.read_sector_pointer(pointerof(bs).as(UInt16*), partition.first_sector)
         idx = 0
         bs.fs_type.each do |ch|
             panic "only FAT16 is accepted" if ch != FS_TYPE[idx]
             idx += 1
         end
 
+        @fat_sector = partition.first_sector + bs.reserved_sectors
+        @fat_sector_size = bs.fat_size_sectors.to_u32 * bs.number_of_fats.to_u32
+
         root_dir_sectors = ((bs.root_dir_entries * 32) + (bs.sector_size - 1)).unsafe_div bs.sector_size
-        sector = partition.first_sector + bs.reserved_sectors + bs.fat_size_sectors * bs.number_of_fats
+
+        sector = fat_sector + fat_sector_size
         @data_sector = sector + root_dir_sectors
         @sectors_per_cluster = bs.sectors_per_cluster.to_u32
 
         bs.root_dir_entries.times do |i|
             entries = uninitialized Fat16Structs::Fat16Entry[16]
-            ptr = Pointer(UInt16).new pointerof(entries).address
             break if sector + i > @data_sector
-            Ide.read_sector_pointer(ptr, sector + i)
+            Ide.read_sector_pointer(pointerof(entries).as(UInt16*), sector + i)
             entries.each do |entry|
                 next if !dir_entry_exists entry
                 next if is_volume_label entry

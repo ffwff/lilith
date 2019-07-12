@@ -40,10 +40,10 @@ struct Pointer(T)
 
     # pg malloc
     def self.malloc(size)
-        new (Kernel.malloc size.to_u32).to_u64
+        new KERNEL_ARENA.malloc(size.to_u32).to_u64
     end
-    def self.free
-        new (Kernel.free self.address.to_u32).to_u64
+    def free
+        KERNEL_ARENA.free(self.address.to_u32)
     end
 
     # methods
