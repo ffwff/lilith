@@ -125,7 +125,7 @@ fun kmain(kernel_end : Void*,
                         mmap_node = mmap_node.not_nil!
                         if offset >= mmap_node.file_offset && offset < mmap_node.file_offset + mmap_node.filesz
                             ptr = Pointer(UInt8).new(mmap_node.vaddr.to_u64)
-                            Serial.puts ptr, " ", mmap_page_idx, " ", byte, "\n"
+                            # Serial.puts ptr, " ", mmap_page_idx, " ", byte, "\n"
                             ptr[mmap_page_idx] = byte
                             mmap_page_idx += 1
                         elsif mmap_page_idx == mmap_node.filesz + 1
@@ -138,6 +138,9 @@ fun kmain(kernel_end : Void*,
         end
         Multiprocessing.setup_tss
         m_process.switch
+    end
+
+    while true
     end
 
 end

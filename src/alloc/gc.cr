@@ -52,11 +52,8 @@ end
 module LibGc
     extend self
 
-    INITIAL_THRESHOLD = 128
-    USED_SPACE_RATIO = 0.7
     TYPE_ID_SIZE = sizeof(UInt32)
-    @@bytes_allocated = 0
-    @@threshold = INITIAL_THRESHOLD
+    @@allocated = false
     @@first_white_node = Pointer(Kernel::GcNode).null
     @@first_gray_node  = Pointer(Kernel::GcNode).null
     @@first_black_node = Pointer(Kernel::GcNode).null
@@ -67,12 +64,18 @@ module LibGc
         def initialize(@offsets : UInt32, @size : UInt32); end
         def offsets; @offsets; end
         def size; @size; end
+
+        def to_s(io)
+            io.puts "<", offsets, ",", size, ">"
+        end
     end
 
     def init(@@data_start : UInt32, @@data_end : UInt32, @@stack_end : UInt32)
         @@type_info = BTree(UInt32, TypeInfo).new
         type_info = @@type_info.not_nil!
         offsets : UInt32 = 0
+        n_classes = 0
+        node : BTreeNode(UInt32, TypeInfo) | Nil = nil
         {% for klass in Gc.all_subclasses %}
             {% if !klass.abstract? %}
                 offsets = 0
@@ -94,13 +97,23 @@ module LibGc
                 {% end %}
                 type_id = {{ klass }}.crystal_instance_type_id.to_u32
                 # debug "id: ", type_id, "\n"
-                if zero_offset
-                    type_info.insert(type_id, TypeInfo.new(0, sizeof({{ klass }}).to_u32))
+                value = if zero_offset
+                    TypeInfo.new(0, sizeof({{ klass }}).to_u32)
                 else
-                    type_info.insert(type_id, TypeInfo.new(offsets, sizeof({{ klass }}).to_u32))
+                    TypeInfo.new(offsets, sizeof({{ klass }}).to_u32)
+                end
+                n_classes += 1
+                if node.nil?
+                    node = BTreeNode(UInt32, TypeInfo).new(type_id, value)
+                    type_info.root = node
+                else
+                    node.right = BTreeNode(UInt32, TypeInfo).new(type_id, value)
+                    node = node.right
                 end
             {% end %}
         {% end %}
+        type_info.balance n_classes
+        Serial.puts type_info, '\n'
         @@enabled = true
     end
 
@@ -173,7 +186,7 @@ module LibGc
     end
 
     def cycle
-        if @@bytes_allocated == 0
+        if !@@allocated
             # nothing's allocated
             return
         end
@@ -210,7 +223,7 @@ module LibGc
                 node.value.magic = GC_NODE_MAGIC_BLACK
 
                 buffer_addr = node.address.to_u64 + sizeof(Kernel::GcNode) + TYPE_ID_SIZE
-                # get its typeid
+                # get its type id
                 type_id = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode)).value
                 debug "type: ", type_id, "\n"
                 # lookup its offsets
@@ -328,7 +341,7 @@ module LibGc
         # append node to linked list
         if @@enabled
             push(@@first_gray_node, header)
-            @@bytes_allocated += size
+            @@allocated = true
         end
         # return
         ptr = Pointer(Void).new(header.address.to_u64 + sizeof(Kernel::GcNode))

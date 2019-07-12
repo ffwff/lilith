@@ -1,25 +1,9 @@
 class BTreeNode(K, V)
 
-    def initialize(@key : K, @value : V, @left = nil, @right = nil)
+    def initialize(@key : K, @value : V, @left : BTreeNode(K, V) | Nil = nil, @right : BTreeNode(K, V) | Nil = nil)
     end
 
-    def insert(key, value)
-        if key == @key
-            @value = value
-        elsif key < @key
-            if @left.nil?
-                @left = BTreeNode(K, V).new key, value
-            else
-                @left.not_nil!.insert key, value
-            end
-        elsif key > @key
-            if @right.nil?
-                @right = BTreeNode(K, V).new key, value
-            else
-                @right.not_nil!.insert key, value
-            end
-        end
-    end
+    property key, value, left, right
 
     def search(key)
         if key == @key
@@ -52,22 +36,57 @@ end
 
 class BTree(K, V)
 
-    def initialize(@root = nil)
+    def initialize(@root : BTreeNode(K, V) | Nil = nil)
     end
-
-    def insert(key, value)
-        if @root.nil?
-            @root = BTreeNode(K, V).new key, value
-        else
-            @root.not_nil!.insert key, value
-        end
-    end
+    property root
 
     def search(key)
         if @root.nil?
             nil
         else
             @root.not_nil!.search key
+        end
+    end
+
+    def balance(nelems)
+        # turn into sorted linked list
+        tail = root.not_nil!
+        rest = tail.right
+        while !rest.nil?
+            rest = rest.not_nil!
+            if rest.left.nil?
+                tail = rest
+                rest = rest.right
+            else
+                temp = rest.left.not_nil!
+                rest.left = temp.right
+                temp.right = rest
+                rest = temp
+                tail.right = temp
+            end
+        end
+
+        # balance it
+        root = @root.not_nil!
+        leaves = nelems + 1 - nelems.lowest_power_of_2
+        compress root, leaves
+        nelems -= leaves
+        while nelems > 1
+            nelems = nelems.unsafe_div(2)
+            compress root, nelems
+        end
+    end
+
+    private def compress(root, count)
+        scanner = root.not_nil!
+        i = 0
+        while i < count
+            child = scanner.right.not_nil!
+            scanner.right = child.right
+            scanner = scanner.right.not_nil!
+            child.right = scanner.left
+            scanner.left = child
+            i += 1
         end
     end
 

@@ -60,6 +60,17 @@ struct Int
         n.unsafe_shl 1
     end
 
+    @[AlwaysInline]
+    def lowest_power_of_2
+        x = self
+        x = x | x.unsafe_shr(1)
+        x = x | x.unsafe_shr(2)
+        x = x | x.unsafe_shr(4)
+        x = x | x.unsafe_shr(8)
+        x = x | x.unsafe_shr(16)
+        x - x.unsafe_shr(1)
+    end
+
     # format
     private BASE = "0123456789abcdefghijklmnopqrstuvwxyz"
     private def internal_to_s(base = 10)
