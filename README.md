@@ -8,6 +8,16 @@ A simple x86 kernel written in Crystal.
 make build/kernel
 ```
 
+## Features
+
+* [x] Basic x86 support with paging/interrupts
+* [x] Hybrid conservative-precise incremental garbage collector
+* [x] IDE/ATA support (well, it can only read from primary master)
+* [x] FAT16 support
+* [ ] Basic syscalls
+* [x] Preemptive multitasking!
+* [ ] And much more as I go...
+
 ## License
 
 This program is licensed under GPLv3.

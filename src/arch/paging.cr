@@ -123,7 +123,7 @@ module Paging
 
         # claim
         while virt_addr < virt_addr_end
-            Serial.puts "virt addr: ", Pointer(Void).new(virt_addr.to_u64), "\n"
+            # Serial.puts "virt addr: ", Pointer(Void).new(virt_addr.to_u64), "\n"
             # allocate page frame
             iaddr = claim_frame
             addr = iaddr.to_u32 * 0x1000 + @@frame_base_addr

@@ -89,8 +89,9 @@ fun kmain(kernel_end : Void*,
         m_process = Multiprocessing::Process.new do |proc|
             vfs = main_bin.not_nil!
             fs = fs.not_nil!
-            mmap_list = MemMapList.new
-            mmap_node : MemMapNode | Nil = nil
+            mmap_list : GcArray(MemMapNode) | Nil = nil
+            mmap_append_idx = 0
+            mmap_idx = 0
             mmap_page_idx = 0u32
 
             ElfReader.read(vfs, fs) do |data|
@@ -100,15 +101,16 @@ fun kmain(kernel_end : Void*,
                     Serial.puts "offset: ", data.e_phoff, "\n"
                     Serial.puts "sz: ", data.e_phentsize, "\n"
                     Serial.puts "num: ", data.e_phnum, "\n"
+                    mmap_list = GcArray(MemMapNode).new data.e_phnum.to_i32
                 when ElfStructs::Elf32ProgramHeader
                     data = data.as(ElfStructs::Elf32ProgramHeader)
+
                     if data.p_memsz > 0
                         ins_node = MemMapNode.new(data.p_offset, data.p_filesz, data.p_vaddr, data.p_memsz)
-                        if mmap_node.nil?
-                            mmap_node = ins_node
-                        end
-                        mmap_list.append ins_node
+                        mmap_list.not_nil![mmap_append_idx] = ins_node
+                        mmap_append_idx += 1
                     end
+
                     case data.p_type
                     when ElfStructs::Elf32PType::LOAD
                         npages = data.p_memsz.div_ceil 4096
@@ -121,8 +123,8 @@ fun kmain(kernel_end : Void*,
                     end
                 when Tuple(UInt32, UInt8)
                     offset, byte = data.as(Tuple(UInt32, UInt8))
-                    if !mmap_node.nil?
-                        mmap_node = mmap_node.not_nil!
+                    if !mmap_list.nil?
+                        mmap_node = mmap_list.not_nil![mmap_idx]
                         if offset >= mmap_node.file_offset && offset < mmap_node.file_offset + mmap_node.filesz
                             ptr = Pointer(UInt8).new(mmap_node.vaddr.to_u64)
                             # Serial.puts ptr, " ", mmap_page_idx, " ", byte, "\n"
@@ -130,7 +132,7 @@ fun kmain(kernel_end : Void*,
                             mmap_page_idx += 1
                         elsif mmap_page_idx == mmap_node.filesz + 1
                             mmap_page_idx = 0
-                            mmap_node = mmap_node.next_node
+                            mmap_idx += 1
                         end
                     end
                 end
