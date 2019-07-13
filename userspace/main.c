@@ -21,6 +21,10 @@ static unsigned long open(const char *device) {
     return sysenter(0, (unsigned long)device, 0);
 }
 
+static unsigned long write(unsigned long fd, const char *str) {
+    return sysenter(2, fd, (unsigned long)str);
+}
+
 void _start() {
     unsigned long dev = open("vga");
     while(1) {

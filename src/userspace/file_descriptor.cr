@@ -1,8 +1,9 @@
 class FileDescriptor < Gc
 
-    @vfs_node : VFSNode | Nil = nil
+    @node : VFSNode | Nil = nil
+    getter node
 
-    def initialize(@vfs_node)
+    def initialize(@node)
     end
 
 end

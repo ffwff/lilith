@@ -11,7 +11,19 @@ struct NullTerminatedSlice
 
     def [](idx : Int)
         panic "NullTerminatedSlice: out of range" if idx > @size || idx < 0
-        @buffer[@size]
+        @buffer[idx]
+    end
+    def [](range : Range(Int32, Int32))
+        panic "NullTerminatedSlice: out of range" if range.begin > range.end
+        Slice(UInt8).new(@buffer + range.begin, range.size)
+    end
+
+    def each(&block)
+        i = 0
+        while i < @size
+            yield @buffer[i]
+            i += 1
+        end
     end
 
 end

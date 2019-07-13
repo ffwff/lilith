@@ -13,6 +13,7 @@ require "./arch/multiboot.cr"
 require "./alloc/alloc.cr"
 require "./alloc/gc.cr"
 require "./fs/fat16.cr"
+require "./fs/vgafs.cr"
 require "./userspace/syscall.cr"
 require "./userspace/process.cr"
 require "./userspace/elf.cr"
@@ -21,6 +22,8 @@ require "./userspace/mmap_list.cr"
 lib Kernel
     fun ksyscall_setup()
 end
+
+ROOTFS = RootFS.new
 
 fun kmain(kernel_end : Void*,
         text_start : Void*, text_end : Void*,
@@ -67,22 +70,22 @@ fun kmain(kernel_end : Void*,
 
     #
     VGA.puts "initializing rootfs...\n"
-    rootfs = RootFS.new
 
     mbr = MBR.read_ide
-    fs : VFS | Nil = nil
     main_bin : VFSNode | Nil = nil
     if mbr.header[0] == 0x55 && mbr.header[1] == 0xaa
         VGA.puts "found MBR header...\n"
         fs = Fat16FS.new mbr.partitions[0]
-        fs.not_nil!.root.each_child do |node|
+        fs.root.each_child do |node|
             Serial.puts "node: ", node.name, "\n"
             if node.name == "MAIN.BIN"
                 main_bin = node
             end
         end
-        rootfs.append(fs)
+        ROOTFS.append(fs)
     end
+
+    ROOTFS.append(VGAFS.new)
 
     VGA.puts "setting up syscalls...\n"
     Kernel.ksyscall_setup
@@ -128,7 +131,7 @@ fun kmain(kernel_end : Void*,
                 when Tuple(UInt32, UInt8)
                     offset, byte = data.as(Tuple(UInt32, UInt8))
                     if !mmap_list.nil?
-                        mmap_node = mmap_list.not_nil![mmap_idx]
+                        mmap_node = mmap_list.not_nil![mmap_idx].not_nil!
                         if offset >= mmap_node.file_offset && offset < mmap_node.file_offset + mmap_node.filesz
                             ptr = Pointer(UInt8).new(mmap_node.vaddr.to_u64)
                             # Serial.puts ptr, " ", mmap_page_idx, " ", byte, "\n"

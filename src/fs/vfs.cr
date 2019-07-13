@@ -3,11 +3,14 @@ abstract class VFSNode < Gc
     abstract def size : Int
     abstract def name : CString | Nil
 
+    abstract def read(ptr : UInt8*, len : UInt32) : UInt32
+    abstract def write(slice : NullTerminatedSlice) : UInt32
+
 end
 
 abstract class VFS < Gc
 
-    abstract def name
+    abstract def name : String
 
     abstract def next_node : VFS | Nil
     abstract def next_node=(x : VFS | Nil)
@@ -30,6 +33,14 @@ class RootFS < Gc
         else
             node.next_node = @vfs_node
             @vfs_node = node
+        end
+    end
+
+    def each(&block)
+        node = @vfs_node
+        while !node.nil?
+            yield node
+            node = node.next_node
         end
     end
 

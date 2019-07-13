@@ -41,9 +41,13 @@ class GcArray(T) < Gc
         @buffer = Pointer(T).new((ptr.address + GC_ARRAY_HEADER_SIZE).to_u64)
     end
 
-    def [](idx : Int)
+    def [](idx : Int) : T | Nil
         panic "GcArray: out of range" if idx < 0 && idx > @size
-        @buffer[idx]
+        if @buffer.as(UInt32*)[idx] == 0
+            nil
+        else
+            @buffer[idx]
+        end
     end
 
     def []=(idx : Int, value : T)

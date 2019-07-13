@@ -1,0 +1,31 @@
+struct Slice(T)
+
+    getter size
+
+    def initialize(@buffer : Pointer(T), @size : Int32)
+    end
+
+    def [](idx : Int)
+        panic "Slice: out of range" if idx > @size || idx < 0
+        @buffer[idx]
+    end
+
+    def each(&block)
+        i = 0
+        while i < @size
+            yield @buffer[i]
+            i += 1
+        end
+    end
+
+    def ==(other : String)
+        return false if other.size != self.size
+        i = 0
+        other.each_char do |ch|
+            return false if ch != self[i]
+            i += 1
+        end
+        true
+    end
+
+end

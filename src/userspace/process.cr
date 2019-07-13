@@ -83,7 +83,6 @@ module Multiprocessing
         def switch
             Multiprocessing.current_process = self
             Idt.disable
-            Serial.puts "obj: ", self.object_id, "\n"
             dir = @phys_page_dir # this must be stack allocated
             # because it's placed in the virtual kernel heap
             panic "page dir is nil" if dir == 0
@@ -108,6 +107,25 @@ module Multiprocessing
             frame.ss = 0x23u32
             @frame = frame
             frame
+        end
+
+        # file descriptors
+        def install_fd(node : VFSNode) : Int32
+            i = 0
+            f = fds.not_nil!
+            while i < MAX_FD
+                if f[i].nil?
+                    f[i] = FileDescriptor.new node
+                    return i
+                end
+                i += 1
+            end
+            255
+        end
+
+        def get_fd(i : Int32) : FileDescriptor | Nil
+            return nil if i > MAX_FD || i < 0
+            fds[i]
         end
 
     end

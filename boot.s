@@ -171,22 +171,22 @@ ksyscall_stub:
     call ksyscall_handler
     popa
     add $4, %esp
+    # use di because it is clobber value
     # segments
-    mov $0x23, %ax
-    mov %ax, %ds
-    mov %ax, %es
-    mov %ax, %fs
-    mov %ax, %gs
+    mov $0x23, %di
+    mov %di, %ds
+    mov %di, %es
+    mov %di, %fs
+    mov %di, %gs
     # data selector
     pushl $0x23
     # setup stack
     pushl %ecx
-    # eflags
+    # eflags (enable interrupts)
     pushf
-    # enable interrupts
-    pop %eax
-    or $0x200, %eax
-    push %eax
+    pop %edi
+    or $0x200, %edi
+    push %edi
     # code selector
     pushl $0x1B
     # instruction pointer
