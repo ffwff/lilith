@@ -59,10 +59,21 @@ end
 # consts
 SYSCALL_ERR = 255u32
 
+private macro try!(expr)
+    begin
+        if !(x = {{ expr }}).nil?
+            x.not_nil!
+        else
+            frame.eax = SYSCALL_ERR
+            return
+        end
+    end
+end
+
 fun ksyscall_handler(frame : SyscallData::Registers)
     case frame.eax
     when 0 # open
-        path = NullTerminatedSlice.new(checked_pointer(frame.ebx).not_nil!.as(UInt8*))
+        path = NullTerminatedSlice.new(try!(checked_pointer(frame.ebx)).as(UInt8*))
         vfs_node : VFSNode | Nil = nil
         parse_path_into_segments(path) do |segment|
             if vfs_node.nil? # no path specifier
@@ -92,13 +103,10 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     when 2 # write
         fdi = frame.ebx.to_i32
         frame.eax = SYSCALL_ERR
-        arg = checked_pointer(frame.edx).not_nil!.as(SyscallData::SyscallStringArgument*)
-        str = Slice.new(checked_pointer(arg.value.str).not_nil!.as(UInt8*), arg.value.len)
-        if (fd = Multiprocessing.current_process.not_nil!.get_fd(fdi)).nil?
-            frame.eax = SYSCALL_ERR
-        else
-            frame.eax = fd.not_nil!.node.not_nil!.write(str)
-        end
+        arg = try!(checked_pointer(frame.edx)).as(SyscallData::SyscallStringArgument*)
+        str = Slice.new(try!(checked_pointer(arg.value.str)).as(UInt8*), arg.value.len)
+        fd = try!(Multiprocessing.current_process.not_nil!.get_fd(fdi))
+        frame.eax = fd.not_nil!.node.not_nil!.write(str)
     when 3 # getpid
         frame.eax = Multiprocessing.current_process.not_nil!.pid
     else

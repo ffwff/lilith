@@ -12,7 +12,7 @@ class VGAFsNode < VFSNode
         nil
     end
 
-    def read(ptr : UInt8*, len : UInt32) : UInt32
+    def read(slice : Slice) : UInt32
         0u32
     end
 

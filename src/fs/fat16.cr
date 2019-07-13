@@ -93,15 +93,18 @@ class Fat16Node < VFSNode
     end
 
     # read
-    def read(&block)
-        if size < 512 * fs.sectors_per_cluster
+    def read(read_size=0, &block)
+        if read_size == 0
+            read_size = size
+        end
+        if read_size < 512 * fs.sectors_per_cluster
             sector = ((starting_cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
             j = 0
             Ide.read_sector(sector) do |word|
                 u8 = word.unsafe_shr(8) & 0xFF
                 u8_1 = word & 0xFF
-                yield u8_1.to_u8 if j < size
-                yield u8.to_u8 if j < size
+                yield u8_1.to_u8 if j < read_size
+                yield u8.to_u8 if j < read_size
                 j += 2
             end
             return
@@ -114,20 +117,15 @@ class Fat16Node < VFSNode
 
         # read fat table
         idx = 0
-        #Serial.puts "word:"
         Ide.read_sector(fat_sector) do |word|
             fat_table[idx] = word
-            #Serial.puts word, " "
             idx += 2
         end
-        # Serial.puts "\n"
 
         # read file
-        remaining_bytes = size
+        remaining_bytes = read_size
         cluster = starting_cluster
-        # Serial.puts "remaining: ", remaining_bytes, "\n"
         while remaining_bytes > 0 && cluster < 0xFFF8
-            # Serial.puts "remain: ", remaining_bytes, "\n"
             sector = ((cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
             read_sector = 0
             while remaining_bytes > 0 && read_sector < fs.sectors_per_cluster
@@ -147,17 +145,17 @@ class Fat16Node < VFSNode
             end
             cluster = fat_table[cluster*2]
         end
-        # Serial.puts "remain: ", remaining_bytes, "\n"
 
         # cleanup
         fat_table.free
     end
 
+    #
     def open(path : Slice) : VFSNode | Nil
         nil
     end
 
-    def read(ptr : UInt8*, len : UInt32) : UInt32
+    def read(slice : Slice) : UInt32
         SYSCALL_ERR
     end
 
