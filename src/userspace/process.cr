@@ -80,7 +80,7 @@ module Multiprocessing
             Idt.enable
         end
 
-        def switch
+        def initial_switch
             Multiprocessing.current_process = self
             Idt.disable
             dir = @phys_page_dir # this must be stack allocated
@@ -130,6 +130,12 @@ module Multiprocessing
 
     end
 
+    def setup_tss
+        esp0 = 0u32
+        asm("mov %esp, $0;" : "=r"(esp0) :: "volatile")
+        Kernel.kset_stack esp0
+    end
+
     # round robin scheduling algorithm
     def next_process : Process | Nil
         return nil if @@current_process.nil?
@@ -141,10 +147,33 @@ module Multiprocessing
         @@current_process
     end
 
-    def setup_tss
-        esp0 = 0u32
-        asm("mov %esp, $0;" : "=r"(esp0) :: "volatile")
-        Kernel.kset_stack esp0
+    # context switching
+    def switch_to_next_process(frame : IdtData::Registers*)
+        # return if no other processes
+        return if pids < 2
+        # save current frame
+        current_process.not_nil!.frame = frame.value
+        # next
+        n = next_process.not_nil!
+        if n.frame.nil?
+            n.new_frame
+        end
+        process_frame = n.frame.not_nil!
+        {% for id in [
+            "ds",
+            "edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax",
+            "eip", "cs", "eflags", "useresp", "ss"
+        ] %}
+        frame.value.{{ id.id }} = process_frame.{{ id.id }}
+        {% end %}
+        # Serial.puts "frame: ", Pointer(Void).new(frame.eip.to_u64), "\n"
+
+        dir = n.phys_page_dir # this must be stack allocated
+        # because it's placed in the virtual kernel heap
+        panic "page dir is nil" if dir == 0
+        Paging.disable
+        Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
+        Paging.enable
     end
 
 end

@@ -91,33 +91,7 @@ fun kirq_handler(frame : IdtData::Registers)
     # interrupt must happen in user mode
     if frame.int_no == 0 && !Multiprocessing.current_process.nil?
         # preemptive multitasking...
-        # get the pointer to the literal frame argument
-        esp = 0u32
-        asm("mov %esp, $0;" : "=r"(esp) :: "volatile")
-        # save current frame
-        current_process = Multiprocessing.current_process.not_nil!
-        current_process.frame = frame
-        # next
-        next_process = Multiprocessing.next_process.not_nil!
-        if next_process.frame.nil?
-            next_process.new_frame
-        end
-        process_frame = next_process.frame.not_nil!
-        {% for id in [
-            "ds",
-            "edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax",
-            "eip", "cs", "eflags", "useresp", "ss"
-        ] %}
-        frame.{{ id.id }} = process_frame.{{ id.id }}
-        {% end %}
-        # Serial.puts "frame: ", Pointer(Void).new(frame.eip.to_u64), "\n"
-
-        dir = next_process.not_nil!.phys_page_dir # this must be stack allocated
-        # because it's placed in the virtual kernel heap
-        panic "page dir is nil" if dir == 0
-        Paging.disable
-        Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
-        Paging.enable
+        Multiprocessing.switch_to_next_process pointerof(frame)
     end
 
     if Idt.irq_handlers[frame.int_no].pointer.null?

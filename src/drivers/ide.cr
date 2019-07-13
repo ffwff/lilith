@@ -245,6 +245,7 @@ module Ide
         end
         @@ata.flush_cache bus
         @@ata.wait bus
+        true
     end
 
     def read_sector_pointer(ptr : UInt16*, sector_28, bus=DISK_PORT, slave=0)

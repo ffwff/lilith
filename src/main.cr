@@ -146,7 +146,7 @@ fun kmain(kernel_end : Void*,
             end
         end
         Multiprocessing.setup_tss
-        m_process.switch
+        m_process.initial_switch
     end
 
     while true
