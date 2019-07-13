@@ -5,6 +5,24 @@ class BTreeNode(K, V)
 
     property key, value, left, right
 
+    def insert(key, value)
+        if key == @key
+            @value = value
+        elsif key < @key
+            if @left.nil?
+                @left = BTreeNode(K, V).new key, value
+            else
+                @left.not_nil!.insert key, value
+            end
+        elsif key > @key
+            if @right.nil?
+                @right = BTreeNode(K, V).new key, value
+            else
+                @right.not_nil!.insert key, value
+            end
+        end
+    end
+
     def search(key)
         if key == @key
             @value
@@ -40,6 +58,14 @@ class BTree(K, V)
     end
     property root
 
+    def insert(key, value)
+        if @root.nil?
+            @root = BTreeNode(K, V).new key, value
+        else
+            @root.not_nil!.insert key, value
+        end
+    end
+
     def search(key)
         if @root.nil?
             nil
@@ -50,7 +76,8 @@ class BTree(K, V)
 
     def balance(nelems)
         # turn into sorted linked list
-        tail = root.not_nil!
+        proot = BTreeNode(K, V).new(root.not_nil!.key, root.not_nil!.value, nil, root)
+        tail = proot
         rest = tail.right
         while !rest.nil?
             rest = rest.not_nil!
@@ -67,14 +94,14 @@ class BTree(K, V)
         end
 
         # balance it
-        root = @root.not_nil!
         leaves = nelems + 1 - nelems.lowest_power_of_2
-        compress root, leaves
+        compress proot, leaves
         nelems -= leaves
         while nelems > 1
             nelems = nelems.unsafe_div(2)
-            compress root, nelems
+            compress proot, nelems
         end
+        @root = proot.right
     end
 
     private def compress(root, count)

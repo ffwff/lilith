@@ -1,3 +1,5 @@
+require "./file_descriptor.cr"
+
 private lib Kernel
     fun kset_stack(address : UInt32)
     fun kswitch_usermode()
@@ -31,11 +33,18 @@ module Multiprocessing
         @phys_page_dir : UInt32 = 0
         getter phys_page_dir
 
-        # interrupt frame
+        # interrupt frame for preemptive multitasking
         @frame : IdtData::Registers | Nil = nil
         property frame
 
+        MAX_FD = 16
+        getter fds
+
         def initialize(&on_setup_paging)
+            # file descriptors
+            # BUG: must be initialized here or the GC won't catch it
+            @fds = GcArray(FileDescriptor).new MAX_FD
+
             Idt.disable
 
             @pid = Multiprocessing.pids
@@ -52,7 +61,7 @@ module Multiprocessing
             end
             Multiprocessing.pids += 1
 
-            # text pages
+            # setup pages
             yield self
 
             if Multiprocessing.first_process.nil?

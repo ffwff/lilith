@@ -1,9 +1,7 @@
 abstract class VFSNode < Gc
 
     abstract def size : Int
-
-    # NOTE: must not use break
-    # abstract def read(vfs : VFS, &block)
+    abstract def name : CString | Nil
 
 end
 

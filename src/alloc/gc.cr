@@ -28,7 +28,8 @@ GC_ARRAY_HEADER_SIZE = 8
 class GcArray(T) < Gc
 
     GC_GENERIC_TYPES = [
-        GcArray(MemMapNode)
+        GcArray(MemMapNode),
+        GcArray(FileDescriptor)
     ]
     # one long for typeid, one long for length
     getter size
@@ -138,7 +139,6 @@ module LibGc
         type_info = @@type_info.not_nil!
         offsets : UInt32 = 0
         n_classes = 0
-        node : BTreeNode(UInt32, TypeInfo) | Nil = nil
         {% for klass in Gc.all_subclasses %}
             {% if !klass.abstract? %}
                 offsets = 0
@@ -150,7 +150,11 @@ module LibGc
                 # so the user will have to provide it to us in the GC_GENERIC_TYPES constant
                 type_names = [klass]
                 if !klass.type_vars.empty?
-                    type_names = klass.constant("GC_GENERIC_TYPES")
+                    if klass.type_vars.all?{|i| i.class_name == "MacroId" }
+                        type_names = klass.constant("GC_GENERIC_TYPES")
+                    else
+                        type_names = [] of TypeNode
+                    end
                 end
                 %}
                 {% for type_name in type_names %}
@@ -177,17 +181,10 @@ module LibGc
                         TypeInfo.new(offsets, sizeof({{ type_name }}).to_u32)
                     end
                     n_classes += 1
-                    if node.nil?
-                        node = BTreeNode(UInt32, TypeInfo).new(type_id, value)
-                        type_info.root = node
-                    else
-                        node.right = BTreeNode(UInt32, TypeInfo).new(type_id, value)
-                        node = node.right
-                    end
+                    type_info.insert(type_id, value)
                 {% end %}
             {% end %}
         {% end %}
-        debug type_info, '\n'
         type_info.balance n_classes
         @@enabled = true
     end
