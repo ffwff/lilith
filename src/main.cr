@@ -25,7 +25,9 @@ end
 
 ROOTFS = RootFS.new
 
-fun kmain(kernel_end : Void*,
+fun kmain(
+        fxsave_region : UInt8*,
+        kernel_end : Void*,
         text_start : Void*, text_end : Void*,
         data_start : Void*, data_end : Void*,
         stack_start : Void*, stack_end : Void*,
@@ -34,6 +36,8 @@ fun kmain(kernel_end : Void*,
     if mboot_magic != MULTIBOOT_BOOTLOADER_MAGIC
         panic "Kernel should be booted from a multiboot bootloader!"
     end
+
+    Multiprocessing.fxsave_region = fxsave_region
 
     # drivers
     pit = PitInstance.new

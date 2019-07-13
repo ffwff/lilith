@@ -41,8 +41,18 @@ _start:
     push $_TEXT_END
     push $_TEXT_START
     push $_KERNEL_END
+    push $fxsave_region
+    # setup sse
+    mov %cr0, %eax
+    and $0xFFFB, %ax
+    or $0x2, %ax
+    mov %eax, %cr0
+    mov %cr4, %eax
+    or $0x600, %ax
+    mov %eax, %cr4
+    # run the function
     call kmain
-    hlt 		         # halt the CPU
+    hlt                 # halt the CPU
 
 # -- utils
 # gdt
@@ -67,6 +77,9 @@ kload_idt:
     ret
 # irq stub
 kirq_stub:
+    # save sse state
+    fxsave (fxsave_region)
+    # registers
     pusha
     # save data segment descriptor
     mov %ds, %ax
@@ -89,6 +102,8 @@ kirq_stub:
     # return
     popa
     add $4, %esp
+    # reload sse state
+    fxrstor (fxsave_region)
     iret
 # irq
 .altmacro
@@ -165,12 +180,16 @@ ksyscall_stub:
     mov %ax, %fs
     mov %ax, %gs
     pop %ax
+    # save sse state
+    fxsave (fxsave_region)
     # call the handler
     pusha
     cld
     call ksyscall_handler
     popa
     add $4, %esp
+    # load sse state
+    fxrstor (fxsave_region)
     # use di because it is clobber value
     # segments
     mov $0x23, %di
@@ -192,6 +211,11 @@ ksyscall_stub:
     # instruction pointer
     push (%ecx)
     iret
+
+.section .data
+.align 16
+fxsave_region:
+.skip 512
 
 # -- stack
 .section .stack

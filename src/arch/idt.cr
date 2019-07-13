@@ -91,14 +91,19 @@ fun kirq_handler(frame : IdtData::Registers)
     # interrupt must happen in user mode
     if frame.int_no == 0 && Multiprocessing.pids > 1
         # preemptive multitasking...
-        # save current frame
+
+        # save current process' state
         current_process = Multiprocessing.current_process.not_nil!
         current_process.frame = frame
+        memcpy current_process.fxsave_region.ptr, Multiprocessing.fxsave_region, 512
+
         # next
         next_process = Multiprocessing.next_process.not_nil!
         if next_process.frame.nil?
             next_process.new_frame
         end
+
+        # load process's state
         process_frame = next_process.frame.not_nil!
         {% for id in [
             "ds",
@@ -107,7 +112,7 @@ fun kirq_handler(frame : IdtData::Registers)
         ] %}
         frame.{{ id.id }} = process_frame.{{ id.id }}
         {% end %}
-        # Serial.puts "frame: ", Pointer(Void).new(frame.eip.to_u64), "\n"
+        memcpy Multiprocessing.fxsave_region, next_process.fxsave_region.ptr, 512
 
         dir = next_process.not_nil!.phys_page_dir # this must be stack allocated
         # because it's placed in the virtual kernel heap

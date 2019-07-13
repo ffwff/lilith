@@ -18,6 +18,9 @@ module Multiprocessing
     mod_property first_process
     @@pids = 0u32
     mod_property pids
+    @@fxsave_region = Pointer(UInt8).null
+    def fxsave_region; @@fxsave_region; end
+    def fxsave_region=(@@fxsave_region); end
 
     class Process < Gc
 
@@ -37,6 +40,9 @@ module Multiprocessing
         @frame : IdtData::Registers | Nil = nil
         property frame
 
+        # sse state
+        getter fxsave_region
+
         MAX_FD = 16
         getter fds
 
@@ -44,6 +50,8 @@ module Multiprocessing
             # file descriptors
             # BUG: must be initialized here or the GC won't catch it
             @fds = GcArray(FileDescriptor).new MAX_FD
+            @fxsave_region = GcPointer(UInt8).malloc(512)
+            # panic @fxsave_region.ptr, '\n'
 
             Idt.disable if disable_idt
 
