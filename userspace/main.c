@@ -35,7 +35,7 @@ static unsigned long write(unsigned long fd, const char *str, unsigned long len)
 
 void _start() {
     // unsigned long dev = open("/vga//x");
-    unsigned long dev = open("vga");
+    unsigned long dev = open("/vga");
     //unsigned long dev = open("/vga/x");
     while(1) {
         write(dev, "ABC", 1);

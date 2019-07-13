@@ -7,9 +7,15 @@ class VGAFsNode < VFSNode
         nil
     end
 
+    #
+    def open(path : Slice) : VFSNode | Nil
+        nil
+    end
+
     def read(ptr : UInt8*, len : UInt32) : UInt32
         0u32
     end
+
     def write(slice : Slice) : UInt32
         slice.each do |ch|
             VGA.puts ch.unsafe_chr

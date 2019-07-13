@@ -42,7 +42,7 @@ private def parse_path_into_segments(path, &block)
         #Serial.puts path[i].unsafe_chr
         if path[i] == '/'.ord
             # ignore multi occurences of slashes
-            if pslice_start - i != 0
+            if i - pslice_start > 0
                 # search for root subsystems
                 yield path[pslice_start..i]
             end
@@ -51,7 +51,7 @@ private def parse_path_into_segments(path, &block)
         end
         i += 1
     end
-    if pslice_start < path.size
+    if path.size - pslice_start > 0
         yield path[pslice_start..path.size]
     end
 end
@@ -71,18 +71,22 @@ fun ksyscall_handler(frame : SyscallData::Registers)
                         node = fs.root
                         if node.nil?
                             frame.eax = SYSCALL_ERR
+                            return
                         else
-                            frame.eax = Multiprocessing.current_process.not_nil!.install_fd(node.not_nil!)
-                            # panic "opened! ", frame.eax, '\n'
+                            vfs_node = node
+                            break
                         end
-                        return
                     end
                 end
             else
-                # TODO
+                vfs_node = vfs_node.open(segment)
             end
         end
-        frame.eax = SYSCALL_ERR
+        if vfs_node.nil?
+            frame.eax = SYSCALL_ERR
+        else
+            frame.eax = Multiprocessing.current_process.not_nil!.install_fd(vfs_node.not_nil!)
+        end
     when 1 # read
         frame.eax = SYSCALL_ERR
     when 2 # write

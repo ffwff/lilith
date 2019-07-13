@@ -153,6 +153,10 @@ class Fat16Node < VFSNode
         fat_table.free
     end
 
+    def open(path : Slice) : VFSNode | Nil
+        nil
+    end
+
     def read(ptr : UInt8*, len : UInt32) : UInt32
         SYSCALL_ERR
     end
