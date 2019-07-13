@@ -72,7 +72,6 @@ class Fat16Node < VFSNode
     # children
     def each_child(&block)
         node = first_child
-        Serial.puts "child: ", node.nil?, "\n"
         while !node.nil?
             yield node.not_nil!
             node = node.next_node
@@ -153,7 +152,6 @@ class Fat16Node < VFSNode
     #
     def open(path : Slice) : VFSNode | Nil
         node = first_child
-        Serial.puts !node.nil?, '\n'
         while !node.nil?
             if node.name == path
                 return node
