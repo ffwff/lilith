@@ -99,7 +99,7 @@ fun kmain(kernel_end : Void*,
             mmap_list : GcArray(MemMapNode) | Nil = nil
             mmap_append_idx = 0
             mmap_idx = 0
-            mmap_page_idx = 0u32
+            mmap_vaddr_idx = 0u32
 
             ElfReader.read(vfs) do |data|
                 case data
@@ -135,10 +135,10 @@ fun kmain(kernel_end : Void*,
                         if offset >= mmap_node.file_offset && offset < mmap_node.file_offset + mmap_node.filesz
                             ptr = Pointer(UInt8).new(mmap_node.vaddr.to_u64)
                             # Serial.puts ptr, " ", mmap_page_idx, " ", byte, "\n"
-                            ptr[mmap_page_idx] = byte
-                            mmap_page_idx += 1
-                        elsif mmap_page_idx == mmap_node.filesz + 1
-                            mmap_page_idx = 0
+                            ptr[mmap_vaddr_idx] = byte
+                            mmap_vaddr_idx += 1
+                        elsif mmap_vaddr_idx == mmap_node.filesz + 1
+                            mmap_vaddr_idx = 0
                             mmap_idx += 1
                         end
                     end

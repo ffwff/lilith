@@ -4,7 +4,7 @@ abstract class VFSNode < Gc
     abstract def name : CString | Nil
 
     abstract def read(ptr : UInt8*, len : UInt32) : UInt32
-    abstract def write(slice : NullTerminatedSlice) : UInt32
+    abstract def write(slice : Slice) : UInt32
 
 end
 
@@ -15,7 +15,7 @@ abstract class VFS < Gc
     abstract def next_node : VFS | Nil
     abstract def next_node=(x : VFS | Nil)
 
-    abstract def open(path) : VFSNode
+    abstract def root : VFSNode
 
 end
 

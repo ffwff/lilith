@@ -10,7 +10,7 @@ class VGAFsNode < VFSNode
     def read(ptr : UInt8*, len : UInt32) : UInt32
         0u32
     end
-    def write(slice : NullTerminatedSlice) : UInt32
+    def write(slice : Slice) : UInt32
         slice.each do |ch|
             VGA.puts ch.unsafe_chr
         end
@@ -31,7 +31,7 @@ class VGAFS < VFS
         @root = VGAFsNode.new
     end
 
-    def open(path)
+    def root
         @root.not_nil!
     end
 

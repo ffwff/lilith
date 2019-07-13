@@ -157,7 +157,7 @@ class Fat16Node < VFSNode
         SYSCALL_ERR
     end
 
-    def write(slice : NullTerminatedSlice) : UInt32
+    def write(slice : Slice) : UInt32
         SYSCALL_ERR
     end
 
@@ -276,8 +276,8 @@ class Fat16FS < VFS
     end
 
     #
-    def open(path)
-        @root
+    def root
+        @root.not_nil!
     end
 
 end

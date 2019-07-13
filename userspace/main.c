@@ -21,14 +21,23 @@ static unsigned long open(const char *device) {
     return sysenter(0, (unsigned long)device, 0);
 }
 
-static unsigned long write(unsigned long fd, const char *str) {
-    return sysenter(2, fd, (unsigned long)str);
+static unsigned long write(unsigned long fd, const char *str, unsigned long len) {
+    struct {
+        const char *s;
+        long l;
+    } buf = {0};
+    buf.s = str;
+    buf.l = len;
+    return sysenter(2, fd, (unsigned long)&buf);
 }
 
+//
+
 void _start() {
+    // unsigned long dev = open("/vga//x");
     unsigned long dev = open("vga");
+    //unsigned long dev = open("/vga/x");
     while(1) {
-        char *s = itoa(getpid(), 10);
-        write(dev, s);
+        write(dev, "ABC", 1);
     }
 }
