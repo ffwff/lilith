@@ -40,12 +40,12 @@ module Multiprocessing
         MAX_FD = 16
         getter fds
 
-        def initialize(&on_setup_paging)
+        def initialize(disable_idt=true, &on_setup_paging)
             # file descriptors
             # BUG: must be initialized here or the GC won't catch it
             @fds = GcArray(FileDescriptor).new MAX_FD
 
-            Idt.disable
+            Idt.disable if disable_idt
 
             @pid = Multiprocessing.pids
             last_page_dir = Pointer(PageStructs::PageDirectory).null
@@ -77,7 +77,7 @@ module Multiprocessing
                 Paging.enable
             end
 
-            Idt.enable
+            Idt.enable if disable_idt
         end
 
         def initial_switch
@@ -120,7 +120,7 @@ module Multiprocessing
                 end
                 i += 1
             end
-            255
+            0
         end
 
         def get_fd(i : Int32) : FileDescriptor | Nil
@@ -145,35 +145,6 @@ module Multiprocessing
             @@current_process = @@first_process
         end
         @@current_process
-    end
-
-    # context switching
-    def switch_to_next_process(frame : IdtData::Registers*)
-        # return if no other processes
-        return if pids < 2
-        # save current frame
-        current_process.not_nil!.frame = frame.value
-        # next
-        n = next_process.not_nil!
-        if n.frame.nil?
-            n.new_frame
-        end
-        process_frame = n.frame.not_nil!
-        {% for id in [
-            "ds",
-            "edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax",
-            "eip", "cs", "eflags", "useresp", "ss"
-        ] %}
-        frame.value.{{ id.id }} = process_frame.{{ id.id }}
-        {% end %}
-        # Serial.puts "frame: ", Pointer(Void).new(frame.eip.to_u64), "\n"
-
-        dir = n.phys_page_dir # this must be stack allocated
-        # because it's placed in the virtual kernel heap
-        panic "page dir is nil" if dir == 0
-        Paging.disable
-        Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
-        Paging.enable
     end
 
 end

@@ -12,6 +12,9 @@ class VGAFsNode < VFSNode
         nil
     end
 
+    def read(&block)
+    end
+
     def read(slice : Slice) : UInt32
         0u32
     end

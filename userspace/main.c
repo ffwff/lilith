@@ -16,26 +16,7 @@ static char *itoa(unsigned int num, int base) {
     return ptr;
 }
 
-//
-static unsigned long open(const char *device) {
-    return sysenter(0, (unsigned long)device, 0);
-}
-
-static unsigned long write(unsigned long fd, const char *str, unsigned long len) {
-    struct {
-        const char *s;
-        long l;
-    } buf = {0};
-    buf.s = str;
-    buf.l = len;
-    return sysenter(2, fd, (unsigned long)&buf);
-}
-
-//
-
 void _start() {
-    unsigned long dev = open("/vga");
-    while(1) {
-        write(dev, "A", 1);
-    }
+    unsigned long dev = spawn("/fat16/FAT16.BIN");
+    while(1) {}
 }

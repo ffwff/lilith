@@ -29,7 +29,8 @@ class CString < Gc
         @buffer.ptr[k]
     end
 
-    def ==(other : String)
+    def ==(other)
+        return false if size != other.size
         @size.times do |i|
             return false if @buffer.ptr[i] != other[i]
         end
@@ -37,14 +38,14 @@ class CString < Gc
     end
 
     #
-    def each(&block)
+    def each_char(&block)
         @size.times do |i|
             yield @buffer.ptr[i]
         end
     end
 
     def to_s(io)
-        each do |ch|
+        each_char do |ch|
             io.puts ch.unsafe_chr
         end
     end

@@ -408,7 +408,7 @@ module LibGc
                 node = @@first_white_node
                 while !node.null?
                     panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
-                    debug "free ", node, "\n"
+                    Serial.puts "free ", node, "\n"
                     next_node = node.value.next_node
                     KERNEL_ARENA.free node.address.to_u32
                     node = next_node

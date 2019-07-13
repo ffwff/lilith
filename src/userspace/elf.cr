@@ -148,4 +148,50 @@ module ElfReader
         end
     end
 
+    # load
+    def load(proc, vfs, disable_interrupts=true)
+        mmap_list : GcArray(MemMapNode) | Nil = nil
+        mmap_append_idx = 0
+        mmap_idx = 0
+        mmap_vaddr_idx = 0u32
+        ElfReader.read(vfs) do |data|
+            case data
+            when ElfStructs::Elf32Header
+                data = data.as(ElfStructs::Elf32Header)
+                mmap_list = GcArray(MemMapNode).new data.e_phnum.to_i32
+            when ElfStructs::Elf32ProgramHeader
+                data = data.as(ElfStructs::Elf32ProgramHeader)
+                if data.p_memsz > 0
+                    ins_node = MemMapNode.new(data.p_offset, data.p_filesz, data.p_vaddr, data.p_memsz)
+                    mmap_list.not_nil![mmap_append_idx] = ins_node
+                    mmap_append_idx += 1
+                end
+                case data.p_type
+                when ElfStructs::Elf32PType::LOAD
+                    npages = data.p_memsz.div_ceil 4096
+                    panic "can't map to lower memory range" if data.p_vaddr < 0x8000_0000
+                    Paging.alloc_page_pg data.p_vaddr, true, true, npages, disable_interrupts
+                when ElfStructs::Elf32PType::GNU_STACK
+                    Paging.alloc_page_pg proc.stack_bottom, true, true, 1, disable_interrupts
+                else
+                    panic "unsupported"
+                end
+            when Tuple(UInt32, UInt8)
+                offset, byte = data.as(Tuple(UInt32, UInt8))
+                if !mmap_list.nil?
+                    mmap_node = mmap_list.not_nil![mmap_idx].not_nil!
+                    if offset >= mmap_node.file_offset && offset < mmap_node.file_offset + mmap_node.filesz
+                        ptr = Pointer(UInt8).new(mmap_node.vaddr.to_u64)
+                        # Serial.puts ptr, " ", mmap_page_idx, " ", byte, "\n"
+                        ptr[mmap_vaddr_idx] = byte
+                        mmap_vaddr_idx += 1
+                    elsif mmap_vaddr_idx == mmap_node.filesz + 1
+                        mmap_vaddr_idx = 0
+                        mmap_idx += 1
+                    end
+                end
+            end
+        end
+    end
+
 end

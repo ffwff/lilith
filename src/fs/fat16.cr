@@ -152,11 +152,23 @@ class Fat16Node < VFSNode
 
     #
     def open(path : Slice) : VFSNode | Nil
-        nil
+        node = first_child
+        Serial.puts !node.nil?, '\n'
+        while !node.nil?
+            if node.name == path
+                return node
+            end
+            node = node.next_node
+        end
     end
 
     def read(slice : Slice) : UInt32
-        SYSCALL_ERR
+        i = 0u32
+        read(slice.size) do |ch|
+            slice[i] = ch
+            i += 1
+        end
+        i
     end
 
     def write(slice : Slice) : UInt32
@@ -182,7 +194,7 @@ class Fat16FS < VFS
     getter sectors_per_cluster
 
     # impl
-    @name = "drive"
+    @name = "fat16"
     getter name
 
     @next_node : VFS | Nil = nil
@@ -244,7 +256,6 @@ class Fat16FS < VFS
                         fname[name_len + i] = entry.ext[i]
                     end
                 end
-
 
                 # append children
                 node = Fat16Node.new self, fname

@@ -112,11 +112,9 @@ module Paging
 
     # allocate page when pg is enabled
     # returns page address
-    def alloc_page_pg(virt_addr_start : UInt32, rw : Bool, user : Bool, npages : UInt32 = 1, disable_paging=true) : UInt32
-        if disable_paging
-            Idt.disable
-            disable
-        end
+    def alloc_page_pg(virt_addr_start : UInt32, rw : Bool, user : Bool, npages : UInt32 = 1, disable_interrupts=true) : UInt32
+        Idt.disable if disable_interrupts
+        disable
 
         virt_addr_end = virt_addr_start + npages * 0x1000
         virt_addr = virt_addr_start
@@ -144,10 +142,8 @@ module Paging
             virt_addr += 0x1000
         end
 
-        if disable_paging
-            enable
-            Idt.enable
-        end
+        enable
+        Idt.enable if disable_interrupts
 
         # return page
         virt_addr_start

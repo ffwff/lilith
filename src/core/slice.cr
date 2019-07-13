@@ -9,6 +9,10 @@ struct Slice(T)
         panic "Slice: out of range" if idx > @size || idx < 0
         @buffer[idx]
     end
+    def []=(idx : Int, value : T)
+        panic "Slice: out of range" if idx > @size || idx < 0
+        @buffer[idx] = value
+    end
 
     def each(&block)
         i = 0
@@ -18,7 +22,7 @@ struct Slice(T)
         end
     end
 
-    def ==(other : String)
+    def ==(other)
         return false if other.size != self.size
         i = 0
         other.each_char do |ch|

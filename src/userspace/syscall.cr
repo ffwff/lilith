@@ -99,16 +99,49 @@ fun ksyscall_handler(frame : SyscallData::Registers)
             frame.eax = Multiprocessing.current_process.not_nil!.install_fd(vfs_node.not_nil!)
         end
     when 1 # read
-        frame.eax = SYSCALL_ERR
-    when 2 # write
         fdi = frame.ebx.to_i32
-        frame.eax = SYSCALL_ERR
+        fd = try!(Multiprocessing.current_process.not_nil!.get_fd(fdi))
         arg = try!(checked_pointer(frame.edx)).as(SyscallData::SyscallStringArgument*)
         str = Slice.new(try!(checked_pointer(arg.value.str)).as(UInt8*), arg.value.len)
+        frame.eax = fd.not_nil!.node.not_nil!.read(str)
+    when 2 # write
+        fdi = frame.ebx.to_i32
         fd = try!(Multiprocessing.current_process.not_nil!.get_fd(fdi))
+        arg = try!(checked_pointer(frame.edx)).as(SyscallData::SyscallStringArgument*)
+        str = Slice.new(try!(checked_pointer(arg.value.str)).as(UInt8*), arg.value.len)
         frame.eax = fd.not_nil!.node.not_nil!.write(str)
     when 3 # getpid
         frame.eax = Multiprocessing.current_process.not_nil!.pid
+    when 4 # spawn
+        path = NullTerminatedSlice.new(try!(checked_pointer(frame.ebx)).as(UInt8*))
+        vfs_node = nil
+        parse_path_into_segments(path) do |segment|
+            if vfs_node.nil? # no path specifier
+                ROOTFS.each do |fs|
+                    if segment == fs.name
+                        node = fs.root
+                        if node.nil?
+                            frame.eax = SYSCALL_ERR
+                            return
+                        else
+                            vfs_node = node
+                            break
+                        end
+                    end
+                end
+            else
+                vfs_node = vfs_node.open(segment)
+            end
+        end
+        #
+        if vfs_node.nil?
+            frame.eax = SYSCALL_ERR
+        else
+            process = Multiprocessing::Process.new(false) do |proc|
+                ElfReader.load(proc, vfs_node.not_nil!, false)
+            end
+            frame.eax = 1
+        end
     else
         frame.eax = SYSCALL_ERR
     end
