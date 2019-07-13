@@ -27,7 +27,7 @@ end
 
 private def checked_slice(addr : UInt32, len : Int32) : Slice(UInt8) | Nil
     end_addr = addr + len
-    if addr < 0x8000_0000 || addr < end_addr
+    if addr < 0x8000_0000 || end_addr < 0x8000_0000
         nil
     else
         Slice(UInt8).new(Pointer(UInt8).new(addr.to_u64), len.to_i32)
@@ -58,6 +58,14 @@ end
 
 # consts
 SYSCALL_ERR = 255u32
+SYSCALL_SUCCESS = 1u32
+
+SC_OPEN   = 0u32
+SC_READ   = 1u32
+SC_WRITE  = 2u32
+SC_GETPID = 3u32
+SC_SPAWN  = 4u32
+SC_CLOSE  = 5u32
 
 private macro try!(expr)
     begin
@@ -72,7 +80,7 @@ end
 
 fun ksyscall_handler(frame : SyscallData::Registers)
     case frame.eax
-    when 0 # open
+    when SC_OPEN
         path = NullTerminatedSlice.new(try!(checked_pointer(frame.ebx)).as(UInt8*))
         vfs_node : VFSNode | Nil = nil
         parse_path_into_segments(path) do |segment|
@@ -98,21 +106,21 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         else
             frame.eax = Multiprocessing.current_process.not_nil!.install_fd(vfs_node.not_nil!)
         end
-    when 1 # read
+    when SC_READ
         fdi = frame.ebx.to_i32
         fd = try!(Multiprocessing.current_process.not_nil!.get_fd(fdi))
         arg = try!(checked_pointer(frame.edx)).as(SyscallData::SyscallStringArgument*)
-        str = Slice.new(try!(checked_pointer(arg.value.str)).as(UInt8*), arg.value.len)
+        str = try!(checked_slice(arg.value.str, arg.value.len))
         frame.eax = fd.not_nil!.node.not_nil!.read(str)
-    when 2 # write
+    when SC_WRITE
         fdi = frame.ebx.to_i32
         fd = try!(Multiprocessing.current_process.not_nil!.get_fd(fdi))
         arg = try!(checked_pointer(frame.edx)).as(SyscallData::SyscallStringArgument*)
-        str = Slice.new(try!(checked_pointer(arg.value.str)).as(UInt8*), arg.value.len)
+        str = try!(checked_slice(arg.value.str, arg.value.len))
         frame.eax = fd.not_nil!.node.not_nil!.write(str)
-    when 3 # getpid
+    when SC_GETPID
         frame.eax = Multiprocessing.current_process.not_nil!.pid
-    when 4 # spawn
+    when SC_SPAWN
         path = NullTerminatedSlice.new(try!(checked_pointer(frame.ebx)).as(UInt8*))
         vfs_node = nil
         parse_path_into_segments(path) do |segment|
@@ -141,6 +149,13 @@ fun ksyscall_handler(frame : SyscallData::Registers)
                 ElfReader.load(proc, vfs_node.not_nil!, false)
             end
             frame.eax = 1
+        end
+    when SC_CLOSE
+        fdi = frame.ebx.to_i32
+        if Multiprocessing.current_process.not_nil!.close_fd(fdi)
+            frame.eax = SYSCALL_SUCCESS
+        else
+            frame.eax = SYSCALL_ERR
         end
     else
         frame.eax = SYSCALL_ERR

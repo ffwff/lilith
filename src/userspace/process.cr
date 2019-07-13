@@ -128,6 +128,12 @@ module Multiprocessing
             fds[i]
         end
 
+        def close_fd(i : Int32) : Bool
+            return false if i > MAX_FD || i < 0
+            fds[i]
+            true
+        end
+
     end
 
     def setup_tss
