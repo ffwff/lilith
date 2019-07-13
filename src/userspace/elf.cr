@@ -96,7 +96,7 @@ module ElfReader
         SegmentHeader
     end
 
-    def read(node : VFSNode, fs : VFS, &block)
+    def read(node : VFSNode, &block)
         state = ParserState::ElfHeader
         header = uninitialized ElfStructs::Elf32Header
         pheader = uninitialized ElfStructs::Elf32ProgramHeader
@@ -104,7 +104,7 @@ module ElfReader
         idx_h = 0u32
         n_pheader = 0u32
         total_bytes = 0u32
-        node.read(fs) do |byte|
+        node.read do |byte|
             case state
             when ParserState::ElfHeader
                 pointerof(header).as(UInt8*)[idx_h] = byte

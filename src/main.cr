@@ -65,6 +65,10 @@ fun kmain(kernel_end : Void*,
     VGA.puts "checking PCI buses...\n"
     PCI.check_all_buses
 
+    #
+    VGA.puts "initializing rootfs...\n"
+    rootfs = RootFS.new
+
     mbr = MBR.read_ide
     fs : VFS | Nil = nil
     main_bin : VFSNode | Nil = nil
@@ -77,6 +81,7 @@ fun kmain(kernel_end : Void*,
                 main_bin = node
             end
         end
+        rootfs.append(fs)
     end
 
     VGA.puts "setting up syscalls...\n"
@@ -88,13 +93,12 @@ fun kmain(kernel_end : Void*,
         VGA.puts "executing MAIN.BIN...\n"
         m_process = Multiprocessing::Process.new do |proc|
             vfs = main_bin.not_nil!
-            fs = fs.not_nil!
             mmap_list : GcArray(MemMapNode) | Nil = nil
             mmap_append_idx = 0
             mmap_idx = 0
             mmap_page_idx = 0u32
 
-            ElfReader.read(vfs, fs) do |data|
+            ElfReader.read(vfs) do |data|
                 case data
                 when ElfStructs::Elf32Header
                     data = data.as(ElfStructs::Elf32Header)

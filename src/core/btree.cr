@@ -79,7 +79,7 @@ class BTree(K, V)
 
     private def compress(root, count)
         scanner = root.not_nil!
-        i = 0
+        i = 1
         while i < count
             child = scanner.right.not_nil!
             scanner.right = child.right

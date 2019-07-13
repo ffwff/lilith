@@ -93,7 +93,7 @@ end
 
 private struct KernelArena
     # linked list free pools for sizes of 2^4, 2^5 ... 2^10
-    @free_pools = uninitialized Kernel::PoolHeader*[7]
+    @free_pools = uninitialized Kernel::PoolHeader*[6]
     START_ADDR = 0x1000_0000.to_u32
     @placement_addr : UInt32 = START_ADDR
 
@@ -104,13 +104,12 @@ private struct KernelArena
     @[AlwaysInline]
     private def idx_for_pool_size(sz : UInt32)
         case sz
-        when 16;    0
-        when 32;    1
-        when 64;    2
-        when 128;   3
-        when 256;   4
-        when 512;   5
-        else;       6
+        when 32;    0
+        when 64;    1
+        when 128;   2
+        when 256;   3
+        when 512;   4
+        else;       5
         end
     end
 
@@ -141,7 +140,7 @@ private struct KernelArena
     # manual functions
     def malloc(sz : UInt32) : UInt32
         panic "only supports sizes of <= 1024" if sz > 1024
-        pool_size = max(16, sz.nearest_power_of_2).to_u32
+        pool_size = max(32, sz.nearest_power_of_2).to_u32
         idx = idx_for_pool_size pool_size
         if @free_pools[idx].null?
             # create a new pool if there isn't any freed

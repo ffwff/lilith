@@ -63,7 +63,9 @@ class Fat16Node < VFSNode
     @size = 0u32
     property size
 
-    def initialize(@name = nil,
+    getter fs
+
+    def initialize(@fs : Fat16FS, @name = nil,
             @next_node = nil, @first_child = nil)
     end
 
@@ -91,7 +93,7 @@ class Fat16Node < VFSNode
     end
 
     # read
-    def read(fs : Fat16FS, &block)
+    def read(&block)
         if size < 512 * fs.sectors_per_cluster
             sector = ((starting_cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
             j = 0
@@ -153,11 +155,10 @@ class Fat16Node < VFSNode
 
 end
 
-struct Fat16FS < VFS
+class Fat16FS < VFS
 
     FS_TYPE = "FAT16   "
-    @root = Fat16Node.new
-    getter root
+    def root; @root.not_nil!; end
 
     @fat_sector = 0u32
     getter fat_sector
@@ -169,6 +170,13 @@ struct Fat16FS < VFS
 
     @sectors_per_cluster = 0u32
     getter sectors_per_cluster
+
+    # impl
+    @name = "drive"
+    getter name
+
+    @next_node : VFS | Nil = nil
+    property next_node
 
     def initialize(partition)
         debug "initializing FAT16 filesystem\n"
@@ -188,6 +196,8 @@ struct Fat16FS < VFS
         sector = fat_sector + fat_sector_size
         @data_sector = sector + root_dir_sectors
         @sectors_per_cluster = bs.sectors_per_cluster.to_u32
+
+        @root = Fat16Node.new self
 
         bs.root_dir_entries.times do |i|
             entries = uninitialized Fat16Structs::Fat16Entry[16]
@@ -227,10 +237,10 @@ struct Fat16FS < VFS
 
 
                 # append children
-                node = Fat16Node.new fname
+                node = Fat16Node.new self, fname
                 node.starting_cluster = entry.starting_cluster.to_i32
                 node.size = entry.file_size
-                @root.add_child node
+                root.add_child node
             end
         end
     end
