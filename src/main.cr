@@ -88,7 +88,6 @@ fun kmain(
         VGA.puts "found MBR header...\n"
         fs = Fat16FS.new ide.device(0), mbr.partitions[0]
         fs.root.each_child do |node|
-            Serial.puts "node: ", node.name, "\n"
             if node.name == "MAIN.BIN"
                 main_bin = node
             end
@@ -100,8 +99,6 @@ fun kmain(
 
     VGA.puts "setting up syscalls...\n"
     Kernel.ksyscall_setup
-
-    Serial.puts Pointer(Void).new(ide.device(2).object_id.to_u64), '\n'
 
     if main_bin.nil?
         VGA.puts "no rootfs detected.\n"

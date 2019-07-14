@@ -29,14 +29,16 @@ end
 
 class VGAFS < VFS
 
-    @name = "vga"
-    getter name
+    def name
+        @name.not_nil!
+    end
 
     @next_node : VFS | Nil = nil
     property next_node
 
     def initialize
         VGA.puts "initializing vgafs...\n"
+        @name = CString.new("vga", 3)
         @root = VGAFsNode.new
     end
 

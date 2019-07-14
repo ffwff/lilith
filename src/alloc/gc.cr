@@ -182,7 +182,7 @@ module LibGc
                         {% end %}
                     {% end %}
                     type_id = {{ type_name }}.crystal_instance_type_id.to_u32
-                    # Serial.puts "{{ type_name }} id: ", type_id, ", ", offsets, "\n"
+                    Serial.puts "{{ type_name }} id: ", type_id, ", ", offsets, "\n"
                     value = if zero_offset
                         TypeInfo.new(0, instance_sizeof({{ type_name }}).to_u32)
                     else
@@ -332,11 +332,9 @@ module LibGc
                 info = type_info.search(type_id).not_nil!
                 offsets, size = info.offsets, info.size
                 if offsets == 0
-                    # Serial.puts "zero" ,node, " ", size, " ", sizeof(GcArray(Ide)),  "\n"
                     # there is no offset found for this type, yet it's not atomic
                     # then conservatively scan the region
                     buffer_end = buffer_addr + size
-                    # Serial.puts Pointer(Void).new(buffer_addr), " ", Pointer(Void).new(buffer_end),  "\n"
                     if scan_region buffer_addr, buffer_end, false
                         fix_white = true
                     end
@@ -410,7 +408,7 @@ module LibGc
                 node = @@first_white_node
                 while !node.null?
                     panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
-                    Serial.puts "free ", node, " ", (node.as(UInt8*)+8) ," ", node.as(UInt32*)[2], "\n"
+                    Serial.puts "free ", node, " ", (node.as(UInt8*)+8) ," ", (node.as(UInt8*)+8).as(UInt32*)[0], "\n"
                     next_node = node.value.next_node
                     KERNEL_ARENA.free node.address.to_u32
                     node = next_node
@@ -449,7 +447,7 @@ module LibGc
         end
         # return
         ptr = Pointer(Void).new(header.address.to_u64 + sizeof(Kernel::GcNode))
-        debug self, '\n' if @@enabled
+        Serial.puts self, '\n' if @@enabled
         ptr
     end
 

@@ -11,7 +11,7 @@ end
 
 abstract class VFS < Gc
 
-    abstract def name : String
+    abstract def name : CString
 
     abstract def next_node : VFS | Nil
     abstract def next_node=(x : VFS | Nil)

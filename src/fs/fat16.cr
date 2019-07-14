@@ -192,8 +192,9 @@ class Fat16FS < VFS
     getter sectors_per_cluster
 
     # impl
-    @name = "fat16"
-    getter name
+    def name
+        device.not_nil!.name.not_nil!
+    end
 
     @next_node : VFS | Nil = nil
     property next_node
@@ -201,7 +202,7 @@ class Fat16FS < VFS
     getter device
 
     def initialize(@device : AtaDevice, partition)
-        debug "initializing FAT16 filesystem\n"
+        VGA.puts "initializing FAT16 filesystem\n"
         bs = uninitialized Fat16Structs::Fat16BootSector
         device.read_sector_pointer(pointerof(bs).as(UInt16*), partition.first_sector)
         idx = 0

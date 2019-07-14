@@ -174,8 +174,8 @@ end
 
 private DISK_PORT_PRIMARY = 0x1F0u16
 private CMD_PORT_PRIMARY = 0x3F6u16
-private DISK_PORT_SECONDARY = 0x1F0u16
-private CMD_PORT_SECONDARY = 0x3F6u16
+private DISK_PORT_SECONDARY = 0x170u16
+private CMD_PORT_SECONDARY = 0x3F4u16
 
 class AtaDevice < Gc
 
@@ -186,13 +186,23 @@ class AtaDevice < Gc
         @primary ? CMD_PORT_PRIMARY : CMD_PORT_SECONDARY
     end
 
+    #
     getter primary, slave
     @identification : Kernel::AtaIdentify | Nil = nil
     getter identification
 
-    def initialize(@primary=true, @slave=0)
+    # NOTE: idx must be between 0..3
+    def initialize(@idx = 0, @primary=true, @slave=0)
     end
 
+    # NOTE: for some reason i can't store pointers inside AtaDevice
+    def name
+        name = CString.new("ata0", 4)
+        name.not_nil![3] = (@idx + '0'.ord).to_u8
+        name
+    end
+
+    #
     def init_device
         X86.outb disk_port + 1, 1
         X86.outb disk_port + 0x306, 0
@@ -271,10 +281,10 @@ class Ide < Gc
 
         @devices = GcArray(AtaDevice).new 4
         devices = @devices.not_nil!
-        devices[0] = AtaDevice.new(true, 0)
-        devices[1] = AtaDevice.new(true, 1)
-        devices[2] = AtaDevice.new(false, 0)
-        devices[3] = AtaDevice.new(false, 1)
+        devices[0] = AtaDevice.new(0, true, 0)
+        devices[1] = AtaDevice.new(1, true, 1)
+        devices[2] = AtaDevice.new(2, false, 0)
+        devices[3] = AtaDevice.new(3, false, 1)
 
         Idt.register_irq 14, ->ata_primary_irq_handler
         Idt.register_irq 15, ->ata_secondary_irq_handler

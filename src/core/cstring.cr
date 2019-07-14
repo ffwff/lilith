@@ -7,7 +7,7 @@ class CString < Gc
     def initialize(buffer, @size : Int32)
         @buffer = GcPointer(UInt8).malloc(@size.to_u32)
         @size.times do |i|
-            @buffer[i] = buffer[i]
+            @buffer.ptr[i] = buffer[i]
         end
     end
 
