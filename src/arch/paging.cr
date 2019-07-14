@@ -58,6 +58,7 @@ module Paging
         panic "can't find page frames" if @@frame_length == 0
         nframes = @@frame_length.to_i32.unsafe_div 0x1000
         @@frames = PBitArray.new nframes
+        Serial.puts "page: ", pointerof(@@frames), '\n'
 
         @@current_page_dir = Pointer(PageStructs::PageDirectory).pmalloc_a
         @@kernel_page_dir = @@current_page_dir
@@ -168,6 +169,7 @@ module Paging
     end
 
     # allocate page directories for processes
+    # NOTE: paging must be disabled for these to work
     def alloc_process_page_dir
         # claim frame for page directory
         iaddr = claim_frame
@@ -183,9 +185,34 @@ module Paging
         pd.address
     end
 
+    def free_process_page_dir(pda : UInt32)
+        pd = Pointer(PageStructs::PageDirectory).new(pda.to_u64)
+        # free the higher half
+        i = 512
+        while i < 1024
+            pt_addr = pd.value.tables[i] & 0xFFFF_F000
+            pt = Pointer(PageStructs::PageTable).new(pt_addr.to_u64)
+            # free tables
+            if !pt.null?
+                j = 0
+                while j < 1024
+                    if pt.value.pages[j] != 0
+                        frame = pt.value.pages[j] & 0xFFFF_F000
+                        declaim_frame(frame_index_for_address(frame))
+                    end
+                    j += 1
+                end
+                declaim_frame(frame_index_for_address(pt_addr))
+            end
+            i += 1
+        end
+        # free itself
+        declaim_frame(frame_index_for_address(pda))
+    end
+
     # frame alloc
-    private def frame_index_for_address(address : UInt32)
-        (address - @@frame_base_addr).unsafe_div(0x1000)
+    private def frame_index_for_address(address : UInt32) : Int32
+        (address - @@frame_base_addr).unsafe_div(0x1000).to_i32
     end
 
     private def claim_frame
@@ -197,7 +224,7 @@ module Paging
     end
 
     private def declaim_frame(idx)
-        @@frames_search_from = min idx, @@frames_search_from
+        #@@frames_search_from = min idx, @@frames_search_from
         @@frames[idx] = false
     end
 

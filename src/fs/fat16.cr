@@ -249,7 +249,7 @@ class Fat16FS < VFS
                 (name_len + 1).times do |i|
                     if entry.name[i] >= 'A'.ord && entry.name[i] <= 'Z'.ord
                         # to lower case
-                        fname[i] = entry.name[i] - 'A'.ord
+                        fname[i] = entry.name[i] - 'A'.ord + 'a'.ord
                     else
                         fname[i] = entry.name[i]
                     end
@@ -261,7 +261,7 @@ class Fat16FS < VFS
                     (ext_len + 1).times do |i|
                         if entry.ext[i] >= 'A'.ord && entry.ext[i] <= 'Z'.ord
                             # to lower case
-                            fname[name_len + i] = entry.ext[i] - 'A'.ord
+                            fname[name_len + i] = entry.ext[i] - 'A'.ord + 'a'.ord
                         else
                             fname[name_len + i] = entry.ext[i]
                         end

@@ -18,6 +18,8 @@ module Multiprocessing
     mod_property first_process
     @@pids = 0u32
     mod_property pids
+    @@n_process = 0u32
+    mod_property n_process
     @@fxsave_region = Pointer(UInt8).null
     def fxsave_region; @@fxsave_region; end
     def fxsave_region=(@@fxsave_region); end
@@ -31,6 +33,7 @@ module Multiprocessing
         @next_process : Process | Nil = nil
         getter prev_process, next_process
         protected def prev_process=(@prev_process); end
+        protected def next_process=(@next_process); end
 
         @stack_bottom : UInt32 = USER_STACK_TOP - 0x1000u32
         property stack_bottom
@@ -55,6 +58,8 @@ module Multiprocessing
             @fds = GcArray(FileDescriptor).new MAX_FD
             @fxsave_region = GcPointer(UInt8).malloc(512)
             # panic @fxsave_region.ptr, '\n'
+
+            Multiprocessing.n_process += 1
 
             Idt.disable if disable_idt
 
@@ -148,10 +153,11 @@ module Multiprocessing
 
         # control
         def remove
+            Multiprocessing.n_process -= 1
             if @prev_process.nil?
                 Multiprocessing.first_process = @next_process
             else
-                @prev_process.next_process = @next_process
+                @prev_process.not_nil!.next_process = @next_process
             end
             if Multiprocessing.current_process == self
                 Multiprocessing.current_process = nil
@@ -162,6 +168,7 @@ module Multiprocessing
 
     end
 
+    @[AlwaysInline]
     def setup_tss
         esp0 = 0u32
         asm("mov %esp, $0;" : "=r"(esp0) :: "volatile")
@@ -170,7 +177,10 @@ module Multiprocessing
 
     # round robin scheduling algorithm
     def next_process : Process | Nil
-        return nil if @@current_process.nil?
+        if @@current_process.nil?
+            @@current_process = @@first_process
+            return @@current_process
+        end
         proc = @@current_process.not_nil!
         @@current_process = proc.next_process
         if @@current_process.nil?

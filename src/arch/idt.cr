@@ -88,8 +88,9 @@ fun kirq_handler(frame : IdtData::Registers)
     X86.outb 0x20, 0x20
 
     # interrupt must happen in user mode
-    if frame.int_no == 0 && Multiprocessing.pids > 1
+    if frame.int_no == 0 && Multiprocessing.n_process > 1
         # preemptive multitasking...
+        # TODO: put this in a macro somewhere
 
         # save current process' state
         current_process = Multiprocessing.current_process.not_nil!

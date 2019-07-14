@@ -88,7 +88,7 @@ fun kmain(
         VGA.puts "found MBR header...\n"
         fs = Fat16FS.new ide.device(0), mbr.partitions[0]
         fs.root.each_child do |node|
-            if node.name == "MAIN.BIN"
+            if node.name == "main.bin"
                 main_bin = node
             end
         end

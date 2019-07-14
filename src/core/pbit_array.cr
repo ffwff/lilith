@@ -4,8 +4,9 @@ struct PBitArray
     getter size
     @pointer = Pointer(UInt32).null
 
-    def initialize(@size)
+    def initialize(@size : Int32)
         @pointer = Pointer(UInt32).pmalloc malloc_size
+        Serial.puts @pointer, '\n'
     end
 
     def self.null

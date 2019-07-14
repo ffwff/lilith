@@ -26,6 +26,7 @@ USER_STACK_BOTTOM = 0x80000000
 .global ksyscall_setup
 .global kswitch_usermode
 .global ksyscall_stub
+.global ksyscall_exit
 # start
 .extern kmain            # this is defined in the c file
 
@@ -93,6 +94,7 @@ kirq_stub:
     # call the handler
     cld
     call kirq_handler
+ksyscall_exit: # NOTE: syscall_exit uses the same path to return to usermode
     # reload original data segment selector
     pop %bx
     mov %bx, %ds
@@ -155,6 +157,7 @@ kswitch_usermode:
     # instruction pointer
     push $0x80000000
     iret
+# syscalls
 .extern ksyscall_handler
 ksyscall_setup:
     xor %edx, %edx

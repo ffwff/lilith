@@ -18,10 +18,6 @@ static unsigned long open(const char *device) {
     return sysenter(0, (unsigned long)device, 0);
 }
 
-static unsigned long spawn(const char *device) {
-    return sysenter(4, (unsigned long)device, 0);
-}
-
 static unsigned long write(unsigned long fd, const char *str, unsigned long len) {
     struct {
         const char *s;
@@ -40,4 +36,13 @@ static unsigned long read(unsigned long fd, const char *str, unsigned long len) 
     buf.s = str;
     buf.l = len;
     return sysenter(1, fd, (unsigned long)&buf);
+}
+
+// processes
+static unsigned long spawn(const char *device) {
+    return sysenter(4, (unsigned long)device, 0);
+}
+
+static unsigned long exit() {
+    return sysenter(6, 0, 0);
 }
