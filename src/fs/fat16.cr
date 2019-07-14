@@ -118,7 +118,7 @@ class Fat16Node < VFSNode
         idx = 0
         fs.device.read_sector(fat_sector) do |word|
             fat_table[idx] = word
-            idx += 2
+            idx += 1
         end
 
         # read file
@@ -142,7 +142,7 @@ class Fat16Node < VFSNode
                 end
                 read_sector += 1
             end
-            cluster = fat_table[cluster*2]
+            cluster = fat_table[cluster]
         end
 
         # cleanup
