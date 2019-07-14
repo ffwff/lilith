@@ -66,6 +66,7 @@ SC_WRITE  = 2u32
 SC_GETPID = 3u32
 SC_SPAWN  = 4u32
 SC_CLOSE  = 5u32
+SC_EXIT   = 6u32
 
 private macro try!(expr)
     begin
@@ -157,6 +158,11 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         else
             frame.eax = SYSCALL_ERR
         end
+    when SC_EXIT
+        panic "TODO"
+        #if (process = Multiprocessing.current_process.not_nil!).remove
+        #    process.
+        #end
     else
         frame.eax = SYSCALL_ERR
     end

@@ -146,6 +146,20 @@ module Multiprocessing
             true
         end
 
+        # control
+        def remove
+            if @prev_process.nil?
+                Multiprocessing.first_process = @next_process
+            else
+                @prev_process.next_process = @next_process
+            end
+            if Multiprocessing.current_process == self
+                Multiprocessing.current_process = nil
+                return true
+            end
+            false
+        end
+
     end
 
     def setup_tss

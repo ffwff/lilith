@@ -247,14 +247,24 @@ class Fat16FS < VFS
                 # filename
                 fname = CString.new(name_len + 2 + ext_len + 1)
                 (name_len + 1).times do |i|
-                    fname[i] = entry.name[i]
+                    if entry.name[i] >= 'A'.ord && entry.name[i] <= 'Z'.ord
+                        # to lower case
+                        fname[i] = entry.name[i] - 'A'.ord
+                    else
+                        fname[i] = entry.name[i]
+                    end
                 end
                 if ext_len > 0
                     name_len += 1
                     fname[name_len] = '.'.ord.to_u8
                     name_len += 1
                     (ext_len + 1).times do |i|
-                        fname[name_len + i] = entry.ext[i]
+                        if entry.ext[i] >= 'A'.ord && entry.ext[i] <= 'Z'.ord
+                            # to lower case
+                            fname[name_len + i] = entry.ext[i] - 'A'.ord
+                        else
+                            fname[name_len + i] = entry.ext[i]
+                        end
                     end
                 end
 
