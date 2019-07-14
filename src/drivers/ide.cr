@@ -188,18 +188,13 @@ class AtaDevice < Gc
 
     #
     getter primary, slave
-    @identification : Kernel::AtaIdentify | Nil = nil
-    getter identification
+    @name : CString | Nil = nil
+    getter name
 
     # NOTE: idx must be between 0..3
-    def initialize(@idx = 0, @primary=true, @slave=0)
-    end
-
-    # NOTE: for some reason i can't store pointers inside AtaDevice
-    def name
-        name = CString.new("ata0", 4)
-        name.not_nil![3] = (@idx + '0'.ord).to_u8
-        name
+    def initialize(idx = 0, @primary=true, @slave=0)
+        @name = CString.new("ata0", 4)
+        @name.not_nil![3] = (idx + '0'.ord).to_u8
     end
 
     #
@@ -239,8 +234,6 @@ class AtaDevice < Gc
             end
             {% end %}
         end
-
-        @identification = device
     end
 
     def read_sector(sector_28, &block)

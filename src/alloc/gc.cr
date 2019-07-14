@@ -182,7 +182,7 @@ module LibGc
                         {% end %}
                     {% end %}
                     type_id = {{ type_name }}.crystal_instance_type_id.to_u32
-                    Serial.puts "{{ type_name }} id: ", type_id, ", ", offsets, "\n"
+                    debug "{{ type_name }} id: ", type_id, ", ", offsets, "\n"
                     value = if zero_offset
                         TypeInfo.new(0, instance_sizeof({{ type_name }}).to_u32)
                     else
@@ -447,7 +447,7 @@ module LibGc
         end
         # return
         ptr = Pointer(Void).new(header.address.to_u64 + sizeof(Kernel::GcNode))
-        Serial.puts self, '\n' if @@enabled
+        debug self, '\n' if @@enabled
         ptr
     end
 
