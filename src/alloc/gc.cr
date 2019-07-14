@@ -29,41 +29,46 @@ class GcArray(T) < Gc
 
     GC_GENERIC_TYPES = [
         GcArray(MemMapNode),
-        GcArray(FileDescriptor)
+        GcArray(FileDescriptor),
+        GcArray(AtaDevice)
     ]
     # one long for typeid, one long for length
+    @size : Int32 = 0
     getter size
     def initialize(@size : Int32)
         malloc_size = @size.to_u32 * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
-        ptr = LibGc.unsafe_malloc(malloc_size).as(UInt32*)
-        ptr[0] = GC_ARRAY_HEADER_TYPE
-        ptr[1] = @size.to_u32
-        @buffer = Pointer(T).new((ptr.address + GC_ARRAY_HEADER_SIZE).to_u64)
+        @ptr = LibGc.unsafe_malloc(malloc_size).as(UInt32*)
+        @ptr[0] = GC_ARRAY_HEADER_TYPE
+        @ptr[1] = @size.to_u32
+    end
+
+    private def buffer
+        (@ptr+2).as(T*)
     end
 
     def [](idx : Int) : T | Nil
         panic "GcArray: out of range" if idx < 0 && idx > @size
-        if @buffer.as(UInt32*)[idx] == 0
+        if buffer.as(UInt32*)[idx] == 0
             nil
         else
-            @buffer[idx]
+            buffer[idx]
         end
     end
 
     def []=(idx : Int, value : T)
         panic "GcArray: out of range" if idx < 0 && idx > @size
-        @buffer[idx] = value
+        buffer[idx] = value
     end
 
     private def resize(new_size)
         if new_size < @size
             panic "unimplemented!"
         end
-        bufsize = KERNEL_ARENA.block_size_for_ptr(@buffer.address.to_u32)
+        bufsize = KERNEL_ARENA.block_size_for_ptr(buffer.address.to_u32)
         malloc_size = new_size * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
         if bufsize >= malloc_size + sizeof(Kernel::GcNode)
             # arena block supports this, grow to new size
-            ptr = @buffer.as(UInt32*)
+            ptr = buffer.as(UInt32*)
             ptr[1] = new_size
             @size = new_size
         else
@@ -76,12 +81,12 @@ class GcArray(T) < Gc
             # copy over
             i = 0
             while i < @size
-                new_buffer[i] = @buffer[i]
+                new_buffer[i] = buffer[i]
                 i += 1
             end
             # set buffer
-            @buffer = new_buffer
-            @size = new_size
+            buffer = new_buffer
+            size = new_size
         end
     end
 
@@ -121,7 +126,6 @@ module LibGc
     extend self
 
     TYPE_ID_SIZE = sizeof(UInt32)
-    @@allocated = false
     @@first_white_node = Pointer(Kernel::GcNode).null
     @@first_gray_node  = Pointer(Kernel::GcNode).null
     @@first_black_node = Pointer(Kernel::GcNode).null
@@ -178,11 +182,11 @@ module LibGc
                         {% end %}
                     {% end %}
                     type_id = {{ type_name }}.crystal_instance_type_id.to_u32
-                    # debug "id: ", type_id, "\n"
+                    # Serial.puts "{{ type_name }} id: ", type_id, ", ", offsets, "\n"
                     value = if zero_offset
-                        TypeInfo.new(0, sizeof({{ type_name }}).to_u32)
+                        TypeInfo.new(0, instance_sizeof({{ type_name }}).to_u32)
                     else
-                        TypeInfo.new(offsets, sizeof({{ type_name }}).to_u32)
+                        TypeInfo.new(offsets, instance_sizeof({{ type_name }}).to_u32)
                     end
                     n_classes += 1
                     type_info.insert(type_id, value)
@@ -262,15 +266,11 @@ module LibGc
     end
 
     def cycle
-        if !@@allocated
-            # nothing's allocated
-            return
-        end
-
         # marking phase
         if !@@root_scanned
             # we don't have any gray/black nodes at the beginning of a cycle
             # conservatively scan the stack for pointers
+            # Serial.puts @@data_start, ' ', @@data_end, '\n'
             scan_region @@data_start.not_nil!, @@data_end.not_nil!
             stack_start = 0
             asm("mov %esp, $0;" : "=r"(stack_start) :: "volatile")
@@ -303,13 +303,13 @@ module LibGc
                 type_id = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode))[0]
                 debug "type: ", type_id, "\n"
                 # handle gc array
-                if type_id == 0xffffffff
+                if type_id == GC_ARRAY_HEADER_TYPE
                     len = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode))[1]
                     i = 0
                     start = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode) + GC_ARRAY_HEADER_SIZE)
                     while i < len
                         addr = start[i]
-                        if addr >= KERNEL_ARENA.start_addr && addr <= KERNEL_ARENA.placement_addr
+                        if addr != 0
                             # mark the header as gray
                             header = Pointer(Kernel::GcNode).new(addr.to_u64 - sizeof(Kernel::GcNode))
                             case header.value.magic
@@ -332,9 +332,11 @@ module LibGc
                 info = type_info.search(type_id).not_nil!
                 offsets, size = info.offsets, info.size
                 if offsets == 0
-                    # there is no offset found for this type, yet it's not atomci
+                    # Serial.puts "zero" ,node, " ", size, " ", sizeof(GcArray(Ide)),  "\n"
+                    # there is no offset found for this type, yet it's not atomic
                     # then conservatively scan the region
                     buffer_end = buffer_addr + size
+                    # Serial.puts Pointer(Void).new(buffer_addr), " ", Pointer(Void).new(buffer_end),  "\n"
                     if scan_region buffer_addr, buffer_end, false
                         fix_white = true
                     end
@@ -408,7 +410,7 @@ module LibGc
                 node = @@first_white_node
                 while !node.null?
                     panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
-                    Serial.puts "free ", node, "\n"
+                    Serial.puts "free ", node, " ", (node.as(UInt8*)+8) ," ", node.as(UInt32*)[2], "\n"
                     next_node = node.value.next_node
                     KERNEL_ARENA.free node.address.to_u32
                     node = next_node
@@ -444,7 +446,6 @@ module LibGc
         # append node to linked list
         if @@enabled
             push(@@first_gray_node, header)
-            @@allocated = true
         end
         # return
         ptr = Pointer(Void).new(header.address.to_u64 + sizeof(Kernel::GcNode))
@@ -456,7 +457,8 @@ module LibGc
     private def out_nodes(io, first_node)
         node = first_node
         while !node.null?
-            io.puts node
+            ptr = (node + 1).as(UInt32*)
+            io.puts node, " (", ptr[0], ")"
             io.puts ", " if !node.value.next_node.null?
             node = node.value.next_node
         end

@@ -72,14 +72,21 @@ fun kmain(
     VGA.puts "checking PCI buses...\n"
     PCI.check_all_buses
 
+    ide = (if PCI.has_ide
+        Ide.new
+    else
+        VGA.puts "no IDE controller detected!"
+    end).not_nil!
+    ide.init_controller
+
     #
     VGA.puts "initializing rootfs...\n"
 
-    mbr = MBR.read_ide
+    mbr = MBR.read_ide(ide.device(0))
     main_bin : VFSNode | Nil = nil
     if mbr.header[0] == 0x55 && mbr.header[1] == 0xaa
         VGA.puts "found MBR header...\n"
-        fs = Fat16FS.new mbr.partitions[0]
+        fs = Fat16FS.new ide.device(0), mbr.partitions[0]
         fs.root.each_child do |node|
             Serial.puts "node: ", node.name, "\n"
             if node.name == "MAIN.BIN"
@@ -93,6 +100,8 @@ fun kmain(
 
     VGA.puts "setting up syscalls...\n"
     Kernel.ksyscall_setup
+
+    Serial.puts Pointer(Void).new(ide.device(2).object_id.to_u64), '\n'
 
     if main_bin.nil?
         VGA.puts "no rootfs detected.\n"

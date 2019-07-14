@@ -29,7 +29,8 @@ private lib Kernel
 
 end
 
-private struct Ata
+private module Ata
+    extend self
 
     # statuses
     SR_BSY =     0x80
@@ -171,42 +172,49 @@ private struct Ata
 
 end
 
-module Ide
-    extend self
+private DISK_PORT_PRIMARY = 0x1F0u16
+private CMD_PORT_PRIMARY = 0x3F6u16
+private DISK_PORT_SECONDARY = 0x1F0u16
+private CMD_PORT_SECONDARY = 0x3F6u16
 
-    DISK_PORT = 0x1F0u16
-    CMD_PORT = 0x3F6u16
+class AtaDevice < Gc
 
-    @@ata = Ata.new
-    @@device : (Kernel::AtaIdentify | Nil) = nil
+    def disk_port
+        @primary ? DISK_PORT_PRIMARY : DISK_PORT_SECONDARY
+    end
+    def cmd_port
+        @primary ? CMD_PORT_PRIMARY : CMD_PORT_SECONDARY
+    end
 
-    def init_controller
-        Serial.puts offsetof(Kernel::AtaIdentify, @sectors_per_int), '\n'
-        debug "Initializing IDE device...\n"
+    getter primary, slave
+    @identification : Kernel::AtaIdentify | Nil = nil
+    getter identification
 
-        Idt.register_irq 14, ->ata_primary_irq_handler
+    def initialize(@primary=true, @slave=0)
+    end
 
-        X86.outb DISK_PORT + 1, 1
-        X86.outb DISK_PORT + 0x306, 0
+    def init_device
+        X86.outb disk_port + 1, 1
+        X86.outb disk_port + 0x306, 0
 
-        @@ata.select DISK_PORT
-        @@ata.wait_io DISK_PORT
+        Ata.select disk_port, @slave
+        Ata.wait_io disk_port
 
-        @@ata.identify DISK_PORT
-        @@ata.wait_io DISK_PORT
+        Ata.identify disk_port
+        Ata.wait_io disk_port
 
-        status = @@ata.status DISK_PORT
+        status = Ata.status disk_port
         debug "status: ", status, '\n'
         return if status == 0
 
-        X86.outb CMD_PORT, 0x02
+        X86.outb cmd_port, 0x02
 
         # read device identifier
         device = uninitialized Kernel::AtaIdentify
         begin
             buf = Pointer(UInt16).new(pointerof(device).address)
             256.times do |i|
-                buf[i] = X86.inw DISK_PORT
+                buf[i] = X86.inw disk_port
             end
         end
 
@@ -222,43 +230,70 @@ module Ide
             {% end %}
         end
 
-        #output
-        device.model.each {|i| debug i.unsafe_chr }
-        debug " ("
-        device.firmware.each {|i| debug i.unsafe_chr }
-        debug ")"
-        debug "\n"
-
-        @@device = device
+        @identification = device
     end
 
-    def debug(*args)
-        VGA.puts *args
-    end
-
-    # read/write
-    def read_sector(sector_28, bus=DISK_PORT, slave=0, &block)
-        @@ata.read_cmd sector_28, bus, slave
-        return false if !@@ata.wait(bus, true)
+    def read_sector(sector_28, &block)
+        Ata.read_cmd sector_28, disk_port, slave
+        return false if !Ata.wait(disk_port, true)
         256.times do |i|
-            yield X86.inw bus
+            yield X86.inw disk_port
         end
-        @@ata.flush_cache bus
-        @@ata.wait bus
+        Ata.flush_cache disk_port
+        Ata.wait disk_port
         true
     end
 
-    def read_sector_pointer(ptr : UInt16*, sector_28, bus=DISK_PORT, slave=0)
+    def read_sector_pointer(ptr : UInt16*, sector_28)
         idx = 0
-        read_sector(sector_28, bus, slave) do |i|
+        read_sector(sector_28) do |i|
             ptr[idx] = i
             idx += 1
         end
     end
 
+    #
+    def debug(*args)
+        VGA.puts *args
+    end
+
+end
+
+class Ide < Gc
+
+    def device(idx)
+        @devices.not_nil![idx].not_nil!
+    end
+
+    def init_controller
+        Serial.puts offsetof(Kernel::AtaIdentify, @sectors_per_int), '\n'
+        debug "Initializing IDE device...\n"
+
+        @devices = GcArray(AtaDevice).new 4
+        devices = @devices.not_nil!
+        devices[0] = AtaDevice.new(true, 0)
+        devices[1] = AtaDevice.new(true, 1)
+        devices[2] = AtaDevice.new(false, 0)
+        devices[3] = AtaDevice.new(false, 1)
+
+        Idt.register_irq 14, ->ata_primary_irq_handler
+        Idt.register_irq 15, ->ata_secondary_irq_handler
+        4.times do |idx|
+            devices[idx].not_nil!.init_device
+        end
+    end
+
+    #
+    def debug(*args)
+        VGA.puts *args
+    end
+
     # interrupts
     def ata_primary_irq_handler
-        @@ata.irq_handler DISK_PORT
+        Ata.irq_handler DISK_PORT_PRIMARY
+    end
+    def ata_secondary_irq_handler
+        Ata.irq_handler DISK_PORT_SECONDARY
     end
 
 end

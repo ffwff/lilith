@@ -99,7 +99,7 @@ class Fat16Node < VFSNode
         if read_size < 512 * fs.sectors_per_cluster
             sector = ((starting_cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
             j = 0
-            Ide.read_sector(sector) do |word|
+            fs.device.read_sector(sector) do |word|
                 u8 = word.unsafe_shr(8) & 0xFF
                 u8_1 = word & 0xFF
                 yield u8_1.to_u8 if j < read_size
@@ -116,7 +116,7 @@ class Fat16Node < VFSNode
 
         # read fat table
         idx = 0
-        Ide.read_sector(fat_sector) do |word|
+        fs.device.read_sector(fat_sector) do |word|
             fat_table[idx] = word
             idx += 2
         end
@@ -128,7 +128,7 @@ class Fat16Node < VFSNode
             sector = ((cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
             read_sector = 0
             while remaining_bytes > 0 && read_sector < fs.sectors_per_cluster
-                Ide.read_sector(sector + read_sector) do |word|
+                fs.device.read_sector(sector + read_sector) do |word|
                     u8 = word.unsafe_shr(8) & 0xFF
                     u8_1 = word & 0xFF
                     if remaining_bytes > 0
@@ -198,10 +198,12 @@ class Fat16FS < VFS
     @next_node : VFS | Nil = nil
     property next_node
 
-    def initialize(partition)
+    getter device
+
+    def initialize(@device : AtaDevice, partition)
         debug "initializing FAT16 filesystem\n"
         bs = uninitialized Fat16Structs::Fat16BootSector
-        Ide.read_sector_pointer(pointerof(bs).as(UInt16*), partition.first_sector)
+        device.read_sector_pointer(pointerof(bs).as(UInt16*), partition.first_sector)
         idx = 0
         bs.fs_type.each do |ch|
             panic "only FAT16 is accepted" if ch != FS_TYPE[idx]
@@ -222,7 +224,7 @@ class Fat16FS < VFS
         bs.root_dir_entries.times do |i|
             entries = uninitialized Fat16Structs::Fat16Entry[16]
             break if sector + i > @data_sector
-            Ide.read_sector_pointer(pointerof(entries).as(UInt16*), sector + i)
+            device.read_sector_pointer(pointerof(entries).as(UInt16*), sector + i)
             entries.each do |entry|
                 next if !dir_entry_exists entry
                 next if is_volume_label entry

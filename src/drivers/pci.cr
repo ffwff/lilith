@@ -57,6 +57,9 @@ private struct Pci
     end
 
     # enumerating PCI buses
+    @has_ide = false
+    getter has_ide
+
     def check_function(bus : UInt32, device : UInt32, func : UInt32)
         klass = read_field bus, device, func, PCI_CLASS, 1
         subclass = read_field bus, device, func, PCI_SUBCLASS, 1
@@ -71,7 +74,7 @@ private struct Pci
         if klass == 0x01 && subclass == 0x01 &&
             (progif == 0x8A || progif == 0x80)
             debug "(ide device)\n"
-            Ide.init_controller
+            @has_ide = true
             return
         end
 

@@ -24,9 +24,9 @@ MBR_BOOTABLE_PARTITION = 0x80
 module MBR
     extend self
 
-    def read_ide
+    def read_ide(device)
         mbr = uninitialized MBRStructs::MBR
-        Ide.read_sector_pointer(Pointer(UInt16).new(pointerof(mbr).address), 0)
+        device.read_sector_pointer(Pointer(UInt16).new(pointerof(mbr).address), 0)
         mbr
     end
 
