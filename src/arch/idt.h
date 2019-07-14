@@ -24,4 +24,3 @@ struct idt_entry kidt[IDT_SIZE] = {{0}};
 struct idtr kidtr = {0};
 
 void kinit_idtr();
-void kinit_idt(uint32_t num, uint16_t select, uint32_t offset, uint16_t type);

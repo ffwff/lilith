@@ -8,7 +8,6 @@ KERNEL_CODE_SEGMENT_OFFSET = 0x08
 private lib Kernel
 
     fun kinit_idtr()
-    fun kinit_idt(num : UInt32, selector : UInt16, offset : UInt32, type : UInt16)
 
 end
 

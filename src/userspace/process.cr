@@ -26,8 +26,11 @@ module Multiprocessing
 
         @pid = 0u32
         getter pid
+
+        @prev_process : Process | Nil = nil
         @next_process : Process | Nil = nil
-        getter next_process
+        getter prev_process, next_process
+        protected def prev_process=(@prev_process); end
 
         @stack_bottom : UInt32 = USER_STACK_TOP - 0x1000u32
         property stack_bottom
@@ -76,6 +79,7 @@ module Multiprocessing
                 Multiprocessing.first_process = self
             else
                 @next_process = Multiprocessing.first_process
+                Multiprocessing.first_process.not_nil!.prev_process = self
                 Multiprocessing.first_process = self
             end
 

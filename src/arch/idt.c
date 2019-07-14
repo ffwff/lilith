@@ -4,7 +4,7 @@
 // IDT
 extern void kload_idt(uint32_t idt_ptr);
 
-void kinit_idt(uint32_t num, uint16_t select, uint32_t offset, uint16_t type) {
+static void kinit_idt(uint32_t num, uint16_t select, uint32_t offset, uint16_t type) {
     kidt[num].offset_1 = (offset & 0xffff);
     kidt[num].offset_2 = (offset & 0xffff0000) >> 16;
     kidt[num].selector = select;
