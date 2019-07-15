@@ -4,7 +4,7 @@ abstract class VFSNode < Gc
     abstract def name : CString | Nil
 
     abstract def open(path : Slice) : VFSNode | Nil
-    abstract def read(slice : Slice) : UInt32
+    abstract def read(slice : Slice, offset : UInt32) : UInt32
     abstract def write(slice : Slice) : UInt32
 
 end

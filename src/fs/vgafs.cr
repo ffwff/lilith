@@ -15,7 +15,7 @@ class VGAFsNode < VFSNode
     def read(&block)
     end
 
-    def read(slice : Slice) : UInt32
+    def read(slice : Slice, offset : UInt32) : UInt32
         0u32
     end
 

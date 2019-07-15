@@ -14,6 +14,11 @@ lib SyscallData
         len : Int32
     end
 
+    struct SyscallSeekArgument
+        offset : Int32
+        whence : UInt32
+    end
+
 end
 
 # checked inputs
@@ -67,6 +72,11 @@ SC_GETPID = 3u32
 SC_SPAWN  = 4u32
 SC_CLOSE  = 5u32
 SC_EXIT   = 6u32
+SC_SEEK   = 7u32
+
+SC_SEEK_SET = 0u32
+SC_SEEK_CUR = 1u32
+SC_SEEK_END = 2u32
 
 private macro try!(expr)
     begin
@@ -81,6 +91,7 @@ end
 
 fun ksyscall_handler(frame : SyscallData::Registers)
     case frame.eax
+    # files
     when SC_OPEN
         path = NullTerminatedSlice.new(try!(checked_pointer(frame.ebx)).as(UInt8*))
         vfs_node : VFSNode | Nil = nil
@@ -112,13 +123,39 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         fd = try!(Multiprocessing.current_process.not_nil!.get_fd(fdi))
         arg = try!(checked_pointer(frame.edx)).as(SyscallData::SyscallStringArgument*)
         str = try!(checked_slice(arg.value.str, arg.value.len))
-        frame.eax = fd.not_nil!.node.not_nil!.read(str)
+        frame.eax = fd.not_nil!.node.not_nil!.read(str, fd.offset)
     when SC_WRITE
         fdi = frame.ebx.to_i32
         fd = try!(Multiprocessing.current_process.not_nil!.get_fd(fdi))
         arg = try!(checked_pointer(frame.edx)).as(SyscallData::SyscallStringArgument*)
         str = try!(checked_slice(arg.value.str, arg.value.len))
         frame.eax = fd.not_nil!.node.not_nil!.write(str)
+    when SC_SEEK
+        fdi = frame.ebx.to_i32
+        fd = try!(Multiprocessing.current_process.not_nil!.get_fd(fdi))
+        arg = try!(checked_pointer(frame.edx)).as(SyscallData::SyscallSeekArgument*)
+
+        case arg.value.whence
+        when SC_SEEK_SET
+            fd.offset = arg.value.offset.to_u32
+            frame.eax = fd.offset
+        when SC_SEEK_CUR
+            fd.offset += arg.value.offset
+            frame.eax = fd.offset
+        when SC_SEEK_END
+            fd.offset = (fd.node.not_nil!.size.to_i32 + arg.value.offset).to_u32
+            frame.eax = fd.offset
+        else
+            frame.eax = SYSCALL_ERR
+        end
+    when SC_CLOSE
+        fdi = frame.ebx.to_i32
+        if Multiprocessing.current_process.not_nil!.close_fd(fdi)
+            frame.eax = SYSCALL_SUCCESS
+        else
+            frame.eax = SYSCALL_ERR
+        end
+    # process management
     when SC_GETPID
         frame.eax = Multiprocessing.current_process.not_nil!.pid
     when SC_SPAWN
@@ -150,13 +187,6 @@ fun ksyscall_handler(frame : SyscallData::Registers)
                 ElfReader.load(proc, vfs_node.not_nil!, false)
             end
             frame.eax = 1
-        end
-    when SC_CLOSE
-        fdi = frame.ebx.to_i32
-        if Multiprocessing.current_process.not_nil!.close_fd(fdi)
-            frame.eax = SYSCALL_SUCCESS
-        else
-            frame.eax = SYSCALL_ERR
         end
     when SC_EXIT
         next_process = Multiprocessing.next_process.not_nil!
