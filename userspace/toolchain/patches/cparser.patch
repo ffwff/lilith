@@ -1,0 +1,46 @@
+Submodule libfirm contains modified content
+diff --git a/libfirm/ir/be/machine_triple.c b/libfirm/ir/be/machine_triple.c
+index 571e749c3..3df4f78da 100644
+--- a/libfirm/ir/be/machine_triple.c
++++ b/libfirm/ir/be/machine_triple.c
+@@ -104,10 +104,11 @@ ir_machine_triple_t *ir_parse_machine_triple(const char *string)
+ 
+ ir_machine_triple_t *ir_get_host_machine_triple(void)
+ {
++#define HOST_TRIPLE "i686-unknown-elf"
+ #ifdef HOST_TRIPLE
+ 	/* a triple for the host machine was defined in the Makefile
+ 	 * or config.mak */
+-	ir_machine_triple_t *triple = parse_machine_triple(HOST_TRIPLE);
++	ir_machine_triple_t *triple = ir_parse_machine_triple(HOST_TRIPLE);
+ 	if (triple == NULL)
+ 		panic("Cannot parse configured HOST_TRIPLE '%s'", HOST_TRIPLE);
+ 	return triple;
+diff --git a/src/driver/c_driver.c b/src/driver/c_driver.c
+index 52f81dab..8fd2e9f5 100644
+--- a/src/driver/c_driver.c
++++ b/src/driver/c_driver.c
+@@ -37,11 +37,11 @@
+ #endif
+ 
+ #ifndef LINKER
+-#define LINKER    "cc"
++#define LINKER    "i386-elf-lilith-ld"
+ #endif
+ 
+ #ifndef ASSEMBLER
+-#define ASSEMBLER "cc -c -xassembler"
++#define ASSEMBLER "i386-elf-lilith-as"
+ #endif
+ 
+ #ifndef COMPILER_INCLUDE_DIR
+@@ -921,7 +921,8 @@ bool link_program(compilation_env_t *env, compilation_unit_t *units)
+ 	/* Workaround for systems that expect PIE code when no flags are given:
+ 	 * Try linking with -no-pie flag first if we do not explicitly want PIC code. Old linkers don't support the -no-pie
+ 	 * flag, so we have to try linking without the flag if the first try failed. */
+-	bool try_nopie_first = !target.pic;
++	bool try_nopie_first = false;
++	// bool try_nopie_first = !target.pic;
+ 
+ 	char *first_linker_pass = try_nopie_first ? commandline_nopie : commandline_without_nopie;
+ 
