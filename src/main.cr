@@ -44,7 +44,7 @@ fun kmain(
     keyboard = KeyboardInstance.new
 
     # setup memory management
-    VGA.puts "Booting crystal-os...\n"
+    VGA.puts "Booting lilith...\n"
 
     VGA.puts "initializing gdtr...\n"
     Gdt.init_table
@@ -101,7 +101,7 @@ fun kmain(
     Kernel.ksyscall_setup
 
     if main_bin.nil?
-        VGA.puts "no rootfs detected.\n"
+        VGA.puts "no main.bin detected.\n"
     else
         VGA.puts "executing MAIN.BIN...\n"
         m_process = Multiprocessing::Process.new do |proc|

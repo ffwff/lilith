@@ -1,4 +1,4 @@
-# crystal-os
+# lilith
 
 A simple x86 kernel written in Crystal.
 
