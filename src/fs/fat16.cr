@@ -92,11 +92,16 @@ class Fat16Node < VFSNode
     end
 
     # read
-    def read(read_size=0, &block)
+    def read(read_size=0, offset=0, &block)
         if read_size == 0
             read_size = size
         end
-        if read_size < 512 * fs.sectors_per_cluster
+        if offset + read_size > size
+            read_size = size - offset
+        end
+
+        # small files
+        if offset == 0 && read_size < 512 * fs.sectors_per_cluster
             sector = ((starting_cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
             j = 0
             fs.device.read_sector(sector) do |word|
@@ -121,9 +126,19 @@ class Fat16Node < VFSNode
             idx += 1
         end
 
-        # read file
         remaining_bytes = read_size
         cluster = starting_cluster
+
+        # skip clusters
+        offset_factor = fs.sectors_per_cluster * 512
+        offset_clusters = offset.unsafe_div(offset_factor)
+        while offset_clusters > 0 && cluster < 0xFFF8
+            cluster = fat_table[cluster]
+            offset_clusters -= 1
+        end
+        offset_bytes = offset.unsafe_mod(offset_factor)
+
+        # read file
         while remaining_bytes > 0 && cluster < 0xFFF8
             sector = ((cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
             read_sector = 0
@@ -132,16 +147,25 @@ class Fat16Node < VFSNode
                     u8 = word.unsafe_shr(8) & 0xFF
                     u8_1 = word & 0xFF
                     if remaining_bytes > 0
-                        yield u8_1.to_u8
-                        remaining_bytes -= 1
-                        if remaining_bytes > 0
-                            yield u8.to_u8 if remaining_bytes > 0
+                        if offset_bytes > 0
+                            offset_bytes -= 1
+                        else
+                            yield u8_1.to_u8
                             remaining_bytes -= 1
+                        end
+                        if remaining_bytes > 0
+                            if offset_bytes > 0
+                                offset_bytes -= 1
+                            else
+                                yield u8.to_u8
+                                remaining_bytes -= 1
+                            end
                         end
                     end
                 end
                 read_sector += 1
             end
+            # Serial.puts "[next cluster]\n"
             cluster = fat_table[cluster]
         end
 
