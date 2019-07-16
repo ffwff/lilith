@@ -1,3 +1,6 @@
 binutils
 cparser
+automake*
+autoconf*
 tools
+*.tar.gz
