@@ -1,6 +1,5 @@
-#include "syscalls.h"
+#include <stdio.h>
 
-void _start() {
-    unsigned long dev = spawn("/ata0/hello.bin");
-    while(1) {}
+int main() {
+    printf("hello world\n");
 }
