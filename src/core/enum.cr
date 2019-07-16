@@ -8,6 +8,10 @@ struct Enum
         value == other.value
     end
 
+    def &(other : self)
+        self.class.new(value & other.value)
+    end
+
     def to_s(io)
         {% if @type.has_attribute?("Flags") %}
         {% else %}

@@ -13,7 +13,8 @@ module Multiprocessing
     USER_STACK_BOTTOM = 0x8000_0000u32
 
     @@current_process : Process | Nil = nil
-    mod_property current_process
+    def current_process; @@current_process; end
+    def current_process=(@@current_process); end
     @@first_process : Process | Nil = nil
     mod_property first_process
     @@pids = 0u32
@@ -37,6 +38,9 @@ module Multiprocessing
 
         @stack_bottom : UInt32 = USER_STACK_TOP - 0x1000u32
         property stack_bottom
+
+        @initial_addr : UInt32 = 0x8000_0000u32
+        property initial_addr
 
         # physical location of the process' page directory
         @phys_page_dir : UInt32 = 0
@@ -107,7 +111,7 @@ module Multiprocessing
             Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
             Paging.enable
             Idt.enable
-            Kernel.kswitch_usermode
+            asm("jmp kswitch_usermode" :: "{ecx}"(@initial_addr) : "volatile")
         end
 
         # new register frame for multitasking
@@ -118,7 +122,7 @@ module Multiprocessing
             # Stack
             frame.useresp = USER_STACK_TOP
             # Pushed by the processor automatically.
-            frame.eip = 0x8000_0000u32
+            frame.eip = @initial_addr
             frame.cs = 0x1Bu32
             frame.eflags = 0x212u32
             frame.ss = 0x23u32
@@ -159,11 +163,6 @@ module Multiprocessing
             else
                 @prev_process.not_nil!.next_process = @next_process
             end
-            if Multiprocessing.current_process == self
-                Multiprocessing.current_process = nil
-                return true
-            end
-            false
         end
 
     end

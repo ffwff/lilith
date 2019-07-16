@@ -1,5 +1,3 @@
-.PHONY: build_binutils
-
 binutils:
 	git clone https://github.com/bminor/binutils-gdb binutils
 	cd binutils && \
@@ -21,3 +19,4 @@ cparser:
 build_cparser: cparser
 	cd cparser && \
 	make PREFIX=$(PWD)/tools variant=optimize -j$(nproc) install
+	ln -s ./cparser $(PWD)/tools/bin/i386-elf-lilith-cc

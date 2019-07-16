@@ -155,7 +155,7 @@ kswitch_usermode:
     # code selector
     pushl $0x1B
     # instruction pointer
-    push $0x80000000
+    push %ecx
     iret
 # syscalls
 .extern ksyscall_handler
