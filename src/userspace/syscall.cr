@@ -189,17 +189,17 @@ fun ksyscall_handler(frame : SyscallData::Registers)
             frame.eax = 1
         end
     when SC_EXIT
+        if Multiprocessing.n_process == 1
+            panic "init exited"
+        end
+
         current_process = Multiprocessing.current_process.not_nil!
-        current_process.not_nil!
-        next_process = (if current_process.next_process.nil?
-            Multiprocessing.first_process
-        else
-            current_process.next_process
-        end).not_nil!
+        current_page_dir = current_process.phys_page_dir
+        next_process = Multiprocessing.next_process.not_nil!
+        current_process.remove
 
         # switch to next process
         Multiprocessing.current_process = next_process
-        current_page_dir = current_process.phys_page_dir
 
         # next
         if next_process.frame.nil?
@@ -215,8 +215,8 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         # because it's placed in the virtual kernel heap
         panic "page dir is nil" if dir == 0
         Paging.disable
-        Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
         Paging.free_process_page_dir(current_page_dir)
+        Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
         Paging.enable
 
         asm("jmp ksyscall_exit" :: "{esp}"(pointerof(process_frame)) : "volatile")

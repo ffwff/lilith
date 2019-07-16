@@ -269,7 +269,6 @@ class Ide < Gc
     end
 
     def init_controller
-        Serial.puts offsetof(Kernel::AtaIdentify, @sectors_per_int), '\n'
         debug "Initializing IDE device...\n"
 
         @devices = GcArray(AtaDevice).new 4

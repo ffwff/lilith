@@ -15,8 +15,10 @@ module Multiprocessing
     @@current_process : Process | Nil = nil
     def current_process; @@current_process; end
     def current_process=(@@current_process); end
+
     @@first_process : Process | Nil = nil
     mod_property first_process
+
     @@pids = 0u32
     mod_property pids
     @@n_process = 0u32
@@ -84,13 +86,11 @@ module Multiprocessing
             # setup pages
             yield self
 
-            if Multiprocessing.first_process.nil?
-                Multiprocessing.first_process = self
-            else
-                @next_process = Multiprocessing.first_process
+            @next_process = Multiprocessing.first_process
+            if !Multiprocessing.first_process.nil?
                 Multiprocessing.first_process.not_nil!.prev_process = self
-                Multiprocessing.first_process = self
             end
+            Multiprocessing.first_process = self
 
             if !last_page_dir.null?
                 Paging.disable
