@@ -45,3 +45,7 @@ void kinit_gdtr() {
 void kset_stack(uint32_t stack) {
     ktss.esp0 = stack;
 }
+
+uint32_t kget_stack(uint32_t stack) {
+    return ktss.esp0;
+}

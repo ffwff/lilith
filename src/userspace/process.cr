@@ -58,6 +58,9 @@ module Multiprocessing
         MAX_FD = 16
         getter fds
 
+        @kernel_process = false
+        property kernel_process
+
         def initialize(disable_idt=true, &on_setup_paging)
             # file descriptors
             # BUG: must be initialized here or the GC won't catch it
@@ -123,9 +126,14 @@ module Multiprocessing
             frame.useresp = USER_STACK_TOP
             # Pushed by the processor automatically.
             frame.eip = @initial_addr
-            frame.cs = 0x1Bu32
             frame.eflags = 0x212u32
-            frame.ss = 0x23u32
+            if @kernel_process
+                frame.cs = 0x1Fu32
+                frame.ss = 0x10u32
+            else
+                frame.cs = 0x1Bu32
+                frame.ss = 0x23u32
+            end
             @frame = frame
             frame
         end

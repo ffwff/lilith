@@ -15,15 +15,15 @@ class VGAFsNode < VFSNode
     def read(&block)
     end
 
-    def read(slice : Slice, offset : UInt32) : UInt32
-        0u32
+    def read(slice : Slice, offset : UInt32) : Int32
+        0
     end
 
-    def write(slice : Slice) : UInt32
+    def write(slice : Slice) : Int32
         slice.each do |ch|
             VGA.puts ch.unsafe_chr
         end
-        slice.size.to_u32
+        slice.size
     end
 end
 

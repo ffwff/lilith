@@ -184,8 +184,8 @@ class Fat16Node < VFSNode
         end
     end
 
-    def read(slice : Slice, offset : UInt32) : UInt32
-        i = 0u32
+    def read(slice : Slice, offset : UInt32) : Int32
+        i = 0
         read(slice.size, offset) do |ch|
             slice[i] = ch
             i += 1
@@ -193,8 +193,8 @@ class Fat16Node < VFSNode
         i
     end
 
-    def write(slice : Slice) : UInt32
-        SYSCALL_ERR
+    def write(slice : Slice) : Int32
+        VFS_ERR
     end
 
 end

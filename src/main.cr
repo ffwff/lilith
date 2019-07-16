@@ -14,6 +14,7 @@ require "./alloc/alloc.cr"
 require "./alloc/gc.cr"
 require "./fs/fat16.cr"
 require "./fs/vgafs.cr"
+require "./fs/io_process.cr"
 require "./userspace/syscall.cr"
 require "./userspace/process.cr"
 require "./userspace/elf.cr"
@@ -108,6 +109,12 @@ fun kmain(
             ElfReader.load(proc, main_bin.not_nil!)
         end
         Multiprocessing.setup_tss
+
+        #VGA.puts "setting up kernel IO thread...\n"
+        #Multiprocessing::Process.new do |proc|
+        #    proc.initial_addr = (->IoProcess.tick).pointer.address.to_u32
+        #end
+
         m_process.initial_switch
     end
 

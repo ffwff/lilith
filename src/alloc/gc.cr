@@ -119,6 +119,7 @@ private lib Kernel
         next_node : GcNode*
         magic : UInt32
     end
+    fun kget_stack : UInt32
 
 end
 
@@ -274,7 +275,14 @@ module LibGc
             scan_region @@data_start.not_nil!, @@data_end.not_nil!
             stack_start = 0
             asm("mov %esp, $0;" : "=r"(stack_start) :: "volatile")
-            scan_region stack_start, @@stack_end.not_nil!
+            if stack_start > 0x8000_0000
+                panic "wtf?"
+                # calling from kernel thread
+                scan_region stack_start, Kernel.kget_stack
+                scan_region stack_start, 0xF000_0000u32
+            else
+                scan_region stack_start, @@stack_end.not_nil!
+            end
             @@root_scanned = true
         elsif !@@first_gray_node.null?
             # second stage of marking phase: precisely marking gray nodes
