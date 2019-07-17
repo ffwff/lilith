@@ -198,4 +198,52 @@ module Multiprocessing
         @@current_process
     end
 
+    # context switch
+    # NOTE: this must be a macro so that it will be inlined,
+    # and frame will the a reference to the frame on the stack
+    macro switch_process(frame)
+        {% if frame == nil %}
+        current_process = Multiprocessing.current_process.not_nil!
+        current_page_dir = current_process.phys_page_dir
+        next_process = Multiprocessing.next_process.not_nil!
+        current_process.remove
+        {% else %}
+        # save current process' state
+        current_process = Multiprocessing.current_process.not_nil!
+        current_process.frame = {{ frame }}
+        memcpy current_process.fxsave_region.ptr, Multiprocessing.fxsave_region, 512
+        # load process's state
+        next_process = Multiprocessing.next_process.not_nil!
+        {% end %}
+
+        process_frame = if next_process.frame.nil?
+            next_process.new_frame
+        else
+            next_process.frame.not_nil!
+        end
+        {% if frame != nil %}
+            {% for id in [
+                "ds",
+                "edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax",
+                "eip", "cs", "eflags", "useresp", "ss"
+            ] %}
+            {{ frame }}.{{ id.id }} = process_frame.{{ id.id }}
+            {% end %}
+        {% end %}
+        memcpy Multiprocessing.fxsave_region, next_process.fxsave_region.ptr, 512
+
+        dir = next_process.not_nil!.phys_page_dir # this must be stack allocated
+        # because it's placed in the virtual kernel heap
+        Paging.disable
+        {% if frame == nil %}
+        Paging.free_process_page_dir(current_page_dir)
+        {% end %}
+        Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
+        Paging.enable
+
+        {% if frame == nil %}
+        asm("jmp kcpuint_end" :: "{esp}"(pointerof(process_frame)) : "volatile")
+        {% end %}
+    end
+
 end

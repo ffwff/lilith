@@ -15,7 +15,8 @@ class VGAFsNode < VFSNode
     def read(&block)
     end
 
-    def read(slice : Slice, offset : UInt32) : Int32
+    def read(slice : Slice, offset : UInt32,
+            process : Multiprocessing::Process | Nil = nil) : Int32
         0
     end
 

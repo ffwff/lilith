@@ -120,10 +120,11 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         end
     when SC_READ
         fdi = frame.ebx.to_i32
-        fd = try!(Multiprocessing.current_process.not_nil!.get_fd(fdi))
+        process = Multiprocessing.current_process.not_nil!
+        fd = try!(process.get_fd(fdi))
         arg = try!(checked_pointer(frame.edx)).as(SyscallData::SyscallStringArgument*)
         str = try!(checked_slice(arg.value.str, arg.value.len))
-        frame.eax = fd.not_nil!.node.not_nil!.read(str, fd.offset)
+        frame.eax = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
     when SC_WRITE
         fdi = frame.ebx.to_i32
         fd = try!(Multiprocessing.current_process.not_nil!.get_fd(fdi))
@@ -195,33 +196,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
             panic "init exited"
         end
 
-        current_process = Multiprocessing.current_process.not_nil!
-        current_page_dir = current_process.phys_page_dir
-        next_process = Multiprocessing.next_process.not_nil!
-        current_process.remove
-
-        # switch to next process
-        Multiprocessing.current_process = next_process
-
-        # next
-        if next_process.frame.nil?
-            next_process.new_frame
-        end
-
-        # load process's state
-        process_frame = next_process.frame.not_nil!
-        memcpy Multiprocessing.fxsave_region, next_process.fxsave_region.ptr, 512
-
-        # use new process page dir
-        dir = next_process.not_nil!.phys_page_dir # this must be stack allocated
-        # because it's placed in the virtual kernel heap
-        panic "page dir is nil" if dir == 0
-        Paging.disable
-        Paging.free_process_page_dir(current_page_dir)
-        Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
-        Paging.enable
-
-        asm("jmp kcpuint_end" :: "{esp}"(pointerof(process_frame)) : "volatile")
+        Multiprocessing.switch_process(nil)
     else
         frame.eax = SYSCALL_ERR
     end

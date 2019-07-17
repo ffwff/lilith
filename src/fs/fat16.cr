@@ -184,7 +184,8 @@ class Fat16Node < VFSNode
         end
     end
 
-    def read(slice : Slice, offset : UInt32) : Int32
+    def read(slice : Slice, offset : UInt32,
+            process : Multiprocessing::Process | Nil = nil) : Int32
         i = 0
         read(slice.size, offset) do |ch|
             slice[i] = ch

@@ -95,35 +95,7 @@ fun kirq_handler(frame : IdtData::Registers)
 
     if frame.int_no == 0 && Multiprocessing.n_process > 1
         # preemptive multitasking...
-        # TODO: put this in a macro somewhere
-
-        # save current process' state
-        current_process = Multiprocessing.current_process.not_nil!
-        current_process.frame = frame
-        memcpy current_process.fxsave_region.ptr, Multiprocessing.fxsave_region, 512
-
-        # load process's state
-        next_process = Multiprocessing.next_process.not_nil!
-        process_frame = if next_process.frame.nil?
-            next_process.new_frame
-        else
-            next_process.frame.not_nil!
-        end
-        {% for id in [
-            "ds",
-            "edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax",
-            "eip", "cs", "eflags", "useresp", "ss"
-        ] %}
-        frame.{{ id.id }} = process_frame.{{ id.id }}
-        {% end %}
-        memcpy Multiprocessing.fxsave_region, next_process.fxsave_region.ptr, 512
-
-        dir = next_process.not_nil!.phys_page_dir # this must be stack allocated
-        # because it's placed in the virtual kernel heap
-        panic "page dir is nil" if dir == 0
-        Paging.disable
-        Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
-        Paging.enable
+        Multiprocessing.switch_process(frame)
     end
 
     if Idt.irq_handlers[frame.int_no].pointer.null?
