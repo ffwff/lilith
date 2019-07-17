@@ -76,6 +76,7 @@ private struct Pool
     # obtain a free block and pop it from the pool
     # returns a pointer to the buffer
     def get_free_block : UInt32
+        Serial.puts @header, '\n'
         block = first_free_block
         @header.value.first_free_block = block.value.next_free_block
         block.address.to_u32 + BLOCK_HEADER_SIZE

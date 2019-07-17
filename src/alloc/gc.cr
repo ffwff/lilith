@@ -183,7 +183,7 @@ module LibGc
                         {% end %}
                     {% end %}
                     type_id = {{ type_name }}.crystal_instance_type_id.to_u32
-                    debug "{{ type_name }} id: ", type_id, ", ", offsets, "\n"
+                    Serial.puts "{{ type_name }} id: ", type_id, ", ", offsets, "\n"
                     value = if zero_offset
                         TypeInfo.new(0, instance_sizeof({{ type_name }}).to_u32)
                     else
@@ -317,9 +317,10 @@ module LibGc
                     start = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode) + GC_ARRAY_HEADER_SIZE)
                     while i < len
                         addr = start[i]
-                        if addr != 0
+                        if addr >= KERNEL_ARENA.start_addr && addr <= KERNEL_ARENA.placement_addr
                             # mark the header as gray
                             header = Pointer(Kernel::GcNode).new(addr.to_u64 - sizeof(Kernel::GcNode))
+                            Serial.puts header, '\n'
                             case header.value.magic
                             when GC_NODE_MAGIC
                                 header.value.magic = GC_NODE_MAGIC_GRAY

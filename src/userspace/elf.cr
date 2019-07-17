@@ -157,8 +157,9 @@ module ElfReader
     end
 
     # load
-    def load(proc, vfs, disable_interrupts=true)
-        Paging.alloc_page_pg proc.stack_bottom, true, true, 1, disable_interrupts
+    def load(proc, vfs)
+        Serial.puts "load\n" #4
+        Paging.alloc_page_pg proc.stack_bottom, true, true, 1
         mmap_list : GcArray(MemMapNode) | Nil = nil
         mmap_append_idx = 0
         mmap_idx = 0
@@ -181,7 +182,7 @@ module ElfReader
                     panic "can't map to lower memory range" if data.p_vaddr < 0x8000_0000
                     Paging.alloc_page_pg(data.p_vaddr,
                         (data.p_flags & ElfStructs::Elf32PFlags::PF_W) == ElfStructs::Elf32PFlags::PF_W,
-                        true, npages, disable_interrupts)
+                        true, npages)
                 end
             when Tuple(UInt32, UInt8)
                 offset, byte = data.as(Tuple(UInt32, UInt8))

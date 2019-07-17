@@ -26,9 +26,10 @@ USER_STACK_BOTTOM = 0x80000000
 .global ksyscall_setup
 .global kswitch_usermode
 .global ksyscall_stub
-.global ksyscall_exit
+.global kcpuint_end
 # start
-.extern kmain            # this is defined in the c file
+.extern kmain            # this is defined in the c
+.altmacro
 
 _start:
     cli
@@ -78,6 +79,7 @@ kload_idt:
     ret
 # irq stub
 kirq_stub:
+.macro interrupt_start
     # save sse state
     fxsave (fxsave_region)
     # registers
@@ -91,10 +93,12 @@ kirq_stub:
     mov %ax, %es
     mov %ax, %fs
     mov %ax, %gs
+.endm
+    interrupt_start
     # call the handler
     cld
     call kirq_handler
-ksyscall_exit: # NOTE: syscall_exit uses the same path to return to usermode
+kcpuint_end: # NOTE: syscall_exit uses the same path to return to usermode
     # reload original data segment selector
     pop %bx
     mov %bx, %ds
@@ -108,19 +112,36 @@ ksyscall_exit: # NOTE: syscall_exit uses the same path to return to usermode
     fxrstor (fxsave_region)
     iret
 # irq
-.altmacro
 .macro kirq_handler_label number
 .global kirq\number
 kirq\number:
     push $\number
     jmp kirq_stub
 .endm
-
 .set i, 0
 .rept 16
     kirq_handler_label %i
     .set i, i+1
 .endr
+# exception
+kcpuex_stub:
+    interrupt_start
+    # call the handler
+    cld
+    call kcpuex_handler
+    jmp kcpuint_end
+.macro kcpuex_handler_label number
+.global kcpuex\number
+kcpuex\number:
+    push $\number
+    jmp kcpuex_stub
+.endm
+.set i, 0
+.rept 32
+    kcpuex_handler_label %i
+    .set i, i+1
+.endr
+
 # paging
 kenable_paging:
     mov 4(%esp), %eax

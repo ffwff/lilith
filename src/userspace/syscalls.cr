@@ -183,9 +183,11 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         if vfs_node.nil?
             frame.eax = SYSCALL_ERR
         else
-            process = Multiprocessing::Process.new(false) do |proc|
-                ElfReader.load(proc, vfs_node.not_nil!, false)
+            Idt.status_mask = true
+            process = Multiprocessing::Process.new do |proc|
+                ElfReader.load(proc, vfs_node.not_nil!)
             end
+            Idt.status_mask = false
             frame.eax = 1
         end
     when SC_EXIT
@@ -219,7 +221,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
         Paging.enable
 
-        asm("jmp ksyscall_exit" :: "{esp}"(pointerof(process_frame)) : "volatile")
+        asm("jmp kcpuint_end" :: "{esp}"(pointerof(process_frame)) : "volatile")
     else
         frame.eax = SYSCALL_ERR
     end

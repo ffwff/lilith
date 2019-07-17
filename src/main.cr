@@ -109,12 +109,11 @@ fun kmain(
         end
 
         VGA.puts "setting up kernel IO thread...\n"
-        Multiprocessing::Process.new do |proc|
-            proc.kernel_process = true
-            Paging.alloc_page_pg proc.stack_bottom, true, true, 1, true
-            proc.initial_addr = 0u32
+        #Multiprocessing::Process.new do |proc|
+            #proc.kernel_process = true
+            #Paging.alloc_page_pg proc.stack_bottom, true, true, 1, true
             #proc.initial_addr = (->IoProcess.tick).pointer.address.to_u32
-        end
+        #end
 
         Multiprocessing.setup_tss
         m_process.initial_switch

@@ -66,14 +66,20 @@ module Idt
     end
 
     # status
-    @[AlwaysInline]
+    @@status_mask = false
+    def status_mask; @@status_mask; end
+    def status_mask=(@@status_mask); end
+
     def enable
-        asm("sti")
+        if !@@status_mask
+            asm("sti")
+        end
     end
 
-    @[AlwaysInline]
     def disable
-        asm("cli")
+        if !@@status_mask
+            asm("cli")
+        end
     end
 
 end
@@ -93,17 +99,20 @@ fun kirq_handler(frame : IdtData::Registers)
 
         # save current process' state
         current_process = Multiprocessing.current_process.not_nil!
+        Serial.puts "save: ", current_process.pid, ' ', Pointer(Void).new(frame.eip.to_u64), '\n'
+        if frame.eip < 0x8000_0000
+            panic "nop!"
+        end
         current_process.frame = frame
         memcpy current_process.fxsave_region.ptr, Multiprocessing.fxsave_region, 512
 
-        # next
-        next_process = Multiprocessing.next_process.not_nil!
-        if next_process.frame.nil?
-            next_process.new_frame
-        end
-
         # load process's state
-        process_frame = next_process.frame.not_nil!
+        next_process = Multiprocessing.next_process.not_nil!
+        process_frame = if next_process.frame.nil?
+            next_process.new_frame
+        else
+            next_process.frame.not_nil!
+        end
         {% for id in [
             "ds",
             "edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax",
@@ -111,6 +120,7 @@ fun kirq_handler(frame : IdtData::Registers)
         ] %}
         frame.{{ id.id }} = process_frame.{{ id.id }}
         {% end %}
+        Serial.puts "next: ", next_process.pid, ' ', Pointer(Void).new(frame.eip.to_u64), '\n'
         memcpy Multiprocessing.fxsave_region, next_process.fxsave_region.ptr, 512
 
         dir = next_process.not_nil!.phys_page_dir # this must be stack allocated
@@ -126,4 +136,8 @@ fun kirq_handler(frame : IdtData::Registers)
     else
         Idt.irq_handlers[frame.int_no].call
     end
+end
+
+fun kcpuex_handler(frame : IdtData::Registers)
+    panic frame.int_no
 end
