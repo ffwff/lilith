@@ -94,7 +94,8 @@ fun kmain(
         ROOTFS.append(fs)
     end
 
-    ROOTFS.append(KbdFS.new)
+    keyboard.kbdfs = KbdFS.new(keyboard)
+    ROOTFS.append(keyboard.kbdfs.not_nil!)
     ROOTFS.append(VGAFS.new)
 
     VGA.puts "setting up syscalls...\n"
