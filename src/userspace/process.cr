@@ -120,18 +120,20 @@ module Multiprocessing
         # new register frame for multitasking
         def new_frame
             frame = IdtData::Registers.new
-            # Data segment selector
-            frame.ds = 0x23u32
             # Stack
             frame.useresp = USER_STACK_TOP
+            frame.esp = USER_STACK_TOP
             # Pushed by the processor automatically.
             frame.eip = @initial_addr
-            frame.eflags = 0x212u32
             if @kernel_process
-                frame.cs = 0x1Fu32
+                frame.eflags = 0x202u32
+                frame.cs = 0x08u32
+                frame.ds = 0x10u32
                 frame.ss = 0x10u32
             else
+                frame.eflags = 0x212u32
                 frame.cs = 0x1Bu32
+                frame.ds = 0x23u32
                 frame.ss = 0x23u32
             end
             @frame = frame

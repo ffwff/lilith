@@ -99,9 +99,6 @@ fun kirq_handler(frame : IdtData::Registers)
 
         # save current process' state
         current_process = Multiprocessing.current_process.not_nil!
-        if frame.eip < 0x8000_0000
-            panic "nop!"
-        end
         current_process.frame = frame
         memcpy current_process.fxsave_region.ptr, Multiprocessing.fxsave_region, 512
 
