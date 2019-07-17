@@ -40,7 +40,7 @@ KEYBOARD_MAP = StaticArray[
     0, # All other keys are undefined
 ]
 
-struct KeyboardInstance
+class Keyboard < Gc
 
     @kbdfs : KbdFS | Nil = nil
     property kbdfs

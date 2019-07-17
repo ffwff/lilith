@@ -1,3 +1,5 @@
+require "./async.cr"
+
 abstract class VFSNode < Gc
 
     abstract def size : Int
@@ -7,6 +9,8 @@ abstract class VFSNode < Gc
     abstract def read(slice : Slice(UInt8), offset : UInt32,
         process : Multiprocessing::Process | Nil = nil) : Int32
     abstract def write(slice : Slice) : Int32
+
+    abstract def read_queue : VFSReadQueue | Nil
 
 end
 

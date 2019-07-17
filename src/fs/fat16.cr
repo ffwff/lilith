@@ -198,6 +198,10 @@ class Fat16Node < VFSNode
         VFS_ERR
     end
 
+    def read_queue
+       nil
+    end
+
 end
 
 class Fat16FS < VFS

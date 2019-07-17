@@ -2,6 +2,13 @@ require "./vfs.cr"
 
 class KbdFsNode < VFSNode
 
+    @read_queue : VFSReadQueue | Nil = nil
+    getter read_queue
+
+    def initialize
+        @read_queue = VFSReadQueue.new
+    end
+
     def size : Int
         0
     end
@@ -25,6 +32,7 @@ class KbdFsNode < VFSNode
     def write(slice : Slice) : Int32
         0
     end
+
 end
 
 class KbdFS < VFS
@@ -36,7 +44,7 @@ class KbdFS < VFS
     @next_node : VFS | Nil = nil
     property next_node
 
-    def initialize(@keyboard : KeyboardInstance)
+    def initialize(@keyboard : Keyboard)
         @name = CString.new("kbd", 3)
         @root = KbdFsNode.new
     end
@@ -46,6 +54,28 @@ class KbdFS < VFS
     end
 
     def on_key(ch)
+        byte = case ch
+        when Char
+            ch.ord.to_u8
+        when UInt32
+            ch.to_u8
+        end.not_nil!
+        VGA.puts ch
+
+        last_page_dir = Paging.current_page_dir
+        root.read_queue.not_nil!.select do |msg|
+            Serial.puts msg.slice, '\n'
+            dir = msg.process.phys_page_dir
+            Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
+            Paging.enable
+            msg.slice[0] = byte
+            msg.process.status = Multiprocessing::ProcessStatus::IoUnwait
+            msg.process.frame.not_nil!.eax = 1
+            false
+        end
+
+        Paging.current_page_dir = last_page_dir
+        Paging.enable
     end
 
 end

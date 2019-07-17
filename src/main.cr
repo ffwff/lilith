@@ -15,11 +15,11 @@ require "./alloc/gc.cr"
 require "./fs/fat16.cr"
 require "./fs/vgafs.cr"
 require "./fs/kbdfs.cr"
-require "./fs/io_process.cr"
 require "./userspace/syscalls.cr"
 require "./userspace/process.cr"
 require "./userspace/elf.cr"
 require "./userspace/mmap_list.cr"
+require "./kprocess.cr"
 
 lib Kernel
     fun ksyscall_setup()
@@ -43,7 +43,6 @@ fun kmain(
 
     # drivers
     pit = PitInstance.new
-    keyboard = KeyboardInstance.new
 
     # setup memory management
     VGA.puts "Booting lilith...\n"
@@ -81,6 +80,12 @@ fun kmain(
     end).not_nil!
     ide.init_controller
 
+    keyboard = Keyboard.new
+    keyboard.kbdfs = KbdFS.new(keyboard)
+    ROOTFS.append(keyboard.kbdfs.not_nil!)
+
+    ROOTFS.append(VGAFS.new)
+
     mbr = MBR.read_ide(ide.device(0))
     main_bin : VFSNode | Nil = nil
     if mbr.header[0] == 0x55 && mbr.header[1] == 0xaa
@@ -94,12 +99,15 @@ fun kmain(
         ROOTFS.append(fs)
     end
 
-    keyboard.kbdfs = KbdFS.new(keyboard)
-    ROOTFS.append(keyboard.kbdfs.not_nil!)
-    ROOTFS.append(VGAFS.new)
-
     VGA.puts "setting up syscalls...\n"
     Kernel.ksyscall_setup
+
+    Idt.disable
+    Idt.status_mask = true
+
+    k_process = Multiprocessing::Process.new(true) do |proc|
+        proc.initial_addr = (->kprocess_loop).pointer.address.to_u32
+    end
 
     if main_bin.nil?
         VGA.puts "no main.bin detected.\n"
@@ -109,14 +117,7 @@ fun kmain(
             ElfReader.load(proc, main_bin.not_nil!)
         end
 
-        VGA.puts "setting up kernel IO thread...\n"
-        #io_process = Multiprocessing::Process.new do |proc|
-        #    proc.kernel_process = true
-        #    proc.stack_bottom = 0x7ffff000u32
-        #    Paging.alloc_page_pg proc.stack_bottom, true, false, 1
-        #    proc.initial_addr = (->kio_process).pointer.address.to_u32
-        #end
-
+        Idt.status_mask = false
         Multiprocessing.setup_tss
         m_process.initial_switch
     end

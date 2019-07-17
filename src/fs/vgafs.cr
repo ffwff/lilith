@@ -26,6 +26,11 @@ class VGAFsNode < VFSNode
         end
         slice.size
     end
+
+    def read_queue
+        nil
+    end
+
 end
 
 class VGAFS < VFS

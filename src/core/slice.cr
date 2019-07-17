@@ -32,4 +32,8 @@ struct Slice(T)
         true
     end
 
+    def to_s(io)
+        io.puts "Slice(", @buffer, " ", @size, ")"
+    end
+
 end

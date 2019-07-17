@@ -6,7 +6,7 @@ lib SyscallData
     struct Registers
         # Pushed by pushad:
         # ecx is unused
-        edi, esi, ebp, esp, ebx, edx, ecx_, eax : UInt32
+        edi, esi, ebp, esp, ebx, edx, ecx, eax : UInt32
     end
 
     struct SyscallStringArgument
@@ -121,13 +121,17 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     when SC_READ
         fdi = frame.ebx.to_i32
         process = Multiprocessing.current_process.not_nil!
+        Serial.puts fdi, '\n'
         fd = try!(process.get_fd(fdi))
         arg = try!(checked_pointer(frame.edx)).as(SyscallData::SyscallStringArgument*)
         str = try!(checked_slice(arg.value.str, arg.value.len))
         result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
         case result
         when VFS_READ_WAIT
+            process.new_frame frame
+            fd.not_nil!.node.not_nil!.read_queue.not_nil!.push(VFSReadMessage.new(str, process))
             process.status = Multiprocessing::ProcessStatus::ReadWait
+            Multiprocessing.switch_process(nil)
         else
             frame.eax = result
         end

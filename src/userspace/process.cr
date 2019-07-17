@@ -29,6 +29,7 @@ module Multiprocessing
 
     enum ProcessStatus
         Normal
+        IoUnwait
         ReadWait
     end
 
@@ -118,14 +119,12 @@ module Multiprocessing
 
         def initial_switch
             Multiprocessing.current_process = self
-            Idt.disable
             dir = @phys_page_dir # this must be stack allocated
             # because it's placed in the virtual kernel heap
             panic "page dir is nil" if dir == 0
             Paging.disable
             Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
             Paging.enable
-            Idt.enable
             asm("jmp kswitch_usermode" :: "{ecx}"(@initial_addr) : "volatile")
         end
 
@@ -148,6 +147,32 @@ module Multiprocessing
                 frame.ds = 0x23u32
                 frame.ss = 0x23u32
             end
+            @frame = frame
+            @frame.not_nil!
+        end
+
+        def new_frame(syscall_frame)
+            frame = IdtData::Registers.new
+            # Stack
+            frame.useresp = USER_STACK_TOP
+            frame.esp = USER_STACK_TOP
+            # Pushed by the processor automatically.
+            frame.eip = @initial_addr
+            if @kernel_process
+                frame.eflags = 0x202u32
+                frame.cs = 0x08u32
+                frame.ds = 0x10u32
+                frame.ss = 0x10u32
+            else
+                frame.eflags = 0x212u32
+                frame.cs = 0x1Bu32
+                frame.ds = 0x23u32
+                frame.ss = 0x23u32
+            end
+            # registers
+            {% for id in ["edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax"] %}
+            frame.{{ id.id }} = syscall_frame.{{ id.id }}
+            {% end %}
             @frame = frame
             @frame.not_nil!
         end
@@ -196,6 +221,11 @@ module Multiprocessing
         Kernel.kset_stack esp0
     end
 
+    private def can_switch(process)
+        process.status == Multiprocessing::ProcessStatus::Normal ||
+        process.status == Multiprocessing::ProcessStatus::IoUnwait
+    end
+
     # round robin scheduling algorithm
     def next_process : Process | Nil
         if @@current_process.nil?
@@ -203,10 +233,21 @@ module Multiprocessing
             return @@current_process
         end
         proc = @@current_process.not_nil!
+        # look from middle to end
         @@current_process = proc.next_process
+        while !@@current_process.nil? && !can_switch(@@current_process.not_nil!)
+            Serial.puts Pointer(Void).new(@@current_process.object_id), "\n"
+            @@current_process = @@current_process.not_nil!.next_process
+        end
+        # look from start to middle
         if @@current_process.nil?
             @@current_process = @@first_process
+            while !can_switch(@@current_process.not_nil!)
+                @@current_process = @@current_process.not_nil!.next_process
+                break if @@current_process == proc
+            end
         end
+        #Serial.puts Pointer(Void).new(@@current_process.object_id), "<--\n"
         @@current_process
     end
 
@@ -223,7 +264,6 @@ module Multiprocessing
         {% end %}
         {% else %}
         # save current process' state
-        Serial.puts "current_process: ", Multiprocessing.current_process.nil?, '\n'
         current_process = Multiprocessing.current_process.not_nil!
         current_process.frame = {{ frame }}
         memcpy current_process.fxsave_region.ptr, Multiprocessing.fxsave_region, 512
@@ -236,6 +276,12 @@ module Multiprocessing
         else
             next_process.frame.not_nil!
         end
+        if next_process.status == Multiprocessing::ProcessStatus::IoUnwait
+            # transition state from read syscall
+            process_frame.eip = Pointer(UInt32).new(process_frame.ecx.to_u64)[0]
+            Serial.puts Pointer(Void).new(process_frame.eip.to_u64), '\n'
+            next_process.status = Multiprocessing::ProcessStatus::Normal
+        end
         {% if frame != nil %}
             {% for id in [
                 "ds",
@@ -247,14 +293,15 @@ module Multiprocessing
         {% end %}
         memcpy Multiprocessing.fxsave_region, next_process.fxsave_region.ptr, 512
 
-        dir = next_process.not_nil!.phys_page_dir # this must be stack allocated
-        # because it's placed in the virtual kernel heap
-        Paging.disable
-        {% if frame == nil && remove %}
-        Paging.free_process_page_dir(current_page_dir)
-        {% end %}
-        Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
-        Paging.enable
+        if !next_process.kernel_process
+            dir = next_process.phys_page_dir # this must be stack allocated
+            # because it's placed in the virtual kernel heap
+            {% if frame == nil && remove %}
+            Paging.free_process_page_dir(current_page_dir)
+            {% end %}
+            Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
+            Paging.enable
+        end
 
         {% if frame == nil %}
         asm("jmp kcpuint_end" :: "{esp}"(pointerof(process_frame)) : "volatile")

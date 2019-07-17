@@ -3,6 +3,9 @@ struct Enum
     def ==(other)
         value == other.value
     end
+    def !=(other)
+        value != other.value
+    end
 
     def ===(other)
         value == other.value
