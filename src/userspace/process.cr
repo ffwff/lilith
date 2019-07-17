@@ -62,8 +62,6 @@ module Multiprocessing
         property kernel_process
 
         def initialize(disable_idt=true, &on_setup_paging)
-            Serial.puts "id:", Pointer(Void).new(object_id), '\n'
-
             # file descriptors
             # BUG: must be initialized here or the GC won't catch it
             @fds = GcArray(FileDescriptor).new MAX_FD
@@ -128,7 +126,6 @@ module Multiprocessing
             frame.useresp = USER_STACK_TOP
             # Pushed by the processor automatically.
             frame.eip = @initial_addr
-            Serial.puts "new: " ,Pointer(Void).new(@initial_addr.to_u64) ,"!\n"
             frame.eflags = 0x212u32
             if @kernel_process
                 frame.cs = 0x1Fu32

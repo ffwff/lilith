@@ -76,8 +76,8 @@ private struct Pool
     # obtain a free block and pop it from the pool
     # returns a pointer to the buffer
     def get_free_block : UInt32
-        Serial.puts @header, '\n'
         block = first_free_block
+        # panic "free block is null!" if block.null?
         @header.value.first_free_block = block.value.next_free_block
         block.address.to_u32 + BLOCK_HEADER_SIZE
     end
@@ -85,7 +85,7 @@ private struct Pool
     # release a free block
     def release_block(addr : UInt32)
         block = Pointer(Kernel::PoolBlockHeader).new(addr.to_u64 - BLOCK_HEADER_SIZE)
-        block.value.next_free_block = first_free_block
+        block.value.next_free_block = @header.value.first_free_block
         @header.value.first_free_block = block
     end
 
@@ -114,14 +114,6 @@ private struct KernelArena
         end
     end
 
-    private def chain_pool(pool)
-        idx = idx_for_pool_size pool.block_buffer_size
-        if !@free_pools[idx].null?
-            pool.header.value.next_pool = @free_pools[idx]
-        end
-        @free_pools[idx] = pool.header
-    end
-
     # pool
     private def new_pool(buffer_size : UInt32) : Pool
         addr = @placement_addr
@@ -145,6 +137,7 @@ private struct KernelArena
         idx = idx_for_pool_size pool_size
         if @free_pools[idx].null?
             # create a new pool if there isn't any freed
+            #Serial.puts "nul!\n"
             pool = new_pool(pool_size)
             # Serial.puts pool
             chain_pool pool
@@ -156,6 +149,13 @@ private struct KernelArena
             if pool.first_free_block.null?
                 # pop if pool is full
                 @free_pools[idx] = pool.header.value.next_pool
+                if @free_pools[idx] == pool.header
+                    pool.header.value.next_pool = Pointer(Kernel::PoolHeader).null
+                    pool = new_pool(pool_size)
+                    chain_pool pool
+                    return pool.get_free_block
+                end
+                pool.header.value.next_pool = Pointer(Kernel::PoolHeader).null
             end
             addr
         end
@@ -169,14 +169,17 @@ private struct KernelArena
         chain_pool pool
     end
 
-    def to_s(io)
-        io.puts
+    private def chain_pool(pool)
+        idx = idx_for_pool_size pool.block_buffer_size
+        if pool.header.value.next_pool.null?
+            pool.header.value.next_pool = @free_pools[idx]
+            @free_pools[idx] = pool.header
+        end
     end
 
     # utils
-    def block_size_for_ptr(ptr : UInt32) : UInt32
-        ptr = Pointer(Kernel::PoolHeader).new(ptr.to_u64 & 0xFFFF_F000)
-        ptr.value.block_buffer_size
+    def to_s(io)
+        io.puts
     end
 
 end

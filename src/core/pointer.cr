@@ -73,4 +73,11 @@ struct Pointer(T)
         self - offset.to_i64
     end
 
+    def ==(other)
+        self.address == other.address
+    end
+    def !=(other)
+        self.address != other.address
+    end
+
 end

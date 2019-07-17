@@ -158,7 +158,6 @@ module ElfReader
 
     # load
     def load(proc, vfs)
-        Serial.puts "load\n" #4
         Paging.alloc_page_pg proc.stack_bottom, true, true, 1
         mmap_list : GcArray(MemMapNode) | Nil = nil
         mmap_append_idx = 0
