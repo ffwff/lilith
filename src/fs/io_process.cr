@@ -2,7 +2,9 @@ module IoProcess
     extend self
 
     def tick
-        panic "io!\n"
+        while true
+            Serial.puts "io!\n"
+        end
     end
 
 end

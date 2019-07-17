@@ -1,4 +1,4 @@
 #!/bin/sh
 
 PATH=toolchain/tools/bin:$PATH
-i386-elf-lilith-cc -nostdlib -nostdinc -Ilibc/pdclib/include -Ilibc/pdclib/include/pdclib -Ilibc/stub/include -Llibc $@ -lc -lgcc
+i386-elf-lilith-cc -nostdlib -nostdinc -Ilibc/pdclib/include -Ilibc/pdclib/include/pdclib -Ilibc/stub/include -Llibc $@ -lc -lgcc -O2

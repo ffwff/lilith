@@ -14,8 +14,9 @@ require "./alloc/alloc.cr"
 require "./alloc/gc.cr"
 require "./fs/fat16.cr"
 require "./fs/vgafs.cr"
+require "./fs/kbdfs.cr"
 require "./fs/io_process.cr"
-require "./userspace/syscall.cr"
+require "./userspace/syscalls.cr"
 require "./userspace/process.cr"
 require "./userspace/elf.cr"
 require "./userspace/mmap_list.cr"
@@ -80,9 +81,6 @@ fun kmain(
     end).not_nil!
     ide.init_controller
 
-    #
-    VGA.puts "initializing rootfs...\n"
-
     mbr = MBR.read_ide(ide.device(0))
     main_bin : VFSNode | Nil = nil
     if mbr.header[0] == 0x55 && mbr.header[1] == 0xaa
@@ -96,6 +94,7 @@ fun kmain(
         ROOTFS.append(fs)
     end
 
+    ROOTFS.append(KbdFS.new)
     ROOTFS.append(VGAFS.new)
 
     VGA.puts "setting up syscalls...\n"
@@ -108,13 +107,16 @@ fun kmain(
         m_process = Multiprocessing::Process.new do |proc|
             ElfReader.load(proc, main_bin.not_nil!)
         end
+
+        VGA.puts "setting up kernel IO thread...\n"
+        Multiprocessing::Process.new do |proc|
+            proc.kernel_process = true
+            Paging.alloc_page_pg proc.stack_bottom, true, true, 1, true
+            proc.initial_addr = 0u32
+            #proc.initial_addr = (->IoProcess.tick).pointer.address.to_u32
+        end
+
         Multiprocessing.setup_tss
-
-        #VGA.puts "setting up kernel IO thread...\n"
-        #Multiprocessing::Process.new do |proc|
-        #    proc.initial_addr = (->IoProcess.tick).pointer.address.to_u32
-        #end
-
         m_process.initial_switch
     end
 
