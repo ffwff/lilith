@@ -27,6 +27,11 @@ module Multiprocessing
     def fxsave_region; @@fxsave_region; end
     def fxsave_region=(@@fxsave_region); end
 
+    enum ProcessStatus
+        Normal
+        ReadWait
+    end
+
     class Process < Gc
 
         @pid = 0u32
@@ -55,13 +60,18 @@ module Multiprocessing
         # sse state
         getter fxsave_region
 
-        MAX_FD = 16
-        getter fds
-
         @kernel_process = false
         property kernel_process
 
-        def initialize(disable_idt=true, &on_setup_paging)
+        # files
+        MAX_FD = 16
+        getter fds
+
+        # status
+        @status = Multiprocessing::ProcessStatus::Normal
+        property status
+
+        def initialize(@kernel_process=false, &on_setup_paging)
             # file descriptors
             # BUG: must be initialized here or the GC won't catch it
             @fds = GcArray(FileDescriptor).new MAX_FD
@@ -70,19 +80,21 @@ module Multiprocessing
 
             Multiprocessing.n_process += 1
 
-            Idt.disable if disable_idt
+            Idt.disable
 
             @pid = Multiprocessing.pids
             last_page_dir = Pointer(PageStructs::PageDirectory).null
-            if @pid != 0
-                Paging.disable
-                last_page_dir = Paging.current_page_dir
-                page_dir = Paging.alloc_process_page_dir
-                Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new page_dir
-                Paging.enable
-                @phys_page_dir = page_dir.to_u32
-            else
-                @phys_page_dir = Paging.current_page_dir.address.to_u32
+            if !@kernel_process
+                if @pid != 0
+                    Paging.disable
+                    last_page_dir = Paging.current_page_dir
+                    page_dir = Paging.alloc_process_page_dir
+                    Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new page_dir
+                    Paging.enable
+                    @phys_page_dir = page_dir.to_u32
+                else
+                    @phys_page_dir = Paging.current_page_dir.address.to_u32
+                end
             end
             Multiprocessing.pids += 1
 
@@ -95,13 +107,13 @@ module Multiprocessing
             end
             Multiprocessing.first_process = self
 
-            if !last_page_dir.null?
+            if !last_page_dir.null? && !@kernel_process
                 Paging.disable
                 Paging.current_page_dir = last_page_dir
                 Paging.enable
             end
 
-            Idt.enable if disable_idt
+            Idt.enable
         end
 
         def initial_switch
@@ -201,14 +213,17 @@ module Multiprocessing
     # context switch
     # NOTE: this must be a macro so that it will be inlined,
     # and frame will the a reference to the frame on the stack
-    macro switch_process(frame)
+    macro switch_process(frame, remove=false)
         {% if frame == nil %}
         current_process = Multiprocessing.current_process.not_nil!
         current_page_dir = current_process.phys_page_dir
         next_process = Multiprocessing.next_process.not_nil!
+        {% if remove %}
         current_process.remove
+        {% end %}
         {% else %}
         # save current process' state
+        Serial.puts "current_process: ", Multiprocessing.current_process.nil?, '\n'
         current_process = Multiprocessing.current_process.not_nil!
         current_process.frame = {{ frame }}
         memcpy current_process.fxsave_region.ptr, Multiprocessing.fxsave_region, 512
@@ -235,7 +250,7 @@ module Multiprocessing
         dir = next_process.not_nil!.phys_page_dir # this must be stack allocated
         # because it's placed in the virtual kernel heap
         Paging.disable
-        {% if frame == nil %}
+        {% if frame == nil && remove %}
         Paging.free_process_page_dir(current_page_dir)
         {% end %}
         Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)

@@ -1,3 +1,5 @@
+require "./vfs.cr"
+
 class KbdFsNode < VFSNode
 
     def size : Int
@@ -17,7 +19,7 @@ class KbdFsNode < VFSNode
 
     def read(slice : Slice, offset : UInt32,
             process : Multiprocessing::Process | Nil = nil) : Int32
-        0
+        VFS_READ_WAIT
     end
 
     def write(slice : Slice) : Int32
@@ -34,13 +36,16 @@ class KbdFS < VFS
     @next_node : VFS | Nil = nil
     property next_node
 
-    def initialize
+    def initialize(@keyboard : KeyboardInstance)
         @name = CString.new("kbd", 3)
         @root = KbdFsNode.new
     end
 
     def root
         @root.not_nil!
+    end
+
+    def on_key(ch)
     end
 
 end

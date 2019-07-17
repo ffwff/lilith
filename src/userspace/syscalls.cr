@@ -124,7 +124,13 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         fd = try!(process.get_fd(fdi))
         arg = try!(checked_pointer(frame.edx)).as(SyscallData::SyscallStringArgument*)
         str = try!(checked_slice(arg.value.str, arg.value.len))
-        frame.eax = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
+        result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
+        case result
+        when VFS_READ_WAIT
+            process.status = Multiprocessing::ProcessStatus::ReadWait
+        else
+            frame.eax = result
+        end
     when SC_WRITE
         fdi = frame.ebx.to_i32
         fd = try!(Multiprocessing.current_process.not_nil!.get_fd(fdi))
@@ -196,7 +202,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
             panic "init exited"
         end
 
-        Multiprocessing.switch_process(nil)
+        Multiprocessing.switch_process(nil, true)
     else
         frame.eax = SYSCALL_ERR
     end

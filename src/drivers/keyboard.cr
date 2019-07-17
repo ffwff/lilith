@@ -1,4 +1,5 @@
 require "../arch/idt.cr"
+require "../fs/kbdfs.cr"
 
 KEYBOARD_MAP = StaticArray[
     0, 27, '1', '2', '3', '4', '5', '6', '7', '8',    # 9
@@ -41,6 +42,9 @@ KEYBOARD_MAP = StaticArray[
 
 struct KeyboardInstance
 
+    @kbdfs : KbdFS | Nil = nil
+    property kbdfs
+
     def initialize
         Idt.register_irq 1, ->callback
     end
@@ -48,7 +52,9 @@ struct KeyboardInstance
     def callback
         keycode = X86.inb(0x60).to_i8
         if keycode >= 0
-            Serial.puts KEYBOARD_MAP[keycode]
+            if !@kbdfs.nil?
+                @kbdfs.not_nil!.on_key(KEYBOARD_MAP[keycode])
+            end
         end
     end
 
