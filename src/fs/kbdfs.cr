@@ -64,7 +64,7 @@ class KbdFS < VFS
 
         last_page_dir = Paging.current_page_dir
         root.read_queue.not_nil!.select do |msg|
-            Serial.puts msg.slice, '\n'
+            #Serial.puts msg.slice, '\n'
             dir = msg.process.phys_page_dir
             Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
             Paging.enable

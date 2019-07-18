@@ -121,7 +121,6 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     when SC_READ
         fdi = frame.ebx.to_i32
         process = Multiprocessing.current_process.not_nil!
-        Serial.puts fdi, '\n'
         fd = try!(process.get_fd(fdi))
         arg = try!(checked_pointer(frame.edx)).as(SyscallData::SyscallStringArgument*)
         str = try!(checked_slice(arg.value.str, arg.value.len))

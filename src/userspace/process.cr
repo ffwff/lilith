@@ -236,7 +236,7 @@ module Multiprocessing
         # look from middle to end
         @@current_process = proc.next_process
         while !@@current_process.nil? && !can_switch(@@current_process.not_nil!)
-            Serial.puts Pointer(Void).new(@@current_process.object_id), "\n"
+            #Serial.puts Pointer(Void).new(@@current_process.object_id), "\n"
             @@current_process = @@current_process.not_nil!.next_process
         end
         # look from start to middle
@@ -277,9 +277,8 @@ module Multiprocessing
             next_process.frame.not_nil!
         end
         if next_process.status == Multiprocessing::ProcessStatus::IoUnwait
-            # transition state from read syscall
+            # transition state from async io syscall
             process_frame.eip = Pointer(UInt32).new(process_frame.ecx.to_u64)[0]
-            Serial.puts Pointer(Void).new(process_frame.eip.to_u64), '\n'
             next_process.status = Multiprocessing::ProcessStatus::Normal
         end
         {% if frame != nil %}
