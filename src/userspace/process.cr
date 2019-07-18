@@ -52,7 +52,7 @@ module Multiprocessing
 
         # physical location of the process' page directory
         @phys_page_dir : UInt32 = 0
-        getter phys_page_dir
+        property phys_page_dir
 
         # interrupt frame for preemptive multitasking
         @frame : IdtData::Registers | Nil = nil
@@ -296,7 +296,9 @@ module Multiprocessing
             dir = next_process.phys_page_dir # this must be stack allocated
             # because it's placed in the virtual kernel heap
             {% if frame == nil && remove %}
+            Paging.disable
             Paging.free_process_page_dir(current_page_dir)
+            current_process.phys_page_dir = 0u32
             {% end %}
             Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
             Paging.enable

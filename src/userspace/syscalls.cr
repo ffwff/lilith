@@ -201,10 +201,6 @@ fun ksyscall_handler(frame : SyscallData::Registers)
             frame.eax = 1
         end
     when SC_EXIT
-        if Multiprocessing.n_process == 1
-            panic "init exited"
-        end
-
         Multiprocessing.switch_process(nil, true)
     else
         frame.eax = SYSCALL_ERR
