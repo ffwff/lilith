@@ -27,24 +27,9 @@ index 75bb6a3135..78ce133e7c 100755
  	     | hpux* | unos* | osf* | luna* | dgux* | auroraux* | solaris* \
  	     | sym* | kopensolaris* | plan9* \
 diff --git a/gas/configure.tgt b/gas/configure.tgt
-index 616d211308..5d081f1ef3 100644
+index 616d211308..9095940d10 100644
 --- a/gas/configure.tgt
 +++ b/gas/configure.tgt
-@@ -6,12 +6,12 @@
- # it under the terms of the GNU General Public License as published by
- # the Free Software Foundation; either version 3 of the License, or
- # (at your option) any later version.
--# 
-+#
- # This program is distributed in the hope that it will be useful,
- # but WITHOUT ANY WARRANTY; without even the implied warranty of
- # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- # GNU General Public License for more details.
--# 
-+#
- # You should have received a copy of the GNU General Public License
- # along with this program; see the file COPYING3.  If not see
- # <http://www.gnu.org/licenses/>.
 @@ -121,6 +121,7 @@ esac
  generic_target=${cpu_type}-$vendor-$os
  # Note: This table is alpha-sorted, please try to keep it that way.
@@ -53,29 +38,19 @@ index 616d211308..5d081f1ef3 100644
    aarch64*-*-elf*)			fmt=elf;;
    aarch64*-*-fuchsia*)			fmt=elf;;
    aarch64*-*-linux*)			fmt=elf em=linux
-@@ -327,7 +328,7 @@ case ${generic_target} in
-   moxie-*-uclinux)			fmt=elf em=linux ;;
-   moxie-*-moxiebox*)                    fmt=elf endian=little ;;
-   moxie-*-*)				fmt=elf ;;
--    
-+
-   mt-*-elf)				fmt=elf bfd_gas=yes ;;
- 
-   msp430-*-*)				fmt=elf ;;
-@@ -415,7 +416,7 @@ case ${generic_target} in
-   wasm32-*-*)                           fmt=elf ;;
- 
-   xstormy16-*-*)			fmt=elf ;;
--  
-+
-   xgate-*-*)    			fmt=elf ;;
- 
-   xtensa*-*-*)				fmt=elf ;;
 diff --git a/ld/Makefile.am b/ld/Makefile.am
-index c2c798b4fe..ccc9c99904 100644
+index c2c798b4fe..53d47f8bfb 100644
 --- a/ld/Makefile.am
 +++ b/ld/Makefile.am
-@@ -1289,6 +1289,10 @@ eelf32xtensa.c: $(srcdir)/emulparams/elf32xtensa.sh $(ELF_DEPS) \
+@@ -283,6 +283,7 @@ ALL_EMULATION_SOURCES = \
+ 	eelf32xstormy16.c \
+ 	eelf32xtensa.c \
+ 	eelf_i386.c \
++	eelf_i386_lilith.c \
+ 	eelf_i386_be.c \
+ 	eelf_i386_chaos.c \
+ 	eelf_i386_fbsd.c \
+@@ -1289,6 +1290,10 @@ eelf32xtensa.c: $(srcdir)/emulparams/elf32xtensa.sh $(ELF_DEPS) \
  eelf_i386.c: $(srcdir)/emulparams/elf_i386.sh \
    $(ELF_X86_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
  
@@ -87,144 +62,9 @@ index c2c798b4fe..ccc9c99904 100644
    $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
  
 diff --git a/ld/Makefile.in b/ld/Makefile.in
-index fc687fc516..554bb90eb3 100644
+index fc687fc516..955cfed0ff 100644
 --- a/ld/Makefile.in
 +++ b/ld/Makefile.in
-@@ -144,7 +144,7 @@ libldtestplug_la_OBJECTS = $(am_libldtestplug_la_OBJECTS)
- AM_V_lt = $(am__v_lt_@AM_V@)
- am__v_lt_ = $(am__v_lt_@AM_DEFAULT_V@)
- am__v_lt_0 = --silent
--am__v_lt_1 = 
-+am__v_lt_1 =
- libldtestplug_la_LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC \
- 	$(AM_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=link $(CCLD) \
- 	$(libldtestplug_la_CFLAGS) $(CFLAGS) \
-@@ -196,11 +196,11 @@ am__v_P_1 = :
- AM_V_GEN = $(am__v_GEN_@AM_V@)
- am__v_GEN_ = $(am__v_GEN_@AM_DEFAULT_V@)
- am__v_GEN_0 = @echo "  GEN     " $@;
--am__v_GEN_1 = 
-+am__v_GEN_1 =
- AM_V_at = $(am__v_at_@AM_V@)
- am__v_at_ = $(am__v_at_@AM_DEFAULT_V@)
- am__v_at_0 = @
--am__v_at_1 = 
-+am__v_at_1 =
- DEFAULT_INCLUDES = -I.@am__isrc@
- depcomp = $(SHELL) $(top_srcdir)/../depcomp
- am__depfiles_maybe = depfiles
-@@ -214,7 +214,7 @@ LTCOMPILE = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
- AM_V_CC = $(am__v_CC_@AM_V@)
- am__v_CC_ = $(am__v_CC_@AM_DEFAULT_V@)
- am__v_CC_0 = @echo "  CC      " $@;
--am__v_CC_1 = 
-+am__v_CC_1 =
- CCLD = $(CC)
- LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
- 	$(LIBTOOLFLAGS) --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
-@@ -222,7 +222,7 @@ LINK = $(LIBTOOL) $(AM_V_lt) --tag=CC $(AM_LIBTOOLFLAGS) \
- AM_V_CCLD = $(am__v_CCLD_@AM_V@)
- am__v_CCLD_ = $(am__v_CCLD_@AM_DEFAULT_V@)
- am__v_CCLD_0 = @echo "  CCLD    " $@;
--am__v_CCLD_1 = 
-+am__v_CCLD_1 =
- @MAINTAINER_MODE_FALSE@am__skiplex = test -f $@ ||
- LEXCOMPILE = $(LEX) $(AM_LFLAGS) $(LFLAGS)
- LTLEXCOMPILE = $(LIBTOOL) $(AM_V_lt) $(AM_LIBTOOLFLAGS) \
-@@ -230,7 +230,7 @@ LTLEXCOMPILE = $(LIBTOOL) $(AM_V_lt) $(AM_LIBTOOLFLAGS) \
- AM_V_LEX = $(am__v_LEX_@AM_V@)
- am__v_LEX_ = $(am__v_LEX_@AM_DEFAULT_V@)
- am__v_LEX_0 = @echo "  LEX     " $@;
--am__v_LEX_1 = 
-+am__v_LEX_1 =
- YLWRAP = $(top_srcdir)/../ylwrap
- @MAINTAINER_MODE_FALSE@am__skipyacc = test -f $@ ||
- am__yacc_c2h = sed -e s/cc$$/hh/ -e s/cpp$$/hpp/ -e s/cxx$$/hxx/ \
-@@ -241,38 +241,38 @@ LTYACCCOMPILE = $(LIBTOOL) $(AM_V_lt) $(AM_LIBTOOLFLAGS) \
- AM_V_YACC = $(am__v_YACC_@AM_V@)
- am__v_YACC_ = $(am__v_YACC_@AM_DEFAULT_V@)
- am__v_YACC_0 = @echo "  YACC    " $@;
--am__v_YACC_1 = 
-+am__v_YACC_1 =
- SOURCES = $(libldtestplug_la_SOURCES) $(libldtestplug2_la_SOURCES) \
- 	$(libldtestplug3_la_SOURCES) $(libldtestplug4_la_SOURCES) \
- 	$(ld_new_SOURCES) $(EXTRA_ld_new_SOURCES)
- AM_V_DVIPS = $(am__v_DVIPS_@AM_V@)
- am__v_DVIPS_ = $(am__v_DVIPS_@AM_DEFAULT_V@)
- am__v_DVIPS_0 = @echo "  DVIPS   " $@;
--am__v_DVIPS_1 = 
-+am__v_DVIPS_1 =
- AM_V_MAKEINFO = $(am__v_MAKEINFO_@AM_V@)
- am__v_MAKEINFO_ = $(am__v_MAKEINFO_@AM_DEFAULT_V@)
- am__v_MAKEINFO_0 = @echo "  MAKEINFO" $@;
--am__v_MAKEINFO_1 = 
-+am__v_MAKEINFO_1 =
- AM_V_INFOHTML = $(am__v_INFOHTML_@AM_V@)
- am__v_INFOHTML_ = $(am__v_INFOHTML_@AM_DEFAULT_V@)
- am__v_INFOHTML_0 = @echo "  INFOHTML" $@;
--am__v_INFOHTML_1 = 
-+am__v_INFOHTML_1 =
- AM_V_TEXI2DVI = $(am__v_TEXI2DVI_@AM_V@)
- am__v_TEXI2DVI_ = $(am__v_TEXI2DVI_@AM_DEFAULT_V@)
- am__v_TEXI2DVI_0 = @echo "  TEXI2DVI" $@;
--am__v_TEXI2DVI_1 = 
-+am__v_TEXI2DVI_1 =
- AM_V_TEXI2PDF = $(am__v_TEXI2PDF_@AM_V@)
- am__v_TEXI2PDF_ = $(am__v_TEXI2PDF_@AM_DEFAULT_V@)
- am__v_TEXI2PDF_0 = @echo "  TEXI2PDF" $@;
--am__v_TEXI2PDF_1 = 
-+am__v_TEXI2PDF_1 =
- AM_V_texinfo = $(am__v_texinfo_@AM_V@)
- am__v_texinfo_ = $(am__v_texinfo_@AM_DEFAULT_V@)
- am__v_texinfo_0 = -q
--am__v_texinfo_1 = 
-+am__v_texinfo_1 =
- AM_V_texidevnull = $(am__v_texidevnull_@AM_V@)
- am__v_texidevnull_ = $(am__v_texidevnull_@AM_DEFAULT_V@)
- am__v_texidevnull_0 = > /dev/null
--am__v_texidevnull_1 = 
-+am__v_texidevnull_1 =
- INFO_DEPS = ld.info
- am__TEXINFO_TEX_DIR = $(srcdir)/../texinfo
- DVIS = ld.dvi
-@@ -542,22 +542,22 @@ tooldir = $(exec_prefix)/$(target_alias)
- 
- # Automake 1.10+ disables lex and yacc output file regeneration if
- # maintainer mode is disabled.  Avoid this.
--am__skiplex = 
--am__skipyacc = 
-+am__skiplex =
-+am__skipyacc =
- ELF_CLFAGS = -DELF_LIST_OPTIONS=@elf_list_options@ \
- 	   -DELF_SHLIB_LIST_OPTIONS=@elf_shlib_list_options@ \
- 	   -DELF_PLT_UNWIND_LIST_OPTIONS=@elf_plt_unwind_list_options@
- 
- AM_CFLAGS = $(WARN_CFLAGS) $(ELF_CLFAGS)
--@ENABLE_PLUGINS_FALSE@PLUGIN_C = 
-+@ENABLE_PLUGINS_FALSE@PLUGIN_C =
- 
- # Conditionally enable the plugin interface.
- @ENABLE_PLUGINS_TRUE@PLUGIN_C = plugin.c
--@ENABLE_PLUGINS_FALSE@PLUGIN_H = 
-+@ENABLE_PLUGINS_FALSE@PLUGIN_H =
- @ENABLE_PLUGINS_TRUE@PLUGIN_H = plugin.h
--@ENABLE_PLUGINS_FALSE@PLUGIN_OBJECT = 
-+@ENABLE_PLUGINS_FALSE@PLUGIN_OBJECT =
- @ENABLE_PLUGINS_TRUE@PLUGIN_OBJECT = plugin.@OBJEXT@
--@ENABLE_PLUGINS_FALSE@PLUGIN_CFLAGS = 
-+@ENABLE_PLUGINS_FALSE@PLUGIN_CFLAGS =
- @ENABLE_PLUGINS_TRUE@PLUGIN_CFLAGS = -DENABLE_PLUGINS
- 
- # We put the scripts in the directory $(scriptdir)/ldscripts.
-@@ -581,7 +581,7 @@ POD2MAN = pod2man --center="GNU Development Tools" \
- # Setup the testing framework, if you have one
- EXPECT = expect
- RUNTEST = runtest
--RUNTESTFLAGS = 
-+RUNTESTFLAGS =
- CC_FOR_TARGET = ` \
-   if [ -f $$r/../gcc/xgcc ] ; then \
-     if [ -f $$r/../newlib/Makefile ] ; then \
 @@ -769,6 +769,7 @@ ALL_EMULATION_SOURCES = \
  	eelf32xstormy16.c \
  	eelf32xtensa.c \
@@ -233,87 +73,6 @@ index fc687fc516..554bb90eb3 100644
  	eelf_i386_be.c \
  	eelf_i386_chaos.c \
  	eelf_i386_fbsd.c \
-@@ -1092,7 +1093,7 @@ config.h: stamp-h1
- stamp-h1: $(srcdir)/config.in $(top_builddir)/config.status
- 	@rm -f stamp-h1
- 	cd $(top_builddir) && $(SHELL) ./config.status config.h
--$(srcdir)/config.in: @MAINTAINER_MODE_TRUE@ $(am__configure_deps) 
-+$(srcdir)/config.in: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
- 	($(am__cd) $(top_srcdir) && $(AUTOHEADER))
- 	rm -f stamp-h1
- 	touch $@
-@@ -1113,16 +1114,16 @@ clean-noinstLTLIBRARIES:
- 	  rm -f $${locs}; \
- 	}
- 
--libldtestplug.la: $(libldtestplug_la_OBJECTS) $(libldtestplug_la_DEPENDENCIES) $(EXTRA_libldtestplug_la_DEPENDENCIES) 
-+libldtestplug.la: $(libldtestplug_la_OBJECTS) $(libldtestplug_la_DEPENDENCIES) $(EXTRA_libldtestplug_la_DEPENDENCIES)
- 	$(AM_V_CCLD)$(libldtestplug_la_LINK) $(am_libldtestplug_la_rpath) $(libldtestplug_la_OBJECTS) $(libldtestplug_la_LIBADD) $(LIBS)
- 
--libldtestplug2.la: $(libldtestplug2_la_OBJECTS) $(libldtestplug2_la_DEPENDENCIES) $(EXTRA_libldtestplug2_la_DEPENDENCIES) 
-+libldtestplug2.la: $(libldtestplug2_la_OBJECTS) $(libldtestplug2_la_DEPENDENCIES) $(EXTRA_libldtestplug2_la_DEPENDENCIES)
- 	$(AM_V_CCLD)$(libldtestplug2_la_LINK) $(am_libldtestplug2_la_rpath) $(libldtestplug2_la_OBJECTS) $(libldtestplug2_la_LIBADD) $(LIBS)
- 
--libldtestplug3.la: $(libldtestplug3_la_OBJECTS) $(libldtestplug3_la_DEPENDENCIES) $(EXTRA_libldtestplug3_la_DEPENDENCIES) 
-+libldtestplug3.la: $(libldtestplug3_la_OBJECTS) $(libldtestplug3_la_DEPENDENCIES) $(EXTRA_libldtestplug3_la_DEPENDENCIES)
- 	$(AM_V_CCLD)$(libldtestplug3_la_LINK) $(am_libldtestplug3_la_rpath) $(libldtestplug3_la_OBJECTS) $(libldtestplug3_la_LIBADD) $(LIBS)
- 
--libldtestplug4.la: $(libldtestplug4_la_OBJECTS) $(libldtestplug4_la_DEPENDENCIES) $(EXTRA_libldtestplug4_la_DEPENDENCIES) 
-+libldtestplug4.la: $(libldtestplug4_la_OBJECTS) $(libldtestplug4_la_DEPENDENCIES) $(EXTRA_libldtestplug4_la_DEPENDENCIES)
- 	$(AM_V_CCLD)$(libldtestplug4_la_LINK) $(am_libldtestplug4_la_rpath) $(libldtestplug4_la_OBJECTS) $(libldtestplug4_la_LIBADD) $(LIBS)
- install-binPROGRAMS: $(bin_PROGRAMS)
- 	@$(NORMAL_INSTALL)
-@@ -1180,7 +1181,7 @@ deffilep.h: deffilep.c
- 	@if test ! -f $@; then rm -f deffilep.c; else :; fi
- 	@if test ! -f $@; then $(MAKE) $(AM_MAKEFLAGS) deffilep.c; else :; fi
- 
--ld-new$(EXEEXT): $(ld_new_OBJECTS) $(ld_new_DEPENDENCIES) $(EXTRA_ld_new_DEPENDENCIES) 
-+ld-new$(EXEEXT): $(ld_new_OBJECTS) $(ld_new_DEPENDENCIES) $(EXTRA_ld_new_DEPENDENCIES)
- 	@rm -f ld-new$(EXEEXT)
- 	$(AM_V_CCLD)$(LINK) $(ld_new_OBJECTS) $(ld_new_LDADD) $(LIBS)
- 
-@@ -1383,6 +1384,7 @@ distclean-compile:
- @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf64tilegx.Po@am__quote@
- @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf64tilegx_be.Po@am__quote@
- @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386.Po@am__quote@
-+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_lilith.Po@am__quote@
- @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_be.Po@am__quote@
- @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_chaos.Po@am__quote@
- @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/eelf_i386_fbsd.Po@am__quote@
-@@ -1601,19 +1603,19 @@ ld.info: ld.texi $(ld_TEXINFOS)
- 	fi; \
- 	rm -rf $$backupdir; exit $$rc
- 
--ld.dvi: ld.texi $(ld_TEXINFOS) 
-+ld.dvi: ld.texi $(ld_TEXINFOS)
- 	$(AM_V_TEXI2DVI)TEXINPUTS="$(am__TEXINFO_TEX_DIR)$(PATH_SEPARATOR)$$TEXINPUTS" \
- 	MAKEINFO='$(MAKEINFO) $(AM_MAKEINFOFLAGS) $(MAKEINFOFLAGS) -I $(srcdir)' \
- 	$(TEXI2DVI) $(AM_V_texinfo) --build-dir=$(@:.dvi=.t2d) -o $@ $(AM_V_texidevnull) \
- 	`test -f 'ld.texi' || echo '$(srcdir)/'`ld.texi
- 
--ld.pdf: ld.texi $(ld_TEXINFOS) 
-+ld.pdf: ld.texi $(ld_TEXINFOS)
- 	$(AM_V_TEXI2PDF)TEXINPUTS="$(am__TEXINFO_TEX_DIR)$(PATH_SEPARATOR)$$TEXINPUTS" \
- 	MAKEINFO='$(MAKEINFO) $(AM_MAKEINFOFLAGS) $(MAKEINFOFLAGS) -I $(srcdir)' \
- 	$(TEXI2PDF) $(AM_V_texinfo) --build-dir=$(@:.pdf=.t2p) -o $@ $(AM_V_texidevnull) \
- 	`test -f 'ld.texi' || echo '$(srcdir)/'`ld.texi
- 
--ld.html: ld.texi $(ld_TEXINFOS) 
-+ld.html: ld.texi $(ld_TEXINFOS)
- 	$(AM_V_MAKEINFO)rm -rf $(@:.html=.htp)
- 	$(AM_V_at)if $(MAKEINFOHTML) $(AM_MAKEINFOHTMLFLAGS) $(MAKEINFOFLAGS) -I $(srcdir) \
- 	 -o $(@:.html=.htp) `test -f 'ld.texi' || echo '$(srcdir)/'`ld.texi; \
-@@ -2893,6 +2895,10 @@ eelf32xtensa.c: $(srcdir)/emulparams/elf32xtensa.sh $(ELF_DEPS) \
- eelf_i386.c: $(srcdir)/emulparams/elf_i386.sh \
-   $(ELF_X86_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
- 
-+eelf_i386_lilith.c: $(srcdir)/emulparams/elf_i386_lilith.sh \
-+  $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
-+	${GENSCRIPTS} elf_i386_lilith "$(tdir_elf_i386_lilith)"
-+
- eelf_i386_be.c: $(srcdir)/emulparams/elf_i386_be.sh \
-   $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
- 
 diff --git a/ld/configure.tgt b/ld/configure.tgt
 index beba17ef51..a1a42872fe 100644
 --- a/ld/configure.tgt
