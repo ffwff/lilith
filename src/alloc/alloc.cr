@@ -77,7 +77,6 @@ private struct Pool
     # returns a pointer to the buffer
     def get_free_block : UInt32
         block = first_free_block
-        # panic "free block is null!" if block.null?
         @header.value.first_free_block = block.value.next_free_block
         block.address.to_u32 + BLOCK_HEADER_SIZE
     end
@@ -137,27 +136,34 @@ private struct KernelArena
         idx = idx_for_pool_size pool_size
         if @free_pools[idx].null?
             # create a new pool if there isn't any freed
-            #Serial.puts "nul!\n"
             pool = new_pool(pool_size)
-            # Serial.puts pool
             chain_pool pool
             pool.get_free_block
         else
             # reuse existing pool
             pool = Pool.new @free_pools[idx]
-            addr = pool.get_free_block
             if pool.first_free_block.null?
                 # pop if pool is full
-                @free_pools[idx] = pool.header.value.next_pool
-                if @free_pools[idx] == pool.header
-                    pool.header.value.next_pool = Pointer(Kernel::PoolHeader).null
+                # break circular chains in the tail node of linked list
+                cur_pool = pool.header.value.next_pool
+                while !cur_pool.null?
+                    next_pool = cur_pool.value.next_pool
+                    if cur_pool.value.first_free_block.null?
+                        cur_pool.value.next_pool = Pointer(Kernel::PoolHeader).null
+                    end
+                    cur_pool = next_pool
+                end
+                # have we found a free pool?
+                if cur_pool.null?
+                    # nope, new pool
                     pool = new_pool(pool_size)
                     chain_pool pool
                     return pool.get_free_block
+                else
+                    return Pool.new(cur_pool).get_free_block
                 end
-                pool.header.value.next_pool = Pointer(Kernel::PoolHeader).null
             end
-            addr
+            pool.get_free_block
         end
     end
 
