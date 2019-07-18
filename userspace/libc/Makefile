@@ -14,7 +14,7 @@ OBJ = \
 		$(wildcard stub/functions/*.c) \
 	)
 AR = i386-elf-lilith-ar
-CC = i386-elf-lilith-cc
+CC = i386-elf-lilith-gcc
 CCFLAGS = -Ipdclib/include \
 	-Istub/include -Istub/include/pdclib \
 	-nostdinc -nostdlib
@@ -22,8 +22,10 @@ CCFLAGS = -Ipdclib/include \
 libc.a: $(OBJ)
 	$(AR) rcs $@ $^
 
-libgcc.a:
-	cp `i686-elf-gcc -print-libgcc-file-name` $@
-
 %.o: %.c
 	$(CC) $(CCFLAGS) -c -o $@ $^
+
+install: libc.a stub/crt0.o
+	cp libc.a stub/crt0.o $(LIBDIR)
+	cp -r pdclib/include/* $(INCLUDEDIR)
+	cp -r stub/include/* $(INCLUDEDIR)

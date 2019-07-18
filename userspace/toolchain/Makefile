@@ -43,6 +43,14 @@ build_gcc: gcc
 		--enable-languages=c && \
 	make -j$(NPROC)
 
+# libc
+build_libc: ../libc
+	cd ../libc && \
+	make -j$(NPROC) && \
+	make install \
+		LIBDIR=$(shell pwd)/tools/lib/gcc/i386-elf-lilith/8.3.0/ \
+		INCLUDEDIR=$(shell pwd)/tools/lib/gcc/i386-elf-lilith/8.3.0/include \
+
 #
 cparser:
 	git clone --recursive https://github.com/libfirm/cparser
