@@ -25,6 +25,7 @@ end
 
 private struct VgaInstance < IoDriver
 
+    @[AlwaysInline]
     def color_code(fg : VgaColor, bg : VgaColor, char : UInt8) UInt16
         attrib = (bg.value.unsafe_shl(4)) | fg.value
         attrib.unsafe_shl(8) | char.to_u8!
@@ -38,6 +39,8 @@ private struct VgaInstance < IoDriver
     # init
     @buffer : UInt16* = Pointer(UInt16).new(0xb8000)
     def initialize
+        enable_cursor 0, 1
+        # fill with blank
         blank = color_code VgaColor::White, VgaColor::Black, ' '.ord.to_u8
         VGA_HEIGHT.times do |y|
             VGA_WIDTH.times do |x|
@@ -63,6 +66,13 @@ private struct VgaInstance < IoDriver
         VGA_STATE.advance
     end
 
+    def puts(*args)
+        args.each do |arg|
+            arg.to_s self
+        end
+        move_cursor VGA_STATE.cx, VGA_STATE.cy + 1
+    end
+
     # Scrolls the terminal
     private def scroll
         blank = color_code VGA_STATE.fg, VGA_STATE.bg, ' '.ord.to_u8
@@ -75,6 +85,27 @@ private struct VgaInstance < IoDriver
             @buffer[VGA_SIZE - VGA_WIDTH + x] = blank
         end
         VGA_STATE.wrapback
+    end
+
+    # Cursor
+    def enable_cursor(cursor_start, cursor_end)
+        X86.outb(0x3D4, 0x0A)
+        X86.outb(0x3D5, (X86.inb(0x3D5) & 0xC0) | cursor_start)
+        X86.outb(0x3D4, 0x0B)
+        X86.outb(0x3D5, (X86.inb(0x3D5) & 0xE0) | cursor_end)
+    end
+
+    def disable_cursor
+        X86.outb(0x3D4, 0x0A)
+        X86.outb(0x3D5, 0x20)
+    end
+
+    def move_cursor(x, y)
+        pos = offset x, y
+        X86.outb(0x3D4, 0x0F)
+        X86.outb(0x3D5, (pos & 0xFF).to_u8)
+        X86.outb(0x3D4, 0x0E)
+        X86.outb(0x3D5, (pos.unsafe_shr(8) & 0xFF).to_u8)
     end
 
 end

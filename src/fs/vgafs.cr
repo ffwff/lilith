@@ -1,5 +1,9 @@
 class VGAFsNode < VFSNode
 
+    def initialize(@fs : VGAFS)
+    end
+
+    #
     def size : Int
         0
     end
@@ -44,7 +48,7 @@ class VGAFS < VFS
 
     def initialize
         @name = CString.new("vga", 3)
-        @root = VGAFsNode.new
+        @root = VGAFsNode.new self
     end
 
     def root

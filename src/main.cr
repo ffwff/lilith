@@ -77,6 +77,7 @@ fun kmain(
         Ide.new
     else
         VGA.puts "no IDE controller detected!"
+        nil
     end).not_nil!
     ide.init_controller
 
