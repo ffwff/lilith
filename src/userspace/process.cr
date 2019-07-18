@@ -279,6 +279,7 @@ module Multiprocessing
         if next_process.status == Multiprocessing::ProcessStatus::IoUnwait
             # transition state from async io syscall
             process_frame.eip = Pointer(UInt32).new(process_frame.ecx.to_u64)[0]
+            process_frame.useresp = process_frame.ecx
             next_process.status = Multiprocessing::ProcessStatus::Normal
         end
         {% if frame != nil %}
