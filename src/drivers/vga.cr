@@ -58,6 +58,10 @@ private struct VgaInstance < IoDriver
         if ch == '\n'.ord.to_u8
             VGA_STATE.newline
             return
+        elsif ch == 8u8
+            VGA_STATE.backspace
+            putc(VGA_STATE.cx, VGA_STATE.cy, VGA_STATE.fg, VGA_STATE.bg, ' '.ord.to_u8)
+            return
         end
         if VGA_STATE.cy >= VGA_HEIGHT
             scroll
@@ -131,6 +135,16 @@ private struct VgaState
             newline
         else
             @cx += 1
+        end
+    end
+
+    @[AlwaysInline]
+    def backspace
+        if @cx == 0 && @cy > 0
+            @cx = VGA_WIDTH
+            @cy -= 1
+        else
+            @cx -= 1
         end
     end
 

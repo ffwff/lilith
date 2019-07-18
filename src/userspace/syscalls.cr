@@ -62,7 +62,7 @@ private def parse_path_into_segments(path, &block)
 end
 
 # consts
-SYSCALL_ERR = (~0).to_u32
+SYSCALL_ERR = (-1).to_u32
 SYSCALL_SUCCESS = 1u32
 
 SC_OPEN   = 0u32

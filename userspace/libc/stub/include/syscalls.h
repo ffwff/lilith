@@ -16,4 +16,6 @@ int open(const char *device, int flags);
 long write(int fd, const void *str, size_t len);
 long read(int fd, const char *str, unsigned long len);
 // process
-long spawn(const char *file);
+typedef long pid_t;
+pid_t spawn(const char *file);
+pid_t getpid();

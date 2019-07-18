@@ -52,7 +52,7 @@ class Keyboard < Gc
     def callback
         keycode = X86.inb(0x60).to_i8
         if keycode >= 0
-            if !@kbdfs.nil?
+            if !@kbdfs.nil? && keycode < KEYBOARD_MAP.size
                 @kbdfs.not_nil!.on_key(KEYBOARD_MAP[keycode])
             end
         end

@@ -59,7 +59,10 @@ class KbdFS < VFS
             ch.ord.to_u8
         when UInt32
             ch.to_u8
-        end.not_nil!
+        end
+        if byte.nil?
+            byte = 0u8
+        end
         VGA.puts ch
 
         last_page_dir = Paging.current_page_dir
