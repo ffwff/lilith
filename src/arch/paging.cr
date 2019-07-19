@@ -175,6 +175,7 @@ module Paging
         iaddr = claim_frame
         pd_addr = iaddr.to_u32 * 0x1000 + @@frame_base_addr
         pd = Pointer(PageStructs::PageDirectory).new(pd_addr.to_u64)
+        memset Pointer(UInt8).new(pd_addr.to_u64), 0, 4096
 
         # copy lower half (kernel half)
         512.times do |i|
@@ -186,18 +187,16 @@ module Paging
     end
 
     def free_process_page_dir(pda : UInt32)
-        # FIXME: this doesn't work
-        Serial.puts pda, '\n'
         Paging.disable
 
         pd = Pointer(PageStructs::PageDirectory).new(pda.to_u64)
         # free the higher half
         i = 512
         while i < 1024
-            pt_addr = pd.value.tables[i] & 0xFFFF_F000
-            pt = Pointer(PageStructs::PageTable).new(pt_addr.to_u64)
+            pta = pd.value.tables[i] & 0xFFFF_F000
+            pt = Pointer(PageStructs::PageTable).new(pta.to_u64)
             # free tables
-            if !pt.null?
+            if pta != 0
                 j = 0
                 while j < 1024
                     if pt.value.pages[j] != 0
@@ -206,11 +205,11 @@ module Paging
                     end
                     j += 1
                 end
-                Serial.puts pt_addr, '\n'
-                declaim_frame(frame_index_for_address(pt_addr))
+                declaim_frame(frame_index_for_address(pta))
             end
             i += 1
         end
+        
         # free itself
         declaim_frame(frame_index_for_address(pda))
 

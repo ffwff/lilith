@@ -53,7 +53,7 @@ module Multiprocessing
         property initial_addr
 
         # physical location of the process' page directory
-        @phys_page_dir : UInt32 = 0
+        @phys_page_dir : UInt32 = 0u32
         property phys_page_dir
 
         # interrupt frame for preemptive multitasking
@@ -193,7 +193,7 @@ module Multiprocessing
                 end
                 i += 1
             end
-            0
+            -1
         end
 
         def get_fd(i : Int32) : FileDescriptor | Nil
@@ -234,7 +234,7 @@ module Multiprocessing
 
     # round robin scheduling algorithm
     def next_process : Process | Nil
-        Serial.puts Multiprocessing.n_process, "---\n"
+        #Serial.puts Multiprocessing.n_process, "---\n"
         if @@current_process.nil?
             return @@current_process = @@first_process
         end
@@ -242,7 +242,7 @@ module Multiprocessing
         # look from middle to end
         cur = proc.next_process
         while !cur.nil?
-            Serial.puts cur.not_nil!.pid, "\n"
+            #Serial.puts cur.not_nil!.pid, "\n"
             break if can_switch(cur.not_nil!)
             cur = cur.next_process
         end
@@ -251,7 +251,7 @@ module Multiprocessing
         if @@current_process.nil?
             cur = @@first_process.not_nil!.next_process
             while !cur.nil? && !can_switch(cur.not_nil!)
-                Serial.puts cur.not_nil!.pid, "\n"
+                #Serial.puts cur.not_nil!.pid, "\n"
                 cur = cur.not_nil!.next_process
                 break if cur == proc
             end
@@ -259,10 +259,10 @@ module Multiprocessing
         end
         if @@current_process.nil?
             # no tasks left, use idle
-            Serial.puts @@first_process.not_nil!.pid, "<- \n"
+            #Serial.puts @@first_process.not_nil!.pid, "<- \n"
             @@current_process = @@first_process
         else
-            Serial.puts @@current_process.not_nil!.pid, "<- \n"
+            #Serial.puts @@current_process.not_nil!.pid, "<- \n"
             @@current_process
         end
     end
@@ -286,7 +286,7 @@ module Multiprocessing
         next_process = Multiprocessing.next_process.not_nil!
         {% end %}
         if next_process.pid != 0
-            Serial.puts next_process.pid, "<--\n"
+            #Serial.puts next_process.pid, "<--\n"
         end
 
         process_frame = if next_process.frame.nil?
