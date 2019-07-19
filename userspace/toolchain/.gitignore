@@ -1,5 +1,6 @@
 binutils
 cparser
+gcc
 automake*
 autoconf*
 tools

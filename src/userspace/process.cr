@@ -68,17 +68,23 @@ module Multiprocessing
 
         # files
         MAX_FD = 16
-        getter fds
+        @fds : GcArray(FileDescriptor) | Nil = nil
+        def fds; @fds.not_nil!; end
 
         # status
         @status = Multiprocessing::ProcessStatus::Normal
         property status
 
-        def initialize(@kernel_process=false, &on_setup_paging)
+        def initialize(@kernel_process=false, save_fx=true, &on_setup_paging)
             # file descriptors
-            # BUG: must be initialized here or the GC won't catch it
-            @fds = GcArray(FileDescriptor).new MAX_FD
-            @fxsave_region = GcPointer(UInt8).malloc(512)
+            if save_fx
+                @fxsave_region = GcPointer(UInt8).malloc(512)
+            else
+                @fxsave_region = GcPointer(UInt8).null
+            end
+            if !@kernel_process
+                @fds = GcArray(FileDescriptor).new MAX_FD
+            end
             # panic @fxsave_region.ptr, '\n'
 
             Multiprocessing.n_process += 1
@@ -281,7 +287,9 @@ module Multiprocessing
         # save current process' state
         current_process = Multiprocessing.current_process.not_nil!
         current_process.frame = {{ frame }}
-        memcpy current_process.fxsave_region.ptr, Multiprocessing.fxsave_region, 512
+        if !current_process.fxsave_region.ptr.null?
+            memcpy current_process.fxsave_region.ptr, Multiprocessing.fxsave_region, 512
+        end
         # load process's state
         next_process = Multiprocessing.next_process.not_nil!
         {% end %}
@@ -309,7 +317,9 @@ module Multiprocessing
             {{ frame }}.{{ id.id }} = process_frame.{{ id.id }}
             {% end %}
         {% end %}
-        memcpy Multiprocessing.fxsave_region, next_process.fxsave_region.ptr, 512
+        if !next_process.fxsave_region.ptr.null?
+            memcpy Multiprocessing.fxsave_region, next_process.fxsave_region.ptr, 512
+        end
 
         if !next_process.kernel_process
             dir = next_process.phys_page_dir # this must be stack allocated

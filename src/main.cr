@@ -19,10 +19,14 @@ require "./userspace/syscalls.cr"
 require "./userspace/process.cr"
 require "./userspace/elf.cr"
 require "./userspace/mmap_list.cr"
-require "./kprocess.cr"
 
 lib Kernel
     fun ksyscall_setup()
+end
+
+fun kidle_loop
+    while true
+    end
 end
 
 ROOTFS = RootFS.new
@@ -106,8 +110,8 @@ fun kmain(
     Idt.disable
     Idt.status_mask = true
 
-    idle_process = Multiprocessing::Process.new(true) do |proc|
-        proc.initial_addr = (->kprocess_loop).pointer.address.to_u32
+    idle_process = Multiprocessing::Process.new(true, false) do |proc|
+        proc.initial_addr = (->kidle_loop).pointer.address.to_u32
     end
 
     if main_bin.nil?

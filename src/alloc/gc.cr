@@ -11,6 +11,9 @@ struct GcPointer(T)
 
     def initialize(@ptr : Pointer(T))
     end
+    def self.null
+        new Pointer(T).null
+    end
 
     def self.malloc
         new LibGc.unsafe_malloc(sizeof(T), false)
@@ -175,7 +178,6 @@ module LibGc
                 {% for type_name in type_names %}
                     {% for ivar in klass.instance_vars %}
                         {% if ivar.type < Gc || ivar.type < GcPointer ||
-                            ivar.type < GcArray ||
                             (ivar.type.union? && ivar.type.union_types.any? {|x| x < Gc }) %}
                             {% puts type_name.stringify + " = " + ivar.stringify + " <" + ivar.type.stringify + ">" %}
                             if offsetof({{ type_name }}, @{{ ivar }}).unsafe_mod(4) == 0
