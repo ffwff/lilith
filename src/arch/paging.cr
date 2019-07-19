@@ -186,6 +186,10 @@ module Paging
     end
 
     def free_process_page_dir(pda : UInt32)
+        # FIXME: this doesn't work
+        Serial.puts pda, '\n'
+        Paging.disable
+
         pd = Pointer(PageStructs::PageDirectory).new(pda.to_u64)
         # free the higher half
         i = 512
@@ -202,15 +206,19 @@ module Paging
                     end
                     j += 1
                 end
+                Serial.puts pt_addr, '\n'
                 declaim_frame(frame_index_for_address(pt_addr))
             end
             i += 1
         end
         # free itself
         declaim_frame(frame_index_for_address(pda))
+
+        Paging.enable
     end
 
     # frame alloc
+    @[AlwaysInline]
     private def frame_index_for_address(address : UInt32) : Int32
         (address - @@frame_base_addr).unsafe_div(0x1000).to_i32
     end
@@ -224,7 +232,7 @@ module Paging
     end
 
     private def declaim_frame(idx)
-        #@@frames_search_from = min idx, @@frames_search_from
+        @@frames_search_from = min idx, @@frames_search_from
         @@frames[idx] = false
     end
 

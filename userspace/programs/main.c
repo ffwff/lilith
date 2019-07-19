@@ -7,13 +7,16 @@ int main() {
         printf("> ");
         fflush(stdout);
 
-        for(int i = 0; i < sizeof(buf)-1; i++) {
+        int j = 0;
+        for(int i = 0; i < sizeof(buf)-1; i++, j++) {
             char ch = fgetc(stdin);
             if(ch == '\n') break;
             buf[i] = ch;
         }
+        buf[j] = 0;
 
-        printf("%s\n", buf);
+        printf("[%s]\n", buf);
+        spawn(buf);
         fflush(stdout);
     }
 }

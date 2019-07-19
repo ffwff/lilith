@@ -1,8 +1,5 @@
-#include "syscalls.h"
+#include <stdio.h>
 
-void _start() {
-    unsigned long vga = open("/vga");
-    char s[] = "Hello World";
-    write(vga, s, sizeof(s));
-    exit();
+void main() {
+    printf("Hello World\n");
 }

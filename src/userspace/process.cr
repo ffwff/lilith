@@ -106,12 +106,12 @@ module Multiprocessing
 
             if Multiprocessing.first_process.nil?
                 Multiprocessing.first_process = self
-            end
-            if !Multiprocessing.last_process.nil?
+                Multiprocessing.last_process = self
+            else
                 Multiprocessing.last_process.not_nil!.next_process = self
+                @prev_process = Multiprocessing.last_process
+                Multiprocessing.last_process = self
             end
-            @prev_process = Multiprocessing.last_process
-            Multiprocessing.last_process = self
 
             if !last_page_dir.null? && !@kernel_process
                 Paging.disable
@@ -210,10 +210,11 @@ module Multiprocessing
         # control
         def remove
             Multiprocessing.n_process -= 1
-            if @prev_process.nil?
-                Multiprocessing.first_process = @next_process
+            @prev_process.not_nil!.next_process = @next_process
+            if @next_process.nil?
+                Multiprocessing.last_process = @prev_process
             else
-                @prev_process.not_nil!.next_process = @next_process
+                @next_process.not_nil!.prev_process = @prev_process
             end
         end
 
@@ -233,28 +234,35 @@ module Multiprocessing
 
     # round robin scheduling algorithm
     def next_process : Process | Nil
+        Serial.puts Multiprocessing.n_process, "---\n"
         if @@current_process.nil?
             return @@current_process = @@first_process
         end
         proc = @@current_process.not_nil!
         # look from middle to end
-        @@current_process = proc.next_process
-        while !@@current_process.nil? && !can_switch(@@current_process.not_nil!)
-            #Serial.puts Pointer(Void).new(@@current_process.object_id), "\n"
-            @@current_process = @@current_process.not_nil!.next_process
+        cur = proc.next_process
+        while !cur.nil?
+            Serial.puts cur.not_nil!.pid, "\n"
+            break if can_switch(cur.not_nil!)
+            cur = cur.next_process
         end
+        @@current_process = cur
         # look from start to middle
         if @@current_process.nil?
-            @@current_process = @@first_process
-            while !can_switch(@@current_process.not_nil!)
-                @@current_process = @@current_process.not_nil!.next_process
-                break if @@current_process == proc
+            cur = @@first_process.not_nil!.next_process
+            while !cur.nil? && !can_switch(cur.not_nil!)
+                Serial.puts cur.not_nil!.pid, "\n"
+                cur = cur.not_nil!.next_process
+                break if cur == proc
             end
+            @@current_process = cur
         end
         if @@current_process.nil?
             # no tasks left, use idle
+            Serial.puts @@first_process.not_nil!.pid, "<- \n"
             @@current_process = @@first_process
         else
+            Serial.puts @@current_process.not_nil!.pid, "<- \n"
             @@current_process
         end
     end
@@ -265,7 +273,6 @@ module Multiprocessing
     macro switch_process(frame, remove=false)
         {% if frame == nil %}
         current_process = Multiprocessing.current_process.not_nil!
-        current_page_dir = current_process.phys_page_dir
         next_process = Multiprocessing.next_process.not_nil!
         {% if remove %}
         current_process.remove
@@ -307,13 +314,14 @@ module Multiprocessing
         if !next_process.kernel_process
             dir = next_process.phys_page_dir # this must be stack allocated
             # because it's placed in the virtual kernel heap
+            Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
             {% if frame == nil && remove %}
-            Paging.disable
+            current_page_dir = current_process.phys_page_dir
             Paging.free_process_page_dir(current_page_dir)
             current_process.phys_page_dir = 0u32
-            {% end %}
-            Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
+            {% else %}
             Paging.enable
+            {% end %}
         end
 
         {% if frame == nil %}
