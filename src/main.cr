@@ -106,7 +106,7 @@ fun kmain(
     Idt.disable
     Idt.status_mask = true
 
-    k_process = Multiprocessing::Process.new(true) do |proc|
+    idle_process = Multiprocessing::Process.new(true) do |proc|
         proc.initial_addr = (->kprocess_loop).pointer.address.to_u32
     end
 

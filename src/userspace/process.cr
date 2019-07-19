@@ -18,6 +18,8 @@ module Multiprocessing
 
     @@first_process : Process | Nil = nil
     mod_property first_process
+    @@last_process : Process | Nil = nil
+    mod_property last_process
 
     @@pids = 0u32
     mod_property pids
@@ -102,11 +104,14 @@ module Multiprocessing
             # setup pages
             yield self
 
-            @next_process = Multiprocessing.first_process
-            if !Multiprocessing.first_process.nil?
-                Multiprocessing.first_process.not_nil!.prev_process = self
+            if Multiprocessing.first_process.nil?
+                Multiprocessing.first_process = self
             end
-            Multiprocessing.first_process = self
+            if !Multiprocessing.last_process.nil?
+                Multiprocessing.last_process.not_nil!.next_process = self
+            end
+            @prev_process = Multiprocessing.last_process
+            Multiprocessing.last_process = self
 
             if !last_page_dir.null? && !@kernel_process
                 Paging.disable
@@ -229,8 +234,7 @@ module Multiprocessing
     # round robin scheduling algorithm
     def next_process : Process | Nil
         if @@current_process.nil?
-            @@current_process = @@first_process
-            return @@current_process
+            return @@current_process = @@first_process
         end
         proc = @@current_process.not_nil!
         # look from middle to end
@@ -247,8 +251,12 @@ module Multiprocessing
                 break if @@current_process == proc
             end
         end
-        #Serial.puts Pointer(Void).new(@@current_process.object_id), "<--\n"
-        @@current_process
+        if @@current_process.nil?
+            # no tasks left, use idle
+            @@current_process = @@first_process
+        else
+            @@current_process
+        end
     end
 
     # context switch
@@ -270,6 +278,9 @@ module Multiprocessing
         # load process's state
         next_process = Multiprocessing.next_process.not_nil!
         {% end %}
+        if next_process.pid != 0
+            Serial.puts next_process.pid, "<--\n"
+        end
 
         process_frame = if next_process.frame.nil?
             next_process.new_frame
