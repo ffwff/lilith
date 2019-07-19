@@ -150,6 +150,8 @@ private struct KernelArena
                     next_pool = cur_pool.value.next_pool
                     if cur_pool.value.first_free_block.null?
                         cur_pool.value.next_pool = Pointer(Kernel::PoolHeader).null
+                    else
+                        break
                     end
                     cur_pool = next_pool
                 end
