@@ -40,6 +40,12 @@ class GcArray(T) < Gc
         @ptr = LibGc.unsafe_malloc(malloc_size).as(UInt32*)
         @ptr[0] = GC_ARRAY_HEADER_TYPE
         @ptr[1] = @size.to_u32
+        # clear array
+        i = 0
+        while i < @size
+            @ptr[2 + i] = 0
+            i += 1
+        end
     end
 
     private def buffer
@@ -416,7 +422,7 @@ module LibGc
                 node = @@first_white_node
                 while !node.null?
                     panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
-                    Serial.puts "free ", node, " ", (node.as(UInt8*)+8) ," ", (node.as(UInt8*)+8).as(UInt32*)[0], "\n"
+                    #Serial.puts "free ", node, " ", (node.as(UInt8*)+8) ," ", (node.as(UInt8*)+8).as(UInt32*)[0], "\n"
                     next_node = node.value.next_node
                     KERNEL_ARENA.free node.address.to_u32
                     node = next_node
