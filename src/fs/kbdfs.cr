@@ -45,7 +45,7 @@ class KbdFS < VFS
     property next_node
 
     def initialize(@keyboard : Keyboard)
-        @name = CString.new("kbd", 3)
+        @name = CString.new "kbd"
         @root = KbdFsNode.new
     end
 

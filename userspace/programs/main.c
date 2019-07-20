@@ -3,8 +3,11 @@
 
 int main() {
     while(1) {
+        char path[PATH_MAX+1] = {0};
+        path[getcwd(path, PATH_MAX)] = 0;
+
         char buf[256]={0};
-        printf("> ");
+        printf("%s> ", path);
         fflush(stdout);
 
         int j = 0;

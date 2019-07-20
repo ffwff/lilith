@@ -193,7 +193,7 @@ class AtaDevice < Gc
 
     # NOTE: idx must be between 0..3
     def initialize(idx = 0, @primary=true, @slave=0)
-        @name = CString.new("ata0", 4)
+        @name = CString.new "ata0"
         @name.not_nil![3] = (idx + '0'.ord).to_u8
     end
 

@@ -18,6 +18,14 @@ class CString < Gc
         end
     end
 
+    def initialize(buffer)
+        @size = buffer.size
+        @buffer = GcPointer(UInt8).malloc(@size)
+        @size.times do |i|
+            @buffer.ptr[i] = buffer[i]
+        end
+    end
+
     # methods
     def []=(k : Int, value : UInt8)
         panic "cstring: out of range" if k > size || k < 0

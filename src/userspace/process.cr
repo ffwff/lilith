@@ -10,6 +10,8 @@ module Multiprocessing
     extend self
 
     USER_STACK_TOP = 0xf000_0000u32
+    USER_STACK_SIZE = 0x800000u32
+    USER_STACK_BOTTOM_MAX = USER_STACK_TOP - USER_STACK_SIZE
     USER_STACK_BOTTOM = 0x8000_0000u32
 
     @@current_process : Process | Nil = nil
@@ -70,6 +72,11 @@ module Multiprocessing
         MAX_FD = 16
         @fds : GcArray(FileDescriptor) | Nil = nil
         def fds; @fds.not_nil!; end
+        
+        # cwd
+        @cwd : CString | Nil = nil
+        def cwd; @cwd.not_nil!; end
+        def cwd=(@cwd : CString) end
 
         # status
         @status = Multiprocessing::ProcessStatus::Normal

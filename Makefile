@@ -4,25 +4,19 @@ LD=$(ARCH)-ld
 CC=clang
 LIBGCC=$(shell $(ARCH)-gcc -print-libgcc-file-name)
 LDFLAGS=-m elf_i386 -T link.ld
-CR=$(shell pwd)/toolchain/crystal/.build/crystal
-#CR=crystal
 CCFLAGS=-c -g -target $(ARCH) -nostdlib -nostdinc \
-	-fno-stack-protector -ffreestanding -O3 \
+	-fno-stack-protector -ffreestanding -O2 \
 	-Wall -Wno-unused-function -Wno-unknown-pragmas \
 	-mno-sse
-CRFLAGS=--cross-compile --emit llvm-ir --target $(ARCH) --prelude empty
-KERNEL_OBJ=$(patsubst src/arch/%.c,build/arch.%.o,$(wildcard src/arch/*.c)) \
-	build/boot.o build/main.o
-LCCFLAGS=
-STRIP=false
+CRFLAGS=--cross-compile --target $(ARCH) --prelude empty
+KERNEL_OBJ=build/main.cr.o \
+	$(patsubst src/arch/%.c,build/arch.%.o,$(wildcard src/arch/*.c)) \
+	build/boot.o
 
 ifeq ($(RELEASE),1)
 	CRFLAGS += --release
-	STRIP=true
-	LCCFLAGS += -O3
 else
 	CRFLAGS += -d
-	LCCFLAGS += -O0
 endif
 
 QEMUFLAGS ?=
@@ -37,13 +31,9 @@ QEMUFLAGS += \
 .PHONY: kernel
 all: build/kernel
 
-build/main.bc: src/main.cr
+build/main.cr.o: src/main.cr
 	@echo "CR $<"
-	cd build && $(CR) build $(CRFLAGS) $(shell pwd)/$<
-	-$(STRIP) && crystal toolchain/strip.cr build/main.ll build/main.bc
-
-build/main.o: build/main.bc
-	llc -mtriple=$(ARCH) -filetype=obj -o $@ $< $(LCCFLAGS)
+	@crystal build $(CRFLAGS) $< -o build/main.cr
 
 build/arch.%.o: src/arch/%.c
 	@echo "CC $<"
@@ -53,13 +43,9 @@ build/boot.o: boot.s
 	@echo "AS $<"
 	@$(AS) $^ -o $@
 
-build:
-	mkdir -p build
-
-build/kernel: build $(KERNEL_OBJ)
-	@echo "LD $(KERNEL_OBJ) => $@"
-	@$(LD) $(LDFLAGS) -o $@ $(KERNEL_OBJ) $(LIBGCC)
-	-$(STRIP) && strip $@
+build/kernel: $(KERNEL_OBJ)
+	@echo "LD $^ => $@"
+	@$(LD) $(LDFLAGS) -o $@ $^ $(LIBGCC)
 
 #
 run: build/kernel
@@ -95,13 +81,3 @@ clean:
 # debug
 #drive.img:
 #	qemu-img create -f raw $@ 50M
-
-# toolchain
-toolchain/crystal:
-	cd toolchain/ && \
-	git clone https://github.com/crystal-lang/crystal && \
-	cd crystal && git checkout fbfe8b6 && \
-	patch -p1 <../crystal.
-
-$(CR): toolchain/crystal
-	cd toolchain/crystal && make

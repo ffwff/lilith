@@ -1,5 +1,7 @@
 require "./async.cr"
 
+PATH_MAX = 4096
+
 abstract class VFSNode < Gc
 
     abstract def size : Int

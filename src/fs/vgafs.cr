@@ -46,7 +46,7 @@ class VGAFS < VFS
     property next_node
 
     def initialize
-        @name = CString.new("vga", 3)
+        @name = CString.new "vga"
         @root = VGAFsNode.new self
     end
 

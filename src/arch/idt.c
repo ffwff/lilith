@@ -70,7 +70,7 @@ void kinit_idtr() {
     kidtr.limit = sizeof(struct idt_entry) * IDT_SIZE - 1;
     kidtr.base = (uint32_t)&kidt;
     // kcpuex inits
-    #if 0
+    #if 1
     kinit_idt(0, KERNEL_CODE_SEGMENT_OFFSET,  (uint32_t)kcpuex0  , INTERRUPT_GATE);
     kinit_idt(1, KERNEL_CODE_SEGMENT_OFFSET,  (uint32_t)kcpuex1  , INTERRUPT_GATE);
     kinit_idt(2, KERNEL_CODE_SEGMENT_OFFSET,  (uint32_t)kcpuex2  , INTERRUPT_GATE);

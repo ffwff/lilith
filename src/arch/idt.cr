@@ -25,6 +25,18 @@ lib IdtData
         eip, cs, eflags, useresp, ss : UInt32
     end
 
+    @[Packed]
+    struct ExceptionRegisters
+        # Data segment selector
+        ds : UInt16
+        # Pushed by pushad:
+        edi, esi, ebp, esp, ebx, edx, ecx, eax : UInt32
+        # Interrupt number
+        int_no, errcode : UInt32
+        # Pushed by the processor automatically.
+        eip, cs, eflags, useresp, ss : UInt32
+    end
+
 end
 
 alias InterruptHandler = ->Nil
@@ -105,6 +117,31 @@ fun kirq_handler(frame : IdtData::Registers)
     end
 end
 
-fun kcpuex_handler(frame : IdtData::Registers)
-    panic frame.int_no
+EX_PAGEFAULT = 14
+
+fun kcpuex_handler(frame : IdtData::ExceptionRegisters)
+    case frame.int_no
+    when EX_PAGEFAULT
+        faulting_address = 0u32
+        asm("mov %cr2, $0" : "=r"(faulting_address) :: "volatile")
+
+        present = (frame.errcode & 0x1) == 0
+        rw = (frame.errcode & 0x2) != 0
+        user = (frame.errcode & 0x4) != 0
+        reserved = (frame.errcode & 0x8) != 0
+        id = (frame.errcode & 0x10) != 0
+        
+        Serial.puts Pointer(Void).new(faulting_address.to_u64), user, "\n"
+        if user
+            if  faulting_address < Multiprocessing::USER_STACK_TOP &&
+                faulting_address > Multiprocessing::USER_STACK_BOTTOM_MAX
+                # stack page fault
+                Idt.status_mask = true
+                Paging.alloc_page_pg(faulting_address & 0xFFFF_F000, true, true)
+                Idt.status_mask = false
+            end
+        else
+            panic faulting_address, "nop"
+        end
+    end
 end

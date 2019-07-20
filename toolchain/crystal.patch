@@ -1,16 +1,19 @@
 diff --git a/src/compiler/crystal/compiler.cr b/src/compiler/crystal/compiler.cr
-index 3853d8962..ca5918acd 100644
+index 3853d8962..f7158115b 100644
 --- a/src/compiler/crystal/compiler.cr
 +++ b/src/compiler/crystal/compiler.cr
-@@ -310,7 +310,7 @@ module Crystal
+@@ -310,9 +310,9 @@ module Crystal
          unit.emit(emit, emit_base_filename || output_filename)
        end
  
 -      target_machine.emit_obj_to_file llvm_mod, object_name
 +      # target_machine.emit_obj_to_file llvm_mod, object_name
  
-       stdout.puts linker_command(program, object_name, output_filename, nil)
+-      stdout.puts linker_command(program, object_name, output_filename, nil)
++      # stdout.puts linker_command(program, object_name, output_filename, nil)
      end
+ 
+     private def linker_command(program : Program, object_name, output_filename, output_dir)
 diff --git a/src/empty.cr b/src/empty.cr
 index 8a78751e0..c68218f07 100644
 --- a/src/empty.cr

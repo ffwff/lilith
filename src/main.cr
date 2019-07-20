@@ -45,14 +45,14 @@ fun kmain(
 
     Multiprocessing.fxsave_region = fxsave_region
 
-    # drivers
-    pit = PitInstance.new
-
     # setup memory management
     VGA.puts "Booting lilith...\n"
 
     VGA.puts "initializing gdtr...\n"
     Gdt.init_table
+
+    # drivers
+    pit = PitInstance.new
 
     # interrupt tables
     VGA.puts "initializing idt...\n"
@@ -121,6 +121,7 @@ fun kmain(
         m_process = Multiprocessing::Process.new do |proc|
             ElfReader.load(proc, main_bin.not_nil!)
         end
+        m_process.cwd = CString.new "/ata0"
 
         Idt.status_mask = false
         Multiprocessing.setup_tss

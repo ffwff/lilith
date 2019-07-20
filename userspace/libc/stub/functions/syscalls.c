@@ -17,9 +17,9 @@ long write(int fd, const void *str, size_t len) {
     return (long)sysenter(2, fd, (unsigned int)&buf);
 }
 
-long read(int fd, const char *str, unsigned long len) {
+long read(int fd, char *str, unsigned long len) {
     struct {
-        const char *s;
+        char *s;
         long l;
     } buf = {0};
     buf.s = str;
@@ -34,4 +34,14 @@ void _exit() {
 
 long spawn(const char *file) {
     return sysenter(4, (unsigned long)file, 0);
+}
+
+long getcwd(char *str, unsigned long len) {
+    struct {
+        const char *s;
+        long l;
+    } buf = {0};
+    buf.s = str;
+    buf.l = len;
+    return (long)sysenter(8, (unsigned long)&buf, 0);
 }
