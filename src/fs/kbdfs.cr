@@ -9,12 +9,12 @@ class KbdFsNode < VFSNode
         @read_queue = VFSReadQueue.new
     end
 
+    #
     def size : Int
         0
     end
-    def name : CString | Nil
-        nil
-    end
+    def name : CString | Nil; end
+    def parent; end
 
     #
     def open(path : Slice) : VFSNode | Nil

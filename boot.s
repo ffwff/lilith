@@ -28,7 +28,7 @@ USER_STACK_BOTTOM = 0x80000000
 .global ksyscall_stub
 .global kcpuint_end
 # start
-.extern kmain            # this is defined in the c
+.extern kmain
 .altmacro
 
 _start:

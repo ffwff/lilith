@@ -179,7 +179,6 @@ module LibGc
                     {% for ivar in klass.instance_vars %}
                         {% if ivar.type < Gc || ivar.type < GcPointer ||
                             (ivar.type.union? && ivar.type.union_types.any? {|x| x < Gc }) %}
-                            {% puts type_name.stringify + " = " + ivar.stringify + " <" + ivar.type.stringify + ">" %}
                             if offsetof({{ type_name }}, @{{ ivar }}).unsafe_mod(4) == 0
                                 field_offset = offsetof({{ type_name }}, @{{ ivar }}).unsafe_div(4)
                                 debug "{{ ivar.type }}: ", offsetof({{ type_name }}, @{{ ivar }}), " ", "{{ ivar.type }}", " ", sizeof({{ ivar.type }}), "\n"
