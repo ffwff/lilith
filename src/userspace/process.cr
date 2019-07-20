@@ -68,6 +68,11 @@ module Multiprocessing
         @kernel_process = false
         property kernel_process
 
+        # status
+        @status = Multiprocessing::ProcessStatus::Normal
+        property status
+
+        # ---------
         # files
         MAX_FD = 16
         @fds : GcArray(FileDescriptor) | Nil = nil
@@ -78,9 +83,9 @@ module Multiprocessing
         def cwd; @cwd.not_nil!; end
         def cwd=(@cwd : CString) end
 
-        # status
-        @status = Multiprocessing::ProcessStatus::Normal
-        property status
+        @cwd_node : VFSNode | Nil = nil
+        def cwd_node; @cwd_node.not_nil!; end
+        def cwd_node=(@cwd_node : VFSNode) end
 
         def initialize(@kernel_process=false, save_fx=true, &on_setup_paging)
             # file descriptors

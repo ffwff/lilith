@@ -4,7 +4,7 @@
 int main() {
     while(1) {
         char path[PATH_MAX+1] = {0};
-        path[getcwd(path, PATH_MAX)] = 0;
+        getcwd(path, PATH_MAX);
 
         char buf[256]={0};
         printf("%s> ", path);
