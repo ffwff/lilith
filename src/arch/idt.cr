@@ -131,7 +131,7 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters)
         reserved = (frame.errcode & 0x8) != 0
         id = (frame.errcode & 0x10) != 0
         
-        Serial.puts Pointer(Void).new(faulting_address.to_u64), user, "\n"
+        Serial.puts Pointer(Void).new(faulting_address.to_u64), user, " ", Pointer(Void).new(frame.eip.to_u64), "\n"
         if user
             if  faulting_address < Multiprocessing::USER_STACK_TOP &&
                 faulting_address > Multiprocessing::USER_STACK_BOTTOM_MAX

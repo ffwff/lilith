@@ -11,16 +11,23 @@ OBJ = \
 	) \
 	$(patsubst %.c,%.o, \
 		$(wildcard stub/functions/_PDCLIB/*.c) \
-		$(wildcard stub/functions/*.c) \
-	)
+	) \
+	stub/functions/syscalls.o crt0.o stub.cr.o
 AR = i386-elf-lilith-ar
 CC = i386-elf-lilith-gcc
+CR=$(shell pwd)/../../toolchain/crystal/.build/crystal
+CRFLAGS=--cross-compile --target i686-elf --prelude ./prelude.cr
 CCFLAGS = -Ipdclib/include \
 	-Istub/include -Istub/include/pdclib \
 	-nostdinc -nostdlib
 
 libc.a: $(OBJ)
 	$(AR) rcs $@ $^
+
+stub.cr.o: stub/crt0.cr
+	$(CR) build $(CRFLAGS) $< -o stub.cr --release
+stub/crt0.o: stub/crt0.cr
+	$(CR) build $(CRFLAGS) $< -o stub/crt0 --release
 
 %.o: %.c
 	$(CC) $(CCFLAGS) -c -o $@ $^

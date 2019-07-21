@@ -175,13 +175,13 @@ module ElfReader
                         data.p_vaddr, data.p_memsz)
                     mmap_list.not_nil![mmap_append_idx] = ins_node
                     mmap_append_idx += 1
-                end
-                if data.p_flags & ElfStructs::Elf32PFlags::PF_R
-                    npages = data.p_memsz.unsafe_shr(12) + 1
-                    panic "can't map to lower memory range" if data.p_vaddr < 0x8000_0000
-                    Paging.alloc_page_pg(data.p_vaddr,
+                    if data.p_flags & ElfStructs::Elf32PFlags::PF_R
+                        npages = data.p_memsz.unsafe_shr(12) + 1
+                        panic "can't map to lower memory range" if data.p_vaddr < 0x8000_0000
+                        Paging.alloc_page_pg(data.p_vaddr,
                         (data.p_flags & ElfStructs::Elf32PFlags::PF_W) == ElfStructs::Elf32PFlags::PF_W,
                         true, npages)
+                    end
                 end
             when Tuple(UInt32, UInt8)
                 offset, byte = data.as(Tuple(UInt32, UInt8))
