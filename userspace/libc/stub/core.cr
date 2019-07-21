@@ -1,5 +1,7 @@
 lib LibC
     alias String = UInt8*
+    fun strlen(str : String) : UInt32
+    fun strcpy(dst : String, src : String)
     fun memcpy(dest : Void*, src : Void*, n : UInt32) : Void*
     fun memset(s : Void*, c : UInt8, n : UInt32) : Void*
 end
@@ -11,7 +13,7 @@ struct Int
     def ~
         self ^ -1
     end
-    
+
 end
 
 ### Pointers

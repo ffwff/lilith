@@ -1,4 +1,5 @@
 OBJ = \
+	stub/functions/syscalls.o stub.cr.o \
 	$(patsubst %.c,%.o, \
 		$(wildcard pdclib/functions/_PDCLIB/*.c) \
 		$(wildcard pdclib/functions/ctype/*.c) \
@@ -11,8 +12,7 @@ OBJ = \
 	) \
 	$(patsubst %.c,%.o, \
 		$(wildcard stub/functions/_PDCLIB/*.c) \
-	) \
-	stub/functions/syscalls.o crt0.o stub.cr.o
+	)
 AR = i386-elf-lilith-ar
 CC = i386-elf-lilith-gcc
 CR=$(shell pwd)/../../toolchain/crystal/.build/crystal
@@ -24,15 +24,18 @@ CCFLAGS = -Ipdclib/include \
 libc.a: $(OBJ)
 	$(AR) rcs $@ $^
 
-stub.cr.o: stub/crt0.cr
+stub.cr.o: stub/main.cr
 	$(CR) build $(CRFLAGS) $< -o stub.cr --release
-stub/crt0.o: stub/crt0.cr
-	$(CR) build $(CRFLAGS) $< -o stub/crt0 --release
 
 %.o: %.c
 	$(CC) $(CCFLAGS) -c -o $@ $^
 
-install: libc.a stub/crt0.o
-	cp libc.a stub/crt0.o $(LIBDIR)
+install: libc.a crt0.o
+	cp libc.a crt0.o $(LIBDIR)
 	cp -r pdclib/include/* $(INCLUDEDIR)
 	cp -r stub/include/* $(INCLUDEDIR)
+
+clean:
+	rm -f *.o libc.a
+	rm -f stub/**/*.o
+	rm -f stub/**/**/*.o

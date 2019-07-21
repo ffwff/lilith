@@ -1,4 +1,6 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <syscalls.h>
 
 int main() {
@@ -18,8 +20,14 @@ int main() {
         }
         buf[j] = 0;
 
-        printf("[%s]\n", buf);
-        spawn(buf);
+        char *tok_s = strdup(buf);
+        char *tok = strtok(tok_s, " ");
+        if(strcmp(tok, "cd") == NULL) {
+            chdir(strtok(NULL, ""));
+        } else {
+            spawn(buf);
+        }
+        free(tok_s);
         fflush(stdout);
     }
 }

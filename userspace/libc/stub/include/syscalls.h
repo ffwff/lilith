@@ -8,7 +8,8 @@ long read(int fd, char *str, unsigned long len);
 typedef long pid_t;
 pid_t spawn(const char *file);
 pid_t getpid();
-long getcwd(char *buf, unsigned long length);
+int getcwd(char *buf, unsigned long length);
+int chdir(char *buf);
 
 // defines
 #define PATH_MAX 4096

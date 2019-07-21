@@ -62,11 +62,11 @@ private def parse_path_into_segments(path, &block)
     end
 end
 
-private def parse_path_into_vfs(path, cwnode=nil)
+private def parse_path_into_vfs(path, cw_node=nil)
     vfs_node : VFSNode | Nil = nil
     return nil if path.size < 1
     if path[0] != '/'.ord
-        vfs_node = cwnode
+        vfs_node = cw_node
     end
     parse_path_into_segments(path) do |segment|
         if vfs_node.nil? # no path specifier
@@ -92,10 +92,17 @@ private def parse_path_into_vfs(path, cwnode=nil)
     vfs_node
 end
 
-private def canonicalize_path(path)
+private def append_paths(path, src_path, cw_node)
     cpath = uninitialized UInt8[PATH_MAX]
-    cpath[0] = '/'
-    idx = 1
+    vfs_node = cw_node
+
+    # copy source path
+    idx = 0
+    src_path.each_char do |ch|
+        cpath[idx] = ch
+        idx += 1
+    end
+
     parse_path_into_segments(path) do |segment|
         if segment == "."
             # ignored
@@ -103,17 +110,28 @@ private def canonicalize_path(path)
             # pop
             while idx > 1
                 idx -= 1
-                break if path[idx] == '/'
+                if path[idx] == '/'.ord
+                    idx -= 1
+                    break
+                end
+            end
+            if !vfs_node.not_nil!.parent.nil?
+                vfs_node = vfs_node.not_nil!.parent
             end
         else
-            cpath[idx] = '/'
+            cpath[idx] = '/'.ord.to_u8
             idx += 1
             segment.each do |ch|
                 cpath[idx] = ch
                 idx += 1
             end
+            if (vfs_node = vfs_node.not_nil!.open(segment)).nil?
+                return nil
+            end
         end
     end
+
+    Tuple.new(cpath, idx, vfs_node)
 end
 
 private macro try(expr)
@@ -205,6 +223,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         end
     when SC_EXIT
         Multiprocessing.switch_process(nil, true)
+    # working directory
     when SC_GETCWD
         arg = try(checked_pointer(frame.ebx)).as(SyscallData::SyscallStringArgument*)
         if arg.value.len > PATH_MAX
@@ -221,6 +240,14 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         str[idx] = 0
         frame.eax = idx
     when SC_CHDIR
+        path = NullTerminatedSlice.new(try(checked_pointer(frame.ebx)).as(UInt8*))
+        if (t = append_paths path, process.cwd, process.cwd_node).nil?
+            frame.eax = SYSCALL_ERR
+        else
+            cpath, idx, vfs_node = t.not_nil!
+            process.cwd = CString.new(cpath, idx)
+            process.cwd_node = vfs_node.not_nil!
+        end
     # memory management
     when SC_SBRK
         incr = frame.ebx.to_i32

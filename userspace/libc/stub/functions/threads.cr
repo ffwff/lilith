@@ -12,10 +12,10 @@ lib LibC
 
 end
 
-fun mutex_lock(mutex : LibC::Mutex) : LibC::ThreadResult
+fun mtx_lock(mutex : LibC::Mutex) : LibC::ThreadResult
     LibC::ThreadResult::Success
 end
 
-fun mutex_unlock(mutex : LibC::Mutex) : LibC::ThreadResult
+fun mtx_unlock(mutex : LibC::Mutex) : LibC::ThreadResult
     LibC::ThreadResult::Success
 end

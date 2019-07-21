@@ -33,7 +33,7 @@ all: build/kernel
 
 build/main.cr.o: src/main.cr
 	@echo "CR $<"
-	@$(CR) build $(CRFLAGS) $< -o build/main.cr
+	$(CR) build $(CRFLAGS) $< -o build/main.cr
 
 build/arch.%.o: src/arch/%.c
 	@echo "CC $<"
@@ -84,4 +84,4 @@ toolchain/crystal:
 	cd crystal && git checkout fbfe8b62f
 
 $(CR): toolchain/crystal
-	cd toolchain/crystal && make
+	cd toolchain/crystal && make release=1
