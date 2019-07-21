@@ -30,6 +30,10 @@ class String
 
 end
 
+lib LibC
+    alias String = UInt8*
+end
+
 macro cstring(string)
     begin
         __str = StaticArray(UInt8, {{ string.size + 1 }}).new

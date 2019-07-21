@@ -2,13 +2,7 @@
 #define _LIBC_DIRENT_H
 
 typedef unsigned long ino_t;
-
-typedef struct _DIR {
-    // Current directory entry
-    struct dirent ent;
-    // File descriptor for directory
-    int fd;
-} DIR;
+typedef void DIR;
 
 struct dirent {
     /* Inode number */

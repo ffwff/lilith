@@ -14,8 +14,9 @@ make build/kernel
 * [x] Hybrid conservative-precise incremental garbage collector
 * [x] IDE/ATA support (well, it can only read from primary master)
 * [x] FAT16 support
-* [ ] Basic syscalls
+* [x] Basic syscalls (open, read, write, spawn,...)
 * [x] Preemptive multitasking!
+* [x] Userpsace C library written in Crystal/C based on [PDCLib](https://github.com/DevSolar/pdclib/)
 * [ ] And much more as I go...
 
 ## License

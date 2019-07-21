@@ -2,7 +2,6 @@ require "../syscall_defs.cr"
 
 lib LibC
 
-    alias String = UInt8*
     struct SyscallStringArgument
         str : String
         len : UInt32
