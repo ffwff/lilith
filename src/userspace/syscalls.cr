@@ -198,7 +198,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
             new_process = Multiprocessing::Process.new do |proc|
                 ElfReader.load(proc, vfs_node.not_nil!)
             end
-            new_process.cwd = process.cwd #TODO: clone this
+            new_process.cwd = process.cwd #TODO: clone string buffer
             new_process.cwd_node = process.cwd_node
             Idt.status_mask = false
             frame.eax = 1
@@ -221,6 +221,32 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         str[idx] = 0
         frame.eax = idx
     when SC_CHDIR
+    # memory management
+    when SC_SBRK
+        incr = frame.ebx.to_i32
+        Serial.puts "sbrk: ", incr, "\n"
+        if incr == 0
+            # return the end of the heap if incr = 0
+            if process.heap_end == 0
+                # there are no pages allocated for program heap
+                Idt.status_mask = true
+                process.heap_end = Paging.alloc_page_pg(process.heap_start, true, true)
+                Idt.status_mask = false
+            end
+        elsif incr > 0
+            # increase the end of the heap if incr > 0
+            heap_end_a = Paging.aligned(process.heap_end)
+            npages = ((process.heap_end + incr) - heap_end_a).unsafe_shr(12) + 1
+            if npages > 0
+                Idt.status_mask = true
+                Paging.alloc_page_pg(process.heap_end, true, true, npages: npages)
+                Idt.status_mask = false
+            end
+        else
+            panic "decreasing heap not implemented"
+        end
+        frame.eax = process.heap_end
+        process.heap_end += incr
     else
         frame.eax = SYSCALL_ERR
     end

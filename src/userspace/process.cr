@@ -87,6 +87,11 @@ module Multiprocessing
         def cwd_node; @cwd_node.not_nil!; end
         def cwd_node=(@cwd_node : VFSNode) end
 
+        # heap location
+        @heap_start = 0u32
+        @heap_end = 0u32
+        property heap_start, heap_end
+
         def initialize(@kernel_process=false, save_fx=true, &on_setup_paging)
             # file descriptors
             if save_fx

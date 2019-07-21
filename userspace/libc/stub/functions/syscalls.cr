@@ -47,5 +47,5 @@ end
 
 # malloc
 fun sbrk(increment : UInt32) : Void*
-    Pointer(Void).null
+    Pointer(Void).new(LibC.sysenter(SC_SBRK, increment, 0).to_u64)
 end

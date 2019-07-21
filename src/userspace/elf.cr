@@ -157,8 +157,8 @@ module ElfReader
     end
 
     # load
-    def load(proc, vfs)
-        Paging.alloc_page_pg proc.stack_bottom, true, true, 1
+    def load(process, vfs)
+        Paging.alloc_page_pg process.stack_bottom, true, true, 1
         mmap_list : GcArray(MemMapNode) | Nil = nil
         mmap_append_idx = 0
         mmap_idx = 0
@@ -166,7 +166,7 @@ module ElfReader
             case data
             when ElfStructs::Elf32Header
                 data = data.as(ElfStructs::Elf32Header)
-                proc.initial_addr = data.e_entry
+                process.initial_addr = data.e_entry
                 mmap_list = GcArray(MemMapNode).new data.e_phnum.to_i32
             when ElfStructs::Elf32ProgramHeader
                 data = data.as(ElfStructs::Elf32ProgramHeader)
@@ -181,6 +181,10 @@ module ElfReader
                         Paging.alloc_page_pg(data.p_vaddr,
                         (data.p_flags & ElfStructs::Elf32PFlags::PF_W) == ElfStructs::Elf32PFlags::PF_W,
                         true, npages)
+                    end
+                    # heap should start right after the first segment
+                    if process.heap_start == 0
+                        process.heap_start = ((data.p_vaddr + data.p_memsz) & 0xFFFF_F000) + 0x1000
                     end
                 end
             when Tuple(UInt32, UInt8)
