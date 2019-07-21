@@ -6,8 +6,8 @@ LIBGCC=$(shell $(ARCH)-gcc -print-libgcc-file-name)
 LDFLAGS=-m elf_i386 -T link.ld
 CCFLAGS=-c -g -target $(ARCH) -nostdlib -nostdinc \
 	-fno-stack-protector -ffreestanding -O2 \
-	-Wall -Wno-unused-function -Wno-unknown-pragmas \
-	-mno-sse
+	-Wall -Wno-unused-function -Wno-unknown-pragmas
+CR=toolchain/crystal/.build/crystal
 CRFLAGS=--cross-compile --target $(ARCH) --prelude empty
 KERNEL_OBJ=build/main.cr.o \
 	$(patsubst src/arch/%.c,build/arch.%.o,$(wildcard src/arch/*.c)) \
@@ -33,7 +33,7 @@ all: build/kernel
 
 build/main.cr.o: src/main.cr
 	@echo "CR $<"
-	@crystal build $(CRFLAGS) $< -o build/main.cr
+	@$(CR) build $(CRFLAGS) $< -o build/main.cr
 
 build/arch.%.o: src/arch/%.c
 	@echo "CC $<"
@@ -79,5 +79,9 @@ clean:
 	rm -f kernel
 
 # debug
-#drive.img:
-#	qemu-img create -f raw $@ 50M
+toolchain/crystal:
+	cd toolchain && git clone https://github.com/crystal-lang/crystal && \
+	cd crystal && git checkout fbfe8b62f
+
+$(CR): toolchain/crystal
+	cd toolchain/crystal && make

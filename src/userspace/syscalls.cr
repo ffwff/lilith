@@ -213,12 +213,16 @@ fun ksyscall_handler(frame : SyscallData::Registers)
             frame.eax = SYSCALL_ERR
         else
             Idt.status_mask = true
-            process = Multiprocessing::Process.new do |proc|
+            new_process = Multiprocessing::Process.new do |proc|
                 ElfReader.load(proc, vfs_node.not_nil!)
             end
+            new_process.cwd = process.cwd #TODO: clone this
+            new_process.cwd_node = process.cwd_node
             Idt.status_mask = false
             frame.eax = 1
         end
+    when SC_EXIT
+        Multiprocessing.switch_process(nil, true)
     when SC_GETCWD
         arg = try(checked_pointer(frame.ebx)).as(SyscallData::SyscallStringArgument*)
         if arg.value.len > PATH_MAX
@@ -235,8 +239,6 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         str[idx] = 0
         frame.eax = idx
     when SC_CHDIR
-    when SC_EXIT
-        Multiprocessing.switch_process(nil, true)
     else
         frame.eax = SYSCALL_ERR
     end

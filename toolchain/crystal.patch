@@ -1,32 +1,132 @@
-diff --git a/src/compiler/crystal/compiler.cr b/src/compiler/crystal/compiler.cr
-index 3853d8962..f7158115b 100644
---- a/src/compiler/crystal/compiler.cr
-+++ b/src/compiler/crystal/compiler.cr
-@@ -310,9 +310,9 @@ module Crystal
-         unit.emit(emit, emit_base_filename || output_filename)
+diff --git a/bin/crystal b/bin/crystal
+index c901d9b37..a8766b586 100755
+--- a/bin/crystal
++++ b/bin/crystal
+@@ -141,7 +141,7 @@ CRYSTAL_DIR="$CRYSTAL_ROOT/.build"
+ export CRYSTAL_PATH=$CRYSTAL_ROOT/src:lib
+ export CRYSTAL_HAS_WRAPPER=true
+ 
+-if [ -x "$CRYSTAL_DIR/crystal" ]; then
++if [ -x "$CRYSTAL_DIR/crystal" ] && false; then
+   __warning_msg "Using compiled compiler at \`.build/crystal'"
+   exec "$CRYSTAL_DIR/crystal" "$@"
+ elif ! command -v crystal > /dev/null; then
+diff --git a/src/compiler/crystal/codegen/codegen.cr b/src/compiler/crystal/codegen/codegen.cr
+index a1d792d57..7c52ec54a 100644
+--- a/src/compiler/crystal/codegen/codegen.cr
++++ b/src/compiler/crystal/codegen/codegen.cr
+@@ -241,7 +241,7 @@ module Crystal
+         set_current_debug_location Location.new(filename, 1, 1)
        end
  
--      target_machine.emit_obj_to_file llvm_mod, object_name
-+      # target_machine.emit_obj_to_file llvm_mod, object_name
+-      alloca_vars @program.vars, @program
++      #alloca_vars @program.vars, @program
  
--      stdout.puts linker_command(program, object_name, output_filename, nil)
-+      # stdout.puts linker_command(program, object_name, output_filename, nil)
+       emit_vars_debug_info(@program.vars) if @debug.variables?
+     end
+@@ -263,14 +263,18 @@ module Crystal
+           next if initializer.compile_time_value
+           next unless initializer.simple?
+ 
+-          initialize_simple_const(initializer)
++          if context.fun.name != "__crystal_main"
++            initialize_simple_const(initializer)
++          end
+         when ClassVarInitializer
+           next unless initializer.node.simple_literal?
+ 
+           class_var = initializer.owner.class_vars[initializer.name]
+           next if class_var.thread_local?
+ 
+-          initialize_class_var(initializer.owner, initializer.name, initializer.meta_vars, initializer.node)
++          if context.fun.name != "__crystal_main"
++            initialize_class_var(initializer.owner, initializer.name, initializer.meta_vars, initializer.node)
++          end
+         end
+       end
+     end
+@@ -396,6 +400,7 @@ module Crystal
      end
  
-     private def linker_command(program : Program, object_name, output_filename, output_dir)
-diff --git a/src/empty.cr b/src/empty.cr
-index 8a78751e0..c68218f07 100644
---- a/src/empty.cr
-+++ b/src/empty.cr
-@@ -1,11 +1 @@
- require "primitives"
--
--lib LibCrystalMain
--  @[Raises]
--  fun __crystal_main(argc : Int32, argv : UInt8**)
--end
--
--fun main(argc : Int32, argv : UInt8**) : Int32
--  LibCrystalMain.__crystal_main(argc, argv)
--  0
--end
+     def visit(node : FileNode)
++      #puts context.fun
+       with_context(Context.new(context.fun, context.type)) do
+         file_module = @program.file_module(node.filename)
+         if vars = file_module.vars?
+@@ -495,6 +500,7 @@ module Crystal
+     end
+ 
+     def visit(node : PointerOf)
++      # puts context.fun.name
+       @last = case node_exp = node.exp
+               when Var
+                 context.vars[node_exp.name].pointer
+@@ -929,7 +935,9 @@ module Crystal
+     def codegen_assign(target : Path, value, node)
+       const = target.target_const.not_nil!
+       if const.used? && !const.simple? && !const.compile_time_value
+-        initialize_const(const)
++        if context.fun.name != "__crystal_main"
++          initialize_const(const)
++        end
+       end
+       @last = llvm_nil
+       false
+@@ -943,7 +951,9 @@ module Crystal
+       unless target_type
+         if target.is_a?(ClassVar)
+           # This is the case of a class var initializer
+-          initialize_class_var(target)
++          if context.fun.name != "__crystal_main"
++            initialize_class_var(target)
++          end
+         end
+         return false
+       end
+@@ -1103,7 +1113,9 @@ module Crystal
+         end
+       when ClassVar
+         # This is the case of a class var initializer
+-        initialize_class_var(var)
++        if context.fun.name != "__crystal_main"
++          initialize_class_var(var)
++        end
+       end
+ 
+       @last = llvm_nil
+diff --git a/src/compiler/crystal/codegen/const.cr b/src/compiler/crystal/codegen/const.cr
+index 78ab68eff..2f0bbcef4 100644
+--- a/src/compiler/crystal/codegen/const.cr
++++ b/src/compiler/crystal/codegen/const.cr
+@@ -39,7 +39,7 @@ class Crystal::CodeGenVisitor
+       request_value do
+         accept const.value
+       end
+-      store @last, global
++      #store @last, global
+       global.initializer = @last.type.null
+     end
+   end
+@@ -87,6 +87,8 @@ class Crystal::CodeGenVisitor
+   end
+ 
+   def initialize_const(const)
++    # NOTE: this generates initialize branch + init call in __crystal_main+other places?
++
+     # Maybe the constant was simple and doesn't need a real initialization
+     return if const.initializer
+ 
+@@ -100,11 +102,13 @@ class Crystal::CodeGenVisitor
+     position_at_end not_initialized_block
+     store int1(1), initialized_flag
+ 
++    # HERE?
+     init_function_name = "~#{const.initialized_llvm_name}"
+     func = @main_mod.functions[init_function_name]? || create_initialize_const_function(init_function_name, const)
+     func = check_main_fun init_function_name, func
+     call func
+ 
++    #puts llvm_context.fun
+     br initialized_block
+ 
+     position_at_end initialized_block

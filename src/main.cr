@@ -29,6 +29,7 @@ fun kidle_loop
     end
 end
 
+#
 ROOTFS = RootFS.new
 
 fun kmain(
