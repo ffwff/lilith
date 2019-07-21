@@ -1,9 +1,35 @@
+lib LibC
+    alias String = UInt8*
+    fun memcpy(dest : Void*, src : Void*, n : UInt32) : Void*
+    fun memset(s : Void*, c : UInt8, n : UInt32) : Void*
+end
+
+### Ints
+struct Int
+
+    # needed by SimpleAllocator
+    def ~
+        self ^ -1
+    end
+    
+end
+
+### Pointers
 struct Pointer(T)
 
     def self.null
         new 0u64
     end
 
+    def self.malloc
+        malloc(sizeof(T)).as(T*)
+    end
+
+    def free
+        free(self.as(Void*))
+    end
+
+    #
     def [](offset : Int)
         (self + offset.to_i64).value
     end
@@ -14,6 +40,7 @@ struct Pointer(T)
 
 end
 
+### Arrays
 struct StaticArray(T, N)
 
     def to_unsafe : Pointer(T)
@@ -22,16 +49,14 @@ struct StaticArray(T, N)
 
 end
 
+
+### Strings
 class String
 
     def bytes
         pointerof(@c)
     end
 
-end
-
-lib LibC
-    alias String = UInt8*
 end
 
 macro cstring(string)

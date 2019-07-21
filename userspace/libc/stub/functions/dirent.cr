@@ -13,8 +13,8 @@ lib LibC
 
 end
 
-fun opendir(dirname : LibC::String)
+fun opendir(dirname : LibC::String) : LibC::Dirent*
 end
 
-fun closedir(dirname : LibC::String)
+fun closedir(dirp : LibC::Dirent*)
 end

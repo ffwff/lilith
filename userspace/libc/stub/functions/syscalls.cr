@@ -44,3 +44,8 @@ fun getcwd(str : LibC::String, len : Int32) : Int32
     buf.len = len
     LibC.sysenter(SC_GETCWD, pointerof(buf).address.to_u32, 0).to_i32
 end
+
+# malloc
+fun sbrk(increment : UInt32) : Void*
+    Pointer(Void).null
+end

@@ -19,6 +19,11 @@ make build/kernel
 * [x] Userpsace C library written in Crystal/C based on [PDCLib](https://github.com/DevSolar/pdclib/)
 * [ ] And much more as I go...
 
+## Credits
+
+* [PDCLib](https://github.com/DevSolar/pdclib/)
+* [Cryloc](https://github.com/Thog/cryloc)
+
 ## License
 
 This program is licensed under GPLv3.
