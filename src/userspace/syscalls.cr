@@ -237,6 +237,9 @@ fun ksyscall_handler(frame : SyscallData::Registers)
             frame.eax = 1
         end
     when SC_EXIT
+        if process.pid == 1
+            panic "init exited"
+        end
         Multiprocessing.switch_process(nil, true)
     # working directory
     when SC_GETCWD

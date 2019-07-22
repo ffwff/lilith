@@ -40,6 +40,11 @@ struct Pointer(T)
         (self + offset.to_i64).value = data
     end
 
+    #
+    def null?
+        address == 0
+    end
+
 end
 
 ### Arrays
