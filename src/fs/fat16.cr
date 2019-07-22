@@ -122,8 +122,10 @@ class Fat16Node < VFSNode
         # read fat table
         idx = 0
         fs.device.read_sector(fat_sector) do |word|
-            fat_table[idx] = word
-            idx += 1
+            if idx < fs.fat_sector_size
+                fat_table[idx] = word
+                idx += 1
+            end
         end
 
         remaining_bytes = read_size
@@ -166,6 +168,9 @@ class Fat16Node < VFSNode
                 read_sector += 1
             end
             # Serial.puts "[next cluster]\n"
+            if cluster > fs.fat_sector_size
+                break
+            end
             cluster = fat_table[cluster]
         end
 

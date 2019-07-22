@@ -29,7 +29,7 @@ struct Pointer(T)
 
     # pre-pg malloc
     def self.pmalloc(size : Int)
-        new PMALLOC_STATE.alloc(size).to_u64
+        new PMALLOC_STATE.alloc(size.to_u32 * sizeof(T)).to_u64
     end
     def self.pmalloc
         pmalloc(sizeof(T))
@@ -40,7 +40,7 @@ struct Pointer(T)
 
     # pg malloc
     def self.malloc(size)
-        new KERNEL_ARENA.malloc(size.to_u32).to_u64
+        new KERNEL_ARENA.malloc(size.to_u32 * sizeof(T)).to_u64
     end
     def free
         KERNEL_ARENA.free(self.address.to_u32)

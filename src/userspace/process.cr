@@ -310,7 +310,7 @@ module Multiprocessing
         # load process's state
         next_process = Multiprocessing.next_process.not_nil!
         {% end %}
-        Serial.puts Pointer(Void).new(next_process.object_id), ' ', offsetof(Multiprocessing::Process, @next_process), '\n'
+        #Serial.puts Pointer(Void).new(next_process.object_id), ' ', offsetof(Multiprocessing::Process, @next_process), '\n'
         #if next_process.pid != 0
             #Serial.puts next_process.pid, "<--\n"
         #end
