@@ -79,9 +79,9 @@ module Multiprocessing
         def fds; @fds.not_nil!; end
         
         # cwd
-        @cwd : CString | Nil = nil
+        @cwd : GcString | Nil = nil
         def cwd; @cwd.not_nil!; end
-        def cwd=(@cwd : CString) end
+        def cwd=(@cwd : GcString) end
 
         @cwd_node : VFSNode | Nil = nil
         def cwd_node; @cwd_node.not_nil!; end

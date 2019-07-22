@@ -8,7 +8,7 @@ CCFLAGS=-c -g -target $(ARCH) -nostdlib -nostdinc \
 	-fno-stack-protector -ffreestanding -O2 \
 	-Wall -Wno-unused-function -Wno-unknown-pragmas
 CR=toolchain/crystal/.build/crystal
-CRFLAGS=--cross-compile --target $(ARCH) --prelude empty
+CRFLAGS=--cross-compile --target $(ARCH) --prelude empty --stats
 KERNEL_OBJ=build/main.cr.o \
 	$(patsubst src/arch/%.c,build/arch.%.o,$(wildcard src/arch/*.c)) \
 	build/boot.o
@@ -62,6 +62,11 @@ rungdb: build/kernel
 rungdb_img: build/kernel drive.img
 	qemu-system-i386 -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
 	gdb -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'b breakpoint' -ex 'continue' build/kernel
+	-@pkill qemu
+
+rungdb_img_custom: build/kernel drive.img
+	qemu-system-i386 -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
+	gdb -quiet -ex 'target remote localhost:9000' $(GDB_ARGS)
 	-@pkill qemu
 
 runiso: os.iso

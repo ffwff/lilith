@@ -4,14 +4,14 @@
 #include <syscalls.h>
 
 int main() {
+    char *path = calloc(PATH_MAX + 1, 1);
     while(1) {
-        char path[PATH_MAX+1] = {0};
         getcwd(path, PATH_MAX);
 
-        char buf[256]={0};
         printf("%s> ", path);
         fflush(stdout);
 
+        char buf[256]={0};
         int j = 0;
         for(int i = 0; i < sizeof(buf)-1; i++, j++) {
             char ch = fgetc(stdin);

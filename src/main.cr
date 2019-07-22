@@ -122,7 +122,7 @@ fun kmain(
         m_process = Multiprocessing::Process.new do |proc|
             ElfReader.load(proc, main_bin.not_nil!)
         end
-        m_process.cwd = CString.new "/ata0"
+        m_process.cwd = GcString.new "/ata0"
         m_process.cwd_node = fs.not_nil!.root
 
         Idt.status_mask = false

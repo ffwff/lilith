@@ -1,18 +1,22 @@
 require "../alloc/gc.cr"
 
-class CString < Gc
+class GcString < Gc
 
     getter size
+    @capacity : Int32 = 0
+    getter capacity
 
     def initialize(buffer, @size : Int32)
-        @buffer = GcPointer(UInt8).malloc(@size.to_u32)
+        @capacity = @size.nearest_power_of_2
+        @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
         @size.times do |i|
             @buffer.ptr[i] = buffer[i]
         end
     end
 
     def initialize(@size : Int32)
-        @buffer = GcPointer(UInt8).malloc(@size.to_u32)
+        @capacity = @size.nearest_power_of_2
+        @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
         @size.times do |i|
             @buffer.ptr[i] = 0u8
         end
@@ -20,7 +24,8 @@ class CString < Gc
 
     def initialize(buffer)
         @size = buffer.size
-        @buffer = GcPointer(UInt8).malloc(@size)
+        @capacity = @size.nearest_power_of_2
+        @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
         @size.times do |i|
             @buffer.ptr[i] = buffer[i]
         end
@@ -56,6 +61,26 @@ class CString < Gc
         each_char do |ch|
             io.puts ch.unsafe_chr
         end
+    end
+
+    #
+    private def expand
+        @capacity *= 2
+        old_buffer = @buffer
+        @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
+        memcpy(@buffer.ptr, old_buffer.ptr, @size.to_u32)
+    end
+
+    def insert(idx : Int32, ch : UInt8)
+        if idx == @size
+            if @size == @capacity
+                Serial.puts "expands"
+                expand
+            else
+                @size += 1
+            end
+        end
+        @buffer.ptr[idx] = ch
     end
 
 end

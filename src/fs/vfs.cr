@@ -5,7 +5,7 @@ PATH_MAX = 4096
 abstract class VFSNode < Gc
 
     abstract def size : Int
-    abstract def name : CString | Nil
+    abstract def name : GcString | Nil
     abstract def parent : VFSNode | Nil
 
     abstract def open(path : Slice) : VFSNode | Nil
@@ -19,7 +19,7 @@ end
 
 abstract class VFS < Gc
 
-    abstract def name : CString
+    abstract def name : GcString
 
     abstract def next_node : VFS | Nil
     abstract def next_node=(x : VFS | Nil)

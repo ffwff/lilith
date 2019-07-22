@@ -51,7 +51,7 @@ class Fat16Node < VFSNode
     @next_node : Fat16Node | Nil = nil
     property next_node
 
-    @name : CString | Nil = nil
+    @name : GcString | Nil = nil
     property name
 
     @first_child : Fat16Node | Nil = nil
@@ -274,7 +274,7 @@ class Fat16FS < VFS
                 end
 
                 # filename
-                fname = CString.new(name_len + 2 + ext_len + 1)
+                fname = GcString.new(name_len + 2 + ext_len + 1)
                 (name_len + 1).times do |i|
                     if entry.name[i] >= 'A'.ord && entry.name[i] <= 'Z'.ord
                         # to lower case

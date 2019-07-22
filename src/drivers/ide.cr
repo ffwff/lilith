@@ -188,12 +188,12 @@ class AtaDevice < Gc
 
     #
     getter primary, slave
-    @name : CString | Nil = nil
+    @name : GcString | Nil = nil
     getter name
 
     # NOTE: idx must be between 0..3
     def initialize(idx = 0, @primary=true, @slave=0)
-        @name = CString.new "ata0"
+        @name = GcString.new "ata0"
         @name.not_nil![3] = (idx + '0'.ord).to_u8
     end
 

@@ -16,16 +16,16 @@ OBJ = \
 AR = i386-elf-lilith-ar
 CC = i386-elf-lilith-gcc
 CR=$(shell pwd)/../../toolchain/crystal/.build/crystal
-CRFLAGS=--cross-compile --target i686-elf --prelude ./prelude.cr
+CRFLAGS=--cross-compile --target i686-elf -d --prelude ./prelude.cr
 CCFLAGS = -Ipdclib/include \
 	-Istub/include -Istub/include/pdclib \
-	-nostdinc -nostdlib
+	-nostdinc -nostdlib -g
 
 libc.a: $(OBJ)
 	$(AR) rcs $@ $^
 
 stub.cr.o: stub/main.cr
-	$(CR) build $(CRFLAGS) $< -o stub.cr --release
+	$(CR) build $(CRFLAGS) $< -o stub.cr
 
 %.o: %.c
 	$(CC) $(CCFLAGS) -c -o $@ $^

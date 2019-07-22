@@ -140,9 +140,11 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters)
                 Paging.alloc_page_pg(faulting_address & 0xFFFF_F000, true, true)
                 Idt.status_mask = false
                 return
+            else
+                panic "userspace"
             end
         else
-            panic faulting_address, "nop"
+            panic "kernel space"
         end
     end
 end

@@ -7,7 +7,7 @@ class VGAFsNode < VFSNode
     def size : Int
         0
     end
-    def name : CString | Nil; end
+    def name : GcString | Nil; end
     def parent; end
 
     #
@@ -46,7 +46,7 @@ class VGAFS < VFS
     property next_node
 
     def initialize
-        @name = CString.new "vga"
+        @name = GcString.new "vga"
         @root = VGAFsNode.new self
     end
 

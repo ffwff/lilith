@@ -221,11 +221,11 @@ module LibGc
     private def scan_region(start_addr, end_addr, move_list=true)
         # due to the way this rechains the linked list of white nodes
         # please set move_list=false when not scanning for root nodes
-        word_size = 4 # 4*8 = 32bits
-        debug "from: ", Pointer(Void).new(start_addr.to_u64), Pointer(Void).new(end_addr.to_u64),"\n"
+        #Serial.puts Pointer(Void).new(start_addr.to_u64), ' ', Pointer(Void).new(end_addr.to_u64) ,'\n'
+        word_size = sizeof(Void*)
         i = start_addr
         fix_white = false
-        while i < end_addr - word_size + 1
+        while i < end_addr - word_size
             word = Pointer(UInt32).new(i.to_u64).value
             # subtract to get the pointer to the header
             word -= sizeof(Kernel::GcNode)
@@ -282,14 +282,8 @@ module LibGc
             scan_region @@data_start.not_nil!, @@data_end.not_nil!
             stack_start = 0
             asm("mov %esp, $0;" : "=r"(stack_start) :: "volatile")
-            if stack_start > 0x8000_0000
-                panic "wtf?"
-                # calling from kernel thread
-                scan_region stack_start, Kernel.kget_stack
-                scan_region stack_start, 0xF000_0000u32
-            else
-                scan_region stack_start, @@stack_end.not_nil!
-            end
+            # NOTE: this causes a segfault! examine it
+            scan_region stack_start, @@stack_end.not_nil!
             @@root_scanned = true
         elsif !@@first_gray_node.null?
             # second stage of marking phase: precisely marking gray nodes

@@ -13,7 +13,7 @@ class KbdFsNode < VFSNode
     def size : Int
         0
     end
-    def name : CString | Nil; end
+    def name : GcString | Nil; end
     def parent; end
 
     #
@@ -45,7 +45,7 @@ class KbdFS < VFS
     property next_node
 
     def initialize(@keyboard : Keyboard)
-        @name = CString.new "kbd"
+        @name = GcString.new "kbd"
         @root = KbdFsNode.new
     end
 

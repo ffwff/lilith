@@ -182,10 +182,9 @@ module ElfReader
                         (data.p_flags & ElfStructs::Elf32PFlags::PF_W) == ElfStructs::Elf32PFlags::PF_W,
                         true, npages)
                     end
-                    # heap should start right after the first segment
-                    if process.heap_start == 0
-                        process.heap_start = ((data.p_vaddr + data.p_memsz) & 0xFFFF_F000) + 0x1000
-                    end
+                    # heap should start right after the last segment
+                    heap_start = Paging.aligned(data.p_vaddr + data.p_memsz)
+                    process.heap_start = max process.heap_start, heap_start
                 end
             when Tuple(UInt32, UInt8)
                 offset, byte = data.as(Tuple(UInt32, UInt8))
@@ -200,6 +199,8 @@ module ElfReader
                 end
             end
         end
+        # pad the heap so that we catch memory errors earlier
+        process.heap_start += 0x1000
     end
 
 end

@@ -93,15 +93,12 @@ private def parse_path_into_vfs(path, cw_node=nil)
 end
 
 private def append_paths(path, src_path, cw_node)
-    cpath = uninitialized UInt8[PATH_MAX]
+    Serial.puts "p1: ", src_path, '\n'
+    Serial.puts "p2: ", path, '\n'
+    
+    cpath = GcString.new src_path
     vfs_node = cw_node
-
-    # copy source path
-    idx = 0
-    src_path.each_char do |ch|
-        cpath[idx] = ch
-        idx += 1
-    end
+    idx = cpath.size
 
     parse_path_into_segments(path) do |segment|
         if segment == "."
@@ -119,18 +116,20 @@ private def append_paths(path, src_path, cw_node)
                 vfs_node = vfs_node.not_nil!.parent
             end
         else
-            cpath[idx] = '/'.ord.to_u8
+            cpath.insert(idx, '/'.ord.to_u8)
             idx += 1
             segment.each do |ch|
-                cpath[idx] = ch
+                cpath.insert(idx, ch)
                 idx += 1
             end
             if (vfs_node = vfs_node.not_nil!.open(segment)).nil?
+                Serial.puts segment, '\n'
                 return nil
             end
         end
     end
 
+    Serial.puts "re: ", cpath, '\n'
     Tuple.new(cpath, idx, vfs_node)
 end
 
@@ -245,7 +244,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
             frame.eax = SYSCALL_ERR
         else
             cpath, idx, vfs_node = t.not_nil!
-            process.cwd = CString.new(cpath, idx)
+            process.cwd = GcString.new(cpath, idx)
             process.cwd_node = vfs_node.not_nil!
         end
     # memory management
@@ -262,7 +261,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
             end
         elsif incr > 0
             # increase the end of the heap if incr > 0
-            heap_end_a = Paging.aligned(process.heap_end)
+            heap_end_a = process.heap_end & 0xFFFF_F000
             npages = ((process.heap_end + incr) - heap_end_a).unsafe_shr(12) + 1
             if npages > 0
                 Idt.status_mask = true
