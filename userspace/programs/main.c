@@ -12,7 +12,8 @@ int main() {
         fflush(stdout);
 
         char buf[256]={0};
-        for(int i = 0; i < sizeof(buf)-1; i++) {
+        int i = 0;
+        for(; i < sizeof(buf)-1; i++) {
             char ch = fgetc(stdin);
             if(ch == '\n')
                 break;
@@ -21,6 +22,7 @@ int main() {
             else
                 buf[i] = ch;
         }
+        buf[i] = 0;
 
         char *tok_s = strdup(buf);
         char *tok = strtok(tok_s, " ");
