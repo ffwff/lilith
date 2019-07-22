@@ -105,16 +105,17 @@ private def append_paths(path, src_path, cw_node)
             # ignored
         elsif segment == ".."
             # pop
+            if vfs_node.not_nil!.parent.nil?
+                return nil
+            end
             while idx > 1
                 idx -= 1
-                if path[idx] == '/'.ord
+                if cpath[idx] == '/'.ord
                     idx -= 1
                     break
                 end
             end
-            if !vfs_node.not_nil!.parent.nil?
-                vfs_node = vfs_node.not_nil!.parent
-            end
+            vfs_node = vfs_node.not_nil!.parent
         else
             cpath.insert(idx, '/'.ord.to_u8)
             idx += 1
@@ -129,7 +130,6 @@ private def append_paths(path, src_path, cw_node)
         end
     end
 
-    Serial.puts "re: ", cpath, '\n'
     Tuple.new(cpath, idx, vfs_node)
 end
 

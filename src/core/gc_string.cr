@@ -83,4 +83,11 @@ class GcString < Gc
         @buffer.ptr[idx] = ch
     end
 
+    def resize(size : Int32)
+        if size > @capacity
+            panic "GcString : @size must be < @capacity"
+        end
+        @size = size
+    end
+
 end
