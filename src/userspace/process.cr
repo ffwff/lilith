@@ -310,9 +310,10 @@ module Multiprocessing
         # load process's state
         next_process = Multiprocessing.next_process.not_nil!
         {% end %}
-        if next_process.pid != 0
+        Serial.puts Pointer(Void).new(next_process.object_id), ' ', offsetof(Multiprocessing::Process, @next_process), '\n'
+        #if next_process.pid != 0
             #Serial.puts next_process.pid, "<--\n"
-        end
+        #end
 
         process_frame = if next_process.frame.nil?
             next_process.new_frame
@@ -341,6 +342,7 @@ module Multiprocessing
         if !next_process.kernel_process
             dir = next_process.phys_page_dir # this must be stack allocated
             # because it's placed in the virtual kernel heap
+            panic "null page directory" if dir == 0
             Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
             {% if frame == nil && remove %}
             current_page_dir = current_process.phys_page_dir

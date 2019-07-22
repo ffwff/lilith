@@ -22,12 +22,14 @@ int main() {
 
         char *tok_s = strdup(buf);
         char *tok = strtok(tok_s, " ");
-        if(strcmp(tok, "cd") == NULL) {
-            chdir(strtok(NULL, ""));
-        } else {
-            spawn(buf);
+        if (tok != NULL) {
+            if(strcmp(tok, "cd") == NULL) {
+                chdir(strtok(NULL, ""));
+            } else {
+                spawn(buf);
+            }
+            fflush(stdout);
         }
         free(tok_s);
-        fflush(stdout);
     }
 }

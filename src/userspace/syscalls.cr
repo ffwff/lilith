@@ -72,11 +72,9 @@ private def parse_path_into_vfs(path, cw_node=nil)
         if vfs_node.nil? # no path specifier
             ROOTFS.each do |fs|
                 if segment == fs.name
-                    node = fs.root
-                    if node.nil?
+                    if (vfs_node = fs.root).nil?
                         return nil
                     else
-                        vfs_node = node
                         break
                     end
                 end
@@ -93,29 +91,36 @@ private def parse_path_into_vfs(path, cw_node=nil)
 end
 
 private def append_paths(path, src_path, cw_node)
-    Serial.puts "p1: ", src_path, '\n'
-    Serial.puts "p2: ", path, '\n'
-    
-    cpath = GcString.new src_path
-    vfs_node = cw_node
-    idx = cpath.size
+    Serial.puts "append paths\n"
+    return nil if path.size < 1
+    if path[0] == '/'.ord
+        vfs_node = nil
+        cpath = GcString.new "/"
+        idx = 0
+    else
+        vfs_node = cw_node
+        cpath = GcString.new src_path
+        idx = cpath.size
+    end
 
     parse_path_into_segments(path) do |segment|
         if segment == "."
             # ignored
         elsif segment == ".."
             # pop
-            if vfs_node.not_nil!.parent.nil?
-                return nil
-            end
-            while idx > 1
-                idx -= 1
-                if cpath[idx] == '/'.ord
-                    idx -= 1
-                    break
+            if !vfs_node.nil?
+                if vfs_node.not_nil!.parent.nil?
+                    return nil
                 end
+                while idx > 1
+                    idx -= 1
+                    if cpath[idx] == '/'.ord
+                        idx -= 1
+                        break
+                    end
+                end
+                vfs_node = vfs_node.not_nil!.parent
             end
-            vfs_node = vfs_node.not_nil!.parent
         else
             cpath.insert(idx, '/'.ord.to_u8)
             idx += 1
@@ -123,8 +128,19 @@ private def append_paths(path, src_path, cw_node)
                 cpath.insert(idx, ch)
                 idx += 1
             end
-            if (vfs_node = vfs_node.not_nil!.open(segment)).nil?
-                Serial.puts segment, '\n'
+            if vfs_node.nil?
+                ROOTFS.each do |fs|
+                    if segment == fs.name
+                        #Serial.puts "goto ", fs.name, '\n'
+                        if (vfs_node = fs.root).nil?
+                            return nil
+                        else
+                            break
+                        end
+                    end
+                end
+            elsif (vfs_node = vfs_node.not_nil!.open(segment)).nil?
+                #Serial.puts segment, '\n'
                 return nil
             end
         end
@@ -211,13 +227,13 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         if vfs_node.nil?
             frame.eax = SYSCALL_ERR
         else
-            Idt.status_mask = true
-            new_process = Multiprocessing::Process.new do |proc|
-                ElfReader.load(proc, vfs_node.not_nil!)
+            Idt.lock do
+                new_process = Multiprocessing::Process.new do |proc|
+                    ElfReader.load(proc, vfs_node.not_nil!)
+                end
+                new_process.cwd = process.cwd #TODO: clone string buffer
+                new_process.cwd_node = process.cwd_node
             end
-            new_process.cwd = process.cwd #TODO: clone string buffer
-            new_process.cwd_node = process.cwd_node
-            Idt.status_mask = false
             frame.eax = 1
         end
     when SC_EXIT
@@ -244,29 +260,30 @@ fun ksyscall_handler(frame : SyscallData::Registers)
             frame.eax = SYSCALL_ERR
         else
             cpath, idx, vfs_node = t.not_nil!
-            process.cwd = GcString.new(cpath, idx)
-            process.cwd_node = vfs_node.not_nil!
+            if !vfs_node.nil?
+                process.cwd = GcString.new(cpath, idx)
+                process.cwd_node = vfs_node.not_nil!
+            end
         end
     # memory management
     when SC_SBRK
         incr = frame.ebx.to_i32
-        Serial.puts "sbrk: ", incr, "\n"
         if incr == 0
             # return the end of the heap if incr = 0
             if process.heap_end == 0
                 # there are no pages allocated for program heap
-                Idt.status_mask = true
-                process.heap_end = Paging.alloc_page_pg(process.heap_start, true, true)
-                Idt.status_mask = false
+                Idt.lock do
+                    process.heap_end = Paging.alloc_page_pg(process.heap_start, true, true)
+                end
             end
         elsif incr > 0
             # increase the end of the heap if incr > 0
             heap_end_a = process.heap_end & 0xFFFF_F000
             npages = ((process.heap_end + incr) - heap_end_a).unsafe_shr(12) + 1
             if npages > 0
-                Idt.status_mask = true
-                Paging.alloc_page_pg(process.heap_end, true, true, npages: npages)
-                Idt.status_mask = false
+                Idt.lock do
+                    Paging.alloc_page_pg(process.heap_end, true, true, npages: npages)
+                end
             end
         else
             panic "decreasing heap not implemented"

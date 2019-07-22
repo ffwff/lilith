@@ -338,7 +338,10 @@ module LibGc
                     next
                 end
                 # lookup its offsets
-                info = type_info.search(type_id).not_nil!
+                if (info = type_info.search(type_id)).nil?
+                    panic "unknown: ", type_id, '\n'
+                end
+                info = info.not_nil!
                 offsets, size = info.offsets, info.size
                 if offsets == 0
                     # there is no offset found for this type, yet it's not atomic

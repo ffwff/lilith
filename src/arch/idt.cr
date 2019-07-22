@@ -79,7 +79,6 @@ module Idt
 
     # status
     @@status_mask = false
-    def status_mask; @@status_mask; end
     def status_mask=(@@status_mask); end
 
     def enable
@@ -92,6 +91,15 @@ module Idt
         if !@@status_mask
             asm("cli")
         end
+    end
+
+    def lock(&block)
+        if @@status_mask
+            panic "multiple masks"
+        end
+        @@status_mask = true
+        yield
+        @@status_mask = false
     end
 
 end
@@ -136,9 +144,9 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters)
             if  faulting_address < Multiprocessing::USER_STACK_TOP &&
                 faulting_address > Multiprocessing::USER_STACK_BOTTOM_MAX
                 # stack page fault
-                Idt.status_mask = true
-                Paging.alloc_page_pg(faulting_address & 0xFFFF_F000, true, true)
-                Idt.status_mask = false
+                Idt.lock do
+                    Paging.alloc_page_pg(faulting_address & 0xFFFF_F000, true, true)
+                end
                 return
             else
                 panic "userspace"
