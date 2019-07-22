@@ -65,20 +65,22 @@ class KbdFS < VFS
         end
         VGA.puts ch
 
-        last_page_dir = Paging.current_page_dir
-        root.read_queue.not_nil!.select do |msg|
-            #Serial.puts msg.slice, '\n'
-            dir = msg.process.phys_page_dir
-            Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
-            Paging.enable
-            msg.slice[0] = byte
-            msg.process.status = Multiprocessing::ProcessStatus::IoUnwait
-            msg.process.frame.not_nil!.eax = 1
-            false
-        end
+        Idt.lock do
+            last_page_dir = Paging.current_page_dir
+            root.read_queue.not_nil!.select do |msg|
+                #Serial.puts msg.slice, '\n'
+                dir = msg.process.phys_page_dir
+                Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
+                Paging.enable
+                msg.slice[0] = byte
+                msg.process.status = Multiprocessing::ProcessStatus::IoUnwait
+                msg.process.frame.not_nil!.eax = 1
+                false
+            end
 
-        Paging.current_page_dir = last_page_dir
-        Paging.enable
+            Paging.current_page_dir = last_page_dir
+            Paging.enable
+        end
     end
 
 end

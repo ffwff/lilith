@@ -12,13 +12,15 @@ int main() {
         fflush(stdout);
 
         char buf[256]={0};
-        int j = 0;
-        for(int i = 0; i < sizeof(buf)-1; i++, j++) {
+        for(int i = 0; i < sizeof(buf)-1; i++) {
             char ch = fgetc(stdin);
-            if(ch == '\n') break;
-            buf[i] = ch;
+            if(ch == '\n')
+                break;
+            else if(ch == '\b' && i > 0)
+                i--;
+            else
+                buf[i] = ch;
         }
-        buf[j] = 0;
 
         char *tok_s = strdup(buf);
         char *tok = strtok(tok_s, " ");
