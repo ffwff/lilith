@@ -1,7 +1,6 @@
 require "./file_descriptor.cr"
 
 private lib Kernel
-    fun kset_stack(address : UInt32)
     fun kswitch_usermode()
 end
 
@@ -243,11 +242,10 @@ module Multiprocessing
 
     end
 
-    @[AlwaysInline]
     def setup_tss
         esp0 = 0u32
         asm("mov %esp, $0;" : "=r"(esp0) :: "volatile")
-        Kernel.kset_stack esp0
+        Gdt.stack = esp0
     end
 
     private def can_switch(process)
