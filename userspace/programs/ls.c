@@ -11,5 +11,5 @@ int main() {
         }
         closedir(d);
     }
-    return (0);
+    return 0;
 }

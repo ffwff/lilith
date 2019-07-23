@@ -31,6 +31,7 @@ module Multiprocessing
     def fxsave_region=(@@fxsave_region); end
 
     enum ProcessStatus
+        Removed
         Normal
         IoUnwait
         ReadWait
@@ -262,9 +263,7 @@ module Multiprocessing
         proc = @@current_process.not_nil!
         # look from middle to end
         cur = proc.next_process
-        while !cur.nil?
-            #Serial.puts cur.not_nil!.pid, "\n"
-            break if can_switch(cur.not_nil!)
+        while !cur.nil? && !can_switch(cur.not_nil!)
             cur = cur.next_process
         end
         @@current_process = cur
@@ -272,9 +271,9 @@ module Multiprocessing
         if @@current_process.nil?
             cur = @@first_process.not_nil!.next_process
             while !cur.nil? && !can_switch(cur.not_nil!)
-                #Serial.puts cur.not_nil!.pid, "\n"
+                #Serial.puts cur.not_nil!.pid, ": ", cur.status, "\n"
                 cur = cur.not_nil!.next_process
-                break if cur == proc
+                break if cur == proc.prev_process
             end
             @@current_process = cur
         end
@@ -294,10 +293,17 @@ module Multiprocessing
     macro switch_process(frame, remove=false)
         {% if frame == nil %}
         current_process = Multiprocessing.current_process.not_nil!
+
+        {% if remove %}
+        current_process.status = Multiprocessing::ProcessStatus::Removed
+        {% end %}
+
         next_process = Multiprocessing.next_process.not_nil!
+
         {% if remove %}
         current_process.remove
         {% end %}
+
         {% else %}
         # save current process' state
         current_process = Multiprocessing.current_process.not_nil!
@@ -310,7 +316,7 @@ module Multiprocessing
         {% end %}
         #Serial.puts Pointer(Void).new(next_process.object_id), ' ', offsetof(Multiprocessing::Process, @next_process), '\n'
         #if next_process.pid != 0
-            #Serial.puts next_process.pid, "<--\n"
+        #    Serial.puts next_process.pid, "<--\n"
         #end
 
         process_frame = if next_process.frame.nil?
@@ -318,25 +324,8 @@ module Multiprocessing
         else
             next_process.frame.not_nil!
         end
-        if next_process.status == Multiprocessing::ProcessStatus::IoUnwait
-            # transition state from async io syscall
-            process_frame.eip = Pointer(UInt32).new(process_frame.ecx.to_u64)[0]
-            process_frame.useresp = process_frame.ecx
-            next_process.status = Multiprocessing::ProcessStatus::Normal
-        end
-        {% if frame != nil %}
-            {% for id in [
-                "ds",
-                "edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax",
-                "eip", "cs", "eflags", "useresp", "ss"
-            ] %}
-            {{ frame }}.{{ id.id }} = process_frame.{{ id.id }}
-            {% end %}
-        {% end %}
-        if !next_process.fxsave_region.ptr.null?
-            memcpy Multiprocessing.fxsave_region, next_process.fxsave_region.ptr, 512
-        end
 
+        # switch page directory
         if !next_process.kernel_process
             dir = next_process.phys_page_dir # this must be stack allocated
             # because it's placed in the virtual kernel heap
@@ -349,6 +338,28 @@ module Multiprocessing
             {% else %}
             Paging.enable
             {% end %}
+        end
+
+        # wake up process
+        if next_process.status == Multiprocessing::ProcessStatus::IoUnwait
+            # transition state from async io syscall
+            process_frame.eip = Pointer(UInt32).new(process_frame.ecx.to_u64)[0]
+            process_frame.useresp = process_frame.ecx
+            next_process.status = Multiprocessing::ProcessStatus::Normal
+        end
+
+        # swap back registers
+        {% if frame != nil %}
+            {% for id in [
+                "ds",
+                "edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax",
+                "eip", "cs", "eflags", "useresp", "ss"
+            ] %}
+            {{ frame }}.{{ id.id }} = process_frame.{{ id.id }}
+            {% end %}
+        {% end %}
+        if !next_process.fxsave_region.ptr.null?
+            memcpy Multiprocessing.fxsave_region, next_process.fxsave_region.ptr, 512
         end
 
         {% if frame == nil %}

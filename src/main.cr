@@ -21,12 +21,8 @@ require "./userspace/elf.cr"
 require "./userspace/mmap_list.cr"
 
 lib Kernel
-    fun ksyscall_setup()
-end
-
-fun kidle_loop
-    while true
-    end
+    fun ksyscall_setup
+    fun kidle_loop
 end
 
 #
@@ -112,7 +108,7 @@ fun kmain(
     Idt.status_mask = true
 
     idle_process = Multiprocessing::Process.new(true, false) do |proc|
-        proc.initial_addr = (->kidle_loop).pointer.address.to_u32
+        proc.initial_addr = (->Kernel.kidle_loop).pointer.address.to_u32
     end
 
     if main_bin.nil?

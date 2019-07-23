@@ -284,6 +284,11 @@ ksyscall_stub:
     push (%ecx)
     iret
 
+# misc
+.global kidle_loop
+kidle_loop:
+    jmp kidle_loop
+
 .section .data
 .align 16
 fxsave_region:

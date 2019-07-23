@@ -14,5 +14,5 @@ fun _start
     open cstrptr("/kbd"), 0 # stdin
     open cstrptr("/vga"), 0 # stdout
     LibC.main 0, Pointer(UInt8*).null
-    while true; end
+    _exit
 end
