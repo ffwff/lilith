@@ -1,13 +1,34 @@
 # TODO: figure out how to port idt.c over without crashing
 IDT_SIZE = 256
-IRQ = 0x20
-INTERRUPT_GATE = 0x8e
-TRAP_GATE = 0x8f
-KERNEL_CODE_SEGMENT_OFFSET = 0x08
+INTERRUPT_GATE = 0x8Eu16
+TRAP_GATE = 0x8Fu16
+KERNEL_CODE_SEGMENT_OFFSET = 0x08u16
 
 private lib Kernel
 
-    fun kinit_idtr()
+    {% for i in 0..31 %}
+    fun kcpuex{{ i.id }}
+    {% end %}
+    {% for i in 0..15 %}
+    fun kirq{{ i.id }}
+    {% end %}
+
+    @[Packed]
+    struct Idt
+        limit : UInt16
+        base  : UInt32
+    end
+
+    @[Packed]
+    struct IdtEntry
+        offset_1  : UInt16 # offset bits 0..15
+        selector  : UInt16 # a code segment selector in GDT or LDT
+        zero      : UInt8  # unused, set to 0
+        type_attr : UInt8  # type and attributes
+        offset_2  : UInt16 # offset bits 16..31
+    end
+
+    fun kload_idt(idtr : UInt32)
 
 end
 
@@ -53,10 +74,6 @@ module Idt
         {% end %}
     end
 
-    def init_table
-        Kernel.kinit_idtr()
-    end
-
     def init_interrupts
         X86.outb 0x20, 0x11
         X86.outb 0xA0, 0x11
@@ -68,6 +85,37 @@ module Idt
         X86.outb 0xA1, 0x01
         X86.outb 0x21, 0x0
         X86.outb 0xA1, 0x0
+    end
+
+    # table init
+    IDT_SIZE = 256
+    @@idtr = uninitialized Kernel::Idt
+    @@idt = uninitialized Kernel::IdtEntry[IDT_SIZE]
+    def init_table
+        @@idtr.limit = sizeof(Kernel::IdtEntry) * IDT_SIZE - 1
+        @@idtr.base = @@idt.to_unsafe.address.to_u32
+
+        # cpu exception handlers
+        {% for i in 0..31 %}
+        init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kcpuex{{ i.id }}).pointer.address.to_u32, INTERRUPT_GATE
+        {% end %}
+
+        # hw interrupts
+        {% for i in 0..15 %}
+        init_idt_entry {{ i + 32 }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kirq{{ i.id }}).pointer.address.to_u32, INTERRUPT_GATE
+        {% end %}
+
+        Kernel.kload_idt pointerof(@@idtr).address.to_u32
+    end
+
+    def init_idt_entry(num : Int32, selector : UInt16, offset : UInt32, type : UInt16)
+        idt = Kernel::IdtEntry.new
+        idt.offset_1 = (offset & 0xffff)
+        idt.offset_2 = (offset & 0xffff0000).unsafe_shr(16)
+        idt.selector = selector
+        idt.zero = 0
+        idt.type_attr = type
+        @@idt[num] = idt
     end
 
     # handlers

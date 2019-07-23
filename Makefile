@@ -4,14 +4,9 @@ LD=$(ARCH)-ld
 CC=clang
 LIBGCC=$(shell $(ARCH)-gcc -print-libgcc-file-name)
 LDFLAGS=-m elf_i386 -T link.ld
-CCFLAGS=-c -g -target $(ARCH) -nostdlib -nostdinc \
-	-fno-stack-protector -ffreestanding -O2 \
-	-Wall -Wno-unused-function -Wno-unknown-pragmas
 CR=toolchain/crystal/.build/crystal
 CRFLAGS=--cross-compile --target $(ARCH) --prelude empty
-KERNEL_OBJ=build/main.cr.o \
-	$(patsubst src/arch/%.c,build/arch.%.o,$(wildcard src/arch/*.c)) \
-	build/boot.o
+KERNEL_OBJ=build/main.cr.o build/boot.o
 
 ifeq ($(RELEASE),1)
 	CRFLAGS += --release
@@ -34,10 +29,6 @@ all: build/kernel
 build/main.cr.o: src/main.cr
 	@echo "CR $<"
 	$(CR) build $(CRFLAGS) $< -o build/main.cr
-
-build/arch.%.o: src/arch/%.c
-	@echo "CC $<"
-	@$(CC) $(CCFLAGS) -Isrc -o $@ $<
 
 build/boot.o: boot.s
 	@echo "AS $<"
