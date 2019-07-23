@@ -287,6 +287,7 @@ ksyscall_stub:
 # misc
 .global kidle_loop
 kidle_loop:
+    hlt
     jmp kidle_loop
 
 .section .data
