@@ -13,8 +13,11 @@ class KbdFsNode < VFSNode
     def size : Int
         0
     end
-    def name : GcString | Nil; end
+    def name; end
+
     def parent; end
+    def next_node; end
+    def first_child; end
 
     #
     def open(path : Slice) : VFSNode | Nil

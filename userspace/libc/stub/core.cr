@@ -24,7 +24,7 @@ struct Pointer(T)
     end
 
     def self.malloc
-        malloc(sizeof(T)).as(T*)
+        malloc(sizeof(T).to_u64).as(T*)
     end
 
     def free

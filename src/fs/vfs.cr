@@ -6,7 +6,10 @@ abstract class VFSNode < Gc
 
     abstract def size : Int
     abstract def name : GcString | Nil
+
     abstract def parent : VFSNode | Nil
+    abstract def next_node : VFSNode | Nil
+    abstract def first_child : VFSNode | Nil
 
     abstract def open(path : Slice) : VFSNode | Nil
     abstract def read(slice : Slice(UInt8), offset : UInt32,

@@ -2,6 +2,7 @@ require "./functions/threads.cr"
 require "./functions/syscalls.cr"
 require "./functions/malloc.cr"
 require "./functions/string.cr"
+require "./functions/dirent.cr"
 
 lib LibC
 

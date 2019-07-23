@@ -10,14 +10,26 @@ lib SyscallData
         edi, esi, ebp, esp, ebx, edx, ecx, eax : UInt32
     end
 
-    struct SyscallStringArgument
+    struct StringArgument
         str : UInt32
         len : Int32
     end
 
-    struct SyscallSeekArgument
+    struct SeekArgument
         offset : Int32
         whence : UInt32
+    end
+
+    alias Ino_t = Int32
+    struct DirentArgument
+        # Inode number
+        d_ino : Ino_t
+        # Length of this record 
+        d_reclen : UInt16
+        # Type of file; not supported by all filesystem types
+        d_type : UInt8
+        # Null-terminated filename
+        d_name : UInt8[256]
     end
 
 end
@@ -175,7 +187,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     when SC_READ
         fdi = frame.ebx.to_i32
         fd = try(process.get_fd(fdi))
-        arg = try(checked_pointer(frame.edx)).as(SyscallData::SyscallStringArgument*)
+        arg = try(checked_pointer(frame.edx)).as(SyscallData::StringArgument*)
         str = try(checked_slice(arg.value.str, arg.value.len))
         result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
         case result
@@ -190,13 +202,13 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     when SC_WRITE
         fdi = frame.ebx.to_i32
         fd = try(process.get_fd(fdi))
-        arg = try(checked_pointer(frame.edx)).as(SyscallData::SyscallStringArgument*)
+        arg = try(checked_pointer(frame.edx)).as(SyscallData::StringArgument*)
         str = try(checked_slice(arg.value.str, arg.value.len))
         frame.eax = fd.not_nil!.node.not_nil!.write(str)
     when SC_SEEK
         fdi = frame.ebx.to_i32
         fd = try(process.get_fd(fdi))
-        arg = try(checked_pointer(frame.edx)).as(SyscallData::SyscallSeekArgument*)
+        arg = try(checked_pointer(frame.edx)).as(SyscallData::SeekArgument*)
 
         case arg.value.whence
         when SC_SEEK_SET
@@ -218,6 +230,47 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         else
             frame.eax = SYSCALL_ERR
         end
+    # directories
+    when SC_READDIR
+        fdi = frame.ebx.to_i32
+        fd = try(process.get_fd(fdi))
+        retval = try(checked_pointer(frame.edx)).as(SyscallData::DirentArgument*)
+        if fd.cur_child_end
+            frame.eax = 0
+            return
+        elsif fd.cur_child.nil?
+            if (child = fd.node.not_nil!.first_child).nil?
+                frame.eax = SYSCALL_ERR
+                return
+            end
+            fd.cur_child = child
+        end
+
+        child = fd.cur_child.not_nil!
+
+        dirent = SyscallData::DirentArgument.new
+        dirent.d_ino = 0
+        dirent.d_reclen = sizeof(SyscallData::DirentArgument)
+        dirent.d_type = 0
+        if (name = child.name).nil?
+            dirent.d_name[0] = '/'.ord.to_u8
+            dirent.d_name[1] = 0
+        else
+            name = name.not_nil!
+            i = 0
+            while i < min(name.size, dirent.d_name.size - 1)
+                dirent.d_name[i] = name[i]
+                i += 1
+            end
+            dirent.d_name[i] = 0
+        end
+        retval.value = dirent
+
+        fd.cur_child = child.next_node
+        if fd.cur_child.nil?
+            fd.cur_child_end = true
+        end
+        frame.eax = SYSCALL_SUCCESS
     # process management
     when SC_GETPID
         frame.eax = process.pid
@@ -243,7 +296,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         Multiprocessing.switch_process(nil, true)
     # working directory
     when SC_GETCWD
-        arg = try(checked_pointer(frame.ebx)).as(SyscallData::SyscallStringArgument*)
+        arg = try(checked_pointer(frame.ebx)).as(SyscallData::StringArgument*)
         if arg.value.len > PATH_MAX
             frame.eax = SYSCALL_ERR
             return
