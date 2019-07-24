@@ -1,93 +1,91 @@
 require "../alloc/gc.cr"
 
 class GcString < Gc
+  getter size
+  @capacity : Int32 = 0
+  getter capacity
 
-    getter size
-    @capacity : Int32 = 0
-    getter capacity
-
-    def initialize(buffer, @size : Int32)
-        @capacity = @size.nearest_power_of_2
-        @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
-        @size.times do |i|
-            @buffer.ptr[i] = buffer[i]
-        end
+  def initialize(buffer, @size : Int32)
+    @capacity = @size.nearest_power_of_2
+    @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
+    @size.times do |i|
+      @buffer.ptr[i] = buffer[i]
     end
+  end
 
-    def initialize(@size : Int32)
-        @capacity = @size.nearest_power_of_2
-        @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
-        @size.times do |i|
-            @buffer.ptr[i] = 0u8
-        end
+  def initialize(@size : Int32)
+    @capacity = @size.nearest_power_of_2
+    @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
+    @size.times do |i|
+      @buffer.ptr[i] = 0u8
     end
+  end
 
-    def initialize(buffer)
-        @size = buffer.size
-        @capacity = @size.nearest_power_of_2
-        @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
-        @size.times do |i|
-            @buffer.ptr[i] = buffer[i]
-        end
+  def initialize(buffer)
+    @size = buffer.size
+    @capacity = @size.nearest_power_of_2
+    @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
+    @size.times do |i|
+      @buffer.ptr[i] = buffer[i]
     end
+  end
 
-    # methods
-    def []=(k : Int, value : UInt8)
-        panic "cstring: out of range" if k > size || k < 0
-        @buffer.ptr[k] = value
+  # methods
+  def []=(k : Int, value : UInt8)
+    panic "cstring: out of range" if k > size || k < 0
+    @buffer.ptr[k] = value
+  end
+
+  def [](k : Int) : UInt8
+    panic "cstring: out of range" if k > size || k < 0
+    @buffer.ptr[k]
+  end
+
+  def ==(other)
+    return false if size != other.size
+    @size.times do |i|
+      return false if @buffer.ptr[i] != other[i]
     end
+    true
+  end
 
-    def [](k : Int) : UInt8
-        panic "cstring: out of range" if k > size || k < 0
-        @buffer.ptr[k]
+  #
+  def each_char(&block)
+    @size.times do |i|
+      yield @buffer.ptr[i]
     end
+  end
 
-    def ==(other)
-        return false if size != other.size
-        @size.times do |i|
-            return false if @buffer.ptr[i] != other[i]
-        end
-        true
+  def to_s(io)
+    each_char do |ch|
+      io.puts ch.unsafe_chr
     end
+  end
 
-    #
-    def each_char(&block)
-        @size.times do |i|
-            yield @buffer.ptr[i]
-        end
+  #
+  private def expand
+    @capacity *= 2
+    old_buffer = @buffer
+    @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
+    memcpy(@buffer.ptr, old_buffer.ptr, @size.to_u32)
+  end
+
+  def insert(idx : Int32, ch : UInt8)
+    if idx == @size
+      if @size == @capacity
+        Serial.puts "expands"
+        expand
+      else
+        @size += 1
+      end
     end
+    @buffer.ptr[idx] = ch
+  end
 
-    def to_s(io)
-        each_char do |ch|
-            io.puts ch.unsafe_chr
-        end
+  def resize(size : Int32)
+    if size > @capacity
+      panic "GcString : @size must be < @capacity"
     end
-
-    #
-    private def expand
-        @capacity *= 2
-        old_buffer = @buffer
-        @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
-        memcpy(@buffer.ptr, old_buffer.ptr, @size.to_u32)
-    end
-
-    def insert(idx : Int32, ch : UInt8)
-        if idx == @size
-            if @size == @capacity
-                Serial.puts "expands"
-                expand
-            else
-                @size += 1
-            end
-        end
-        @buffer.ptr[idx] = ch
-    end
-
-    def resize(size : Int32)
-        if size > @capacity
-            panic "GcString : @size must be < @capacity"
-        end
-        @size = size
-    end
-
+    @size = size
+  end
 end

@@ -3,60 +3,54 @@ require "./async.cr"
 PATH_MAX = 4096
 
 abstract class VFSNode < Gc
+  abstract def size : Int
+  abstract def name : GcString | Nil
 
-    abstract def size : Int
-    abstract def name : GcString | Nil
+  abstract def parent : VFSNode | Nil
+  abstract def next_node : VFSNode | Nil
+  abstract def first_child : VFSNode | Nil
 
-    abstract def parent : VFSNode | Nil
-    abstract def next_node : VFSNode | Nil
-    abstract def first_child : VFSNode | Nil
+  abstract def open(path : Slice) : VFSNode | Nil
+  abstract def read(slice : Slice(UInt8), offset : UInt32,
+                    process : Multiprocessing::Process | Nil = nil) : Int32
+  abstract def write(slice : Slice) : Int32
 
-    abstract def open(path : Slice) : VFSNode | Nil
-    abstract def read(slice : Slice(UInt8), offset : UInt32,
-        process : Multiprocessing::Process | Nil = nil) : Int32
-    abstract def write(slice : Slice) : Int32
-
-    abstract def read_queue : VFSReadQueue | Nil
-
+  abstract def read_queue : VFSReadQueue | Nil
 end
 
 abstract class VFS < Gc
+  abstract def name : GcString
 
-    abstract def name : GcString
+  abstract def next_node : VFS | Nil
+  abstract def next_node=(x : VFS | Nil)
 
-    abstract def next_node : VFS | Nil
-    abstract def next_node=(x : VFS | Nil)
-
-    abstract def root : VFSNode
-
+  abstract def root : VFSNode
 end
 
 class RootFS < Gc
+  @vfs_node : VFS | Nil = nil
 
-    @vfs_node : VFS | Nil = nil
+  def initialize
+  end
 
-    def initialize
+  def append(node : VFS)
+    if @vfs_node.nil?
+      node.next_node = nil
+      @vfs_node = node
+    else
+      node.next_node = @vfs_node
+      @vfs_node = node
     end
+  end
 
-    def append(node : VFS)
-        if @vfs_node.nil?
-            node.next_node = nil
-            @vfs_node = node
-        else
-            node.next_node = @vfs_node
-            @vfs_node = node
-        end
+  def each(&block)
+    node = @vfs_node
+    while !node.nil?
+      yield node
+      node = node.next_node
     end
-
-    def each(&block)
-        node = @vfs_node
-        while !node.nil?
-            yield node
-            node = node.next_node
-        end
-    end
-
+  end
 end
 
-VFS_ERR = -1
+VFS_ERR       = -1
 VFS_READ_WAIT = -2

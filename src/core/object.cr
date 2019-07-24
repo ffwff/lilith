@@ -1,10 +1,9 @@
 class Object
+  def not_nil!
+    self
+  end
 
-    def not_nil!
-        self
-    end
-
-    macro getter(*names)
+  macro getter(*names)
         {% for name in names %}
         def {{ name.id }}
             @{{ name.id }}
@@ -12,7 +11,7 @@ class Object
         {% end %}
     end
 
-    macro property(*names)
+  macro property(*names)
         {% for name in names %}
         def {{ name.id }}
             @{{ name.id }}
@@ -22,7 +21,7 @@ class Object
         {% end %}
     end
 
-    macro mod_property(*names)
+  macro mod_property(*names)
         {% for name in names %}
         def {{ name.id }}
             @@{{ name.id }}
@@ -31,25 +30,22 @@ class Object
         end
         {% end %}
     end
-
 end
 
 struct Nil
+  def not_nil!
+    panic "casting nil to not-nil!"
+  end
 
-    def not_nil!
-        panic "casting nil to not-nil!"
-    end
+  def to_s(io)
+    io.puts "nil"
+  end
 
-    def to_s(io)
-        io.puts "nil"
-    end
+  def ==(other)
+    false
+  end
 
-    def ==(other)
-        false
-    end
-
-    def object_id
-        0u64
-    end
-
+  def object_id
+    0u64
+  end
 end

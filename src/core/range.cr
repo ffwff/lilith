@@ -1,14 +1,18 @@
 struct Range(B, E)
+  def begin
+    @begin
+  end
 
-    def begin; @begin; end
-    def end; @end; end
-    getter exclusive
+  def end
+    @end
+  end
 
-    def size;
-        @end - @begin
-    end
+  getter exclusive
 
-    def initialize(@begin : B, @end : E, @exclusive : Bool = false)
-    end
+  def size
+    @end - @begin
+  end
 
+  def initialize(@begin : B, @end : E, @exclusive : Bool = false)
+  end
 end

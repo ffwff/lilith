@@ -1,11 +1,9 @@
 abstract struct IoDriver
+  abstract def putc(c : UInt8)
 
-    abstract def putc(c : UInt8)
-
-    def puts(*args)
-        args.each do |arg|
-            arg.to_s self
-        end
+  def puts(*args)
+    args.each do |arg|
+      arg.to_s self
     end
-
+  end
 end
