@@ -283,7 +283,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         new_process = Multiprocessing::Process.new do |proc|
           ElfReader.load(proc, vfs_node.not_nil!)
         end
-        new_process.cwd = process.cwd # TODO: clone string buffer
+        new_process.cwd = process.cwd.clone
         new_process.cwd_node = process.cwd_node
       end
       frame.eax = 1

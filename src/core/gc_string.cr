@@ -88,4 +88,9 @@ class GcString < Gc
     end
     @size = size
   end
+
+  # cloning
+  def clone
+    GcString.new(@buffer.ptr, @size)
+  end
 end
