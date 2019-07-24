@@ -12,8 +12,8 @@
 .long MBOOT_CHECKSUM            # checksum. m+f+c should be zero
 
 .section .text
-USER_STACK_TOP = 0xf0000000
-USER_STACK_BOTTOM = 0x80000000
+KERNEL_DATA_SELECTOR = 0x10
+USER_DATA_SELECTOR = 0x23
 # code
 .global _start
 .global load_idt
@@ -98,7 +98,6 @@ kirq_stub:
     # call the handler
     cld
     call kirq_handler
-kcpuint_end: # NOTE: syscall_exit uses the same path to return to usermode
     # reload original data segment selector
     pop %bx
     mov %bx, %ds
@@ -205,33 +204,20 @@ kdisable_paging:
     ret
 # userspace
 kswitch_usermode:
-    mov $0x23, %ax
+    mov $USER_DATA_SELECTOR, %eax
     mov %ax, %ds
     mov %ax, %es
     mov %ax, %fs
     mov %ax, %gs
-    # data selector
-    pushl $0x23
-    # setup stack
-    mov $USER_STACK_BOTTOM, %ebp
-    pushl $USER_STACK_TOP
-    # eflags
-    pushf
-    # enable interrupts
-    pop %eax
-    or $0x200, %eax
-    push %eax
-    # code selector
-    pushl $0x1B
-    # instruction pointer
-    push %ecx
-    iret
+    # ecx contains esp
+    # edx contains instruction pointer
+    sysexit
 # syscalls
 .extern ksyscall_handler
 ksyscall_setup:
     xor %edx, %edx
     # MSR[SYSENTER_CS_MSR] = cs
-    mov $0x1F, %eax
+    mov %cs, %eax
     mov $0x174, %ecx
     wrmsr
     # MSR[SYSENTER_ESP_MSR] = %esp
@@ -245,13 +231,11 @@ ksyscall_setup:
     ret
 ksyscall_stub:
     # load kernel segment descriptor
-    push %ax
-    mov $0x10, %ax
-    mov %ax, %ds
-    mov %ax, %es
-    mov %ax, %fs
-    mov %ax, %gs
-    pop %ax
+    mov $KERNEL_DATA_SELECTOR, %di
+    mov %di, %ds
+    mov %di, %es
+    mov %di, %fs
+    mov %di, %gs
     # save sse state
     fxsave (fxsave_region)
     # call the handler
@@ -262,28 +246,27 @@ ksyscall_stub:
     add $4, %esp
     # load sse state
     fxrstor (fxsave_region)
-    # use di because it is clobber value
-    # segments
-    mov $0x23, %di
+    # segment selectors
+    mov $USER_DATA_SELECTOR, %di
     mov %di, %ds
     mov %di, %es
     mov %di, %fs
     mov %di, %gs
-    # data selector
-    pushl $0x23
-    # setup stack
-    pushl %ecx
-    # eflags (enable interrupts)
-    pushf
-    pop %edi
-    or $0x200, %edi
-    push %edi
-    # code selector
-    pushl $0x1B
-    # instruction pointer
-    push (%ecx)
+    mov (%ecx), %edx
+    sysexit
+kcpuint_end:
+    # reload original data segment selector
+    pop %bx
+    mov %bx, %ds
+    mov %bx, %es
+    mov %bx, %fs
+    mov %bx, %gs
+    # return
+    popa
+    add $4, %esp
+    # reload sse state
+    fxrstor (fxsave_region)
     iret
-
 # misc
 .global kidle_loop
 kidle_loop:

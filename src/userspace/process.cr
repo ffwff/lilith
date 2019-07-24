@@ -1,10 +1,5 @@
 require "./file_descriptor.cr"
 
-private lib Kernel
-    fun kswitch_usermode()
-end
-
-
 module Multiprocessing
     extend self
 
@@ -153,7 +148,11 @@ module Multiprocessing
             Paging.disable
             Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
             Paging.enable
-            asm("jmp kswitch_usermode" :: "{ecx}"(@initial_addr) : "volatile")
+            asm("jmp kswitch_usermode" :
+                : "{edx}"(@initial_addr),
+                  "{ecx}"(USER_STACK_TOP),
+                  "{ebp}"(USER_STACK_TOP)
+                : "volatile")
         end
 
         # new register frame for multitasking

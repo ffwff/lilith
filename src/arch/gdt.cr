@@ -64,13 +64,14 @@ module Gdt
         @@gdtr.size = sizeof(Kernel::GdtEntry) * GDT_SIZE - 1
         @@gdtr.offset = @@gdt.to_unsafe.address.to_u32
         
+        # this must be placed in the following order
+        # so that sysenter sets the selectors correctly
         init_gdt_entry 0, 0x0, 0x0, 0x0, 0x0          # null
         init_gdt_entry 1, 0x0, 0xFFFFFFFF, 0x9A, 0xCF # kernel code
         init_gdt_entry 2, 0x0, 0xFFFFFFFF, 0x92, 0xCF # kernel data
         init_gdt_entry 3, 0x0, 0xFFFFFFFF, 0xFA, 0xCF # user code
         init_gdt_entry 4, 0x0, 0xFFFFFFFF, 0xF2, 0xCF # user data
-        init_tss 5, 0x10, 0x0
-
+        init_tss 5, 0x10, 0x0, 0x0b, 0x13
 
         Kernel.kload_gdt pointerof(@@gdtr).address.to_u32
         Kernel.kload_tss
@@ -92,14 +93,14 @@ module Gdt
         @@gdt[num] = entry
     end
 
-    private def init_tss(num : Int32, ss0 : UInt32, esp0 : UInt32)
+    private def init_tss(num : Int32, ss0 : UInt32, esp0 : UInt32, cs : UInt32, ds : UInt32)
         base = pointerof(@@tss).address.to_u32
         limit = base + sizeof(Kernel::Tss)
         init_gdt_entry num, base, limit, 0xE9, 0x00
         @@tss.ss0 = ss0
         @@tss.esp0 = esp0
-        @@tss.cs = 0x0b
-        @@tss.ss = @@tss.ds = @@tss.es = @@tss.fs = @@tss.gs = 0x13
+        @@tss.cs = cs
+        @@tss.ss = @@tss.ds = @@tss.es = @@tss.fs = @@tss.gs = ds
     end
 
     def stack; @@tss.esp0; end

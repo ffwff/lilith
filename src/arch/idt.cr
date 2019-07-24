@@ -202,5 +202,7 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters)
         else
             panic "kernel space"
         end
+    else
+        panic "fault: ", frame.int_no, ' ' , frame.errcode, '\n'
     end
 end
