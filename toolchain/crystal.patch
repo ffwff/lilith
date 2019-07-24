@@ -107,26 +107,3 @@ index 78ab68eff..2f0bbcef4 100644
        global.initializer = @last.type.null
      end
    end
-@@ -87,6 +87,8 @@ class Crystal::CodeGenVisitor
-   end
- 
-   def initialize_const(const)
-+    # NOTE: this generates initialize branch + init call in __crystal_main+other places?
-+
-     # Maybe the constant was simple and doesn't need a real initialization
-     return if const.initializer
- 
-@@ -100,11 +102,13 @@ class Crystal::CodeGenVisitor
-     position_at_end not_initialized_block
-     store int1(1), initialized_flag
- 
-+    # HERE?
-     init_function_name = "~#{const.initialized_llvm_name}"
-     func = @main_mod.functions[init_function_name]? || create_initialize_const_function(init_function_name, const)
-     func = check_main_fun init_function_name, func
-     call func
- 
-+    #puts llvm_context.fun
-     br initialized_block
- 
-     position_at_end initialized_block
