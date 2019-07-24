@@ -36,6 +36,10 @@ fun remove(str : LibC::String) : Int32
   -1
 end
 
+fun lseek64(fd : Int32, offset : Int64, whence : Int32) : Int64
+  (-1).to_i64
+end
+
 # process
 fun _exit : Nil
   LibC.sysenter(SC_EXIT, 0, 0)

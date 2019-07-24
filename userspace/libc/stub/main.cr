@@ -1,8 +1,11 @@
-require "./functions/threads.cr"
-require "./functions/syscalls.cr"
 require "./functions/pdclib.cr"
 require "./functions/malloc.cr"
 require "./functions/string.cr"
+
+# architecture specific
+require "./functions/syscalls.cr"
+require "./functions/threads.cr"
+require "./functions/setjmp.cr"
 require "./functions/dirent.cr"
 
 lib LibC

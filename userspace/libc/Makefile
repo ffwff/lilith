@@ -24,18 +24,22 @@ CCFLAGS = -Ipdclib/include \
 libc.a: $(OBJ)
 	$(AR) rcs $@ $^
 
+libm.a: stub/math.cr
+	FREESTANDING=1 $(CR) build $(CRFLAGS) $< -o math.cr
+	$(AR) rcs $@ math.cr.o
+
 stub.cr.o: stub/main.cr
 	FREESTANDING=1 $(CR) build $(CRFLAGS) $< -o stub.cr
 
 %.o: %.c
 	$(CC) $(CCFLAGS) -c -o $@ $^
 
-install: libc.a crt0.o
-	cp libc.a crt0.o $(LIBDIR)
+install: libc.a libm.a crt0.o
+	cp libc.a libm.a crt0.o $(LIBDIR)
 	cp -r pdclib/include/* $(INCLUDEDIR)
 	cp -r stub/include/* $(INCLUDEDIR)
 
 clean:
-	rm -f *.o libc.a
+	rm -f *.o libc.a libm.a
 	rm -f stub/**/*.o
 	rm -f stub/**/**/*.o
