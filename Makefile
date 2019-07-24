@@ -5,7 +5,7 @@ CC=clang
 LIBGCC=$(shell $(ARCH)-gcc -print-libgcc-file-name)
 LDFLAGS=-m elf_i386 -T link.ld
 CR=toolchain/crystal/.build/crystal
-CRFLAGS=--cross-compile --target $(ARCH) --prelude empty
+CRFLAGS=--cross-compile --target $(ARCH) --prelude ./prelude.cr
 KERNEL_OBJ=build/main.cr.o build/boot.o
 
 ifeq ($(RELEASE),1)
@@ -28,7 +28,7 @@ all: build/kernel
 
 build/main.cr.o: src/main.cr
 	@echo "CR $<"
-	$(CR) build $(CRFLAGS) $< -o build/main.cr
+	@FREESTANDING=1 $(CR) build $(CRFLAGS) $< -o build/main.cr
 
 build/boot.o: boot.s
 	@echo "AS $<"
@@ -77,7 +77,8 @@ clean:
 # debug
 toolchain/crystal:
 	cd toolchain && git clone https://github.com/crystal-lang/crystal && \
-	cd crystal && git checkout fbfe8b62f
+	cd crystal && git checkout fbfe8b62f && \
+	patch -p1 < ../crystal.patch
 
 $(CR): toolchain/crystal
 	cd toolchain/crystal && make release=1

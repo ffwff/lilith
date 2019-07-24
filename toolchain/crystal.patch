@@ -12,24 +12,34 @@ index c901d9b37..a8766b586 100755
    exec "$CRYSTAL_DIR/crystal" "$@"
  elif ! command -v crystal > /dev/null; then
 diff --git a/src/compiler/crystal/codegen/codegen.cr b/src/compiler/crystal/codegen/codegen.cr
-index a1d792d57..7c52ec54a 100644
+index a1d792d57..a35d0d724 100644
 --- a/src/compiler/crystal/codegen/codegen.cr
 +++ b/src/compiler/crystal/codegen/codegen.cr
-@@ -241,7 +241,7 @@ module Crystal
-         set_current_debug_location Location.new(filename, 1, 1)
-       end
+@@ -153,6 +153,8 @@ module Crystal
+     @main_builder : CrystalLLVMBuilder
+     @call_location : Location?
  
--      alloca_vars @program.vars, @program
-+      #alloca_vars @program.vars, @program
++    @generate_freestanding = false
++
+     def initialize(@program : Program, @node : ASTNode, single_module = false, @debug = Debug::Default)
+       @single_module = !!single_module
+       @abi = @program.target_machine.abi
+@@ -233,7 +235,8 @@ module Crystal
+       # to avoid some memory being allocated with plain malloc.
+       codgen_well_known_functions @node
  
-       emit_vars_debug_info(@program.vars) if @debug.variables?
-     end
-@@ -263,14 +263,18 @@ module Crystal
+-      initialize_argv_and_argc
++      @generate_freestanding = ENV["FREESTANDING"]? == "1"
++      initialize_argv_and_argc unless @generate_freestanding
+ 
+       initialize_simple_class_vars_and_constants
+ 
+@@ -263,14 +266,18 @@ module Crystal
            next if initializer.compile_time_value
            next unless initializer.simple?
  
 -          initialize_simple_const(initializer)
-+          if context.fun.name != "__crystal_main"
++          if context.fun.name != MAIN_NAME && @generate_freestanding
 +            initialize_simple_const(initializer)
 +          end
          when ClassVarInitializer
@@ -39,71 +49,42 @@ index a1d792d57..7c52ec54a 100644
            next if class_var.thread_local?
  
 -          initialize_class_var(initializer.owner, initializer.name, initializer.meta_vars, initializer.node)
-+          if context.fun.name != "__crystal_main"
++          if context.fun.name != MAIN_NAME && @generate_freestanding
 +            initialize_class_var(initializer.owner, initializer.name, initializer.meta_vars, initializer.node)
 +          end
          end
        end
      end
-@@ -396,6 +400,7 @@ module Crystal
-     end
- 
-     def visit(node : FileNode)
-+      #puts context.fun
-       with_context(Context.new(context.fun, context.type)) do
-         file_module = @program.file_module(node.filename)
-         if vars = file_module.vars?
-@@ -495,6 +500,7 @@ module Crystal
-     end
- 
-     def visit(node : PointerOf)
-+      # puts context.fun.name
-       @last = case node_exp = node.exp
-               when Var
-                 context.vars[node_exp.name].pointer
-@@ -929,7 +935,9 @@ module Crystal
+@@ -929,7 +936,9 @@ module Crystal
      def codegen_assign(target : Path, value, node)
        const = target.target_const.not_nil!
        if const.used? && !const.simple? && !const.compile_time_value
 -        initialize_const(const)
-+        if context.fun.name != "__crystal_main"
++        if context.fun.name != MAIN_NAME && @generate_freestanding
 +          initialize_const(const)
 +        end
        end
        @last = llvm_nil
        false
-@@ -943,7 +951,9 @@ module Crystal
+@@ -943,7 +952,9 @@ module Crystal
        unless target_type
          if target.is_a?(ClassVar)
            # This is the case of a class var initializer
 -          initialize_class_var(target)
-+          if context.fun.name != "__crystal_main"
++          if context.fun.name != MAIN_NAME && @generate_freestanding
 +            initialize_class_var(target)
 +          end
          end
          return false
        end
-@@ -1103,7 +1113,9 @@ module Crystal
+@@ -1103,7 +1114,9 @@ module Crystal
          end
        when ClassVar
          # This is the case of a class var initializer
 -        initialize_class_var(var)
-+        if context.fun.name != "__crystal_main"
++        if context.fun.name != MAIN_NAME && @generate_freestanding
 +          initialize_class_var(var)
 +        end
        end
  
        @last = llvm_nil
-diff --git a/src/compiler/crystal/codegen/const.cr b/src/compiler/crystal/codegen/const.cr
-index 78ab68eff..2f0bbcef4 100644
---- a/src/compiler/crystal/codegen/const.cr
-+++ b/src/compiler/crystal/codegen/const.cr
-@@ -39,7 +39,7 @@ class Crystal::CodeGenVisitor
-       request_value do
-         accept const.value
-       end
--      store @last, global
-+      #store @last, global
-       global.initializer = @last.type.null
-     end
-   end

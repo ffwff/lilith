@@ -288,7 +288,7 @@ module Multiprocessing
 
     # context switch
     # NOTE: this must be a macro so that it will be inlined,
-    # and frame will the a reference to the frame on the stack
+    # and the frame argument will the a reference to the frame on the stack
     macro switch_process(frame, remove=false)
         {% if frame == nil %}
         current_process = Multiprocessing.current_process.not_nil!
