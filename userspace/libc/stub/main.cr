@@ -10,8 +10,8 @@ lib LibC
 end
 
 fun _start
-  open cstrptr("/kbd"), 0 # stdin
-  open cstrptr("/vga"), 0 # stdout
+  open "/kbd\0".to_unsafe, 0 # stdin
+  open "/vga\0".to_unsafe, 0 # stdout
   LibC.main 0, Pointer(UInt8*).null
   _exit
 end

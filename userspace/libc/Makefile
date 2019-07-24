@@ -25,7 +25,7 @@ libc.a: $(OBJ)
 	$(AR) rcs $@ $^
 
 stub.cr.o: stub/main.cr
-	$(CR) build $(CRFLAGS) $< -o stub.cr
+	FREESTANDING=1 $(CR) build $(CRFLAGS) $< -o stub.cr
 
 %.o: %.c
 	$(CC) $(CCFLAGS) -c -o $@ $^

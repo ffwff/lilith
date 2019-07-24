@@ -52,22 +52,7 @@ end
 
 # Strings
 class String
-  def bytes
+  def to_unsafe
     pointerof(@c)
   end
-end
-
-macro cstring(string)
-    begin
-        __str = StaticArray(UInt8, {{ string.size + 1 }}).new
-        {% for idx in 0..(string.size - 1) %}
-        __str.to_unsafe[{{ idx }}] = {{ string }}.bytes[{{ idx }}]
-        {% end %}
-        __str.to_unsafe[{{ string.size }}] = 0
-        __str
-    end
-end
-
-macro cstrptr(string)
-    cstring({{ string }}).to_unsafe
 end
