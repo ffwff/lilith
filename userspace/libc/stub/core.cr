@@ -50,6 +50,13 @@ struct StaticArray(T, N)
   end
 end
 
+# Tuples
+struct Tuple
+  def size
+    {{ T.size }}
+  end
+end
+
 # Strings
 class String
   def to_unsafe
