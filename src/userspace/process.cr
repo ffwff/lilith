@@ -109,8 +109,12 @@ module Multiprocessing
     @heap_end = 0u32
     property heap_start, heap_end
 
+    # argv
+    @argv : GcArray(GcString) | Nil = nil
+    property argv
+
     def initialize(@kernel_process = false, save_fx = true, &on_setup_paging)
-      # file descriptors
+      # user mode specific
       if save_fx
         @fxsave_region = GcPointer(UInt8).malloc(512)
       else
@@ -219,8 +223,8 @@ module Multiprocessing
       end
       # registers
       {% for id in ["edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax"] %}
-            frame.{{ id.id }} = syscall_frame.{{ id.id }}
-            {% end %}
+      frame.{{ id.id }} = syscall_frame.{{ id.id }}
+      {% end %}
       @frame = frame
       @frame.not_nil!
     end
@@ -369,13 +373,13 @@ module Multiprocessing
 
         # swap back registers
         {% if frame != nil %}
-            {% for id in [
-                           "ds",
-                           "edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax",
-                           "eip", "cs", "eflags", "useresp", "ss",
-                         ] %}
-            {{ frame }}.{{ id.id }} = process_frame.{{ id.id }}
-            {% end %}
+          {% for id in [
+              "ds",
+              "edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax",
+              "eip", "cs", "eflags", "useresp", "ss",
+            ] %}
+          {{ frame }}.{{ id.id }} = process_frame.{{ id.id }}
+          {% end %}
         {% end %}
         if !next_process.fxsave_region.ptr.null?
             memcpy Multiprocessing.fxsave_region, next_process.fxsave_region.ptr, 512

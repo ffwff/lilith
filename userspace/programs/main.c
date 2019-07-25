@@ -32,7 +32,8 @@ int main(int argc, char **argv) {
             } else {
                 const int MAX_ARGS = 256;
                 char **argv = calloc(MAX_ARGS, sizeof(char *));
-                int idx = 0;
+                argv[0] = tok;
+                int idx = 1;
                 while((tok = strtok(NULL, " ")) != NULL && idx < MAX_ARGS) {
                     argv[idx] = tok;
                 }

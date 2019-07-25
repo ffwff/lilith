@@ -33,10 +33,13 @@ class GcArray(T) < Gc
     GcArray(MemMapNode),
     GcArray(FileDescriptor),
     GcArray(AtaDevice),
+    GcArray(GcString),
   ]
   # one long for typeid, one long for length
   @size : Int32 = 0
   getter size
+  @capacity : Int32 = 0
+  getter capacity
 
   def initialize(@size : Int32)
     malloc_size = @size.to_u32 * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
@@ -46,15 +49,24 @@ class GcArray(T) < Gc
     # clear array
     i = 0
     while i < @size
-      @ptr[2 + i] = 0
+      buffer.as(UInt8*)[i] = 0u32
       i += 1
     end
+    # capacity
+    recalculate_capacity
   end
 
+  # helper
   private def buffer
     (@ptr + 2).as(T*)
   end
+  
+  private def recalculate_capacity
+    @capacity = (KERNEL_ARENA.block_size_for_ptr(@ptr) - GC_ARRAY_HEADER_SIZE) \
+      .unsafe_div(sizeof(Void*)).to_i32
+  end
 
+  # getter/setter
   def [](idx : Int) : T | Nil
     panic "GcArray: out of range" if idx < 0 && idx > @size
     if buffer.as(UInt32*)[idx] == 0
@@ -69,33 +81,43 @@ class GcArray(T) < Gc
     buffer[idx] = value
   end
 
-  private def resize(new_size)
-    if new_size < @size
-      panic "unimplemented!"
+  # resizing
+  private def new_buffer(@size)
+    malloc_size = @size.to_u32 * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
+    ptr = LibGc.unsafe_malloc(malloc_size).as(UInt32*)
+    ptr[0] = GC_ARRAY_HEADER_TYPE
+    ptr[1] = @size
+    new_buffer = Pointer(UInt32).new((ptr.address + GC_ARRAY_HEADER_SIZE).to_u64)
+    # copy over
+    i = 0
+    while i < @size
+      new_buffer[i] = buffer.as(UInt32*)[i]
+      i += 1
     end
-    bufsize = KERNEL_ARENA.block_size_for_ptr(buffer.address.to_u32)
-    malloc_size = new_size * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
-    if bufsize >= malloc_size + sizeof(Kernel::GcNode)
-      # arena block supports this, grow to new size
-      ptr = buffer.as(UInt32*)
-      ptr[1] = new_size
-      @size = new_size
+    @ptr = ptr
+    # capacity
+    recalculate_capacity
+  end
+
+  def push(value : T)
+    if @size < capacity
+      buffer[@size] = value
+      @size += 1
     else
-      # arena can't support this, allocate a new one and copy it over
-      # malloc new buffer
-      ptr = LibGc.unsafe_malloc(malloc_size).as(UInt32*)
-      ptr[0] = GC_ARRAY_HEADER_TYPE
-      ptr[1] = new_size
-      new_buffer = Pointer(T).new((ptr.address + GC_ARRAY_HEADER_SIZE).to_u64)
-      # copy over
-      i = 0
-      while i < @size
-        new_buffer[i] = buffer[i]
-        i += 1
+      panic "gcarray: resize?"
+    end
+  end
+
+  # iterator
+  def each(&block)
+    i = 0
+    while i < size
+      if buffer.as(UInt32*)[i] == 0
+        yield nil
+      else
+        yield buffer[i]
       end
-      # set buffer
-      buffer = new_buffer
-      size = new_size
+      i += 1
     end
   end
 end
@@ -161,64 +183,64 @@ module LibGc
     offsets : UInt32 = 0
     n_classes = 0
     {% for klass in Gc.all_subclasses %}
-            {% if !klass.abstract? %}
-                offsets = 0
-                # set zero offset if any of the field isn't 32-bit aligned
-                zero_offset = false
-                {% # HACK: crystal doesn't provide us with a list of type variables derived generic types:
-# i.e. GcArray(UInt32), GcArray(Void), etc...
-# so the user will have to provide it to us in the GC_GENERIC_TYPES constant
-
-type_names = [klass]
-if !klass.type_vars.empty?
-  if klass.type_vars.all? { |i| i.class_name == "MacroId" }
-    type_names = klass.constant("GC_GENERIC_TYPES")
-  else
-    type_names = [] of TypeNode
-  end
-end
-                %}
-                {% for type_name in type_names %}
-                    {% for ivar in klass.instance_vars %}
-                        {% if ivar.type < Gc || ivar.type < GcPointer ||
-                                (ivar.type.union? && ivar.type.union_types.any? { |x| x < Gc }) %}
-                            if offsetof({{ type_name }}, @{{ ivar }}).unsafe_mod(4) == 0
-                                field_offset = offsetof({{ type_name }}, @{{ ivar }}).unsafe_div(4)
-                                debug "{{ ivar.type }}: ", offsetof({{ type_name }}, @{{ ivar }}), " ", "{{ ivar.type }}", " ", sizeof({{ ivar.type }}), "\n"
-                                panic "struct pointer outside of 32-bit range!" if field_offset > 32
-                                offsets |= 1.unsafe_shl(field_offset)
-                            else
-                                zero_offset = true
-                            end
-                        {% end %}
-                    {% end %}
-                    type_id = {{ type_name }}.crystal_instance_type_id.to_u32
-                    Serial.puts "{{ type_name }} id: ", type_id, ", ", offsets, "\n"
-                    value = if zero_offset
-                        TypeInfo.new(0, instance_sizeof({{ type_name }}).to_u32)
-                    else
-                        TypeInfo.new(offsets, instance_sizeof({{ type_name }}).to_u32)
-                    end
-                    n_classes += 1
-                    type_info.insert(type_id, value)
-                {% end %}
+      {% if !klass.abstract? %}
+        offsets = 0
+        # set zero offset if any of the field isn't 32-bit aligned
+        zero_offset = false
+        {%
+        # HACK: crystal doesn't provide us with a list of type variables derived generic types:
+        # i.e. GcArray(UInt32), GcArray(Void), etc...
+        # so the user will have to provide it to us in the GC_GENERIC_TYPES constant
+        type_names = [klass]
+        if !klass.type_vars.empty?
+          if klass.type_vars.all? { |i| i.class_name == "MacroId" }
+            type_names = klass.constant("GC_GENERIC_TYPES")
+          else
+            type_names = [] of TypeNode
+          end
+        end
+        %}
+        {% for type_name in type_names %}
+          {% for ivar in klass.instance_vars %}
+            {% if ivar.type < Gc || ivar.type < GcPointer ||
+                (ivar.type.union? && ivar.type.union_types.any? { |x| x < Gc }) %}
+              if offsetof({{ type_name }}, @{{ ivar }}).unsafe_mod(4) == 0
+                field_offset = offsetof({{ type_name }}, @{{ ivar }}).unsafe_div(4)
+                debug "{{ ivar.type }}: ", offsetof({{ type_name }}, @{{ ivar }}), " ", "{{ ivar.type }}", " ", sizeof({{ ivar.type }}), "\n"
+                panic "struct pointer outside of 32-bit range!" if field_offset > 32
+                offsets |= 1.unsafe_shl(field_offset)
+              else
+                zero_offset = true
+              end
             {% end %}
+          {% end %}
+          type_id = {{ type_name }}.crystal_instance_type_id.to_u32
+          Serial.puts "{{ type_name }} id: ", type_id, ", ", offsets, "\n"
+          value = if zero_offset
+              TypeInfo.new(0, instance_sizeof({{ type_name }}).to_u32)
+          else
+              TypeInfo.new(offsets, instance_sizeof({{ type_name }}).to_u32)
+          end
+          n_classes += 1
+          type_info.insert(type_id, value)
         {% end %}
+      {% end %}
+    {% end %}
     type_info.balance n_classes
     @@enabled = true
   end
 
   macro push(list, node)
-        if {{ list }}.null?
-            # first node
-            {{ node }}.value.next_node = Pointer(Kernel::GcNode).null
-            {{ list }} = {{ node }}
-        else
-            # middle node
-            {{ node }}.value.next_node = {{ list }}
-            {{ list }} = {{ node }}
-        end
+    if {{ list }}.null?
+      # first node
+      {{ node }}.value.next_node = Pointer(Kernel::GcNode).null
+      {{ list }} = {{ node }}
+    else
+        # middle node
+        {{ node }}.value.next_node = {{ list }}
+        {{ list }} = {{ node }}
     end
+  end
 
   # gc algorithm
   private def scan_region(start_addr, end_addr, move_list = true)
@@ -342,7 +364,7 @@ end
         end
         # lookup its offsets
         if (info = type_info.search(type_id)).nil?
-          panic "unknown: ", type_id, '\n'
+          panic "Gc: unknown type_id ", type_id, '\n'
         end
         info = info.not_nil!
         offsets, size = info.offsets, info.size
@@ -423,7 +445,7 @@ end
         node = @@first_white_node
         while !node.null?
           panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
-          # Serial.puts "free ", node, " ", (node.as(UInt8*)+8) ," ", (node.as(UInt8*)+8).as(UInt32*)[0], "\n"
+          Serial.puts "free ", node, " ", (node.as(UInt8*)+8) ," ", (node.as(UInt8*)+8).as(UInt32*)[0], "\n"
           next_node = node.value.next_node
           KERNEL_ARENA.free node.address.to_u32
           node = next_node
@@ -462,7 +484,7 @@ end
     end
     # return
     ptr = Pointer(Void).new(header.address.to_u64 + sizeof(Kernel::GcNode))
-    debug self, '\n' if @@enabled
+    Serial.puts self, '\n' if @@enabled
     ptr
   end
 
@@ -470,9 +492,12 @@ end
   private def out_nodes(io, first_node)
     node = first_node
     while !node.null?
-      ptr = (node + 1).as(UInt32*)
-      io.puts node, " (", ptr[0], ")"
-      io.puts ", " if !node.value.next_node.null?
+      body = node.as(UInt32*) + 2
+      type_id = (node + 1).as(UInt32*)[0]
+      if type_id == 27
+        io.puts body, " (", type_id, ")"
+        io.puts ", " if !node.value.next_node.null?
+      end
       node = node.value.next_node
     end
   end

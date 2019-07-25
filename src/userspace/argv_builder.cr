@@ -1,6 +1,7 @@
 struct ArgvBuilder
 
   MAX_ARGS = 255
+  MAX_STR_PLACEMENT = 0x800
 
   @placement = 0
   @argc = 0
@@ -22,7 +23,11 @@ struct ArgvBuilder
   end
 
   private def place_str(str)
-    @placement += str.size + 1
+    d = str.size + 1
+    if @placement + d > MAX_STR_PLACEMENT
+      return false
+    end
+    @placement += d
     ptr = Pointer(UInt8).new((@process.initial_esp - @placement).to_u64)
     i = 0
     str.each do |char|
@@ -30,28 +35,16 @@ struct ArgvBuilder
       i += 1
     end
     ptr[i] = 0u8
-  end
-
-  # builder functions
-  def from_string_array(argv : UInt8**)
-    i = 0
-    while i < MAX_ARGS
-      if argv[i].null?
-        return true
-      elsif (ptr = checked_pointer(argv[i].address.to_u32)).nil?
-        return false
-      else
-        place_str NullTerminatedSlice.new(argv[i])
-      end
-      @argc += 1
-      i += 1
-    end
     true
   end
 
-  def from_string(arg : String)
-    place_str arg
+  # builder functions
+  def from_string(arg)
+    if place_str arg
+      return false
+    end
     @argc += 1
+    true
   end
 
   # build argv/argc

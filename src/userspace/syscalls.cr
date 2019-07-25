@@ -264,12 +264,26 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     if vfs_node.nil?
       frame.eax = SYSCALL_ERR
     else
+      # argv
+      pargv = GcArray(GcString).new 0
+      i = 0
+      while i < SC_SPAWN_MAX_ARGS
+        if argv[i].null?
+          break
+        end
+        arg = NullTerminatedSlice.new(try(checked_pointer(argv[i].address.to_u32)).as(UInt8*))
+        pargv.push GcString.new(arg, arg.size)
+        i += 1
+      end
+
+      # spawn process
       Idt.lock do
         new_process = Multiprocessing::Process.new do |process|
           ElfReader.load(process, vfs_node.not_nil!)
-          argv_builder = ArgvBuilder.new(process)
-          if !argv_builder.from_string_array(argv)
-            panic "TODO: cleanup"
+          process.argv = pargv
+          argv_builder = ArgvBuilder.new process
+          pargv.each do |arg|
+            argv_builder.from_string arg.not_nil!
           end
           argv_builder.build
         end

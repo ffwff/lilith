@@ -67,8 +67,8 @@ module Idt
 
   def initialize
     {% for i in 0...IRQ_COUNT %}
-            @@irq_handlers[{{ i }}] = ->{ nil }
-        {% end %}
+      @@irq_handlers[{{ i }}] = ->{ nil }
+    {% end %}
   end
 
   def init_interrupts
@@ -95,13 +95,13 @@ module Idt
 
     # cpu exception handlers
     {% for i in 0..31 %}
-        init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kcpuex{{ i.id }}).pointer.address.to_u32, INTERRUPT_GATE
-        {% end %}
+      #init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kcpuex{{ i.id }}).pointer.address.to_u32, INTERRUPT_GATE
+    {% end %}
 
     # hw interrupts
     {% for i in 0..15 %}
-        init_idt_entry {{ i + 32 }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kirq{{ i.id }}).pointer.address.to_u32, INTERRUPT_GATE
-        {% end %}
+      init_idt_entry {{ i + 32 }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kirq{{ i.id }}).pointer.address.to_u32, INTERRUPT_GATE
+    {% end %}
 
     Kernel.kload_idt pointerof(@@idtr).address.to_u32
   end

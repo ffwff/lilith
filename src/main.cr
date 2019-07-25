@@ -117,8 +117,13 @@ fun kmain(
     VGA.puts "executing MAIN.BIN...\n"
     m_process = Multiprocessing::Process.new do |process|
       ElfReader.load(process, main_bin.not_nil!)
+      process.argv = argv = GcArray(GcString).new 0
+      argv.push GcString.new("/ata0/main.bin")
+
       argv_builder = ArgvBuilder.new process
-      argv_builder.from_string "/ata0/main.bin"
+      argv.each do |arg|
+        argv_builder.from_string arg.not_nil!
+      end
       argv_builder.build
     end
     m_process.cwd = GcString.new "/ata0"

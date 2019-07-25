@@ -196,6 +196,11 @@ private struct KernelArena
   def to_s(io)
     io.puts
   end
+
+  def block_size_for_ptr(ptr)
+    pool_hdr = Pointer(Kernel::PoolHeader).new(ptr.address.to_u64 & 0xFFFF_F000)
+    pool_hdr.value.block_buffer_size
+  end
 end
 
 KERNEL_ARENA = KernelArena.new
