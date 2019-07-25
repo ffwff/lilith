@@ -270,6 +270,7 @@ module LibGc
               end
             end
             # add to gray list
+            debug_mark Pointer(Kernel::GcNode).new(i.to_u64), node, false
             case node.value.magic
             when GC_NODE_MAGIC
               node.value.magic = GC_NODE_MAGIC_GRAY
@@ -346,6 +347,7 @@ module LibGc
             if addr >= KERNEL_ARENA.start_addr && addr <= KERNEL_ARENA.placement_addr
               # mark the header as gray
               header = Pointer(Kernel::GcNode).new(addr.to_u64 - sizeof(Kernel::GcNode))
+              debug_mark node, header
               case header.value.magic
               when GC_NODE_MAGIC
                 header.value.magic = GC_NODE_MAGIC_GRAY
@@ -392,6 +394,7 @@ module LibGc
 
               # mark the header as gray
               header = Pointer(Kernel::GcNode).new(addr.to_u64 - sizeof(Kernel::GcNode))
+              debug_mark node, header
               case header.value.magic
               when GC_NODE_MAGIC
                 header.value.magic = GC_NODE_MAGIC_GRAY
@@ -445,7 +448,7 @@ module LibGc
         node = @@first_white_node
         while !node.null?
           panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
-          Serial.puts "free ", node, " ", (node.as(UInt8*)+8) ," ", (node.as(UInt8*)+8).as(UInt32*)[0], "\n"
+          # Serial.puts "free ", node, " ", (node.as(UInt8*)+8) ," ", (node.as(UInt8*)+8).as(UInt32*)[0], "\n"
           next_node = node.value.next_node
           KERNEL_ARENA.free node.address.to_u32
           node = next_node
@@ -484,7 +487,7 @@ module LibGc
     end
     # return
     ptr = Pointer(Void).new(header.address.to_u64 + sizeof(Kernel::GcNode))
-    Serial.puts self, '\n' if @@enabled
+    debug self, '\n' if @@enabled
     ptr
   end
 
@@ -519,5 +522,22 @@ module LibGc
   private def debug(*args)
     return
     Serial.puts *args
+  end
+
+  private def debug_mark(parent : Kernel::GcNode*, child : Kernel::GcNode*, node? = true)
+    return
+    cbody = child.as(UInt32*) + 2
+    ctype_id = (child + 1).as(UInt32*)[0]
+    if node?
+      pbody = parent.as(UInt32*) + 2
+      ptype_id = (parent + 1).as(UInt32*)[0]
+      if ctype_id == 27
+        Serial.puts "mark ", parent, " (", ptype_id, "): ", child, '\n'
+      end
+    else
+      if ctype_id == 27
+        Serial.puts "mark ", parent, ": ", child, '\n'
+      end
+    end
   end
 end

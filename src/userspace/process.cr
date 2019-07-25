@@ -263,6 +263,20 @@ module Multiprocessing
       else
         @next_process.not_nil!.prev_process = @prev_process
       end
+      # cleanup userspace data so as to minimize leaks
+      @fds = nil
+      @cwd = nil
+      @cwd_node = nil
+      @argv = nil
+    end
+
+    # debugging
+    def to_s(io)
+      io.puts "Process {"
+      io.puts " pid: ", pid, ", "
+      io.puts " prev_process: ", prev_process.nil? ? "nil" : prev_process.not_nil!.pid, ", "
+      io.puts " next_process: ", next_process.nil? ? "nil" : next_process.not_nil!.pid, ", "
+      io.puts "}"
     end
   end
 
