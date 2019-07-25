@@ -10,7 +10,7 @@ class String
     pointerof(@c)
   end
 
-  def each_char
+  def each
     size.times do |i|
       yield bytes[i], i
     end
@@ -21,7 +21,7 @@ class String
   end
 
   def to_s(io)
-    each_char do |char|
+    each do |char|
       io.putc char
     end
   end

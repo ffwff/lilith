@@ -52,11 +52,11 @@ module Multiprocessing
 
     protected def next_process=(@next_process); end
 
-    @stack_bottom : UInt32 = USER_STACK_TOP - 0x1000u32
-    property stack_bottom
+    @initial_eip : UInt32 = 0x8000_0000u32
+    property initial_eip
 
-    @initial_addr : UInt32 = 0x8000_0000u32
-    property initial_addr
+    @initial_esp : UInt32 = USER_STACK_TOP
+    property initial_esp
 
     # physical location of the process' page directory
     @phys_page_dir : UInt32 = 0u32
@@ -170,8 +170,8 @@ module Multiprocessing
       Paging.disable
       Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
       Paging.enable
-      asm("jmp kswitch_usermode" :: "{edx}"(@initial_addr),
-                                    "{ecx}"(USER_STACK_TOP),
+      asm("jmp kswitch_usermode" :: "{edx}"(@initial_eip),
+                                    "{ecx}"(@initial_esp),
                                     "{ebp}"(USER_STACK_TOP)
                                  : "volatile")
     end
@@ -180,10 +180,10 @@ module Multiprocessing
     def new_frame
       frame = IdtData::Registers.new
       # Stack
-      frame.useresp = USER_STACK_TOP
-      frame.esp = USER_STACK_TOP
+      frame.useresp = @initial_esp
+      frame.esp = @initial_esp
       # Pushed by the processor automatically.
-      frame.eip = @initial_addr
+      frame.eip = @initial_eip
       if @kernel_process
         frame.eflags = 0x202u32
         frame.cs = 0x08u32
@@ -205,7 +205,7 @@ module Multiprocessing
       frame.useresp = USER_STACK_TOP
       frame.esp = USER_STACK_TOP
       # Pushed by the processor automatically.
-      frame.eip = @initial_addr
+      frame.eip = @initial_eip
       if @kernel_process
         frame.eflags = 0x202u32
         frame.cs = 0x08u32

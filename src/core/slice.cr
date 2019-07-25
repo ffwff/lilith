@@ -25,7 +25,7 @@ struct Slice(T)
   def ==(other)
     return false if other.size != self.size
     i = 0
-    other.each_char do |ch|
+    other.each do |ch|
       return false if ch != self[i]
       i += 1
     end

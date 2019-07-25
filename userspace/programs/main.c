@@ -3,7 +3,7 @@
 #include <string.h>
 #include <syscalls.h>
 
-int main() {
+int main(int argc, char **argv) {
     char *path = calloc(PATH_MAX + 1, 1);
     while(1) {
         getcwd(path, PATH_MAX);
@@ -30,7 +30,14 @@ int main() {
             if(strcmp(tok, "cd") == NULL) {
                 chdir(strtok(NULL, ""));
             } else {
-                spawn(buf);
+                const int MAX_ARGS = 256;
+                char **argv = calloc(MAX_ARGS, sizeof(char *));
+                int idx = 0;
+                while((tok = strtok(NULL, " ")) != NULL && idx < MAX_ARGS) {
+                    argv[idx] = tok;
+                }
+                spawnv(buf, argv);
+                free(argv);
             }
             fflush(stdout);
         }

@@ -156,7 +156,7 @@ module ElfReader
 
   # load
   def load(process, vfs)
-    Paging.alloc_page_pg process.stack_bottom, true, true, 1
+    Paging.alloc_page_pg(process.initial_esp - 0x1000, true, true, 1)
     mmap_list : GcArray(MemMapNode) | Nil = nil
     mmap_append_idx = 0
     mmap_idx = 0
@@ -164,7 +164,7 @@ module ElfReader
       case data
       when ElfStructs::Elf32Header
         data = data.as(ElfStructs::Elf32Header)
-        process.initial_addr = data.e_entry
+        process.initial_eip = data.e_entry
         mmap_list = GcArray(MemMapNode).new data.e_phnum.to_i32
       when ElfStructs::Elf32ProgramHeader
         data = data.as(ElfStructs::Elf32ProgramHeader)

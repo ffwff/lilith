@@ -11,14 +11,13 @@ lib LibC
 end
 
 @[AlwaysInline]
-def sysenter(*args)
-  if args.size == 3
-    LibC.sysenter args[0], args[1], args[2]
-  elsif args.size == 2
-    LibC.sysenter1 args[0], args[1]
-  else
-    0
-  end
+def sysenter(eax, ebx, edx)
+  LibC.sysenter eax, ebx, edx
+end
+
+@[AlwaysInline]
+def sysenter(eax, ebx)
+  LibC.sysenter1 eax, ebx
 end
 
 # IO
@@ -61,8 +60,8 @@ fun raise(sig : Int32) : Int32
   -1
 end
 
-fun spawn(file : LibC::String) : Int32
-  sysenter(SC_SPAWN, file.address.to_u32, 0).to_i32
+fun spawnv(file : LibC::String, argv : UInt8**) : Int32
+  sysenter(SC_SPAWN, file.address.to_u32, argv.address.to_u32).to_i32
 end
 
 # working directory

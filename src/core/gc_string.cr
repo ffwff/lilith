@@ -50,14 +50,14 @@ class GcString < Gc
   end
 
   #
-  def each_char(&block)
+  def each(&block)
     @size.times do |i|
       yield @buffer.ptr[i]
     end
   end
 
   def to_s(io)
-    each_char do |ch|
+    each do |ch|
       io.puts ch.unsafe_chr
     end
   end

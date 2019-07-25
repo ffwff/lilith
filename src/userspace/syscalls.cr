@@ -1,5 +1,7 @@
 require "../drivers/cpumsr.cr"
 require "./syscall_defs.cr"
+require "./addr_sanitizer.cr"
+require "./argv_builder.cr"
 
 lib SyscallData
   @[Packed]
@@ -30,24 +32,6 @@ lib SyscallData
     d_type : UInt8
     # Null-terminated filename
     d_name : UInt8[256]
-  end
-end
-
-# checked inputs
-private def checked_pointer(addr : UInt32) : Void* | Nil
-  if addr < 0x8000_0000
-    nil
-  else
-    Pointer(Void).new(addr.to_u64)
-  end
-end
-
-private def checked_slice(addr : UInt32, len : Int32) : Slice(UInt8) | Nil
-  end_addr = addr + len
-  if addr < 0x8000_0000 || end_addr < 0x8000_0000
-    nil
-  else
-    Slice(UInt8).new(Pointer(UInt8).new(addr.to_u64), len.to_i32)
   end
 end
 
@@ -275,13 +259,19 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     frame.eax = process.pid
   when SC_SPAWN
     path = NullTerminatedSlice.new(try(checked_pointer(frame.ebx)).as(UInt8*))
+    argv = try(checked_pointer(frame.edx)).as(UInt8**)
     vfs_node = parse_path_into_vfs path, process.cwd_node
     if vfs_node.nil?
       frame.eax = SYSCALL_ERR
     else
       Idt.lock do
-        new_process = Multiprocessing::Process.new do |proc|
-          ElfReader.load(proc, vfs_node.not_nil!)
+        new_process = Multiprocessing::Process.new do |process|
+          ElfReader.load(process, vfs_node.not_nil!)
+          argv_builder = ArgvBuilder.new(process)
+          if !argv_builder.from_string_array(argv)
+            panic "TODO: cleanup"
+          end
+          argv_builder.build
         end
         new_process.cwd = process.cwd.clone
         new_process.cwd_node = process.cwd_node
@@ -302,7 +292,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     end
     str = try(checked_slice(arg.value.str, arg.value.len))
     idx = 0
-    process.cwd.each_char do |ch|
+    process.cwd.each do |ch|
       break if idx == str.size
       str[idx] = ch
       idx += 1

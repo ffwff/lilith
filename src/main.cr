@@ -107,16 +107,19 @@ fun kmain(
   Idt.disable
   Idt.status_mask = true
 
-  idle_process = Multiprocessing::Process.new(true, false) do |proc|
-    proc.initial_addr = (->Kernel.kidle_loop).pointer.address.to_u32
+  idle_process = Multiprocessing::Process.new(true, false) do |process|
+    process.initial_eip = (->Kernel.kidle_loop).pointer.address.to_u32
   end
 
   if main_bin.nil?
     VGA.puts "no main.bin detected.\n"
   else
     VGA.puts "executing MAIN.BIN...\n"
-    m_process = Multiprocessing::Process.new do |proc|
-      ElfReader.load(proc, main_bin.not_nil!)
+    m_process = Multiprocessing::Process.new do |process|
+      ElfReader.load(process, main_bin.not_nil!)
+      argv_builder = ArgvBuilder.new process
+      argv_builder.from_string "/ata0/main.bin"
+      argv_builder.build
     end
     m_process.cwd = GcString.new "/ata0"
     m_process.cwd_node = fs.not_nil!.root
