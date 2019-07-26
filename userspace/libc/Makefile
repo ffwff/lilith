@@ -1,5 +1,5 @@
 OBJ = \
-	stub/functions/syscalls.o stub.cr.o \
+	stub/functions/setjmp.o stub/functions/syscalls.o stub.cr.o \
 	$(patsubst %.c,%.o, \
 		$(wildcard pdclib/functions/_PDCLIB/*.c) \
 		$(wildcard pdclib/functions/ctype/*.c) \
@@ -14,8 +14,10 @@ OBJ = \
 		$(wildcard stub/functions/_PDCLIB/*.c) \
 		$(wildcard stub/functions/_dlmalloc/*.c) \
 	)
-AR = i386-elf-lilith-ar
-CC = i386-elf-lilith-gcc
+ARCH=i386-elf-lilith
+AR = $(ARCH)-ar
+CC = $(ARCH)-gcc
+AS = $(ARCH)-as
 CR=$(shell pwd)/../../toolchain/crystal/.build/crystal
 CRFLAGS=--cross-compile --target i686-elf -d --prelude ./prelude.cr
 CCFLAGS = -Ipdclib/include \
@@ -31,6 +33,9 @@ libm.a: stub/math.cr
 
 stub.cr.o: stub/main.cr
 	FREESTANDING=1 $(CR) build $(CRFLAGS) $< -o stub.cr
+
+stub/functions/setjmp.o: stub/functions/setjmp.s
+	$(AS) -o $@ $^
 
 %.o: %.c
 	$(CC) $(CCFLAGS) -c -o $@ $^

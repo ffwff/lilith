@@ -4,7 +4,6 @@ require "./functions/string.cr"
 # architecture specific
 require "./functions/syscalls.cr"
 require "./functions/threads.cr"
-require "./functions/setjmp.cr"
 require "./functions/dirent.cr"
 
 lib LibC
