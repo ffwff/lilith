@@ -122,7 +122,7 @@ module ElfReader
             panic "invalid ELF header"
           end
           yield header
-          panic "e_phentsize isn't equal to sizeof(ProgramHeader)" if header.e_phentsize != sizeof(ElfStructs::Elf32ProgramHeader)
+          panic "e_phentsize isn't equal to sizeof(ProgramHeader) :", header.e_phentsize if header.e_phentsize != sizeof(ElfStructs::Elf32ProgramHeader)
           if header.e_phoff == total_bytes + 1
             state = ParserState::ProgramHeader
             idx_h = 0

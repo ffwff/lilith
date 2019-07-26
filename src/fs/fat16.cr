@@ -89,50 +89,60 @@ class Fat16Node < VFSNode
   end
 
   # read
-  def read(read_size = 0, offset = 0, &block)
-    if read_size == 0
-      read_size = size
-    end
-    if offset + read_size > size
-      read_size = size - offset
+  private def sector_for(cluster)
+    fs.fat_sector + cluster.unsafe_div(fs.fat_sector_size)
+  end
+
+  private def ent_for(cluster)
+    cluster.unsafe_mod(fs.fat_sector_size)
+  end
+
+  private def read_fat_table(fat_table, cluster, last_sector? = -1)
+    fat_sector = sector_for cluster
+    if last_sector? == fat_sector
+      return fat_sector
     end
 
-    # small files
-    if offset == 0 && read_size < 512 * fs.sectors_per_cluster
-      sector = ((starting_cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
-      j = 0
-      fs.device.read_sector(sector) do |word|
-        u8 = word.unsafe_shr(8) & 0xFF
-        u8_1 = word & 0xFF
-        yield u8_1.to_u8 if j < read_size
-        yield u8.to_u8 if j < read_size
-        j += 2
-      end
-      return
-    end
-
-    fat_table = Pointer(UInt16).malloc(fs.fat_sector_size)
-    fat_offset = starting_cluster * 2
-    fat_sector = fs.fat_sector + fat_offset.unsafe_div(fs.fat_sector_size)
-    ent_offset = fat_offset.unsafe_mod(fs.fat_sector_size)
+    # Serial.puts "cluster: ", cluster, '\n'
+    # Serial.puts "sector: ", fat_sector, '\n'
 
     # read fat table
     idx = 0
     fs.device.read_sector(fat_sector) do |word|
       if idx < fs.fat_sector_size
+        # Serial.puts idx, ' ', word, '\n'
         fat_table[idx] = word
         idx += 1
       end
     end
 
-    remaining_bytes = read_size
+    fat_sector
+  end
+
+  def read(read_size = 0, offset = 0, &block)
+    # check arguments
+    if read_size == 0
+      read_size = size
+    elsif read_size < 0
+      return
+    end
+    if offset + read_size > size
+      read_size = size - offset
+    end
+
+    # setup
+    fat_table = Slice(UInt16).new fs.fat_sector_size
+    fat_sector = read_fat_table fat_table, starting_cluster
+  
     cluster = starting_cluster
+    remaining_bytes = read_size
 
     # skip clusters
     offset_factor = fs.sectors_per_cluster * 512
     offset_clusters = offset.unsafe_div(offset_factor)
     while offset_clusters > 0 && cluster < 0xFFF8
-      cluster = fat_table[cluster]
+      fat_sector = read_fat_table fat_table, cluster, fat_sector
+      cluster = fat_table[ent_for cluster]
       offset_clusters -= 1
     end
     offset_bytes = offset.unsafe_mod(offset_factor)
@@ -164,11 +174,8 @@ class Fat16Node < VFSNode
         end
         read_sector += 1
       end
-      # Serial.puts "[next cluster]\n"
-      if cluster > fs.fat_sector_size
-        break
-      end
-      cluster = fat_table[cluster]
+      fat_sector = read_fat_table fat_table, cluster, fat_sector
+      cluster = fat_table[ent_for cluster]
     end
 
     # cleanup
@@ -214,7 +221,7 @@ class Fat16FS < VFS
 
   @fat_sector = 0u32
   getter fat_sector
-  @fat_sector_size = 0u32
+  @fat_sector_size = 0
   getter fat_sector_size
 
   @data_sector = 0u32
@@ -244,11 +251,12 @@ class Fat16FS < VFS
     end
 
     @fat_sector = partition.first_sector + bs.reserved_sectors
-    @fat_sector_size = bs.fat_size_sectors.to_u32 * bs.number_of_fats.to_u32
+    # TODO: this assumes that fat_sector_size equals to the device's sector size (512)
+    @fat_sector_size = bs.sector_size.to_i32.unsafe_div sizeof(UInt16)
 
     root_dir_sectors = ((bs.root_dir_entries * 32) + (bs.sector_size - 1)).unsafe_div bs.sector_size
 
-    sector = fat_sector + fat_sector_size
+    sector = fat_sector + bs.fat_size_sectors.to_i32 * bs.number_of_fats.to_i32
     @data_sector = sector + root_dir_sectors
     @sectors_per_cluster = bs.sectors_per_cluster.to_u32
 
