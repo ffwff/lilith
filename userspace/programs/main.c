@@ -24,8 +24,7 @@ int main(int argc, char **argv) {
         }
         buf[i] = 0;
 
-        char *tok_s = strdup(buf);
-        char *tok = strtok(tok_s, " ");
+        char *tok = strtok(buf, " ");
         if (tok != NULL) {
             if(strcmp(tok, "cd") == NULL) {
                 chdir(strtok(NULL, ""));
@@ -42,6 +41,5 @@ int main(int argc, char **argv) {
             }
             fflush(stdout);
         }
-        free(tok_s);
     }
 }
