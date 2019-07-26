@@ -88,3 +88,32 @@ index a1d792d57..a35d0d724 100644
        end
  
        @last = llvm_nil
+diff --git a/src/compiler/crystal/compiler.cr b/src/compiler/crystal/compiler.cr
+index 3853d8962..046048dc8 100644
+--- a/src/compiler/crystal/compiler.cr
++++ b/src/compiler/crystal/compiler.cr
+@@ -4,6 +4,10 @@ require "socket"
+ require "colorize"
+ require "digest/md5"
+ 
++lib LibLLVM
++  fun LLVMDeleteFunction(fn : ValueRef)
++end
++
+ module Crystal
+   @[Flags]
+   enum Debug
+@@ -310,9 +314,12 @@ module Crystal
+         unit.emit(emit, emit_base_filename || output_filename)
+       end
+ 
++      if !ENV["FREESTANDING"]?.nil?
++        LibLLVM.LLVMDeleteFunction llvm_mod.functions["__crystal_main"].to_unsafe
++      end
+       target_machine.emit_obj_to_file llvm_mod, object_name
+ 
+-      stdout.puts linker_command(program, object_name, output_filename, nil)
++      # stdout.puts linker_command(program, object_name, output_filename, nil)
+     end
+ 
+     private def linker_command(program : Program, object_name, output_filename, output_dir)

@@ -188,17 +188,17 @@ module LibGc
         # set zero offset if any of the field isn't 32-bit aligned
         zero_offset = false
         {% # HACK: crystal doesn't provide us with a list of type variables derived generic types:
-# i.e. GcArray(UInt32), GcArray(Void), etc...
-# so the user will have to provide it to us in the GC_GENERIC_TYPES constant
+        # i.e. GcArray(UInt32), GcArray(Void), etc...
+        # so the user will have to provide it to us in the GC_GENERIC_TYPES constant
 
-type_names = [klass]
-if !klass.type_vars.empty?
-  if klass.type_vars.all? { |i| i.class_name == "MacroId" }
-    type_names = klass.constant("GC_GENERIC_TYPES")
-  else
-    type_names = [] of TypeNode
-  end
-end
+        type_names = [klass]
+        if !klass.type_vars.empty?
+          if klass.type_vars.all? { |i| i.class_name == "MacroId" }
+            type_names = klass.constant("GC_GENERIC_TYPES")
+          else
+            type_names = [] of TypeNode
+          end
+        end
         %}
         {% for type_name in type_names %}
           {% for ivar in klass.instance_vars %}
