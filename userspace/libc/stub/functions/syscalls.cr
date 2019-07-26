@@ -7,7 +7,6 @@ lib LibC
   end
 
   fun sysenter(eax : UInt32, ebx : UInt32, edx : UInt32) : UInt32
-  fun sysenter1(eax : UInt32, ebx : UInt32) : UInt32
 end
 
 @[AlwaysInline]
@@ -17,7 +16,7 @@ end
 
 @[AlwaysInline]
 def sysenter(eax, ebx)
-  LibC.sysenter1 eax, ebx
+  LibC.sysenter eax, ebx, 0
 end
 
 # IO
@@ -60,8 +59,12 @@ fun raise(sig : Int32) : Int32
   -1
 end
 
-fun spawnv(file : LibC::String, argv : UInt8**) : Int32
+fun spawnv(file : LibC::String, argv : UInt8**) : Pid
   sysenter(SC_SPAWN, file.address.to_u32, argv.address.to_u32).to_i32
+end
+
+fun waitpid(pid : Pid, status : Int32*, options : Int32) : Pid
+  sysenter(SC_WAITPID, pid, 0).to_i32
 end
 
 # working directory

@@ -29,7 +29,7 @@ class VFSReadQueue < Gc
     end
   end
 
-  def select(&block : VFSReadMessage -> _)
+  def keep_if(&block : VFSReadMessage -> _)
     prev = nil
     cur = @first_msg
     while !cur.nil?

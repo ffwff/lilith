@@ -41,7 +41,9 @@ int main(int argc, char **argv) {
                 while((tok = strtok(NULL, " ")) != NULL && idx < MAX_ARGS) {
                     argv[idx] = tok;
                 }
-                spawnv(buf, argv);
+                pid_t child = spawnv(buf, argv);
+                if(child > 0)
+                    waitpid(child, 0, 0);
                 free(argv);
             }
             fflush(stdout);

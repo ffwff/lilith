@@ -70,13 +70,12 @@ class KbdFS < VFS
 
     Idt.lock do
       last_page_dir = Paging.current_page_dir
-      root.read_queue.not_nil!.select do |msg|
-        # Serial.puts msg.slice, '\n'
+      root.read_queue.not_nil!.keep_if do |msg|
         dir = msg.process.phys_page_dir
         Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
         Paging.enable
         msg.slice[0] = byte
-        msg.process.status = Multiprocessing::ProcessStatus::IoUnwait
+        msg.process.status = Multiprocessing::Process::Status::Unwait
         msg.process.frame.not_nil!.eax = 1
         false
       end

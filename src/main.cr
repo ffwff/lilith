@@ -118,9 +118,9 @@ fun kmain(
     argv = GcArray(GcString).new 0
     argv.push GcString.new("/ata0/main.bin")
     udata = Multiprocessing::Process::UserData
-      .new(argv,
-        GcString.new("/ata0"),
-        fs.not_nil!.root)
+              .new(argv,
+                GcString.new("/ata0"),
+                fs.not_nil!.root)
     m_process = Multiprocessing::Process.new(udata) do |process|
       ElfReader.load(process, main_bin.not_nil!)
       argv_builder = ArgvBuilder.new process

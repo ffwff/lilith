@@ -21,9 +21,9 @@ module Multiprocessing
   @@last_process : Process | Nil = nil
   mod_property last_process
 
-  @@pids = 0u32
+  @@pids = 0
   mod_property pids
-  @@n_process = 0u32
+  @@n_process = 0
   mod_property n_process
   @@fxsave_region = Pointer(UInt8).null
 
@@ -33,15 +33,8 @@ module Multiprocessing
 
   def fxsave_region=(@@fxsave_region); end
 
-  enum ProcessStatus
-    Removed
-    Normal
-    IoUnwait
-    ReadWait
-  end
-
   class Process < Gc
-    @pid = 0u32
+    @pid = 0
     getter pid
 
     @prev_process : Process | Nil = nil
@@ -70,11 +63,28 @@ module Multiprocessing
     getter fxsave_region
 
     # status
-    @status = Multiprocessing::ProcessStatus::Normal
+    enum Status
+      Removed
+      Normal
+      Unwait
+      WaitIo
+      WaitProcess
+    end
+
+    @status = Status::Normal
     property status
 
-    # ---------
+    # user-mode process data
     class UserData < Gc
+      # wait process
+      # TODO: this should be a weak pointer once it's implemented
+      @pwait : Process | Nil = nil
+      property pwait
+
+      # group id
+      @pgid = 0u32
+      property pgid
+
       # files
       MAX_FD = 16
       property fds
@@ -91,7 +101,8 @@ module Multiprocessing
       # argv
       property argv
 
-      def initialize(@argv : GcArray(GcString), @cwd : GcString, @cwd_node : VFSNode)
+      def initialize(@argv : GcArray(GcString),
+          @cwd : GcString, @cwd_node : VFSNode)
         @fds = GcArray(FileDescriptor).new MAX_FD
       end
 
@@ -273,8 +284,23 @@ module Multiprocessing
   end
 
   private def can_switch(process)
-    process.status == Multiprocessing::ProcessStatus::Normal ||
-      process.status == Multiprocessing::ProcessStatus::IoUnwait
+    case process.status
+    when Multiprocessing::Process::Status::Normal
+      true
+    when Multiprocessing::Process::Status::Unwait
+      true
+    when Multiprocessing::Process::Status::WaitProcess
+      #Serial.puts process.udata.pwait.not_nil!.pid, ':', process.udata.pwait.not_nil!.status, '\n'
+      if process.udata.pwait.not_nil!.status == Multiprocessing::Process::Status::Removed
+        process.status = Multiprocessing::Process::Status::Unwait
+        process.udata.pwait = nil
+        true
+      else
+        false
+      end
+    else
+      false
+    end
   end
 
   # round robin scheduling algorithm
@@ -283,9 +309,9 @@ module Multiprocessing
     if @@current_process.nil?
       return @@current_process = @@first_process
     end
-    proc = @@current_process.not_nil!
+    process = @@current_process.not_nil!
     # look from middle to end
-    cur = proc.next_process
+    cur = process.next_process
     while !cur.nil? && !can_switch(cur.not_nil!)
       cur = cur.next_process
     end
@@ -296,7 +322,7 @@ module Multiprocessing
       while !cur.nil? && !can_switch(cur.not_nil!)
         # Serial.puts cur.not_nil!.pid, ": ", cur.status, "\n"
         cur = cur.not_nil!.next_process
-        break if cur == proc.prev_process
+        break if cur == process.prev_process
       end
       @@current_process = cur
     end
@@ -314,79 +340,81 @@ module Multiprocessing
   # NOTE: this must be a macro so that it will be inlined,
   # and the frame argument will the a reference to the frame on the stack
   macro switch_process(frame, remove = false)
-        {% if frame == nil %}
-        current_process = Multiprocessing.current_process.not_nil!
+    {% if frame == nil %}
+      current_process = Multiprocessing.current_process.not_nil!
+      {% if remove %}
+      current_process.status = Multiprocessing::Process::Status::Removed
+      {% end %}
+      next_process = Multiprocessing.next_process.not_nil!
+      {% if remove %}
+      current_process.remove
+      {% end %}
+    {% else %}
+      # save current process' state
+      current_process = Multiprocessing.current_process.not_nil!
+      current_process.frame = {{ frame }}
+      if !current_process.fxsave_region.ptr.null?
+          memcpy current_process.fxsave_region.ptr, Multiprocessing.fxsave_region, 512
+      end
+      # load process's state
+      next_process = Multiprocessing.next_process.not_nil!
+    {% end %}
 
-        {% if remove %}
-        current_process.status = Multiprocessing::ProcessStatus::Removed
-        {% end %}
+    process_frame = if next_process.frame.nil?
+      next_process.new_frame
+    else
+      next_process.frame.not_nil!
+    end
 
-        next_process = Multiprocessing.next_process.not_nil!
-
-        {% if remove %}
-        current_process.remove
-        {% end %}
-
+    # switch page directory
+    if !next_process.kernel_process?
+        dir = next_process.phys_page_dir # this must be stack allocated
+        # because it's placed in the virtual kernel heap
+        panic "null page directory" if dir == 0
+        Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
+        {% if frame == nil && remove %}
+        current_page_dir = current_process.phys_page_dir
+        Paging.free_process_page_dir(current_page_dir)
+        current_process.phys_page_dir = 0u32
         {% else %}
-        # save current process' state
-        current_process = Multiprocessing.current_process.not_nil!
-        current_process.frame = {{ frame }}
-        if !current_process.fxsave_region.ptr.null?
-            memcpy current_process.fxsave_region.ptr, Multiprocessing.fxsave_region, 512
-        end
-        # load process's state
-        next_process = Multiprocessing.next_process.not_nil!
-        {% end %}
-        #Serial.puts Pointer(Void).new(next_process.object_id), ' ', offsetof(Multiprocessing::Process, @next_process), '\n'
-        #if next_process.pid != 0
-        #    Serial.puts next_process.pid, "<--\n"
-        #end
-
-        process_frame = if next_process.frame.nil?
-            next_process.new_frame
-        else
-            next_process.frame.not_nil!
-        end
-
-        # switch page directory
-        if !next_process.kernel_process?
-            dir = next_process.phys_page_dir # this must be stack allocated
-            # because it's placed in the virtual kernel heap
-            panic "null page directory" if dir == 0
-            Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
-            {% if frame == nil && remove %}
-            current_page_dir = current_process.phys_page_dir
-            Paging.free_process_page_dir(current_page_dir)
-            current_process.phys_page_dir = 0u32
-            {% else %}
-            Paging.enable
-            {% end %}
-        end
-
-        # wake up process
-        if next_process.status == Multiprocessing::ProcessStatus::IoUnwait
-            # transition state from async io syscall
-            process_frame.eip = Pointer(UInt32).new(process_frame.ecx.to_u64)[0]
-            process_frame.useresp = process_frame.ecx
-            next_process.status = Multiprocessing::ProcessStatus::Normal
-        end
-
-        # swap back registers
-        {% if frame != nil %}
-          {% for id in [
-                         "ds",
-                         "edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax",
-                         "eip", "cs", "eflags", "useresp", "ss",
-                       ] %}
-          {{ frame }}.{{ id.id }} = process_frame.{{ id.id }}
-          {% end %}
-        {% end %}
-        if !next_process.fxsave_region.ptr.null?
-            memcpy Multiprocessing.fxsave_region, next_process.fxsave_region.ptr, 512
-        end
-
-        {% if frame == nil %}
-        asm("jmp kcpuint_end" :: "{esp}"(pointerof(process_frame)) : "volatile")
+        Paging.enable
         {% end %}
     end
+
+    # wake up process
+    if next_process.status == Multiprocessing::Process::Status::Unwait
+      # transition state from async io syscall
+      process_frame.eip = Pointer(UInt32).new(process_frame.ecx.to_u64)[0]
+      process_frame.useresp = process_frame.ecx
+      next_process.status = Multiprocessing::Process::Status::Normal
+    end
+
+    # swap back registers
+    {% if frame != nil %}
+      {% for id in [
+                     "ds",
+                     "edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax",
+                     "eip", "cs", "eflags", "useresp", "ss",
+                   ] %}
+        {{ frame }}.{{ id.id }} = process_frame.{{ id.id }}
+      {% end %}
+    {% end %}
+    if !next_process.fxsave_region.ptr.null?
+      memcpy Multiprocessing.fxsave_region, next_process.fxsave_region.ptr, 512
+    end
+
+    {% if frame == nil %}
+    asm("jmp kcpuint_end" :: "{esp}"(pointerof(process_frame)) : "volatile")
+    {% end %}
+  end
+
+  def each
+    process = @@first_process
+    while !process.nil?
+      process = process.not_nil!
+      yield process
+      process = process.next_process
+    end
+  end
+
 end

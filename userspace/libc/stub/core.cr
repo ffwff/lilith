@@ -11,6 +11,8 @@ lib LibC
   fun free(addr : Void*)
 end
 
+alias Pid = Int32
+
 # Ints
 struct Int
   # needed by SimpleAllocator

@@ -33,6 +33,11 @@ lib SyscallData
     # Null-terminated filename
     d_name : UInt8[256]
   end
+
+  struct WaitPidArgument
+    status : Int32*
+    options : UInt32
+  end
 end
 
 # path parser
@@ -155,6 +160,10 @@ private macro try(expr)
     end
 end
 
+private def _switch_process
+  Multiprocessing.switch_process nil
+end
+
 fun ksyscall_handler(frame : SyscallData::Registers)
   process = Multiprocessing.current_process.not_nil!
   pudata = process.udata
@@ -178,8 +187,8 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     when VFS_READ_WAIT
       process.new_frame frame
       fd.not_nil!.node.not_nil!.read_queue.not_nil!.push(VFSReadMessage.new(str, process))
-      process.status = Multiprocessing::ProcessStatus::ReadWait
-      Multiprocessing.switch_process(nil)
+      process.status = Multiprocessing::Process::Status::WaitIo
+      _switch_process
     else
       frame.eax = result
     end
@@ -214,7 +223,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     else
       frame.eax = SYSCALL_ERR
     end
-    # directories
+  # directories
   when SC_READDIR
     fdi = frame.ebx.to_i32
     fd = try(pudata.get_fd(fdi))
@@ -255,7 +264,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
       fd.cur_child_end = true
     end
     frame.eax = SYSCALL_SUCCESS
-    # process management
+  # process management
   when SC_GETPID
     frame.eax = process.pid
   when SC_SPAWN
@@ -283,6 +292,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
           .new(pargv,
             pudata.cwd.clone,
             pudata.cwd_node)
+        udata.pgid = pudata.pgid
 
         # copy file descriptors 0, 1, 2
         i = 0
@@ -303,15 +313,42 @@ fun ksyscall_handler(frame : SyscallData::Registers)
           end
           argv_builder.build
         end
+        frame.eax = new_process.pid
       end
-      frame.eax = 1
+    end
+  when SC_WAITPID
+    pid = frame.ebx.to_i32
+    # Serial.puts "waitpid ", pid, '\n'
+    if frame.edx != 0
+      arg = try(checked_pointer(frame.edx)).as(SyscallData::WaitPidArgument*)
+    end
+    if pid <= 0
+      # wait for any child process
+      panic "unimplemented"
+    else # pid > 0
+      cprocess = nil
+      Multiprocessing.each do |proc|
+        if proc.pid == pid
+          cprocess = proc
+          break
+        end
+      end
+      if cprocess.nil?
+        frame.eax = SYSCALL_ERR
+      else
+        process.new_frame frame
+        process.frame.not_nil!.eax = pid
+        process.status = Multiprocessing::Process::Status::WaitProcess
+        pudata.pwait = cprocess
+        _switch_process
+      end
     end
   when SC_EXIT
     if process.pid == 1
       panic "init exited"
     end
     Multiprocessing.switch_process(nil, true)
-    # working directory
+  # working directory
   when SC_GETCWD
     arg = try(checked_pointer(frame.ebx)).as(SyscallData::StringArgument*)
     if arg.value.len > PATH_MAX
@@ -338,7 +375,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         pudata.cwd_node = vfs_node.not_nil!
       end
     end
-    # memory management
+  # memory management
   when SC_SBRK
     incr = frame.ebx.to_i32
     Serial.puts "sbrk: ", incr, '\n'

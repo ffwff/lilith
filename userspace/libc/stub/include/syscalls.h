@@ -9,6 +9,7 @@ long read(int fd, char *str, unsigned long len);
 // process
 typedef long pid_t;
 pid_t spawnv(char *file, char **argv);
+pid_t waitpid(pid_t pid, int *status, int options);
 pid_t getpid();
 int getcwd(char *buf, unsigned long length);
 int chdir(char *buf);
