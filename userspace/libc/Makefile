@@ -12,6 +12,7 @@ OBJ = \
 	) \
 	$(patsubst %.c,%.o, \
 		$(wildcard stub/functions/_PDCLIB/*.c) \
+		$(wildcard stub/functions/_dlmalloc/*.c) \
 	)
 AR = i386-elf-lilith-ar
 CC = i386-elf-lilith-gcc

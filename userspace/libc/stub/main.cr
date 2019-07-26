@@ -1,5 +1,4 @@
 require "./functions/pdclib.cr"
-require "./functions/malloc.cr"
 require "./functions/string.cr"
 
 # architecture specific

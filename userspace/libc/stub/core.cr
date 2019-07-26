@@ -2,8 +2,13 @@ lib LibC
   alias String = UInt8*
   fun strlen(str : String) : UInt32
   fun strcpy(dst : String, src : String)
+
   fun memcpy(dest : Void*, src : Void*, n : UInt32) : Void*
   fun memset(s : Void*, c : UInt8, n : UInt32) : Void*
+
+  fun malloc(sz : UInt32)
+  fun calloc(nmemb : UInt32, sz : UInt32)
+  fun free(addr : Void*)
 end
 
 # Ints
@@ -20,12 +25,14 @@ struct Pointer(T)
     new 0u64
   end
 
+  @[AlwaysInline]
   def self.malloc
-    malloc(sizeof(T).to_u64).as(T*)
+    LibC.malloc(sizeof(T).to_u64).as(T*)
   end
 
+  @[AlwaysInline]
   def free
-    free(self.as(Void*))
+    LibC.free(self.as(Void*))
   end
 
   #

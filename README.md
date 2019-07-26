@@ -22,7 +22,6 @@ make build/kernel
 ## Credits
 
 * [PDCLib](https://github.com/DevSolar/pdclib/)
-* [Cryloc](https://github.com/Thog/cryloc)
 
 ## License
 

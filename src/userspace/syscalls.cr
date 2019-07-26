@@ -341,6 +341,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     # memory management
   when SC_SBRK
     incr = frame.ebx.to_i32
+    Serial.puts "sbrk: ", incr, '\n'
     if incr == 0
       # return the end of the heap if incr = 0
       if pudata.heap_end == 0
