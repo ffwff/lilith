@@ -107,7 +107,7 @@ fun kmain(
   Idt.disable
   Idt.status_mask = true
 
-  idle_process = Multiprocessing::Process.new(true, false) do |process|
+  idle_process = Multiprocessing::Process.new(nil, false) do |process|
     process.initial_eip = (->Kernel.kidle_loop).pointer.address.to_u32
   end
 
@@ -115,19 +115,20 @@ fun kmain(
     VGA.puts "no main.bin detected.\n"
   else
     VGA.puts "executing MAIN.BIN...\n"
-    m_process = Multiprocessing::Process.new do |process|
+    argv = GcArray(GcString).new 0
+    argv.push GcString.new("/ata0/main.bin")
+    udata = Multiprocessing::Process::UserData
+      .new(argv,
+        GcString.new("/ata0"),
+        fs.not_nil!.root)
+    m_process = Multiprocessing::Process.new(udata) do |process|
       ElfReader.load(process, main_bin.not_nil!)
-      process.argv = argv = GcArray(GcString).new 0
-      argv.push GcString.new("/ata0/main.bin")
-
       argv_builder = ArgvBuilder.new process
       argv.each do |arg|
         argv_builder.from_string arg.not_nil!
       end
       argv_builder.build
     end
-    m_process.cwd = GcString.new "/ata0"
-    m_process.cwd_node = fs.not_nil!.root
 
     Idt.status_mask = false
     Multiprocessing.setup_tss

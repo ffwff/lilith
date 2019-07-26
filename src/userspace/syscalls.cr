@@ -157,19 +157,20 @@ end
 
 fun ksyscall_handler(frame : SyscallData::Registers)
   process = Multiprocessing.current_process.not_nil!
+  pudata = process.udata
   case frame.eax
   # files
   when SC_OPEN
     path = NullTerminatedSlice.new(try(checked_pointer(frame.ebx)).as(UInt8*))
-    vfs_node = parse_path_into_vfs path, process.cwd_node
+    vfs_node = parse_path_into_vfs path, pudata.cwd_node
     if vfs_node.nil?
       frame.eax = SYSCALL_ERR
     else
-      frame.eax = process.install_fd(vfs_node.not_nil!)
+      frame.eax = pudata.install_fd(vfs_node.not_nil!)
     end
   when SC_READ
     fdi = frame.ebx.to_i32
-    fd = try(process.get_fd(fdi))
+    fd = try(pudata.get_fd(fdi))
     arg = try(checked_pointer(frame.edx)).as(SyscallData::StringArgument*)
     str = try(checked_slice(arg.value.str, arg.value.len))
     result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
@@ -184,13 +185,13 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     end
   when SC_WRITE
     fdi = frame.ebx.to_i32
-    fd = try(process.get_fd(fdi))
+    fd = try(pudata.get_fd(fdi))
     arg = try(checked_pointer(frame.edx)).as(SyscallData::StringArgument*)
     str = try(checked_slice(arg.value.str, arg.value.len))
     frame.eax = fd.not_nil!.node.not_nil!.write(str)
   when SC_SEEK
     fdi = frame.ebx.to_i32
-    fd = try(process.get_fd(fdi))
+    fd = try(pudata.get_fd(fdi))
     arg = try(checked_pointer(frame.edx)).as(SyscallData::SeekArgument*)
 
     case arg.value.whence
@@ -208,7 +209,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     end
   when SC_CLOSE
     fdi = frame.ebx.to_i32
-    if process.close_fd(fdi)
+    if pudata.close_fd(fdi)
       frame.eax = SYSCALL_SUCCESS
     else
       frame.eax = SYSCALL_ERR
@@ -216,7 +217,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     # directories
   when SC_READDIR
     fdi = frame.ebx.to_i32
-    fd = try(process.get_fd(fdi))
+    fd = try(pudata.get_fd(fdi))
     retval = try(checked_pointer(frame.edx)).as(SyscallData::DirentArgument*)
     if fd.cur_child_end
       frame.eax = 0
@@ -260,7 +261,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
   when SC_SPAWN
     path = NullTerminatedSlice.new(try(checked_pointer(frame.ebx)).as(UInt8*))
     argv = try(checked_pointer(frame.edx)).as(UInt8**)
-    vfs_node = parse_path_into_vfs path, process.cwd_node
+    vfs_node = parse_path_into_vfs path, pudata.cwd_node
     if vfs_node.nil?
       frame.eax = SYSCALL_ERR
     else
@@ -278,17 +279,21 @@ fun ksyscall_handler(frame : SyscallData::Registers)
 
       # spawn process
       Idt.lock do
-        new_process = Multiprocessing::Process.new do |process|
+        udata = Multiprocessing::Process::UserData
+          .new(pargv,
+            pudata.cwd.clone,
+            pudata.cwd_node)
+        new_process = Multiprocessing::Process.new(udata) do |process|
           ElfReader.load(process, vfs_node.not_nil!)
-          process.argv = pargv
+          udata.argv = pargv
           argv_builder = ArgvBuilder.new process
           pargv.each do |arg|
             argv_builder.from_string arg.not_nil!
           end
           argv_builder.build
         end
-        new_process.cwd = process.cwd.clone
-        new_process.cwd_node = process.cwd_node
+        udata.cwd = udata.cwd.clone
+        udata.cwd_node = udata.cwd_node
       end
       frame.eax = 1
     end
@@ -306,7 +311,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     end
     str = try(checked_slice(arg.value.str, arg.value.len))
     idx = 0
-    process.cwd.each do |ch|
+    pudata.cwd.each do |ch|
       break if idx == str.size
       str[idx] = ch
       idx += 1
@@ -315,13 +320,13 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     frame.eax = idx
   when SC_CHDIR
     path = NullTerminatedSlice.new(try(checked_pointer(frame.ebx)).as(UInt8*))
-    if (t = append_paths path, process.cwd, process.cwd_node).nil?
+    if (t = append_paths path, pudata.cwd, pudata.cwd_node).nil?
       frame.eax = SYSCALL_ERR
     else
       cpath, idx, vfs_node = t.not_nil!
       if !vfs_node.nil?
-        process.cwd = GcString.new(cpath, idx)
-        process.cwd_node = vfs_node.not_nil!
+        pudata.cwd = GcString.new(cpath, idx)
+        pudata.cwd_node = vfs_node.not_nil!
       end
     end
     # memory management
@@ -329,26 +334,26 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     incr = frame.ebx.to_i32
     if incr == 0
       # return the end of the heap if incr = 0
-      if process.heap_end == 0
+      if pudata.heap_end == 0
         # there are no pages allocated for program heap
         Idt.lock do
-          process.heap_end = Paging.alloc_page_pg(process.heap_start, true, true)
+          pudata.heap_end = Paging.alloc_page_pg(pudata.heap_start, true, true)
         end
       end
     elsif incr > 0
       # increase the end of the heap if incr > 0
-      heap_end_a = process.heap_end & 0xFFFF_F000
-      npages = ((process.heap_end + incr) - heap_end_a).unsafe_shr(12) + 1
+      heap_end_a = pudata.heap_end & 0xFFFF_F000
+      npages = ((pudata.heap_end + incr) - heap_end_a).unsafe_shr(12) + 1
       if npages > 0
         Idt.lock do
-          Paging.alloc_page_pg(process.heap_end, true, true, npages: npages)
+          Paging.alloc_page_pg(pudata.heap_end, true, true, npages: npages)
         end
       end
     else
       panic "decreasing heap not implemented"
     end
-    frame.eax = process.heap_end
-    process.heap_end += incr
+    frame.eax = pudata.heap_end
+    pudata.heap_end += incr
   else
     frame.eax = SYSCALL_ERR
   end

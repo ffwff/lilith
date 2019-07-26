@@ -182,7 +182,7 @@ module ElfReader
           end
           # heap should start right after the last segment
           heap_start = Paging.aligned(data.p_vaddr + data.p_memsz)
-          process.heap_start = max process.heap_start, heap_start
+          process.udata.heap_start = max process.udata.heap_start, heap_start
         end
       when Tuple(UInt32, UInt8)
         offset, byte = data.as(Tuple(UInt32, UInt8))
@@ -198,6 +198,6 @@ module ElfReader
       end
     end
     # pad the heap so that we catch memory errors earlier
-    process.heap_start += 0x1000
+    process.udata.heap_start += 0x1000
   end
 end

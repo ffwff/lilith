@@ -1,10 +1,10 @@
 struct ArgvBuilder
-
-  MAX_ARGS = 255
+  MAX_ARGS          =   255
   MAX_STR_PLACEMENT = 0x800
 
   @placement = 0
   @argc = 0
+
   def initialize(@process : Multiprocessing::Process)
   end
 
@@ -53,14 +53,14 @@ struct ArgvBuilder
     scan_start = @process.initial_esp - @placement
     scan_end = @process.initial_esp
     @placement += sizeof(UInt32) # add padding for uint32
-    place_u32 0u32 # null-terminate argv
+    place_u32 0u32               # null-terminate argv
     # iterate through args
     i = scan_start
     str_start = i
     while i < scan_end
       ptr = Pointer(UInt8).new(i.to_u64)
       if ptr.value == 0u8
-        #Serial.puts Pointer(UInt8).new(str_start.to_u64), '\n'
+        # Serial.puts Pointer(UInt8).new(str_start.to_u64), '\n'
         place_u32 str_start
         str_start = i + 1 # skip nul terminator
       end
@@ -73,8 +73,7 @@ struct ArgvBuilder
     place_u32 @argc.to_u32
     # finalize
     @process.initial_esp -= @placement
-    #Serial.puts Pointer(UInt8).new(@process.initial_esp.to_u64),'\n'
-    #breakpoint
+    # Serial.puts Pointer(UInt8).new(@process.initial_esp.to_u64),'\n'
+    # breakpoint
   end
-
 end

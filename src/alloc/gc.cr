@@ -60,7 +60,7 @@ class GcArray(T) < Gc
   private def buffer
     (@ptr + 2).as(T*)
   end
-  
+
   private def recalculate_capacity
     @capacity = (KERNEL_ARENA.block_size_for_ptr(@ptr) - GC_ARRAY_HEADER_SIZE) \
       .unsafe_div(sizeof(Void*)).to_i32
@@ -187,23 +187,23 @@ module LibGc
         offsets = 0
         # set zero offset if any of the field isn't 32-bit aligned
         zero_offset = false
-        {%
-        # HACK: crystal doesn't provide us with a list of type variables derived generic types:
-        # i.e. GcArray(UInt32), GcArray(Void), etc...
-        # so the user will have to provide it to us in the GC_GENERIC_TYPES constant
-        type_names = [klass]
-        if !klass.type_vars.empty?
-          if klass.type_vars.all? { |i| i.class_name == "MacroId" }
-            type_names = klass.constant("GC_GENERIC_TYPES")
-          else
-            type_names = [] of TypeNode
-          end
-        end
+        {% # HACK: crystal doesn't provide us with a list of type variables derived generic types:
+# i.e. GcArray(UInt32), GcArray(Void), etc...
+# so the user will have to provide it to us in the GC_GENERIC_TYPES constant
+
+type_names = [klass]
+if !klass.type_vars.empty?
+  if klass.type_vars.all? { |i| i.class_name == "MacroId" }
+    type_names = klass.constant("GC_GENERIC_TYPES")
+  else
+    type_names = [] of TypeNode
+  end
+end
         %}
         {% for type_name in type_names %}
           {% for ivar in klass.instance_vars %}
             {% if ivar.type < Gc || ivar.type < GcPointer ||
-                (ivar.type.union? && ivar.type.union_types.any? { |x| x < Gc }) %}
+                    (ivar.type.union? && ivar.type.union_types.any? { |x| x < Gc }) %}
               if offsetof({{ type_name }}, @{{ ivar }}).unsafe_mod(4) == 0
                 field_offset = offsetof({{ type_name }}, @{{ ivar }}).unsafe_div(4)
                 debug "{{ ivar.type }}: ", offsetof({{ type_name }}, @{{ ivar }}), " ", "{{ ivar.type }}", " ", sizeof({{ ivar.type }}), "\n"

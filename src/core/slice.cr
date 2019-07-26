@@ -7,7 +7,7 @@ struct Slice(T)
   def initialize(@size : Int32)
     @buffer = Pointer(T).malloc(@size)
   end
-  
+
   def free
     @buffer.free
     @buffer = Pointer(T).null

@@ -133,7 +133,7 @@ class Fat16Node < VFSNode
     # setup
     fat_table = Slice(UInt16).new fs.fat_sector_size
     fat_sector = read_fat_table fat_table, starting_cluster
-  
+
     cluster = starting_cluster
     remaining_bytes = read_size
 

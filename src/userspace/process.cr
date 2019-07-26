@@ -69,61 +69,75 @@ module Multiprocessing
     # sse state
     getter fxsave_region
 
-    @kernel_process = false
-    property kernel_process
-
     # status
     @status = Multiprocessing::ProcessStatus::Normal
     property status
 
     # ---------
-    # files
-    MAX_FD = 16
-    @fds : GcArray(FileDescriptor) | Nil = nil
+    class UserData < Gc
+      # files
+      MAX_FD = 16
+      property fds
 
-    def fds
-      @fds.not_nil!
+      # working directory
+      property cwd
+      property cwd_node
+
+      # heap location
+      @heap_start = 0u32
+      @heap_end = 0u32
+      property heap_start, heap_end
+
+      # argv
+      property argv
+
+      def initialize(@argv : GcArray(GcString), @cwd : GcString, @cwd_node : VFSNode)
+        @fds = GcArray(FileDescriptor).new MAX_FD
+      end
+
+      # file descriptors
+      def install_fd(node : VFSNode) : Int32
+        i = 0
+        f = fds.not_nil!
+        while i < MAX_FD
+          if f[i].nil?
+            f[i] = FileDescriptor.new node
+            return i
+          end
+          i += 1
+        end
+        -1
+      end
+
+      def get_fd(i : Int32) : FileDescriptor | Nil
+        return nil if i > MAX_FD || i < 0
+        fds[i]
+      end
+
+      def close_fd(i : Int32) : Bool
+        return false if i > MAX_FD || i < 0
+        fds[i]
+        true
+      end
     end
 
-    # cwd
-    @cwd : GcString | Nil = nil
+    @udata : UserData | Nil = nil
 
-    def cwd
-      @cwd.not_nil!
+    def udata
+      @udata.not_nil!
     end
 
-    def cwd=(@cwd : GcString)
+    def kernel_process?
+      @udata.nil?
     end
 
-    @cwd_node : VFSNode | Nil = nil
-
-    def cwd_node
-      @cwd_node.not_nil!
-    end
-
-    def cwd_node=(@cwd_node : VFSNode)
-    end
-
-    # heap location
-    @heap_start = 0u32
-    @heap_end = 0u32
-    property heap_start, heap_end
-
-    # argv
-    @argv : GcArray(GcString) | Nil = nil
-    property argv
-
-    def initialize(@kernel_process = false, save_fx = true, &on_setup_paging)
+    def initialize(@udata : UserData | Nil, save_fx = true, &on_setup_paging)
       # user mode specific
       if save_fx
         @fxsave_region = GcPointer(UInt8).malloc(512)
       else
         @fxsave_region = GcPointer(UInt8).null
       end
-      if !@kernel_process
-        @fds = GcArray(FileDescriptor).new MAX_FD
-      end
-      # panic @fxsave_region.ptr, '\n'
 
       Multiprocessing.n_process += 1
 
@@ -131,7 +145,7 @@ module Multiprocessing
 
       @pid = Multiprocessing.pids
       last_page_dir = Pointer(PageStructs::PageDirectory).null
-      if !@kernel_process
+      if !kernel_process?
         if @pid != 0
           Paging.disable
           last_page_dir = Paging.current_page_dir
@@ -157,7 +171,7 @@ module Multiprocessing
         Multiprocessing.last_process = self
       end
 
-      if !last_page_dir.null? && !@kernel_process
+      if !last_page_dir.null? && !kernel_process?
         Paging.disable
         Paging.current_page_dir = last_page_dir
         Paging.enable
@@ -188,7 +202,7 @@ module Multiprocessing
       frame.esp = @initial_esp
       # Pushed by the processor automatically.
       frame.eip = @initial_eip
-      if @kernel_process
+      if kernel_process?
         frame.eflags = 0x202u32
         frame.cs = 0x08u32
         frame.ds = 0x10u32
@@ -210,7 +224,7 @@ module Multiprocessing
       frame.esp = USER_STACK_TOP
       # Pushed by the processor automatically.
       frame.eip = @initial_eip
-      if @kernel_process
+      if kernel_process?
         frame.eflags = 0x202u32
         frame.cs = 0x08u32
         frame.ds = 0x10u32
@@ -229,31 +243,6 @@ module Multiprocessing
       @frame.not_nil!
     end
 
-    # file descriptors
-    def install_fd(node : VFSNode) : Int32
-      i = 0
-      f = fds.not_nil!
-      while i < MAX_FD
-        if f[i].nil?
-          f[i] = FileDescriptor.new node
-          return i
-        end
-        i += 1
-      end
-      -1
-    end
-
-    def get_fd(i : Int32) : FileDescriptor | Nil
-      return nil if i > MAX_FD || i < 0
-      fds[i]
-    end
-
-    def close_fd(i : Int32) : Bool
-      return false if i > MAX_FD || i < 0
-      fds[i]
-      true
-    end
-
     # control
     def remove
       Multiprocessing.n_process -= 1
@@ -264,10 +253,10 @@ module Multiprocessing
         @next_process.not_nil!.prev_process = @prev_process
       end
       # cleanup userspace data so as to minimize leaks
-      @fds = nil
-      @cwd = nil
-      @cwd_node = nil
-      @argv = nil
+      # @fds = nil
+      # @cwd = nil
+      # @cwd_node = nil
+      # @argv = nil
     end
 
     # debugging
@@ -363,7 +352,7 @@ module Multiprocessing
         end
 
         # switch page directory
-        if !next_process.kernel_process
+        if !next_process.kernel_process?
             dir = next_process.phys_page_dir # this must be stack allocated
             # because it's placed in the virtual kernel heap
             panic "null page directory" if dir == 0
@@ -388,10 +377,10 @@ module Multiprocessing
         # swap back registers
         {% if frame != nil %}
           {% for id in [
-              "ds",
-              "edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax",
-              "eip", "cs", "eflags", "useresp", "ss",
-            ] %}
+                         "ds",
+                         "edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax",
+                         "eip", "cs", "eflags", "useresp", "ss",
+                       ] %}
           {{ frame }}.{{ id.id }} = process_frame.{{ id.id }}
           {% end %}
         {% end %}
