@@ -283,6 +283,17 @@ fun ksyscall_handler(frame : SyscallData::Registers)
           .new(pargv,
             pudata.cwd.clone,
             pudata.cwd_node)
+
+        # copy file descriptors 0, 1, 2
+        i = 0
+        while i < 3
+          if !(fd = process.udata.fds[i]).nil?
+            udata.fds[i] = fd
+          end
+          i += 1
+        end
+
+        # create the process
         new_process = Multiprocessing::Process.new(udata) do |process|
           ElfReader.load(process, vfs_node.not_nil!)
           udata.argv = pargv
@@ -292,8 +303,6 @@ fun ksyscall_handler(frame : SyscallData::Registers)
           end
           argv_builder.build
         end
-        udata.cwd = udata.cwd.clone
-        udata.cwd_node = udata.cwd_node
       end
       frame.eax = 1
     end

@@ -253,10 +253,7 @@ module Multiprocessing
         @next_process.not_nil!.prev_process = @prev_process
       end
       # cleanup userspace data so as to minimize leaks
-      # @fds = nil
-      # @cwd = nil
-      # @cwd_node = nil
-      # @argv = nil
+      @udata = nil
     end
 
     # debugging

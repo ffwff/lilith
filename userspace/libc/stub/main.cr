@@ -13,8 +13,6 @@ lib LibC
 end
 
 fun _start(argc : Int32, argv : UInt8**)
-  open "/kbd\0".to_unsafe, 0 # stdin
-  open "/vga\0".to_unsafe, 0 # stdout
   LibC.main argc, argv
   _exit
 end

@@ -4,6 +4,11 @@
 #include <syscalls.h>
 
 int main(int argc, char **argv) {
+    // tty
+    open("/kbd", 0);
+    open("/vga", 0);
+
+    // shell
     char *path = calloc(PATH_MAX + 1, 1);
     while(1) {
         getcwd(path, PATH_MAX);
