@@ -40,7 +40,7 @@ struct ArgvBuilder
 
   # builder functions
   def from_string(arg)
-    if place_str arg
+    if !place_str arg
       return false
     end
     @argc += 1
