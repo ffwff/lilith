@@ -1,5 +1,5 @@
 class BTreeNode(K, V)
-  def initialize(@key : K, @value : V, @left : BTreeNode(K, V) | Nil = nil, @right : BTreeNode(K, V) | Nil = nil)
+  def initialize(@key : K, @value : V, @left : BTreeNode(K, V)? = nil, @right : BTreeNode(K, V)? = nil)
   end
 
   property key, value, left, right
@@ -51,7 +51,7 @@ class BTreeNode(K, V)
 end
 
 class BTree(K, V)
-  def initialize(@root : BTreeNode(K, V) | Nil = nil)
+  def initialize(@root : BTreeNode(K, V)? = nil)
   end
 
   property root

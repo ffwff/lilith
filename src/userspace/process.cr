@@ -8,7 +8,7 @@ module Multiprocessing
   USER_STACK_BOTTOM_MAX = USER_STACK_TOP - USER_STACK_SIZE
   USER_STACK_BOTTOM     = 0x8000_0000u32
 
-  @@current_process : Process | Nil = nil
+  @@current_process : Process? = nil
 
   def current_process
     @@current_process
@@ -16,9 +16,9 @@ module Multiprocessing
 
   def current_process=(@@current_process); end
 
-  @@first_process : Process | Nil = nil
+  @@first_process : Process? = nil
   mod_property first_process
-  @@last_process : Process | Nil = nil
+  @@last_process : Process? = nil
   mod_property last_process
 
   @@pids = 0
@@ -37,8 +37,8 @@ module Multiprocessing
     @pid = 0
     getter pid
 
-    @prev_process : Process | Nil = nil
-    @next_process : Process | Nil = nil
+    @prev_process : Process? = nil
+    @next_process : Process? = nil
     getter prev_process, next_process
 
     protected def prev_process=(@prev_process); end
@@ -56,7 +56,7 @@ module Multiprocessing
     property phys_page_dir
 
     # interrupt frame for preemptive multitasking
-    @frame : IdtData::Registers | Nil = nil
+    @frame : IdtData::Registers? = nil
     property frame
 
     # sse state
@@ -78,7 +78,7 @@ module Multiprocessing
     class UserData < Gc
       # wait process
       # TODO: this should be a weak pointer once it's implemented
-      @pwait : Process | Nil = nil
+      @pwait : Process? = nil
       property pwait
 
       # group id
@@ -120,7 +120,7 @@ module Multiprocessing
         -1
       end
 
-      def get_fd(i : Int32) : FileDescriptor | Nil
+      def get_fd(i : Int32) : FileDescriptor?
         return nil if i > MAX_FD || i < 0
         fds[i]
       end
@@ -132,7 +132,7 @@ module Multiprocessing
       end
     end
 
-    @udata : UserData | Nil = nil
+    @udata : UserData? = nil
 
     def udata
       @udata.not_nil!
@@ -142,7 +142,7 @@ module Multiprocessing
       @udata.nil?
     end
 
-    def initialize(@udata : UserData | Nil, save_fx = true, &on_setup_paging)
+    def initialize(@udata : UserData?, save_fx = true, &on_setup_paging)
       # user mode specific
       if save_fx
         @fxsave_region = GcPointer(UInt8).malloc(512)
@@ -297,7 +297,7 @@ module Multiprocessing
   end
 
   # round robin scheduling algorithm
-  def next_process : Process | Nil
+  def next_process : Process?
     # Serial.puts Multiprocessing.n_process, "---\n"
     if @@current_process.nil?
       return @@current_process = @@first_process

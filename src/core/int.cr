@@ -1,4 +1,3 @@
-require "../drivers/io_driver.cr"
 require "./static_array.cr"
 
 struct Int

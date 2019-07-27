@@ -1,7 +1,7 @@
 require "./vfs.cr"
 
 class KbdFsNode < VFSNode
-  @read_queue : VFSReadQueue | Nil = nil
+  @read_queue : VFSReadQueue? = nil
   getter read_queue
 
   def initialize
@@ -22,7 +22,7 @@ class KbdFsNode < VFSNode
   def first_child; end
 
   #
-  def open(path : Slice) : VFSNode | Nil
+  def open(path : Slice) : VFSNode?
     nil
   end
 
@@ -30,7 +30,7 @@ class KbdFsNode < VFSNode
   end
 
   def read(slice : Slice, offset : UInt32,
-           process : Multiprocessing::Process | Nil = nil) : Int32
+           process : Multiprocessing::Process? = nil) : Int32
     VFS_READ_WAIT
   end
 
@@ -44,12 +44,13 @@ class KbdFS < VFS
     @name.not_nil!
   end
 
-  @next_node : VFS | Nil = nil
+  @next_node : VFS? = nil
   property next_node
 
-  def initialize(@keyboard : Keyboard)
+  def initialize(kbd : Keyboard)
     @name = GcString.new "kbd"
     @root = KbdFsNode.new
+    kbd.kbdfs = self
   end
 
   def root

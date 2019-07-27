@@ -82,14 +82,12 @@ fun kmain(
   end).not_nil!
   ide.init_controller
 
-  keyboard = Keyboard.new
-  keyboard.kbdfs = KbdFS.new(keyboard)
-  ROOTFS.append(keyboard.kbdfs.not_nil!)
-
+  kbd = Keyboard.new
+  ROOTFS.append(KbdFS.new(kbd))
   ROOTFS.append(VGAFS.new)
 
   mbr = MBR.read_ide(ide.device(0))
-  main_bin : VFSNode | Nil = nil
+  main_bin : VFSNode? = nil
   if mbr.header[0] == 0x55 && mbr.header[1] == 0xaa
     VGA.puts "found MBR header...\n"
     fs = Fat16FS.new ide.device(0), mbr.partitions[0]
@@ -129,7 +127,6 @@ fun kmain(
       end
       argv_builder.build
     end
-
     Idt.status_mask = false
     Multiprocessing.setup_tss
     m_process.initial_switch

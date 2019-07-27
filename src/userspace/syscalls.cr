@@ -63,7 +63,7 @@ private def parse_path_into_segments(path, &block)
 end
 
 private def parse_path_into_vfs(path, cw_node = nil)
-  vfs_node : VFSNode | Nil = nil
+  vfs_node : VFSNode? = nil
   return nil if path.size < 1
   if path[0] != '/'.ord
     vfs_node = cw_node

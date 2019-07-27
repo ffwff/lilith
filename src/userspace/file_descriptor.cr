@@ -1,11 +1,11 @@
 class FileDescriptor < Gc
-  @node : VFSNode | Nil = nil
+  @node : VFSNode? = nil
   getter node
   @offset = 0u32
   property offset
 
   # used for readdir syscall
-  @cur_child : VFSNode | Nil = nil
+  @cur_child : VFSNode? = nil
   property cur_child
   @cur_child_end = false
   property cur_child_end

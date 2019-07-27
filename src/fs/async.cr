@@ -1,5 +1,5 @@
 class VFSReadMessage < Gc
-  @next_msg : VFSReadMessage | Nil = nil
+  @next_msg : VFSReadMessage? = nil
   property next_msg
 
   getter slice, process
@@ -9,8 +9,8 @@ class VFSReadMessage < Gc
 end
 
 class VFSReadQueue < Gc
-  @first_msg : VFSReadMessage | Nil = nil
-  @last_msg : VFSReadMessage | Nil = nil
+  @first_msg : VFSReadMessage? = nil
+  @last_msg : VFSReadMessage? = nil
 
   def pop
     msg = @first_msg

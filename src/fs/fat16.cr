@@ -42,16 +42,16 @@ private lib Fat16Structs
 end
 
 class Fat16Node < VFSNode
-  @parent : Fat16Node | Nil = nil
+  @parent : Fat16Node? = nil
   property parent
 
-  @next_node : Fat16Node | Nil = nil
+  @next_node : Fat16Node? = nil
   property next_node
 
-  @name : GcString | Nil = nil
+  @name : GcString? = nil
   property name
 
-  @first_child : Fat16Node | Nil = nil
+  @first_child : Fat16Node? = nil
   property first_child
 
   @starting_cluster = 0
@@ -183,7 +183,7 @@ class Fat16Node < VFSNode
   end
 
   #
-  def open(path : Slice) : VFSNode | Nil
+  def open(path : Slice) : VFSNode?
     node = first_child
     while !node.nil?
       if node.name == path
@@ -194,7 +194,7 @@ class Fat16Node < VFSNode
   end
 
   def read(slice : Slice, offset : UInt32,
-           process : Multiprocessing::Process | Nil = nil) : Int32
+           process : Multiprocessing::Process? = nil) : Int32
     i = 0
     read(slice.size, offset) do |ch|
       slice[i] = ch
@@ -235,7 +235,7 @@ class Fat16FS < VFS
     device.not_nil!.name.not_nil!
   end
 
-  @next_node : VFS | Nil = nil
+  @next_node : VFS? = nil
   property next_node
 
   getter device

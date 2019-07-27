@@ -187,7 +187,7 @@ class AtaDevice < Gc
 
   #
   getter primary, slave
-  @name : GcString | Nil = nil
+  @name : GcString? = nil
   getter name
 
   # NOTE: idx must be between 0..3

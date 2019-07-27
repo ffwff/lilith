@@ -157,7 +157,7 @@ module ElfReader
   # load
   def load(process, vfs)
     Paging.alloc_page_pg(process.initial_esp - 0x1000, true, true, 1)
-    mmap_list : GcArray(MemMapNode) | Nil = nil
+    mmap_list : GcArray(MemMapNode)? = nil
     mmap_append_idx = 0
     mmap_idx = 0
     ElfReader.read(vfs) do |data|

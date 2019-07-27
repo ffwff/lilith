@@ -40,7 +40,7 @@ class GcArray(T) < Gc
   end
 
   # getter/setter
-  def [](idx : Int) : T | Nil
+  def [](idx : Int) : T?
     panic "GcArray: out of range" if idx < 0 && idx > @size
     if buffer.as(UInt32*)[idx] == 0
       nil

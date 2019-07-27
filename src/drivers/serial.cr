@@ -1,9 +1,9 @@
 require "./cpuio.cr"
-require "./io_driver.cr"
+require "./output_driver.cr"
 
 private PORT = 0x3F8
 
-private struct SerialImpl < IoDriver
+private struct SerialImpl < OutputDriver
   def initialize
     X86.outb((PORT + 1).to_u16, 0x00.to_u8) # Disable all interrupts
     X86.outb((PORT + 3).to_u16, 0x80.to_u8) # Enable DLAB (set baud rate divisor)
@@ -21,10 +21,6 @@ private struct SerialImpl < IoDriver
 
   def transmit_empty?
     (X86.inb((PORT + 5).to_u16) & 0x20) == 0
-  end
-
-  def getc
-    X86.inb(PORT.to_u16).to_char
   end
 
   def putc(a : UInt8)

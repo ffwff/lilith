@@ -16,7 +16,7 @@ class VGAFsNode < VFSNode
   def first_child; end
 
   #
-  def open(path : Slice) : VFSNode | Nil
+  def open(path : Slice) : VFSNode?
     nil
   end
 
@@ -24,7 +24,7 @@ class VGAFsNode < VFSNode
   end
 
   def read(slice : Slice, offset : UInt32,
-           process : Multiprocessing::Process | Nil = nil) : Int32
+           process : Multiprocessing::Process? = nil) : Int32
     0
   end
 
@@ -45,7 +45,7 @@ class VGAFS < VFS
     @name.not_nil!
   end
 
-  @next_node : VFS | Nil = nil
+  @next_node : VFS? = nil
   property next_node
 
   def initialize

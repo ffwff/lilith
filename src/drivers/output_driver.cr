@@ -1,4 +1,4 @@
-abstract struct IoDriver
+abstract struct OutputDriver
   abstract def putc(c : UInt8)
 
   def puts(*args)

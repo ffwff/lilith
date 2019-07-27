@@ -1,4 +1,4 @@
-require "./io_driver.cr"
+require "./output_driver.cr"
 
 VGA_WIDTH  = 80
 VGA_HEIGHT = 25
@@ -23,7 +23,7 @@ enum VgaColor : UInt16
   White      = 15
 end
 
-private struct VgaInstance < IoDriver
+private struct VgaInstance < OutputDriver
   @[AlwaysInline]
   def color_code(fg : VgaColor, bg : VgaColor, char : UInt8)
     UInt16

@@ -50,9 +50,6 @@ KEYBOARD_MAP_SHIFT = StaticArray[
 ]
 
 class Keyboard < Gc
-  @kbdfs : KbdFS | Nil = nil
-  property kbdfs
-
   @[Flags]
   enum Modifiers
     None   = 0x0
@@ -60,7 +57,13 @@ class Keyboard < Gc
     ShiftR = 0x2
   end
 
+  @current_keycode : Char? = nil
+  getter current_keycode
+
   @modifiers = Modifiers::None
+
+  @kbdfs : KbdFS? = nil
+  property kbdfs
 
   def initialize
     Idt.register_irq 1, ->callback
@@ -91,7 +94,7 @@ class Keyboard < Gc
           kc = KEYBOARD_MAP[keycode]?
         end
         if !@kbdfs.nil? && !kc.nil?
-          @kbdfs.not_nil!.on_key(kc)
+          @kbdfs.not_nil!.on_key kc
         end
       end
     end
