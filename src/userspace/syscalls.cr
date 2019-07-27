@@ -336,8 +336,8 @@ fun ksyscall_handler(frame : SyscallData::Registers)
       if cprocess.nil?
         frame.eax = SYSCALL_ERR
       else
+        frame.eax = pid
         process.new_frame frame
-        process.frame.not_nil!.eax = pid
         process.status = Multiprocessing::Process::Status::WaitProcess
         pudata.pwait = cprocess
         _switch_process

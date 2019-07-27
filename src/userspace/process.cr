@@ -235,17 +235,10 @@ module Multiprocessing
       frame.esp = USER_STACK_TOP
       # Pushed by the processor automatically.
       frame.eip = @initial_eip
-      if kernel_process?
-        frame.eflags = 0x202u32
-        frame.cs = 0x08u32
-        frame.ds = 0x10u32
-        frame.ss = 0x10u32
-      else
-        frame.eflags = 0x212u32
-        frame.cs = 0x1Bu32
-        frame.ds = 0x23u32
-        frame.ss = 0x23u32
-      end
+      frame.eflags = 0x212u32
+      frame.cs = 0x1Bu32
+      frame.ds = 0x23u32
+      frame.ss = 0x23u32
       # registers
       {% for id in ["edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax"] %}
       frame.{{ id.id }} = syscall_frame.{{ id.id }}
@@ -343,18 +336,18 @@ module Multiprocessing
     {% if frame == nil %}
       current_process = Multiprocessing.current_process.not_nil!
       {% if remove %}
-      current_process.status = Multiprocessing::Process::Status::Removed
+        current_process.status = Multiprocessing::Process::Status::Removed
       {% end %}
-      next_process = Multiprocessing.next_process.not_nil!
+        next_process = Multiprocessing.next_process.not_nil!
       {% if remove %}
-      current_process.remove
+        current_process.remove
       {% end %}
     {% else %}
       # save current process' state
       current_process = Multiprocessing.current_process.not_nil!
       current_process.frame = {{ frame }}
       if !current_process.fxsave_region.ptr.null?
-          memcpy current_process.fxsave_region.ptr, Multiprocessing.fxsave_region, 512
+        memcpy current_process.fxsave_region.ptr, Multiprocessing.fxsave_region, 512
       end
       # load process's state
       next_process = Multiprocessing.next_process.not_nil!
@@ -368,17 +361,17 @@ module Multiprocessing
 
     # switch page directory
     if !next_process.kernel_process?
-        dir = next_process.phys_page_dir # this must be stack allocated
-        # because it's placed in the virtual kernel heap
-        panic "null page directory" if dir == 0
-        Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
-        {% if frame == nil && remove %}
+      dir = next_process.phys_page_dir # this must be stack allocated
+      # because it's placed in the virtual kernel heap
+      panic "null page directory" if dir == 0
+      Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
+      {% if frame == nil && remove %}
         current_page_dir = current_process.phys_page_dir
         Paging.free_process_page_dir(current_page_dir)
         current_process.phys_page_dir = 0u32
-        {% else %}
+      {% else %}
         Paging.enable
-        {% end %}
+      {% end %}
     end
 
     # wake up process

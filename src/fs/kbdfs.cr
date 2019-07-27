@@ -57,15 +57,6 @@ class KbdFS < VFS
   end
 
   def on_key(ch)
-    byte = case ch
-           when Char
-             ch.ord.to_u8
-           when UInt32
-             ch.to_u8
-           end
-    if byte.nil?
-      byte = 0u8
-    end
     VGA.puts ch
 
     Idt.lock do
@@ -74,7 +65,7 @@ class KbdFS < VFS
         dir = msg.process.phys_page_dir
         Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
         Paging.enable
-        msg.slice[0] = byte
+        msg.slice[0] = ch.ord.to_u8
         msg.process.status = Multiprocessing::Process::Status::Unwait
         msg.process.frame.not_nil!.eax = 1
         false

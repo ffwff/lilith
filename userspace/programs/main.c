@@ -44,6 +44,8 @@ int main(int argc, char **argv) {
                 pid_t child = spawnv(buf, argv);
                 if(child > 0)
                     waitpid(child, 0, 0);
+                else
+                    printf("unknown command or file name\n");
                 free(argv);
             }
             fflush(stdout);

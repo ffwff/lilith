@@ -17,10 +17,13 @@ struct StaticArray(T, N)
     to_unsafe[index] = value
   end
 
-  @[AlwaysInline]
   def [](index : Int)
-    T
     panic "accessing out of bounds!" if index > N
+    to_unsafe[index]
+  end
+
+  def []?(index : Int)
+    return nil if index > N
     to_unsafe[index]
   end
 
