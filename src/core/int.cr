@@ -28,29 +28,10 @@ struct Int
   end
 
   # bit manips
-  @[AlwaysInline]
-  def ffz : Int
-    # find first zero bit, useful for bit arrays
-    # NOTE: should check for zero first
-    idx = 0
-    asm("
-            bsfl $1, $0
-        " : "={eax}"(idx) : "{edx}"(~self.to_i32) :: "volatile")
-    idx
+  def find_first_zero : Int
+    Intrinsics.counttrailing32(~self.to_i32, true)
   end
 
-  @[AlwaysInline]
-  def fls : Int
-    # find last set bit in word
-    # NOTE: should check for zero first
-    idx = 0
-    asm("
-            bsrl $1, $0
-        " : "={eax}"(idx) : "{edx}"(self.to_i32) :: "volatile")
-    idx
-  end
-
-  @[AlwaysInline]
   def nearest_power_of_2
     n = self - 1
     while (n & (n - 1)) != 0
@@ -59,7 +40,6 @@ struct Int
     n.unsafe_shl 1
   end
 
-  @[AlwaysInline]
   def lowest_power_of_2
     x = self
     x = x | x.unsafe_shr(1)

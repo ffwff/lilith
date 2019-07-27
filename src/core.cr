@@ -1,3 +1,4 @@
+require "./core/intrinsics.cr"
 require "./core/object.cr"
 require "./core/reference.cr"
 require "./core/enum.cr"
