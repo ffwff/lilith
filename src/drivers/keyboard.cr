@@ -38,7 +38,7 @@ KEYBOARD_MAP = StaticArray[
 
 KEYBOARD_MAP_SHIFT = StaticArray[
   '\0', '\0', '!', '@', '#', '$', '%', '^', '&', '*',
-  '(', ')', '-', '=', '\b',                        # Backspace
+  '(', ')', '_', '+', '\b',                         # Backspace
   '\t',                                             # Tab
   'Q', 'W', 'E', 'R',                               # 19
   'T', 'Y', 'U', 'I', 'O', 'P', '{', '}', '\n',     # Enter key

@@ -167,6 +167,7 @@ end
 fun ksyscall_handler(frame : SyscallData::Registers)
   process = Multiprocessing.current_process.not_nil!
   pudata = process.udata
+  Serial.puts "syscall ", frame.eax, " from ", process.pid, '\n'
   case frame.eax
   # files
   when SC_OPEN

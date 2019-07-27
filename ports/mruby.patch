@@ -1,0 +1,79 @@
+diff --git a/build_config.rb b/build_config.rb
+index 751317c7..7e9bf1c5 100644
+--- a/build_config.rb
++++ b/build_config.rb
+@@ -125,6 +125,17 @@ MRuby::Build.new('test') do |conf|
+   conf.gembox 'default'
+ end
+ 
++MRuby::CrossBuild.new('lilith') do |conf|
++  toolchain :gcc
++
++  conf.cc.command = "i386-elf-lilith-gcc"
++  conf.cc.flags << "-g -m32"
++  conf.linker.command = "i386-elf-lilith-gcc"
++  conf.linker.flags << "-m32"
++
++  conf.gembox 'default'
++end
++
+ #MRuby::Build.new('bench') do |conf|
+ #  # Gets set by the VS command prompts.
+ #  if ENV['VisualStudioVersion'] || ENV['VSINSTALLDIR']
+diff --git a/mrbgems/default.gembox b/mrbgems/default.gembox
+index 9859c7d5..d6c11d4d 100644
+--- a/mrbgems/default.gembox
++++ b/mrbgems/default.gembox
+@@ -3,7 +3,7 @@ MRuby::GemBox.new do |conf|
+   conf.gem :core => "mruby-metaprog"
+ 
+   # Use standard IO/File class
+-  conf.gem :core => "mruby-io"
++  # conf.gem :core => "mruby-io"
+ 
+   # Use standard Array#pack, String#unpack methods
+   conf.gem :core => "mruby-pack"
+@@ -15,10 +15,10 @@ MRuby::GemBox.new do |conf|
+   conf.gem :core => "mruby-print"
+ 
+   # Use standard Math module
+-  conf.gem :core => "mruby-math"
++  # conf.gem :core => "mruby-math"
+ 
+   # Use standard Time class
+-  conf.gem :core => "mruby-time"
++  # conf.gem :core => "mruby-time"
+ 
+   # Use standard Struct class
+   conf.gem :core => "mruby-struct"
+@@ -33,7 +33,7 @@ MRuby::GemBox.new do |conf|
+   conf.gem :core => "mruby-string-ext"
+ 
+   # Use Numeric class extension
+-  conf.gem :core => "mruby-numeric-ext"
++  # conf.gem :core => "mruby-numeric-ext"
+ 
+   # Use Array class extension
+   conf.gem :core => "mruby-array-ext"
+@@ -60,7 +60,7 @@ MRuby::GemBox.new do |conf|
+   conf.gem :core => "mruby-objectspace"
+ 
+   # Use Fiber class
+-  conf.gem :core => "mruby-fiber"
++  # conf.gem :core => "mruby-fiber"
+ 
+   # Use Enumerator class (require mruby-fiber)
+   conf.gem :core => "mruby-enumerator"
+@@ -78,10 +78,10 @@ MRuby::GemBox.new do |conf|
+   conf.gem :core => "mruby-bin-mruby"
+ 
+   # Generate mruby-strip command
+-  conf.gem :core => "mruby-bin-strip"
++  # conf.gem :core => "mruby-bin-strip"
+ 
+   # Use Kernel module extension
+-  conf.gem :core => "mruby-kernel-ext"
++  # conf.gem :core => "mruby-kernel-ext"
+ 
+   # Use class/module extension
+   conf.gem :core => "mruby-class-ext"

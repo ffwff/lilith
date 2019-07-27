@@ -1,1 +1,1 @@
-require "./functions/math/main.cr"
+require "./functions/math/*"

@@ -3,6 +3,7 @@ require "./functions/string.cr"
 
 # architecture specific
 require "./functions/syscalls.cr"
+require "./functions/signal.cr"
 require "./functions/threads.cr"
 require "./functions/dirent.cr"
 

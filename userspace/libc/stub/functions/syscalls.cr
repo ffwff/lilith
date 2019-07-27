@@ -83,3 +83,8 @@ end
 fun sbrk(increment : UInt32) : Void*
   Pointer(Void).new(sysenter(SC_SBRK, increment).to_u64)
 end
+
+# time
+fun time(tloc : Void*) : UInt32
+  0u32
+end
