@@ -197,7 +197,7 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters)
         end
         return
       else
-        panic "userspace"
+        panic "userspace: ", Multiprocessing.current_process.not_nil!.pid
       end
     else
       panic "kernel space"

@@ -6,8 +6,8 @@ lib LibC
   fun memcpy(dest : Void*, src : Void*, n : UInt32) : Void*
   fun memset(s : Void*, c : UInt8, n : UInt32) : Void*
 
-  fun malloc(sz : UInt32)
-  fun calloc(nmemb : UInt32, sz : UInt32)
+  fun malloc(sz : UInt32) : Void*
+  fun calloc(nmemb : UInt32, sz : UInt32) : Void*
   fun free(addr : Void*)
 end
 

@@ -176,9 +176,11 @@ module ElfReader
           if data.p_flags & ElfStructs::Elf32PFlags::PF_R
             npages = data.p_memsz.unsafe_shr(12) + 1
             panic "can't map to lower memory range" if data.p_vaddr < 0x8000_0000
-            Paging.alloc_page_pg(data.p_vaddr,
+            # create page and zero-initialize it
+            page_start = Paging.alloc_page_pg(data.p_vaddr,
               (data.p_flags & ElfStructs::Elf32PFlags::PF_W) == ElfStructs::Elf32PFlags::PF_W,
               true, npages)
+            memset Pointer(UInt8).new(page_start.to_u64), 0, npages * 0x1000
           end
           # heap should start right after the last segment
           heap_start = Paging.aligned(data.p_vaddr + data.p_memsz)

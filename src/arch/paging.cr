@@ -103,7 +103,7 @@ module Paging
   end
 
   def aligned(x : UInt32) : UInt32
-    (x & 0xFFFFF000) + 0x1000
+    (x & 0xFFFF_F000) + 0x1000
   end
 
   # state
@@ -124,8 +124,8 @@ module Paging
     Idt.disable
     disable
 
+    virt_addr = virt_addr_start & 0xFFFF_F000
     virt_addr_end = virt_addr_start + npages * 0x1000
-    virt_addr = virt_addr_start
 
     # claim
     while virt_addr < virt_addr_end
