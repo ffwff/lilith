@@ -70,6 +70,13 @@ class GcString < Gc
     memcpy(@buffer.ptr, old_buffer.ptr, @size.to_u32)
   end
 
+  def resize(size : Int32)
+    if size > @capacity
+      panic "GcString : @size must be < @capacity"
+    end
+    @size = size
+  end
+
   def insert(idx : Int32, ch : UInt8)
     if idx == @size
       if @size == @capacity
@@ -82,11 +89,14 @@ class GcString < Gc
     @buffer.ptr[idx] = ch
   end
 
-  def resize(size : Int32)
-    if size > @capacity
-      panic "GcString : @size must be < @capacity"
+  def append(ch : UInt8)
+    insert @size, ch
+  end
+
+  def append(str)
+    str.each do |ch|
+      insert @size, ch
     end
-    @size = size
   end
 
   # cloning
