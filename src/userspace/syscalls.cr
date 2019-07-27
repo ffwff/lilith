@@ -167,7 +167,7 @@ end
 fun ksyscall_handler(frame : SyscallData::Registers)
   process = Multiprocessing.current_process.not_nil!
   pudata = process.udata
-  Serial.puts "syscall ", frame.eax, " from ", process.pid, '\n'
+  # Serial.puts "syscall ", frame.eax, " from ", process.pid, '\n'
   case frame.eax
   # files
   when SC_OPEN
@@ -380,7 +380,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
   # memory management
   when SC_SBRK
     incr = frame.ebx.to_i32
-    Serial.puts "sbrk: ", incr, '\n'
+    # Serial.puts "sbrk: ", incr, '\n'
     if incr == 0
       # return the end of the heap if incr = 0
       if pudata.heap_end == 0
