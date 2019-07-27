@@ -73,15 +73,21 @@ class KbdFS < VFS
           msg.process.frame.not_nil!.eax = 1
           false
         else
-          msg.slice[msg.offset] = ch.ord.to_u8
-          msg.offset += 1
-          if (msg.buffering == VFSNode::Buffering::LineBuffered && ch == '\n') ||
-              msg.finished?
-            msg.process.status = Multiprocessing::Process::Status::Unwait
-            msg.process.frame.not_nil!.eax = msg.offset
+          if ch == '\b' && msg.offset > 0
+            msg.offset -= 1
+            msg.slice[msg.offset] = 0u8
             false
           else
-            true
+            msg.slice[msg.offset] = ch.ord.to_u8
+            msg.offset += 1
+            if (msg.buffering == VFSNode::Buffering::LineBuffered && ch == '\n') ||
+                msg.finished?
+              msg.process.status = Multiprocessing::Process::Status::Unwait
+              msg.process.frame.not_nil!.eax = msg.offset
+              false
+            else
+              true
+            end
           end
         end
       end
