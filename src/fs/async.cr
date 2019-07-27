@@ -4,7 +4,19 @@ class VFSReadMessage < Gc
 
   getter slice, process
 
-  def initialize(@slice : Slice(UInt8), @process : Multiprocessing::Process)
+  @offset = 0
+  property offset
+
+  @buffering = VFSNode::Buffering::Unbuffered
+  getter buffering
+
+  def initialize(@slice : Slice(UInt8),
+                 @process : Multiprocessing::Process,
+                 @buffering)
+  end
+
+  def finished?
+    offset > slice.size
   end
 end
 

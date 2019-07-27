@@ -17,17 +17,8 @@ int main(int argc, char **argv) {
         fflush(stdout);
 
         char buf[256]={0};
-        int i = 0;
-        for(; i < sizeof(buf)-1; i++) {
-            char ch = fgetc(stdin);
-            if(ch == '\n')
-                break;
-            else if(ch == '\b' && i > 0)
-                i--;
-            else
-                buf[i] = ch;
-        }
-        buf[i] = 0;
+        fgets(buf, sizeof(buf), stdin);
+        buf[strlen(buf) - 1] = 0;
 
         char *tok = strtok(buf, " ");
         if (tok != NULL) {

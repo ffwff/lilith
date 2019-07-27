@@ -187,7 +187,8 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     case result
     when VFS_READ_WAIT
       process.new_frame frame
-      fd.not_nil!.node.not_nil!.read_queue.not_nil!.push(VFSReadMessage.new(str, process))
+      fd.not_nil!.node.not_nil!.read_queue.not_nil!
+        .push(VFSReadMessage.new(str, process, fd.not_nil!.buffering))
       process.status = Multiprocessing::Process::Status::WaitIo
       _switch_process
     else

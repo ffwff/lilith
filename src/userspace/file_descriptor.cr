@@ -1,8 +1,12 @@
 class FileDescriptor < Gc
   @node : VFSNode? = nil
   getter node
+
   @offset = 0u32
   property offset
+
+  @buffering = VFSNode::Buffering::LineBuffered
+  property buffering
 
   # used for readdir syscall
   @cur_child : VFSNode? = nil

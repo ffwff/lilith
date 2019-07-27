@@ -3,6 +3,12 @@ require "./async.cr"
 PATH_MAX = 4096
 
 abstract class VFSNode < Gc
+  enum Buffering
+    Unbuffered
+    LineBuffered
+    FullyBuffered
+  end
+
   abstract def size : Int
   abstract def name : GcString?
 
