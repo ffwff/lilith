@@ -1,3 +1,6 @@
+fun breakpoint
+end
+
 # simple free-list based memory allocator
 # reference: https://moss.cs.iit.edu/cs351/slides/slides-malloc.pdf
 private struct Malloc
@@ -94,6 +97,7 @@ private struct Malloc
 
   # unchains a header from the free list
   private def unchain_header(hdr : Data::Header*)
+    dbg "unchain: "; hdr.dbg; dbg "\n"
     if hdr.value.prev_header.null?
       # first in linked list
       if !hdr.value.next_header.null?
@@ -136,7 +140,7 @@ private struct Malloc
             abort
           end
           hdr.value.size = data_sz
-          hdr.dbg; dbg "\n"
+          dbg "143: "; hdr.dbg; dbg "\n"
 
           # move the old footer
           # [|hdr|---------/|ftr|----------|ftr|]
@@ -151,9 +155,12 @@ private struct Malloc
           new_hdr.value.magic = MAGIC_FREE
           new_hdr.value.size = new_ftr.address - new_hdr.address - sizeof(Data::Header)
           chain_header new_hdr
+          new_hdr.value.prev_header = Pointer(Data::Header).null
+          new_hdr.value.next_header = Pointer(Data::Header).null
+
           new_ftr.value.header = new_hdr
 
-          new_hdr.dbg; dbg "\n"
+          dbg "160: "; new_hdr.dbg; dbg "\n"
         end
         # remove header from list
         unchain_header hdr
@@ -231,12 +238,83 @@ private struct Malloc
       abort
     end
 
-    # case 1: prev is freed and next is freed
-    # if prev_hdr.value.magic == MAGIC_FREE && next_hdr.value.magic == MAGIC_FREE
-    # end
+    # try to coalesce blocks when freeing
+    # |hdr|-----|ftr||hdr|----|ftr||hdr|-----|ftr|
+    # ^ prev         ^ cur         ^ next    ^
+    new_hdr = Pointer(Data::Header).null
+    new_ftr = Pointer(Data::Footer).null
+    if !prev_hdr.null? && !next_hdr.null? &&
+        prev_hdr.value.magic == MAGIC_FREE && next_hdr.value.magic == MAGIC_FREE
+      dbg "case 1\n"
+      breakpoint
 
-    hdr.value.magic = MAGIC_FREE
-    chain_header hdr
+      # case 1: prev is freed and next is freed
+      unchain_header next_hdr
+      new_hdr = prev_hdr
+      new_ftr = Pointer(Data::Footer)
+        .new(next_hdr.address + sizeof(Data::Header) + next_hdr.value.size)
+      if new_ftr.value.magic != FOOTER_MAGIC
+        dbg "invalid magic for footer "; next_hdr.dbg
+        abort
+      end
+
+      # resize prev
+      new_ftr.value.header = new_hdr
+      new_hdr.value.size = new_ftr.address - new_hdr.address - sizeof(Data::Header)
+
+      breakpoint
+    elsif !prev_hdr.null? && !next_hdr.null? &&
+        prev_hdr.value.magic == MAGIC && next_hdr.value.magic == MAGIC_FREE
+      dbg "case 2\n"
+      breakpoint
+
+      # case 2: prev is allocated and next is freed
+      unchain_header next_hdr
+      new_hdr = hdr
+      new_ftr = Pointer(Data::Footer)
+        .new(next_hdr.address + sizeof(Data::Header) + next_hdr.value.size)
+      if new_ftr.value.magic != FOOTER_MAGIC
+        dbg "invalid magic for footer "; new_ftr.dbg
+        abort
+      end
+
+      # resize current
+      new_ftr.value.header = new_hdr
+      new_hdr.value.size = new_ftr.address - new_hdr.address - sizeof(Data::Header)
+
+      # chain current
+      hdr.value.magic = MAGIC_FREE
+      chain_header hdr
+
+      breakpoint
+    elsif !prev_hdr.null? && !next_hdr.null? &&
+       prev_hdr.value.magic == MAGIC_FREE && next_hdr.value.magic == MAGIC
+      dbg "case 3\n"
+      breakpoint
+
+      # case 3: prev is freed and next is allocated
+      new_hdr = prev_hdr
+      new_ftr = Pointer(Data::Footer)
+        .new(hdr.address + sizeof(Data::Header) + hdr.value.size)
+      if new_ftr.value.magic != FOOTER_MAGIC
+        dbg "invalid magic for footer "; new_ftr.dbg
+        abort
+      end
+
+      # resize prev
+      new_ftr.value.header = new_hdr
+      new_hdr.value.size = new_ftr.address - new_hdr.address - sizeof(Data::Header)
+
+      breakpoint
+    else
+      dbg "case 4\n"
+      breakpoint
+
+      # case 4: prev & next is allocated
+      hdr.value.magic = MAGIC_FREE
+      chain_header hdr
+    end
+
   end
 
   def realloc(ptr : Void*, size : UInt32) : Void*
