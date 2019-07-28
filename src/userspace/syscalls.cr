@@ -307,13 +307,17 @@ fun ksyscall_handler(frame : SyscallData::Registers)
 
         # create the process
         new_process = Multiprocessing::Process.new(udata) do |process|
-          ElfReader.load(process, vfs_node.not_nil!)
-          udata.argv = pargv
-          argv_builder = ArgvBuilder.new process
-          pargv.each do |arg|
-            argv_builder.from_string arg.not_nil!
+          if ElfReader.load(process, vfs_node.not_nil!)
+            udata.argv = pargv
+            argv_builder = ArgvBuilder.new process
+            pargv.each do |arg|
+              argv_builder.from_string arg.not_nil!
+            end
+            argv_builder.build
+            true
+          else
+            false
           end
-          argv_builder.build
         end
         frame.eax = new_process.pid
       end

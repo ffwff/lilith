@@ -7,6 +7,7 @@ LDFLAGS=-m elf_i386 -T link.ld
 CR=toolchain/crystal/.build/crystal
 CRFLAGS=--cross-compile --target $(ARCH) --prelude ./prelude.cr
 KERNEL_OBJ=build/main.cr.o build/boot.o
+KERNEL_SRC=$(wildcard src/*.cr src/*/*.cr)
 
 ifeq ($(RELEASE),1)
 	CRFLAGS += --release
@@ -26,9 +27,9 @@ QEMUFLAGS += \
 .PHONY: kernel
 all: build/kernel
 
-build/main.cr.o: src/main.cr
-	@echo "CR $<"
-	@FREESTANDING=1 $(CR) build $(CRFLAGS) $< -o build/main.cr
+build/main.cr.o: $(KERNEL_SRC)
+	@echo "CR src/main.cr"
+	@FREESTANDING=1 $(CR) build $(CRFLAGS) src/main.cr -o build/main.cr
 
 build/boot.o: boot.s
 	@echo "AS $<"

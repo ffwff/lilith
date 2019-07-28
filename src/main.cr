@@ -120,12 +120,16 @@ fun kmain(
                 GcString.new("/ata0"),
                 fs.not_nil!.root)
     m_process = Multiprocessing::Process.new(udata) do |process|
-      ElfReader.load(process, main_bin.not_nil!)
-      argv_builder = ArgvBuilder.new process
-      argv.each do |arg|
-        argv_builder.from_string arg.not_nil!
+      if ElfReader.load(process, main_bin.not_nil!)
+        argv_builder = ArgvBuilder.new process
+        argv.each do |arg|
+          argv_builder.from_string arg.not_nil!
+        end
+        argv_builder.build
+        true
+      else
+        false
       end
-      argv_builder.build
     end
     Idt.status_mask = false
     Multiprocessing.setup_tss

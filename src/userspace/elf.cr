@@ -156,6 +156,9 @@ module ElfReader
 
   # load
   def load(process, vfs)
+    unless vfs.size > 0
+      return false
+    end
     Paging.alloc_page_pg(process.initial_esp - 0x1000, true, true, 1)
     mmap_list : GcArray(MemMapNode)? = nil
     mmap_append_idx = 0
@@ -201,5 +204,6 @@ module ElfReader
     end
     # pad the heap so that we catch memory errors earlier
     process.udata.heap_start += 0x1000
+    true
   end
 end

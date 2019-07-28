@@ -142,7 +142,7 @@ module Multiprocessing
       @udata.nil?
     end
 
-    def initialize(@udata : UserData?, save_fx = true, &on_setup_paging)
+    def initialize(@udata : UserData?, save_fx = true, &on_setup_paging : Process -> _)
       # user mode specific
       if save_fx
         @fxsave_region = GcPointer(UInt8).malloc(512)
@@ -171,7 +171,16 @@ module Multiprocessing
       Multiprocessing.pids += 1
 
       # setup pages
-      yield self
+      unless yield self
+        # unable to setup, bailing
+        if !last_page_dir.null? && !kernel_process?
+          Paging.disable
+          Paging.current_page_dir = last_page_dir
+          Paging.enable
+        end
+        Idt.enable
+        return
+      end
 
       if Multiprocessing.first_process.nil?
         Multiprocessing.first_process = self
