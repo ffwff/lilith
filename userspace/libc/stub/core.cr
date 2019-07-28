@@ -12,6 +12,7 @@ lib LibC
 end
 
 alias Pid = Int32
+alias SizeT = UInt32
 
 # Ints
 struct Int

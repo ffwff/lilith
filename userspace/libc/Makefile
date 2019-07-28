@@ -12,8 +12,8 @@ OBJ = \
 	) \
 	$(patsubst %.c,%.o, \
 		$(wildcard stub/functions/_PDCLIB/*.c) \
-		$(wildcard stub/functions/_dlmalloc/*.c) \
 	)
+CRYSTAL_SRC=$(wildcard stub/*.cr) $(wildcard stub/functions/*.cr)
 ARCH=i386-elf-lilith
 AR = $(ARCH)-ar
 CC = $(ARCH)-gcc
@@ -31,8 +31,8 @@ libm.a: stub/math.cr
 	FREESTANDING=1 $(CR) build $(CRFLAGS) $< -o math.cr
 	$(AR) rcs $@ math.cr.o
 
-stub.cr.o: stub/main.cr
-	FREESTANDING=1 $(CR) build $(CRFLAGS) $< -o stub.cr
+stub.cr.o: $(CRYSTAL_SRC)
+	FREESTANDING=1 $(CR) build $(CRFLAGS) stub/main.cr -o stub.cr
 
 stub/functions/setjmp.o: stub/functions/setjmp.s
 	$(AS) -o $@ $^
