@@ -1,4 +1,3 @@
-require "./functions/debug.cr"
 require "./functions/pdclib.cr"
 require "./functions/string.cr"
 require "./functions/malloc.cr"
