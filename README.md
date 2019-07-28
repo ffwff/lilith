@@ -22,7 +22,6 @@ make build/kernel
 ## Credits
 
 * [PDCLib](https://github.com/DevSolar/pdclib/)
-* [dlmalloc](http://gee.cs.oswego.edu/dl/html/malloc.html)
 
 ## License
 
