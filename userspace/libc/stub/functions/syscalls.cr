@@ -59,6 +59,10 @@ fun raise(sig : Int32) : Int32
   -1
 end
 
+fun abort
+  Pointer(UInt32).null.value = 0
+end
+
 fun spawnv(file : LibC::String, argv : UInt8**) : Pid
   sysenter(SC_SPAWN, file.address.to_u32, argv.address.to_u32).to_i32
 end

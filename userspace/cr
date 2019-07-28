@@ -1,0 +1,12 @@
+#!/bin/sh
+if [[ "x$1" == "x" ]]; then
+    echo "$0: no input specified"
+    exit 1
+fi
+if [[ "x$2" == "x" ]]; then
+    echo "$0: no output specified"
+    exit 1
+fi
+../toolchain/crystal/.build/crystal build --cross-compile "$1" --target i386-linux-gnu -o "$1"
+i386-elf-lilith-gcc -o $2 "$1.o"
+rm "$1.o"

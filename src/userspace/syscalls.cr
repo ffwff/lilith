@@ -391,8 +391,15 @@ fun ksyscall_handler(frame : SyscallData::Registers)
       end
     elsif incr > 0
       # increase the end of the heap if incr > 0
-      heap_end_a = pudata.heap_end & 0xFFFF_F000
-      npages = ((pudata.heap_end + incr) - heap_end_a).unsafe_shr(12) + 1
+      if pudata.heap_end == 0
+        Idt.lock do
+          pudata.heap_end = Paging.alloc_page_pg(pudata.heap_start, true, true)
+        end
+        npages = incr.to_u32.unsafe_shr(12) + 1
+      else
+        heap_end_a = pudata.heap_end & 0xFFFF_F000
+        npages = ((pudata.heap_end + incr) - heap_end_a).unsafe_shr(12) + 1
+      end
       if npages > 0
         Idt.lock do
           Paging.alloc_page_pg(pudata.heap_end, true, true, npages: npages)
@@ -403,6 +410,13 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     end
     frame.eax = pudata.heap_end
     pudata.heap_end += incr
+  # debug
+  #when SC_DBG
+  #  arg = try(checked_pointer(frame.ebx)).as(SyscallData::StringArgument*)
+  #  str = try(checked_slice(arg.value.str, arg.value.len))
+  #  str.each do |ch|
+  #    Serial.puts ch.unsafe_chr
+  #  end
   else
     frame.eax = SYSCALL_ERR
   end
