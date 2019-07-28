@@ -19,10 +19,18 @@ AR = $(ARCH)-ar
 CC = $(ARCH)-gcc
 AS = $(ARCH)-as
 CR=$(shell pwd)/../../toolchain/crystal/.build/crystal
-CRFLAGS=--cross-compile --target i686-elf -d --prelude ./prelude.cr
+CRFLAGS=--cross-compile --target i686-elf --prelude ./prelude.cr
 CCFLAGS = -Ipdclib/include \
 	-Istub/include -Istub/include/pdclib \
-	-nostdinc -nostdlib -g
+	-nostdinc -nostdlib
+
+ifeq ($(RELEASE),1)
+CRFLAGS += --release
+CCFLAGS += -O2
+else
+CRFLAGS += -d
+CCFLAGS += -g
+endif
 
 libc.a: $(OBJ)
 	$(AR) rcs $@ $^

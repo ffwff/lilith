@@ -46,7 +46,7 @@ build_gcc: gcc
 # libc
 build_libc: ../libc
 	cd ../libc && \
-	make -j$(NPROC) && \
+	make -j$(NPROC) RELEASE=$(RELEASE) && \
 	make install \
 		LIBDIR=$(shell pwd)/tools/lib/gcc/i386-elf-lilith/8.3.0/ \
 		INCLUDEDIR=$(shell pwd)/tools/lib/gcc/i386-elf-lilith/8.3.0/include \
