@@ -129,7 +129,6 @@ fun kmain(
         true
       else
         panic "unable to load main.bin"
-        false
       end
     end
     Idt.status_mask = false

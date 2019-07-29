@@ -293,7 +293,8 @@ module Multiprocessing
       true
     when Multiprocessing::Process::Status::WaitProcess
       #Serial.puts process.udata.pwait.not_nil!.pid, ':', process.udata.pwait.not_nil!.status, '\n'
-      if process.udata.pwait.not_nil!.status == Multiprocessing::Process::Status::Removed
+      if process.udata.pwait.nil? ||
+         process.udata.pwait.not_nil!.status == Multiprocessing::Process::Status::Removed
         process.status = Multiprocessing::Process::Status::Unwait
         process.udata.pwait = nil
         true
@@ -381,7 +382,7 @@ module Multiprocessing
 
     # wake up process
     if next_process.status == Multiprocessing::Process::Status::Unwait
-      # transition state from async io syscall
+      # transition state from kernel syscall
       process_frame.eip = Pointer(UInt32).new(process_frame.ecx.to_u64)[0]
       process_frame.useresp = process_frame.ecx
       next_process.status = Multiprocessing::Process::Status::Normal

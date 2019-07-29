@@ -22,6 +22,16 @@ struct Int
   end
 end
 
+# Object
+class Object
+
+  def unsafe_as(type : T.class) forall T
+    x = self
+    pointerof(x).as(T*).value
+  end
+
+end
+
 # Pointers
 struct Pointer(T)
   def self.null

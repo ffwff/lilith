@@ -21,11 +21,16 @@ fun pow(arg : Float64, exp : Float64) : Float64
   LibIntrinsics.pow_f64 arg, exp
 end
 
-fun fmod(arg : Float64, div : Float64) : Float64
-  # TODO
-  0.0
-end
-
-fun frexp(arg : Float64, exp : Int32*) : Float64
-  0.0
+@[Naked]
+fun fmod
+  asm("
+     fldl 12(%esp)
+     fldl 4(%esp)
+  1: fprem
+     fnstsw %ax
+     sahf
+     jp 1b
+     fstp %st(1)
+     ret
+  ")
 end
