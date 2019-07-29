@@ -303,7 +303,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
 
         # create the process
         new_process = Multiprocessing::Process.new(udata) do |process|
-          if ElfReader.load(process, vfs_node.not_nil!)
+          if (err = ElfReader.load(process, vfs_node.not_nil!)).nil?
             udata.argv = pargv
             argv_builder = ArgvBuilder.new process
             pargv.each do |arg|
@@ -312,6 +312,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
             argv_builder.build
             true
           else
+            Serial.puts "error: ", err, '\n'
             false
           end
         end

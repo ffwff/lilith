@@ -123,7 +123,7 @@ fun kmain(
                 GcString.new("/ata0"),
                 fs.not_nil!.root)
     m_process = Multiprocessing::Process.new(udata) do |process|
-      if ElfReader.load(process, main_bin.not_nil!)
+      if (err = ElfReader.load(process, main_bin.not_nil!)).nil?
         argv_builder = ArgvBuilder.new process
         argv.each do |arg|
           argv_builder.from_string arg.not_nil!
@@ -131,7 +131,7 @@ fun kmain(
         argv_builder.build
         true
       else
-        panic "unable to load main.bin"
+        panic "unable to load main.bin: ", err, "\n"
       end
     end
     Idt.status_mask = false

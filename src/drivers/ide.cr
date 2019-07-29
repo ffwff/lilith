@@ -233,11 +233,18 @@ class AtaDevice < Gc
     {% end %}
   end
 
+  @buffer : GcPointer(UInt16)? = nil
   def read_sector(sector_28, &block)
     Ata.read_cmd sector_28, disk_port, slave
     return false if !Ata.wait(disk_port, true)
+    if @buffer.nil?
+      @buffer = GcPointer(UInt16).malloc(256)
+    end
     256.times do |i|
-      yield X86.inw disk_port
+      @buffer.not_nil!.ptr[i] = X86.inw disk_port
+    end
+    256.times do |i|
+      yield @buffer.not_nil!.ptr[i]
     end
     Ata.flush_cache disk_port
     Ata.wait disk_port

@@ -101,6 +101,13 @@ module ElfReader
     SegmentHeader
   end
 
+  enum ParserError
+    EmptyFile
+    InvalidElfHdr
+    InvalidProgramHdrSz
+    ExpectedProgramHdr
+  end
+
   def read(node : VFSNode, &block)
     state = ParserState::ElfHeader
     header = uninitialized ElfStructs::Elf32Header
@@ -119,15 +126,17 @@ module ElfReader
                  header.e_ident[1] == 69 &&
                  header.e_ident[2] == 76 &&
                  header.e_ident[3] == 70
-            panic "invalid ELF header"
+            return ParserError::InvalidElfHdr
+          end
+          unless header.e_phentsize == sizeof(ElfStructs::Elf32ProgramHeader)
+            return ParserError::InvalidProgramHdrSz
           end
           yield header
-          panic "e_phentsize isn't equal to sizeof(ProgramHeader) :", header.e_phentsize if header.e_phentsize != sizeof(ElfStructs::Elf32ProgramHeader)
           if header.e_phoff == total_bytes + 1
             state = ParserState::ProgramHeader
             idx_h = 0
           else
-            panic "expected program header"
+            return ParserError::ExpectedProgramHdr
           end
         end
       when ParserState::ProgramHeader
@@ -145,6 +154,8 @@ module ElfReader
       when ParserState::Byte
         if total_bytes < header.e_shoff
           yield Tuple.new(total_bytes, byte)
+        else
+          break
         end
         # TODO section headers
       else
@@ -152,18 +163,22 @@ module ElfReader
       end
       total_bytes += 1
     end
+    if total_bytes < sizeof(ElfStructs::Elf32Header)
+      return ParserError::InvalidElfHdr
+    end
+    nil
   end
 
   # load
   def load(process, vfs)
     unless vfs.size > 0
-      return false
+      return ParserError::EmptyFile
     end
     Paging.alloc_page_pg(process.initial_esp - 0x1000, true, true, 1)
     mmap_list : GcArray(MemMapNode)? = nil
     mmap_append_idx = 0
     mmap_idx = 0
-    ElfReader.read(vfs) do |data|
+    result = ElfReader.read(vfs) do |data|
       case data
       when ElfStructs::Elf32Header
         data = data.as(ElfStructs::Elf32Header)
@@ -202,8 +217,10 @@ module ElfReader
         end
       end
     end
-    # pad the heap so that we catch memory errors earlier
-    process.udata.heap_start += 0x1000
-    true
+    if result.nil?
+      # pad the heap so that we catch memory errors earlier
+      process.udata.heap_start += 0x1000
+    end
+    result
   end
 end
