@@ -15,6 +15,9 @@ lib PageStructs
   fun kdisable_paging
 end
 
+USERSPACE_START = 0x4000_0000u32
+KERNEL_TABLES = USERSPACE_START.unsafe_div(0x400000)
+
 module Paging
   extend self
 
@@ -185,7 +188,7 @@ module Paging
     memset Pointer(UInt8).new(pd_addr.to_u64), 0, 4096
 
     # copy lower half (kernel half)
-    512.times do |i|
+    KERNEL_TABLES.times do |i|
       pd.value.tables[i] = @@kernel_page_dir.value.tables[i]
     end
 
@@ -198,7 +201,7 @@ module Paging
 
     pd = Pointer(PageStructs::PageDirectory).new(pda.to_u64)
     # free the higher half
-    i = 512
+    i = KERNEL_TABLES
     while i < 1024
       pta = pd.value.tables[i] & 0xFFFF_F000
       pt = Pointer(PageStructs::PageTable).new(pta.to_u64)

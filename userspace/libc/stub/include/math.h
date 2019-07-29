@@ -6,19 +6,33 @@ double fabs(double arg);
 double sin(double arg);
 double cos(double arg);
 double tan(double arg);
+
 double sinh(double arg);
 double cosh(double arg);
 double tanh(double arg);
+
 double asin(double arg);
 double acos(double arg);
 double atan(double arg);
+double atan2(double y, double x);
+
+double asinh(double arg);
+double acosh(double arg);
+double atanh(double arg);
 
 double exp(double arg);
 double log(double arg);
+double log2(double arg);
 double log10(double arg);
 
 double sqrt(double arg);
+double cbrt(double arg);
+double ldexp(double arg, int exp);
+double hypot(double arg, int exp);
 double pow(double base, double exponent);
+
+double erf(double x);
+double erfc(double x);
 
 double floor(double arg);
 double ceil(double arg);

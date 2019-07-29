@@ -42,8 +42,11 @@ fun kmain(
 
   Multiprocessing.fxsave_region = fxsave_region
 
+  Serial.puts text_end, " ", data_end, " ", stack_end, "\n"
+
   # setup memory management
   VGA.puts "Booting lilith...\n"
+  KERNEL_ARENA.start_addr = 0x200_000u32
 
   VGA.puts "initializing gdtr...\n"
   Gdt.init_table

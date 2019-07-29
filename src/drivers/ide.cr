@@ -223,16 +223,14 @@ class AtaDevice < Gc
     end
 
     # fix model name from endianness
-    begin
-      {% for key in ["serial", "firmware", "model"] %}
-            {% key = key.id %}
-            i = 0
-            while i < device.{{ key }}.size
-                device.{{ key }}[i], device.{{ key }}[i+1] = device.{{ key }}[i+1], device.{{ key }}[i]
-                i += 2
-            end
-            {% end %}
-    end
+    {% for key in ["serial", "firmware", "model"] %}
+      {% key = key.id %}
+      i = 0
+      while i < device.{{ key }}.size
+        device.{{ key }}[i], device.{{ key }}[i+1] = device.{{ key }}[i+1], device.{{ key }}[i]
+        i += 2
+      end
+    {% end %}
   end
 
   def read_sector(sector_28, &block)

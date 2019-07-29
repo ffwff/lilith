@@ -98,11 +98,12 @@ end
 private struct KernelArena
   # linked list free pools for sizes of 2^4, 2^5 ... 2^10
   @free_pools = uninitialized Kernel::PoolHeader*[6]
-  START_ADDR = 0x1000_0000.to_u32
-  @placement_addr : UInt32 = START_ADDR
+  @start_addr = 0u32
+  @placement_addr = 0u32
 
-  def start_addr
-    START_ADDR
+  getter start_addr
+  def start_addr=(@start_addr)
+    @placement_addr = @start_addr
   end
 
   getter placement_addr
@@ -123,6 +124,9 @@ private struct KernelArena
   # pool
   private def new_pool(buffer_size : UInt32) : Pool
     addr = @placement_addr
+    unless addr < USERSPACE_START
+      panic "out of kernel virtual addresses"
+    end
     Paging.alloc_page_pg(@placement_addr, true, false)
     @placement_addr += 0x1000
 
