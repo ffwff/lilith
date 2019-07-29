@@ -33,7 +33,7 @@ fun kmain(
   kernel_end : Void*,
   text_start : Void*, text_end : Void*,
   data_start : Void*, data_end : Void*,
-  stack_start : Void*, stack_end : Void*,
+  stack_end : Void*, stack_start : Void*,
   mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*
 )
   if mboot_magic != MULTIBOOT_BOOTLOADER_MAGIC
@@ -42,11 +42,9 @@ fun kmain(
 
   Multiprocessing.fxsave_region = fxsave_region
 
-  Serial.puts text_end, " ", data_end, " ", stack_end, "\n"
-
   # setup memory management
   VGA.puts "Booting lilith...\n"
-  KERNEL_ARENA.start_addr = 0x200_000u32
+  KERNEL_ARENA.start_addr = stack_end.address.to_u32 + 0x1000
 
   VGA.puts "initializing gdtr...\n"
   Gdt.init_table
@@ -71,7 +69,7 @@ fun kmain(
 
   #
   VGA.puts "initializing kernel garbage collector...\n"
-  LibGc.init data_start.address.to_u32, data_end.address.to_u32, stack_start.address.to_u32
+  LibGc.init data_start.address.to_u32, data_end.address.to_u32, stack_end.address.to_u32
 
   #
   VGA.puts "checking PCI buses...\n"

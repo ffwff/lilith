@@ -46,7 +46,7 @@ module Paging
   def init_table(
     text_start : Void*, text_end : Void*,
     data_start : Void*, data_end : Void*,
-    stack_end : Void*, stack_start : Void*,
+    stack_start : Void*, stack_end : Void*,
     mboot_header : Multiboot::MultibootInfo*
   )
     cur_mmap_addr = mboot_header[0].mmap_addr
