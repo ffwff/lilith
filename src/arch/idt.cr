@@ -7,10 +7,10 @@ KERNEL_CODE_SEGMENT_OFFSET = 0x08u16
 private lib Kernel
   {% for i in 0..31 %}
     fun kcpuex{{ i.id }}
-    {% end %}
+  {% end %}
   {% for i in 0..15 %}
     fun kirq{{ i.id }}
-    {% end %}
+  {% end %}
 
   @[Packed]
   struct Idt
@@ -95,7 +95,7 @@ module Idt
 
     # cpu exception handlers
     {% for i in 0..31 %}
-      #init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kcpuex{{ i.id }}).pointer.address.to_u32, INTERRUPT_GATE
+      init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kcpuex{{ i.id }}).pointer.address.to_u32, INTERRUPT_GATE
     {% end %}
 
     # hw interrupts

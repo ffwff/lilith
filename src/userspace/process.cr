@@ -307,7 +307,6 @@ module Multiprocessing
 
   # round robin scheduling algorithm
   def next_process : Process?
-    # Serial.puts Multiprocessing.n_process, "---\n"
     if @@current_process.nil?
       return @@current_process = @@first_process
     end
@@ -322,7 +321,6 @@ module Multiprocessing
     if @@current_process.nil?
       cur = @@first_process.not_nil!.next_process
       while !cur.nil? && !can_switch(cur.not_nil!)
-        # Serial.puts cur.not_nil!.pid, ": ", cur.status, "\n"
         cur = cur.not_nil!.next_process
         break if cur == process.prev_process
       end
@@ -330,17 +328,15 @@ module Multiprocessing
     end
     if @@current_process.nil?
       # no tasks left, use idle
-      # Serial.puts @@first_process.not_nil!.pid, "<- \n"
       @@current_process = @@first_process
     else
-      # Serial.puts @@current_process.not_nil!.pid, "<- \n"
       @@current_process
     end
   end
 
   # context switch
-  # NOTE: this must be a macro so that it will be inlined,
-  # and the frame argument will the a reference to the frame on the stack
+  # NOTE: this must be a macro so that it will be inlined so that
+  # the "frame" argument will a reference to the register frame on the stack
   macro switch_process(frame, remove = false)
     {% if frame == nil %}
       current_process = Multiprocessing.current_process.not_nil!
@@ -374,7 +370,7 @@ module Multiprocessing
       # because it's placed in the virtual kernel heap
       panic "null page directory" if dir == 0
       Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
-      {% if frame == nil && remove %}
+      {% if remove %}
         current_page_dir = current_process.phys_page_dir
         Paging.free_process_page_dir(current_page_dir)
         current_process.phys_page_dir = 0u32
@@ -410,6 +406,15 @@ module Multiprocessing
     {% end %}
   end
 
+  def switch_process_no_save
+    Multiprocessing.switch_process(nil)
+  end
+
+  def switch_process_and_terminate
+    Multiprocessing.switch_process(nil, true)
+  end
+
+  # iteration
   def each
     process = @@first_process
     while !process.nil?

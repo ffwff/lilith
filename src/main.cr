@@ -128,6 +128,7 @@ fun kmain(
         argv_builder.build
         true
       else
+        panic "unable to load main.bin"
         false
       end
     end

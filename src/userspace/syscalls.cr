@@ -160,10 +160,6 @@ private macro try(expr)
     end
 end
 
-private def _switch_process
-  Multiprocessing.switch_process nil
-end
-
 fun ksyscall_handler(frame : SyscallData::Registers)
   process = Multiprocessing.current_process.not_nil!
   pudata = process.udata
@@ -190,7 +186,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
       fd.not_nil!.node.not_nil!.read_queue.not_nil!
         .push(VFSReadMessage.new(str, process, fd.not_nil!.buffering))
       process.status = Multiprocessing::Process::Status::WaitIo
-      _switch_process
+      Multiprocessing.switch_process_no_save
     else
       frame.eax = result
     end
@@ -346,14 +342,14 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         process.new_frame frame
         process.status = Multiprocessing::Process::Status::WaitProcess
         pudata.pwait = cprocess
-        _switch_process
+        Multiprocessing.switch_process_no_save
       end
     end
   when SC_EXIT
     if process.pid == 1
       panic "init exited"
     end
-    Multiprocessing.switch_process(nil, true)
+    Multiprocessing.switch_process_and_terminate
   # working directory
   when SC_GETCWD
     arg = try(checked_pointer(frame.ebx)).as(SyscallData::StringArgument*)
