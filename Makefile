@@ -5,7 +5,7 @@ CC=clang
 LIBGCC=$(shell $(ARCH)-gcc -print-libgcc-file-name)
 LDFLAGS=-m elf_i386 -T link.ld
 CR=toolchain/crystal/.build/crystal
-CRFLAGS=--cross-compile --target $(ARCH) --prelude ./prelude.cr
+CRFLAGS=--cross-compile --target $(ARCH) --mcpu=pentium4 --prelude ./prelude.cr
 KERNEL_OBJ=build/main.cr.o build/boot.o
 KERNEL_SRC=$(wildcard src/*.cr src/*/*.cr)
 
