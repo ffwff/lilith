@@ -3,6 +3,7 @@ class MemMapNode < Gc
   property file_offset
   @filesz = 0u32
   property filesz
+
   @vaddr = 0u32
   property vaddr
   @memsz = 0u32

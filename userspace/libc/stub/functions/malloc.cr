@@ -56,7 +56,6 @@ private struct Malloc
 
   private def alloc_header(size : UInt32) : Data::Header*
     total_size = sizeof(Data::Header) + size
-    # TODO: allocate if more than alloc units
     units = unit_aligned size
     if @heap_end == 0
       # first allocation
@@ -103,8 +102,6 @@ private struct Malloc
       @first_free_header = hdr.value.next_header
     else
       # middle in linked list
-      # @prev->next = @next
-      # @next->prev = @prev
       hdr.value.prev_header.value.next_header = hdr.value.next_header
       if !hdr.value.next_header.null?
         hdr.value.next_header.value.prev_header = hdr.value.prev_header
@@ -171,7 +168,6 @@ private struct Malloc
     end
     data_size = size
     size += sizeof(Data::Footer)
-    # dbg "size: "; size.dbg; dbg "\n"
 
     if (hdr = search_free_list(data_size)).null?
       hdr = alloc_header size
@@ -237,7 +233,6 @@ private struct Malloc
     if !prev_hdr.null? && !next_hdr.null? &&
         prev_hdr.value.magic == MAGIC_FREE && next_hdr.value.magic == MAGIC_FREE
       # dbg "case 1\n"
-
       # case 1: prev is freed and next is freed
       unchain_header next_hdr
       new_hdr = prev_hdr
@@ -288,7 +283,7 @@ private struct Malloc
       new_hdr.value.size = new_ftr.address - new_hdr.address - sizeof(Data::Header)
     else
       #dbg "case 4\n"
-      # case 4: prev & next is allocated
+      # case 4: prev & next are allocated
       hdr.value.magic = MAGIC_FREE
       chain_header hdr
     end

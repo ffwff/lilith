@@ -71,18 +71,12 @@ fun kmain(
   ide = nil
 
   VGA.puts "checking PCI buses...\n"
-  PCI.check_all_buses do |device, vendor_id, device_id|
-    Serial.puts "device: "
-    device.to_s Serial, 16
-    Serial.puts ", vendor_id: "
-    vendor_id.to_s Serial, 16
-    Serial.puts ", device_id: "
-    device_id.to_s Serial, 16
-    Serial.puts "\n"
+  PCI.check_all_buses do |bus, device, func, vendor_id|
+    device_id = PCI.read_field bus, device, func, PCI::PCI_DEVICE_ID, 2
     if Ide.pci_device?(vendor_id, device_id)
       ide = Ide.new
     elsif BGA.pci_device?(vendor_id, device_id)
-      BGA.init_controller
+      BGA.init_controller bus, device, func
     end
   end
 
@@ -95,7 +89,7 @@ fun kmain(
 
   mbr = MBR.read_ata(ide.device(0))
   main_bin : VFSNode? = nil
-  if mbr.header[0] == 0x55 && mbr.header[1] == 0xaa
+  if MBR.check_header(mbr)
     VGA.puts "found MBR header...\n"
     fs = Fat16FS.new ide.device(0), mbr.partitions[0]
     fs.root.each_child do |node|

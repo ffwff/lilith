@@ -23,7 +23,7 @@ QEMUFLAGS += \
 	-m 64M \
 	-serial stdio \
 	-no-shutdown -no-reboot \
-	-vga std -device VGA
+	-vga std
 
 .PHONY: kernel
 all: build/kernel
