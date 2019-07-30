@@ -1,5 +1,3 @@
-require "./vfs.cr"
-
 private lib Fat16Structs
   @[Packed]
   struct Fat16BootSector

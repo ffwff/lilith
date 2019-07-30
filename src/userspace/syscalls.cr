@@ -311,7 +311,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
             argv_builder.build
             true
           else
-            Serial.puts "error: ", err, '\n'
+            # Serial.puts "error: ", err, '\n'
             false
           end
         end
@@ -387,6 +387,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         # there are no pages allocated for program heap
         Idt.lock do
           pudata.heap_end = Paging.alloc_page_pg(pudata.heap_start, true, true)
+          memset Pointer(UInt8).new(pudata.heap_end.to_u64), 0, 0x1000, 0x1000, false
         end
       end
     elsif incr > 0
@@ -394,6 +395,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
       if pudata.heap_end == 0
         Idt.lock do
           pudata.heap_end = Paging.alloc_page_pg(pudata.heap_start, true, true)
+          memset Pointer(UInt8).new(pudata.heap_end.to_u64), 0, 0x1000
         end
         npages = incr.to_u32.unsafe_shr(12) + 1
       else
@@ -403,6 +405,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
       if npages > 0
         Idt.lock do
           Paging.alloc_page_pg(pudata.heap_end, true, true, npages: npages)
+          memset Pointer(UInt8).new(pudata.heap_end.to_u64), 0, npages * 0x1000
         end
       end
     else

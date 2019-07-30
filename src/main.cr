@@ -1,4 +1,5 @@
 require "./core.cr"
+require "./fs.cr"
 require "./drivers/core/*"
 require "./drivers/arch/*"
 require "./drivers/**"
@@ -8,9 +9,6 @@ require "./arch/paging.cr"
 require "./arch/multiboot.cr"
 require "./alloc/alloc.cr"
 require "./alloc/gc.cr"
-require "./fs/fat16.cr"
-require "./fs/vgafs.cr"
-require "./fs/kbdfs.cr"
 require "./userspace/syscalls.cr"
 require "./userspace/process.cr"
 require "./userspace/elf.cr"
@@ -76,7 +74,7 @@ fun kmain(
     if Ide.pci_device?(vendor_id, device_id)
       ide = Ide.new
     elsif BGA.pci_device?(vendor_id, device_id)
-      BGA.init_controller bus, device, func
+      # BGA.init_controller bus, device, func
     end
   end
 

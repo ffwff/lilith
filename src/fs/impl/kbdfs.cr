@@ -1,5 +1,3 @@
-require "./vfs.cr"
-
 class KbdFsNode < VFSNode
   @read_queue : VFSReadQueue? = nil
   getter read_queue
