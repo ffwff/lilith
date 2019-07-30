@@ -300,4 +300,9 @@ class Ide < Gc
   def ata_secondary_irq_handler
     Ata.irq_handler DISK_PORT_SECONDARY
   end
+
+  # check pci device
+  def self.pci_device?(vendor_id, device_id)
+    (vendor_id == 0x8086) && (device_id == 0x7010 || device_id == 0x7111)
+  end
 end

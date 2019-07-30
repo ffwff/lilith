@@ -55,66 +55,49 @@ private struct Pci
     end
   end
 
-  # enumerating PCI buses
-  @has_ide = false
-  getter has_ide
-
-  def check_function(bus : UInt32, device : UInt32, func : UInt32)
-    klass = read_field bus, device, func, PCI_CLASS, 1
-    subclass = read_field bus, device, func, PCI_SUBCLASS, 1
-    progif = read_field bus, device, func, PCI_PROG_IF, 1
-    debug "detected PCI device "
-    debug_pci bus, device, func
-    debug " "
-    debug_pci_device klass, subclass, progif
-    debug " "
-
-    # filter functions
-    if klass == 0x01 && subclass == 0x01 &&
-       (progif == 0x8A || progif == 0x80)
-      debug "(ide device)\n"
-      @has_ide = true
-      return
-    end
-
-    debug "\n"
-  end
-
-  private def check_device(bus : UInt32, device : UInt32)
+  private def check_device(bus : UInt32, device : UInt32, &block)
     vendor_id = read_field bus, device, 0, PCI_VENDOR_ID, 2
+    device_id = read_field bus, device, 0, PCI_DEVICE_ID, 2
     return if vendor_id == PCI_NONE # device doesn't exist
     func = 0u32
-    check_function(bus, device, func)
+    yield device, vendor_id, device_id
     header_type = read_field bus, device, 0, PCI_HEADER_TYPE, 1
     if (header_type & 0x80) != 0
       func = 1u32
       while func < 8
-        if read_field(bus, device, 0, PCI_VENDOR_ID, 2) != PCI_NONE
-          check_function bus, device, func
+        if (vendor_id = read_field(bus, device, func, PCI_VENDOR_ID, 2)) != PCI_NONE
+          device_id = read_field bus, device, func, PCI_DEVICE_ID, 2
+          yield device, vendor_id, device_id
         end
         func += 1
       end
     end
   end
 
-  private def check_bus(bus : UInt32)
+  private def check_bus(bus : UInt32, &block)
     device = 0u32
     while device < 32
-      check_device(bus, device)
+      check_device(bus, device) do |device, vendor_id, device_id|
+        yield device, vendor_id, device_id
+      end
       device += 1
     end
   end
 
-  def check_all_buses
+  def check_all_buses(&block)
     header_type = read_field 0u32, 0u32, 0u32, PCI_HEADER_TYPE, 1
     if (header_type & 0x80) == 0
       # Single PCI host controller
-      check_bus 0
+      check_bus(0) do |device, vendor_id, device_id|
+        yield device, vendor_id, device_id
+      end
     else
       func = 0u32
       while func < 8
         break if read_field(0u32, 0u32, func, PCI_VENDOR_ID, 2) != 0xFFFF
-        check_bus func
+        check_bus(func) do |device, vendor_id, device_id|
+          yield device, vendor_id, device_id
+        end
         func += 1
       end
     end
@@ -122,30 +105,30 @@ private struct Pci
 
   # print
   private def debug_pci(slot, device, func)
-    return
-    VGA.puts "["
-    slot.to_s VGA, 16
-    VGA.puts ":"
-    device.to_s VGA, 16
-    VGA.puts "."
-    func.to_s VGA, 16
-    VGA.puts "]"
+    #return
+    Serial.puts "["
+    slot.to_s Serial, 16
+    Serial.puts ":"
+    device.to_s Serial, 16
+    Serial.puts "."
+    func.to_s Serial, 16
+    Serial.puts "]"
   end
 
   private def debug_pci_device(klass, subclass, progif)
-    return
-    VGA.puts "("
-    klass.to_s VGA, 16
-    VGA.puts ":"
-    subclass.to_s VGA, 16
-    VGA.puts "."
-    progif.to_s VGA, 16
-    VGA.puts ")"
+    #return
+    Serial.puts "("
+    klass.to_s Serial, 16
+    Serial.puts ":"
+    subclass.to_s Serial, 16
+    Serial.puts "."
+    progif.to_s Serial, 16
+    Serial.puts ")"
   end
 
   private def debug(*args)
-    return
-    VGA.puts *args
+    #return
+    Serial.puts *args
   end
 end
 

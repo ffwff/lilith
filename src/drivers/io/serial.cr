@@ -1,6 +1,3 @@
-require "./cpuio.cr"
-require "./output_driver.cr"
-
 private PORT = 0x3F8
 
 private struct SerialImpl < OutputDriver

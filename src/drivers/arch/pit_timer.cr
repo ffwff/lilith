@@ -1,5 +1,3 @@
-require "../arch/idt.cr"
-
 private PIT_TIME = 1193180
 
 struct PitInstance

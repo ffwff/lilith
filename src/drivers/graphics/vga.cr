@@ -1,5 +1,3 @@
-require "./output_driver.cr"
-
 VGA_WIDTH  = 80
 VGA_HEIGHT = 25
 VGA_SIZE   = VGA_WIDTH * VGA_HEIGHT

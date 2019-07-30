@@ -1,5 +1,3 @@
-require "../drivers/serial.cr"
-
 def panic(*args)
   # TODO
   Serial.puts *args

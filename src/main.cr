@@ -1,11 +1,7 @@
 require "./core.cr"
-require "./drivers/serial.cr"
-require "./drivers/vga.cr"
-require "./drivers/pit_timer.cr"
-require "./drivers/keyboard.cr"
-require "./drivers/pci.cr"
-require "./drivers/ide.cr"
-require "./drivers/mbr.cr"
+require "./drivers/core/*"
+require "./drivers/arch/*"
+require "./drivers/**"
 require "./arch/gdt.cr"
 require "./arch/idt.cr"
 require "./arch/paging.cr"
@@ -57,7 +53,7 @@ fun kmain(
   Idt.init_interrupts
   Idt.init_table
 
-  # paging
+  # paging, &block
   VGA.puts "initializing paging...\n"
   PMALLOC_STATE.start = Paging.aligned(kernel_end.address.to_u32)
   PMALLOC_STATE.addr = Paging.aligned(kernel_end.address.to_u32)
@@ -72,22 +68,32 @@ fun kmain(
   LibGc.init data_start.address.to_u32, data_end.address.to_u32, stack_end.address.to_u32
 
   #
-  VGA.puts "checking PCI buses...\n"
-  PCI.check_all_buses
+  ide = nil
 
-  ide = (if PCI.has_ide
-    Ide.new
-  else
-    VGA.puts "no IDE controller detected!"
-    nil
-  end).not_nil!
+  VGA.puts "checking PCI buses...\n"
+  PCI.check_all_buses do |device, vendor_id, device_id|
+    Serial.puts "device: "
+    device.to_s Serial, 16
+    Serial.puts ", vendor_id: "
+    vendor_id.to_s Serial, 16
+    Serial.puts ", device_id: "
+    device_id.to_s Serial, 16
+    Serial.puts "\n"
+    if Ide.pci_device?(vendor_id, device_id)
+      ide = Ide.new
+    elsif BGA.pci_device?(vendor_id, device_id)
+      BGA.init_controller
+    end
+  end
+
+  ide = ide.not_nil!
   ide.init_controller
 
   kbd = Keyboard.new
   ROOTFS.append(KbdFS.new(kbd))
   ROOTFS.append(VGAFS.new)
 
-  mbr = MBR.read_ide(ide.device(0))
+  mbr = MBR.read_ata(ide.device(0))
   main_bin : VFSNode? = nil
   if mbr.header[0] == 0x55 && mbr.header[1] == 0xaa
     VGA.puts "found MBR header...\n"

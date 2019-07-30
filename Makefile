@@ -22,7 +22,8 @@ QEMUFLAGS += \
 	-monitor telnet:127.0.0.1:7777,server,nowait \
 	-m 64M \
 	-serial stdio \
-	-no-shutdown -no-reboot
+	-no-shutdown -no-reboot \
+	-vga std -device VGA
 
 .PHONY: kernel
 all: build/kernel
@@ -53,7 +54,7 @@ rungdb: build/kernel
 
 rungdb_img: build/kernel drive.img
 	qemu-system-i386 -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
-	gdb -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'b breakpoint' -ex 'continue' build/kernel
+	sleep 0.1s && gdb -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'b breakpoint' -ex 'continue' build/kernel
 	-@pkill qemu
 
 rungdb_img_custom: build/kernel drive.img

@@ -1,4 +1,3 @@
-require "../drivers/cpumsr.cr"
 require "./syscall_defs.cr"
 require "./addr_sanitizer.cr"
 require "./argv_builder.cr"
