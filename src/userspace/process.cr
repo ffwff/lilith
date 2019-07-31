@@ -3,8 +3,9 @@ require "./file_descriptor.cr"
 module Multiprocessing
   extend self
 
-  USER_STACK_TOP        = 0xf000_0000u32
-  USER_STACK_SIZE       =    0x800000u32
+  # must be page aligned
+  USER_STACK_TOP        = 0xFFFF_F000u32
+  USER_STACK_SIZE       =   0x80_0000u32 # 8 mb
   USER_STACK_BOTTOM_MAX = USER_STACK_TOP - USER_STACK_SIZE
   USER_STACK_BOTTOM     = 0x8000_0000u32
 

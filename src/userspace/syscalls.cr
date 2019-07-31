@@ -387,7 +387,7 @@ fun ksyscall_handler(frame : SyscallData::Registers)
         # there are no pages allocated for program heap
         Idt.lock do
           pudata.heap_end = Paging.alloc_page_pg(pudata.heap_start, true, true)
-          memset Pointer(UInt8).new(pudata.heap_end.to_u64), 0, 0x1000, 0x1000, false
+          memset Pointer(UInt8).new(pudata.heap_end.to_u64), 0, 0x1000
         end
       end
     elsif incr > 0

@@ -17,7 +17,7 @@ module BGA
 
   @@width = 0u16
   @@height = 0u16
-  @@mem = Pointer(UInt32).null
+  @@mem = Slice(UInt32).new(Pointer(UInt32).null, 0)
 
   def init_controller(bus, device, func)
     X86.outw(INDEX_PORT, 0x0)
@@ -27,7 +27,16 @@ module BGA
     i = X86.inw(DATA_PORT)
     @@width, @@height = set_resolution(640, 480)
 
-    @@mem = Pointer(UInt32).new(PCI.read_field(bus, device, func, PCI::PCI_BAR0, 4).to_u64)
+    ptr = Pointer(UInt32).new(PCI.read_field(bus, device, func, PCI::PCI_BAR0, 4).to_u64)
+    @@mem = Slice(UInt32).new(ptr, @@height.to_i32 * @@width.to_i32)
+    Serial.puts @@mem.size, '\n'
+    @@width.times do |x|
+      @@height.times do |y|
+        # 0x00RRGGBB
+        @@mem[offset x, y] = 0x00FF0000
+      end
+    end
+
   end
 
   def pci_device?(vendor_id, device_id)
@@ -62,6 +71,11 @@ module BGA
     w = X86.inw(DATA_PORT)
 
     Tuple.new(w, h)
+  end
+
+  # color
+  private def offset(x, y)
+    y * @@width + x
   end
 
 end

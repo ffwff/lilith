@@ -28,13 +28,13 @@ struct Pointer(T)
   # pre-pg malloc
   def self.pmalloc(size : Int)
     ptr = new PMALLOC_STATE.alloc(size.to_u32 * sizeof(T)).to_u64
-    memset ptr.as(Void*), 0, size.to_u32
+    memset ptr.as(UInt8*), 0, size.to_u32
     ptr
   end
 
   def self.pmalloc_a
     ptr = new PMALLOC_STATE.alloca(sizeof(T)).to_u64
-    memset ptr.as(Void*), 0, sizeof(T)
+    memset ptr.as(UInt8*), 0, sizeof(T).to_u32
     ptr
   end
 

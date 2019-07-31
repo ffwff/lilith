@@ -7,7 +7,6 @@ require "../arch/paging.cr"
 private MAGIC_POOL_HEADER = 0xC0FEC0FE
 
 private lib Kernel
-  @[Packed]
   struct PoolHeader
     block_buffer_size : UInt32
     next_pool : PoolHeader*
@@ -15,7 +14,6 @@ private lib Kernel
     magic_number : UInt32
   end
 
-  @[Packed]
   struct PoolBlockHeader
     next_free_block : PoolBlockHeader*
   end

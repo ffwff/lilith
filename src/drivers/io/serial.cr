@@ -1,6 +1,6 @@
 private PORT = 0x3F8
 
-private struct SerialImpl < OutputDriver
+private struct SerialInstance < OutputDriver
   def initialize
     X86.outb((PORT + 1).to_u16, 0x00.to_u8) # Disable all interrupts
     X86.outb((PORT + 3).to_u16, 0x80.to_u8) # Enable DLAB (set baud rate divisor)
@@ -25,4 +25,4 @@ private struct SerialImpl < OutputDriver
   end
 end
 
-Serial = SerialImpl.new
+Serial = SerialInstance.new

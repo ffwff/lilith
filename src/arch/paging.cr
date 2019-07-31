@@ -21,6 +21,11 @@ KERNEL_TABLES = USERSPACE_START.unsafe_div(0x400000)
 module Paging
   extend self
 
+  # present, us, rw, global
+  PT_MASK_GLOBAL = 0x107
+  # present, us, rw
+  PT_MASK = 0x7
+
   # NOTE: paging module should not be used after
   # it is set up, any memory allocated in the pmalloc
   # functions is unmapped
@@ -74,7 +79,7 @@ module Paging
     @@kernel_page_dir = @@current_page_dir
 
     # vga
-    alloc_page_init true, false, 0xb8000
+    alloc_page_init false, false, 0xb8000
 
     # text segment
     i = text_start.address.to_u32
@@ -146,7 +151,12 @@ module Paging
         pt_iaddr = claim_frame
         pt_addr = pt_iaddr.to_u32 * 0x1000 + @@frame_base_addr
         memset Pointer(UInt8).new(pt_addr.to_u64), 0, 4096
-        @@current_page_dir.value.tables[table_idx] = pt_addr | 0x7
+        if user
+          pt_addr |= PT_MASK
+        else
+          pt_addr |= PT_MASK_GLOBAL
+        end
+        @@current_page_dir.value.tables[table_idx] = pt_addr
       end
       alloc_page(rw, user, virt_addr, addr)
 
@@ -265,7 +275,13 @@ module Paging
     table_idx = address.unsafe_div(1024).to_i32
     if @@current_page_dir.value.tables[table_idx] == 0
       ptr = Pointer(PageStructs::PageTable).pmalloc_a
-      @@current_page_dir.value.tables[table_idx] = ptr.address.to_u32 | 0x7
+      pt_addr = ptr.address.to_u32
+      if user
+        pt_addr |= PT_MASK
+      else
+        pt_addr |= PT_MASK_GLOBAL
+      end
+      @@current_page_dir.value.tables[table_idx] = pt_addr
     else
       ptr = Pointer(PageStructs::PageTable).new((@@current_page_dir.value.tables[table_idx] & 0xFFFF_F000).to_u64)
     end

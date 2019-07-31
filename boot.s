@@ -53,8 +53,9 @@ _start:
     and $0xFFFB, %ax
     or $0x2, %ax
     mov %eax, %cr0
+    # setup fxsr, xmmexcpt, pge
     mov %cr4, %eax
-    or $0x600, %ax
+    or $0x680, %ax
     mov %eax, %cr4
     # run the function
     call kmain
