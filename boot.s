@@ -40,14 +40,6 @@ _start:
     mov $stack_top, %esp # set stack pointer
     push %ebx            # multiboot header location
     push %eax            # multiboot magic value
-    push $stack_bottom
-    push $stack_top
-    push $_DATA_END
-    push $_DATA_START
-    push $_TEXT_END
-    push $_TEXT_START
-    push $_KERNEL_END
-    push $fxsave_region
     # setup sse
     mov %cr0, %eax
     and $0xFFFB, %ax
@@ -278,7 +270,15 @@ kidle_loop:
     hlt
     jmp kidle_loop
 
+# -- data
 .section .data
+.global fxsave_region
+.global stack_start
+.global stack_end
+stack_start:
+    .long stack_bottom
+stack_end:
+    .long stack_top
 .align 16
 fxsave_region:
 .skip 512

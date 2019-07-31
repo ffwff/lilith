@@ -17,28 +17,27 @@ require "./userspace/mmap_list.cr"
 lib Kernel
   fun ksyscall_setup
   fun kidle_loop
+
+  $fxsave_region : UInt8*
+  $kernel_end : Void*
+  $text_start : Void*; $text_end : Void*
+  $data_start : Void*; $data_end : Void*
+  $stack_start : Void*; $stack_end : Void*
 end
 
 #
 ROOTFS = RootFS.new
 
-fun kmain(
-  fxsave_region : UInt8*,
-  kernel_end : Void*,
-  text_start : Void*, text_end : Void*,
-  data_start : Void*, data_end : Void*,
-  stack_end : Void*, stack_start : Void*,
-  mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*
-)
+fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   if mboot_magic != MULTIBOOT_BOOTLOADER_MAGIC
     panic "Kernel should be booted from a multiboot bootloader!"
   end
 
-  Multiprocessing.fxsave_region = fxsave_region
+  Multiprocessing.fxsave_region = Kernel.fxsave_region
 
   # setup memory management
   VGA.puts "Booting lilith...\n"
-  KERNEL_ARENA.start_addr = stack_end.address.to_u32 + 0x1000
+  KERNEL_ARENA.start_addr = Kernel.stack_end.address.to_u32 + 0x1000
 
   VGA.puts "initializing gdtr...\n"
   Gdt.init_table
@@ -53,17 +52,19 @@ fun kmain(
 
   # paging, &block
   VGA.puts "initializing paging...\n"
-  PMALLOC_STATE.start = Paging.aligned(kernel_end.address.to_u32)
-  PMALLOC_STATE.addr = Paging.aligned(kernel_end.address.to_u32)
-  Paging.init_table(text_start, text_end,
-    data_start, data_end,
-    stack_start, stack_end,
-    mboot_header)
+  PMALLOC_STATE.start = Paging.aligned(Kernel.kernel_end.address.to_u32)
+  PMALLOC_STATE.addr = Paging.aligned(Kernel.kernel_end.address.to_u32)
+  Paging.init_table(Kernel.text_start, Kernel.text_end,
+                Kernel.data_start, Kernel.data_end,
+                Kernel.stack_start, Kernel.stack_end,
+                mboot_header)
   VGA.puts "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
 
   #
   VGA.puts "initializing kernel garbage collector...\n"
-  LibGc.init data_start.address.to_u32, data_end.address.to_u32, stack_end.address.to_u32
+  LibGc.init Kernel.data_start.address.to_u32,
+        Kernel.data_end.address.to_u32,
+        Kernel.stack_end.address.to_u32
 
   #
   ide = nil

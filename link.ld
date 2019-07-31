@@ -18,6 +18,12 @@ SECTIONS
     .data BLOCK(4K) : ALIGN(4K)
     {
         *(.data)
+
+        text_start = .; LONG(_TEXT_START)
+        text_end = .;   LONG(_TEXT_END)
+        data_start = .; LONG(_DATA_START)
+        data_end = .;   LONG(_DATA_END)
+        kernel_end = .; LONG(_KERNEL_END)
     }
     .bss BLOCK(4K) : ALIGN(4K)
     {
