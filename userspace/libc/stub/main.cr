@@ -1,12 +1,4 @@
-require "./functions/pdclib.cr"
-require "./functions/string.cr"
-require "./functions/malloc.cr"
-
-# architecture specific
-require "./functions/syscalls.cr"
-require "./functions/signal.cr"
-require "./functions/threads.cr"
-require "./functions/dirent.cr"
+require "./functions/*"
 
 lib LibC
   fun main(argc : Int32, argv : UInt8**) : Int32

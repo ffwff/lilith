@@ -1,4 +1,4 @@
-lib LibIntrinsics
+lib Intrinsics
   fun ceil_f64 = "llvm.ceil.f64"(value : Float64) : Float64
   fun floor_f64 = "llvm.floor.f64"(value : Float64) : Float64
   fun pow_f64 = "llvm.pow.f64"(value : Float64, power : Float64) : Float64
@@ -6,19 +6,19 @@ lib LibIntrinsics
 end
 
 fun floor(arg : Float64) : Float64
-  LibIntrinsics.floor_f64 arg
+  Intrinsics.floor_f64 arg
 end
 
 fun ceil(arg : Float64) : Float64
-  LibIntrinsics.ceil_f64 arg
+  Intrinsics.ceil_f64 arg
 end
 
 fun round(arg : Float64) : Float64
-  LibIntrinsics.round_f64 arg
+  Intrinsics.round_f64 arg
 end
 
 fun pow(arg : Float64, exp : Float64) : Float64
-  LibIntrinsics.pow_f64 arg, exp
+  Intrinsics.pow_f64 arg, exp
 end
 
 @[Naked]
