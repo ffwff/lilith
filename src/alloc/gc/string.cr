@@ -1,5 +1,4 @@
 # TODO: replace with String
-require "../alloc/gc.cr"
 
 class GcString
   getter size
@@ -8,44 +7,44 @@ class GcString
 
   def initialize(buffer, @size : Int32)
     @capacity = @size.nearest_power_of_2
-    @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
+    @buffer = Pointer(UInt8).malloc(@capacity.to_u32)
     @size.times do |i|
-      @buffer.ptr[i] = buffer[i]
+      @buffer[i] = buffer[i]
     end
   end
 
   def initialize(@size : Int32)
     @capacity = @size.nearest_power_of_2
-    @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
+    @buffer = Pointer(UInt8).malloc(@capacity.to_u32)
     @size.times do |i|
-      @buffer.ptr[i] = 0u8
+      @buffer[i] = 0u8
     end
   end
 
   def initialize(buffer)
     @size = buffer.size
     @capacity = @size.nearest_power_of_2
-    @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
+    @buffer = Pointer(UInt8).malloc(@capacity.to_u32)
     @size.times do |i|
-      @buffer.ptr[i] = buffer[i]
+      @buffer[i] = buffer[i]
     end
   end
 
   # methods
   def []=(k : Int, value : UInt8)
     panic "cstring: out of range" if k > size || k < 0
-    @buffer.ptr[k] = value
+    @buffer[k] = value
   end
 
   def [](k : Int) : UInt8
     panic "cstring: out of range" if k > size || k < 0
-    @buffer.ptr[k]
+    @buffer[k]
   end
 
   def ==(other)
     return false if size != other.size
     @size.times do |i|
-      return false if @buffer.ptr[i] != other[i]
+      return false if @buffer[i] != other[i]
     end
     true
   end
@@ -53,7 +52,7 @@ class GcString
   #
   def each(&block)
     @size.times do |i|
-      yield @buffer.ptr[i]
+      yield @buffer[i]
     end
   end
 
@@ -67,8 +66,8 @@ class GcString
   private def expand
     @capacity *= 2
     old_buffer = @buffer
-    @buffer = GcPointer(UInt8).malloc(@capacity.to_u32)
-    memcpy(@buffer.ptr, old_buffer.ptr, @size.to_u32)
+    @buffer = Pointer(UInt8).malloc(@capacity.to_u32)
+    memcpy(@buffer, old_buffer, @size.to_u32)
   end
 
   def resize(size : Int32)
@@ -87,7 +86,7 @@ class GcString
         @size += 1
       end
     end
-    @buffer.ptr[idx] = ch
+    @buffer[idx] = ch
   end
 
   def append(ch : UInt8)
@@ -102,6 +101,6 @@ class GcString
 
   # cloning
   def clone
-    GcString.new(@buffer.ptr, @size)
+    GcString.new(@buffer, @size)
   end
 end

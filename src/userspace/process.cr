@@ -146,9 +146,9 @@ module Multiprocessing
     def initialize(@udata : UserData?, save_fx = true, &on_setup_paging : Process -> _)
       # user mode specific
       if save_fx
-        @fxsave_region = GcPointer(UInt8).malloc(512)
+        @fxsave_region = Pointer(UInt8).malloc(512)
       else
-        @fxsave_region = GcPointer(UInt8).null
+        @fxsave_region = Pointer(UInt8).null
       end
 
       Multiprocessing.n_process += 1
@@ -353,8 +353,8 @@ module Multiprocessing
       # save current process' state
       current_process = Multiprocessing.current_process.not_nil!
       current_process.frame = {{ frame }}
-      if !current_process.fxsave_region.ptr.null?
-        memcpy current_process.fxsave_region.ptr, Multiprocessing.fxsave_region, 512
+      if !current_process.fxsave_region.null?
+        memcpy current_process.fxsave_region, Multiprocessing.fxsave_region, 512
       end
       # load process's state
       next_process = Multiprocessing.next_process.not_nil!
@@ -399,8 +399,8 @@ module Multiprocessing
         {{ frame }}.{{ id.id }} = process_frame.{{ id.id }}
       {% end %}
     {% end %}
-    if !next_process.fxsave_region.ptr.null?
-      memcpy Multiprocessing.fxsave_region, next_process.fxsave_region.ptr, 512
+    if !next_process.fxsave_region.null?
+      memcpy Multiprocessing.fxsave_region, next_process.fxsave_region, 512
     end
 
     {% if frame == nil %}

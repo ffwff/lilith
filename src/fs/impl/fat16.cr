@@ -127,7 +127,7 @@ class Fat16Node < VFSNode
     end
 
     # setup
-    fat_table = Slice(UInt16).new fs.fat_sector_size
+    fat_table = Slice(UInt16).mmalloc fs.fat_sector_size
     fat_sector = read_fat_table fat_table, starting_cluster
 
     cluster = starting_cluster
@@ -179,7 +179,7 @@ class Fat16Node < VFSNode
     end
 
     # cleanup
-    fat_table.free
+    fat_table.mfree
   end
 
   #

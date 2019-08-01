@@ -40,10 +40,14 @@ struct Pointer(T)
 
   # pg malloc
   def self.malloc(size)
+    LibGc.unsafe_malloc(size.to_u32 * sizeof(T), true).as(T*)
+  end
+  
+  def self.mmalloc(size)
     new KERNEL_ARENA.malloc(size.to_u32 * sizeof(T)).to_u64
   end
 
-  def free
+  def mfree
     KERNEL_ARENA.free(self.address.to_u32)
   end
 

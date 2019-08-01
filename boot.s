@@ -78,7 +78,7 @@ kload_idt:
 kirq_stub:
 .macro interrupt_start
     # save sse state
-    fxsave (fxsave_region)
+    fxsave (fxsave_region_asm)
     # registers
     pusha
     # save data segment descriptor
@@ -105,7 +105,7 @@ kirq_stub:
     popa
     add $4, %esp
     # reload sse state
-    fxrstor (fxsave_region)
+    fxrstor (fxsave_region_asm)
     iret
 # irq
 .macro kirq_handler_label number
@@ -135,7 +135,7 @@ kcpuex_stub:
     popa
     add $8, %esp
     # reload sse state
-    fxrstor (fxsave_region)
+    fxrstor (fxsave_region_asm)
     iret
 
 .macro kcpuex_handler_err number
@@ -234,7 +234,7 @@ ksyscall_stub:
     mov %di, %fs
     mov %di, %gs
     # save sse state
-    fxsave (fxsave_region)
+    fxsave (fxsave_region_asm)
     # call the handler
     pusha
     cld
@@ -242,7 +242,7 @@ ksyscall_stub:
     popa
     add $4, %esp
     # load sse state
-    fxrstor (fxsave_region)
+    fxrstor (fxsave_region_asm)
     # segment selectors
     mov $USER_DATA_SELECTOR, %di
     mov %di, %ds
@@ -262,7 +262,7 @@ kcpuint_end:
     popa
     add $4, %esp
     # reload sse state
-    fxrstor (fxsave_region)
+    fxrstor (fxsave_region_asm)
     iret
 # misc
 .global kidle_loop
@@ -275,12 +275,14 @@ kidle_loop:
 .global fxsave_region
 .global stack_start
 .global stack_end
+fxsave_region:
+    .long fxsave_region_asm
 stack_start:
     .long stack_bottom
 stack_end:
     .long stack_top
 .align 16
-fxsave_region:
+fxsave_region_asm:
 .skip 512
 
 # -- stack
