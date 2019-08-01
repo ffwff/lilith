@@ -176,7 +176,7 @@ private CMD_PORT_PRIMARY    = 0x3F6u16
 private DISK_PORT_SECONDARY = 0x170u16
 private CMD_PORT_SECONDARY  = 0x3F4u16
 
-class AtaDevice < Gc
+class AtaDevice
   def disk_port
     @primary ? DISK_PORT_PRIMARY : DISK_PORT_SECONDARY
   end
@@ -265,7 +265,7 @@ class AtaDevice < Gc
   end
 end
 
-class Ide < Gc
+class Ide
   def device(idx)
     @devices.not_nil![idx].not_nil!
   end

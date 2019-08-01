@@ -2,7 +2,7 @@ require "./async.cr"
 
 PATH_MAX = 4096
 
-abstract class VFSNode < Gc
+abstract class VFSNode
   enum Buffering
     Unbuffered
     LineBuffered
@@ -24,7 +24,7 @@ abstract class VFSNode < Gc
   abstract def read_queue : VFSReadQueue?
 end
 
-abstract class VFS < Gc
+abstract class VFS
   abstract def name : GcString
 
   abstract def next_node : VFS?
@@ -33,7 +33,7 @@ abstract class VFS < Gc
   abstract def root : VFSNode
 end
 
-class RootFS < Gc
+class RootFS
   @vfs_node : VFS? = nil
 
   def initialize

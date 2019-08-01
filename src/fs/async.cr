@@ -1,4 +1,4 @@
-class VFSReadMessage < Gc
+class VFSReadMessage
   @next_msg : VFSReadMessage? = nil
   property next_msg
 
@@ -20,7 +20,7 @@ class VFSReadMessage < Gc
   end
 end
 
-class VFSReadQueue < Gc
+class VFSReadQueue
   @first_msg : VFSReadMessage? = nil
   @last_msg : VFSReadMessage? = nil
 

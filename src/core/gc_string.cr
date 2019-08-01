@@ -1,6 +1,7 @@
+# TODO: replace with String
 require "../alloc/gc.cr"
 
-class GcString < Gc
+class GcString
   getter size
   @capacity : Int32 = 0
   getter capacity

@@ -1,4 +1,4 @@
-class MemMapNode < Gc
+class MemMapNode
   @file_offset = 0u32
   property file_offset
   @filesz = 0u32

@@ -13,7 +13,6 @@ struct GcPointer(T)
   end
 
   def self.malloc(size)
-    {% raise "must not be garbage collected type" if T < Gc %}
     new LibGc.unsafe_malloc(size.to_u32 * sizeof(T), true).as(Pointer(T))
   end
 end

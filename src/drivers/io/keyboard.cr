@@ -48,7 +48,7 @@ KEYBOARD_MAP_SHIFT = StaticArray[
   'M', '<', '>', '?',
 ]
 
-class Keyboard < Gc
+class Keyboard
   @[Flags]
   enum Modifiers
     None   = 0x0

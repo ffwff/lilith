@@ -1,7 +1,7 @@
 GC_ARRAY_HEADER_TYPE = 0xFFFF_FFFFu32
 GC_ARRAY_HEADER_SIZE =              8
 
-class GcArray(T) < Gc
+class GcArray(T)
   GC_GENERIC_TYPES = [
     GcArray(MemMapNode),
     GcArray(FileDescriptor),

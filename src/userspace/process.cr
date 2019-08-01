@@ -34,7 +34,7 @@ module Multiprocessing
 
   def fxsave_region=(@@fxsave_region); end
 
-  class Process < Gc
+  class Process
     @pid = 0
     getter pid
 
@@ -76,7 +76,7 @@ module Multiprocessing
     property status
 
     # user-mode process data
-    class UserData < Gc
+    class UserData
       # wait process
       # TODO: this should be a weak pointer once it's implemented
       @pwait : Process? = nil

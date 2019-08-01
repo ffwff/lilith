@@ -1,6 +1,10 @@
 require "./alloc.cr"
-require "./gc/def.cr"
 require "./gc/*"
+
+lib LibCrystal
+  fun type_offsets="__crystal_malloc_type_offsets"(type_id : UInt32) : UInt32
+  fun type_size="__crystal_malloc_type_size"(type_id : UInt32) : UInt32
+end
 
 fun __crystal_malloc64(size : UInt64) : Void*
   LibGc.unsafe_malloc size.to_u32
@@ -32,79 +36,13 @@ end
 module LibGc
   extend self
 
-  TYPE_ID_SIZE = sizeof(UInt32)
   @@first_white_node = Pointer(Kernel::GcNode).null
   @@first_gray_node = Pointer(Kernel::GcNode).null
   @@first_black_node = Pointer(Kernel::GcNode).null
   @@enabled = false
   @@root_scanned = false
 
-  struct TypeInfo
-    def initialize(@offsets : UInt32, @size : UInt32); end
-
-    def offsets
-      @offsets
-    end
-
-    def size
-      @size
-    end
-
-    def to_s(io)
-      io.puts "<", offsets, ",", size, ">"
-    end
-  end
-
   def init(@@data_start : UInt32, @@data_end : UInt32, @@stack_end : UInt32)
-    @@type_info = BTree(UInt32, TypeInfo).new
-    type_info = @@type_info.not_nil!
-    offsets : UInt32 = 0
-    n_classes = 0
-    {% for klass in Gc.all_subclasses %}
-      {% if !klass.abstract? %}
-        offsets = 0
-        # set zero offset if any of the field isn't 32-bit aligned
-        zero_offset = false
-        {% # HACK: crystal doesn't provide us with a list of type variables derived generic types:
-        # i.e. GcArray(UInt32), GcArray(Void), etc...
-        # so the user will have to provide it to us in the GC_GENERIC_TYPES constant
-
-        type_names = [klass]
-        if !klass.type_vars.empty?
-          if klass.type_vars.all? { |i| i.class_name == "MacroId" }
-            type_names = klass.constant("GC_GENERIC_TYPES")
-          else
-            type_names = [] of TypeNode
-          end
-        end
-        %}
-        {% for type_name in type_names %}
-          {% for ivar in klass.instance_vars %}
-            {% if ivar.type < Gc || ivar.type < GcPointer ||
-                    (ivar.type.union? && ivar.type.union_types.any? { |x| x < Gc }) %}
-              if offsetof({{ type_name }}, @{{ ivar }}).unsafe_mod(4) == 0
-                field_offset = offsetof({{ type_name }}, @{{ ivar }}).unsafe_div(4)
-                debug "{{ ivar.type }}: ", offsetof({{ type_name }}, @{{ ivar }}), " ", "{{ ivar.type }}", " ", sizeof({{ ivar.type }}), "\n"
-                panic "struct pointer outside of 32-bit range!" if field_offset > 32
-                offsets |= 1.unsafe_shl(field_offset)
-              else
-                zero_offset = true
-              end
-            {% end %}
-          {% end %}
-          type_id = {{ type_name }}.crystal_instance_type_id.to_u32
-          debug "{{ type_name }} id: ", type_id, ", ", offsets, "\n"
-          value = if zero_offset
-              TypeInfo.new(0, instance_sizeof({{ type_name }}).to_u32)
-          else
-              TypeInfo.new(offsets, instance_sizeof({{ type_name }}).to_u32)
-          end
-          n_classes += 1
-          type_info.insert(type_id, value)
-        {% end %}
-      {% end %}
-    {% end %}
-    type_info.balance n_classes
     @@enabled = true
   end
 
@@ -191,7 +129,6 @@ module LibGc
       @@root_scanned = true
     elsif !@@first_gray_node.null?
       # second stage of marking phase: precisely marking gray nodes
-      type_info = @@type_info.not_nil!
       # new_first_gray_node = Pointer(Kernel::GcNode).null
 
       fix_white = false
@@ -211,13 +148,14 @@ module LibGc
 
         node.value.magic = GC_NODE_MAGIC_BLACK
 
-        buffer_addr = node.address.to_u64 + sizeof(Kernel::GcNode) + TYPE_ID_SIZE
+        buffer_addr = node.address.to_u64 + sizeof(Kernel::GcNode) + sizeof(Void*)
+        header_ptr = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode))
         # get its type id
-        type_id = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode))[0]
+        type_id = header_ptr[0]
         debug "type: ", type_id, "\n"
         # handle gc array
         if type_id == GC_ARRAY_HEADER_TYPE
-          len = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode))[1]
+          len = header_ptr[1]
           i = 0
           start = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode) + GC_ARRAY_HEADER_SIZE)
           while i < len
@@ -243,14 +181,11 @@ module LibGc
           next
         end
         # lookup its offsets
-        if (info = type_info.search(type_id)).nil?
-          panic "Gc: unknown type_id ", type_id, '\n'
-        end
-        info = info.not_nil!
-        offsets, size = info.offsets, info.size
+        offsets = LibCrystal.type_offsets type_id
         if offsets == 0
           # there is no offset found for this type, yet it's not atomic
           # then conservatively scan the region
+          size = LibCrystal.type_size type_id
           buffer_end = buffer_addr + size
           if scan_region buffer_addr, buffer_end, false
             fix_white = true
@@ -326,7 +261,7 @@ module LibGc
         node = @@first_white_node
         while !node.null?
           panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
-          # Serial.puts "free ", node, " ", (node.as(UInt8*)+8) ," ", (node.as(UInt8*)+8).as(UInt32*)[0], "\n"
+          debug "free ", node, " ", (node.as(UInt8*)+8) ," ", (node.as(UInt8*)+8).as(UInt32*)[0], "\n"
           next_node = node.value.next_node
           KERNEL_ARENA.free node.address.to_u32
           node = next_node
@@ -375,10 +310,8 @@ module LibGc
     while !node.null?
       body = node.as(UInt32*) + 2
       type_id = (node + 1).as(UInt32*)[0]
-      if type_id == 27
-        io.puts body, " (", type_id, ")"
-        io.puts ", " if !node.value.next_node.null?
-      end
+      io.puts body, " (", type_id, ")"
+      io.puts ", " if !node.value.next_node.null?
       node = node.value.next_node
     end
   end
@@ -409,13 +342,13 @@ module LibGc
     if node?
       pbody = parent.as(UInt32*) + 2
       ptype_id = (parent + 1).as(UInt32*)[0]
-      if ctype_id == 27
+      #if ctype_id == GC_ARRAY_HEADER_TYPE
         Serial.puts "mark ", parent, " (", ptype_id, "): ", child, '\n'
-      end
+      #end
     else
-      if ctype_id == 27
+      #if ctype_id == GC_ARRAY_HEADER_TYPE
         Serial.puts "mark ", parent, ": ", child, '\n'
-      end
+      #end
     end
   end
 end

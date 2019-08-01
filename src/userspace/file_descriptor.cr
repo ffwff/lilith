@@ -1,4 +1,4 @@
-class FileDescriptor < Gc
+class FileDescriptor
   @node : VFSNode? = nil
   getter node
 
