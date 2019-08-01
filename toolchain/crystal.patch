@@ -12,19 +12,28 @@ index c901d9b37..a8766b586 100755
    exec "$CRYSTAL_DIR/crystal" "$@"
  elif ! command -v crystal > /dev/null; then
 diff --git a/src/compiler/crystal/codegen/codegen.cr b/src/compiler/crystal/codegen/codegen.cr
-index a1d792d57..a35d0d724 100644
+index a1d792d57..8616ab39f 100644
 --- a/src/compiler/crystal/codegen/codegen.cr
 +++ b/src/compiler/crystal/codegen/codegen.cr
-@@ -153,6 +153,8 @@ module Crystal
+@@ -152,6 +152,9 @@ module Crystal
+     @main_module_info : ModuleInfo
      @main_builder : CrystalLLVMBuilder
      @call_location : Location?
- 
-+    @generate_freestanding = false
++    @malloc_types : Set(Type)
 +
++    @generate_freestanding = false
+ 
      def initialize(@program : Program, @node : ASTNode, single_module = false, @debug = Debug::Default)
        @single_module = !!single_module
-       @abi = @program.target_machine.abi
-@@ -233,7 +235,8 @@ module Crystal
+@@ -167,6 +170,7 @@ module Crystal
+       @main_ret_type = node.type? || @program.nil_type
+       ret_type = @llvm_typer.llvm_return_type(@main_ret_type)
+       @main = @llvm_mod.functions.add(MAIN_NAME, [llvm_context.int32, llvm_context.void_pointer.pointer], ret_type)
++      @malloc_types = Set(Type).new
+ 
+       if @program.has_flag? "windows"
+         @personality_name = "__CxxFrameHandler3"
+@@ -233,7 +237,8 @@ module Crystal
        # to avoid some memory being allocated with plain malloc.
        codgen_well_known_functions @node
  
@@ -34,7 +43,7 @@ index a1d792d57..a35d0d724 100644
  
        initialize_simple_class_vars_and_constants
  
-@@ -263,14 +266,18 @@ module Crystal
+@@ -263,14 +268,18 @@ module Crystal
            next if initializer.compile_time_value
            next unless initializer.simple?
  
@@ -55,7 +64,59 @@ index a1d792d57..a35d0d724 100644
          end
        end
      end
-@@ -929,7 +936,9 @@ module Crystal
+@@ -342,6 +351,51 @@ module Crystal
+         codegen_fun node.real_name, node.external, @program, is_exported_fun: true
+       end
+ 
++      # generate malloc types
++      puts @malloc_types
++      in_main do
++        define_main_function("__crystal_malloc_typeinfo", ([llvm_context.int32]), llvm_context.int32, needs_alloca: true) do |func|
++          with_cloned_context do
++            arg = func.params[0]
++
++            current_block = insert_block
++
++            cases = {} of LLVM::Value => LLVM::BasicBlock
++            @malloc_types.each do |type|
++              block = new_block type.to_s
++
++              offsets = 0
++              unless type.packed?
++                ivars = type.all_instance_vars
++                struct_type = llvm_struct_type(type)
++                # puts type
++                ivars.each_with_index do |(name, ivar), idx|
++                  if ivar.type.has_inner_pointers?
++                    offset = @program.instance_offset_of(type.sizeof_type, idx) / sizeof(Void*)
++                    offsets |= 1 << offset.to_i32
++                    # puts " + #{name}, #{ivar.type}"
++                  else
++                    # puts " - #{name}, #{ivar.type}"
++                  end
++                end
++              end
++
++              position_at_end block
++              ret arg.type.const_int(offsets)
++
++              cases[type_id(type)] = block
++            end
++
++            otherwise = new_block "otherwise"
++            position_at_end otherwise
++            ret arg.type.const_int(0)
++
++            position_at_end current_block
++            builder.switch arg, otherwise, cases
++          end
++        end
++      end
++
+       env_dump = ENV["DUMP"]?
+       case env_dump
+       when Nil
+@@ -929,7 +983,9 @@ module Crystal
      def codegen_assign(target : Path, value, node)
        const = target.target_const.not_nil!
        if const.used? && !const.simple? && !const.compile_time_value
@@ -66,7 +127,7 @@ index a1d792d57..a35d0d724 100644
        end
        @last = llvm_nil
        false
-@@ -943,7 +952,9 @@ module Crystal
+@@ -943,7 +999,9 @@ module Crystal
        unless target_type
          if target.is_a?(ClassVar)
            # This is the case of a class var initializer
@@ -77,7 +138,7 @@ index a1d792d57..a35d0d724 100644
          end
          return false
        end
-@@ -1103,7 +1114,9 @@ module Crystal
+@@ -1103,7 +1161,9 @@ module Crystal
          end
        when ClassVar
          # This is the case of a class var initializer
@@ -88,6 +149,15 @@ index a1d792d57..a35d0d724 100644
        end
  
        @last = llvm_nil
+@@ -1820,6 +1880,8 @@ module Crystal
+       else
+         if type.is_a?(InstanceVarContainer) && !type.struct? &&
+            type.all_instance_vars.each_value.any? &.type.has_inner_pointers?
++          # TODO: me
++          @malloc_types << type
+           @last = malloc struct_type
+         else
+           @last = malloc_atomic struct_type
 diff --git a/src/compiler/crystal/compiler.cr b/src/compiler/crystal/compiler.cr
 index 3853d8962..046048dc8 100644
 --- a/src/compiler/crystal/compiler.cr
