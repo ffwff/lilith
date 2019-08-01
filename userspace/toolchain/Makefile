@@ -1,5 +1,7 @@
 NPROC=$(shell nproc)
 
+all: build_binutils build_gcc build_libc
+
 binutils:
 	git clone https://github.com/bminor/binutils-gdb binutils
 	cd binutils && \

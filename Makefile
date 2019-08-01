@@ -1,7 +1,6 @@
 ARCH=i686-elf
 AS=$(ARCH)-as
 LD=$(ARCH)-ld
-CC=clang
 LIBGCC=$(shell $(ARCH)-gcc -print-libgcc-file-name)
 LDFLAGS=-m elf_i386 -T link.ld
 CR=toolchain/crystal/.build/crystal

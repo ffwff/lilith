@@ -12,7 +12,7 @@ index c901d9b37..a8766b586 100755
    exec "$CRYSTAL_DIR/crystal" "$@"
  elif ! command -v crystal > /dev/null; then
 diff --git a/src/compiler/crystal/codegen/codegen.cr b/src/compiler/crystal/codegen/codegen.cr
-index a1d792d57..fd1354f1d 100644
+index a1d792d57..2272fb59b 100644
 --- a/src/compiler/crystal/codegen/codegen.cr
 +++ b/src/compiler/crystal/codegen/codegen.cr
 @@ -13,6 +13,8 @@ module Crystal
@@ -115,19 +115,19 @@ index a1d792d57..fd1354f1d 100644
 +              unless type.packed?
 +                ivars = type.all_instance_vars
 +                struct_type = llvm_struct_type(type)
-+                puts "#{type} (#{type_id(type)})"
++                # puts "#{type} (#{type_id(type)})"
 +                ivars.each_with_index do |(name, ivar), idx|
 +                  if ivar.type.has_inner_pointers?
 +                    offset = @program.instance_offset_of(type.sizeof_type, idx)
 +                    bit = offset / (@program.codegen_target.pointer_bit_width / 8)
 +                    offsets[bit] = true
-+                    puts " + #{name}, #{ivar.type}, #{offset}"
++                    # puts " + #{name}, #{ivar.type}, #{offset}"
 +                  else
-+                    puts " - #{name}, #{ivar.type}"
++                    # puts " - #{name}, #{ivar.type}"
 +                  end
 +                end
 +              end
-+              puts "offsets: #{offsets}"
++              # puts "offsets: #{offsets}"
 +
 +              position_at_end block
 +              ret arg.type.const_int(offsets.to_slice.to_unsafe.as(UInt32*).value)
