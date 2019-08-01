@@ -32,6 +32,10 @@ make run
 
 To run with storage, an MBR-formatted hard drive image with a FAT16 partition must be provided in the running directory with the name `drive.img`. The kernel will automatically boot the `main.bin` executable on the hard drive, or panic if it can't be loaded.
 
+```
+make run_img
+```
+
 ## Features
 
 * [x] Basic x86 support with paging/interrupts
