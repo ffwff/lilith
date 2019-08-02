@@ -9,3 +9,7 @@ fun _start(argc : Int32, argv : UInt8**)
   LibC.main argc, argv
   _exit
 end
+
+fun exit(status : Int32)
+  _exit
+end

@@ -11,7 +11,7 @@ CC = $(ARCH)-gcc
 AS = $(ARCH)-as
 CR=$(shell pwd)/../../toolchain/crystal/.build/crystal
 CRFLAGS=--cross-compile --target i686-elf --prelude ./prelude.cr
-CCFLAGS = -Isrc/include -nostdlib
+CCFLAGS = -Isrc/include -nostdlib -Wall
 
 ifeq ($(RELEASE),1)
 CRFLAGS += --release

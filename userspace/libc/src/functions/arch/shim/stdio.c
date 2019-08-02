@@ -5,32 +5,39 @@
 void *stdin, *stdout, *stderr;
 
 extern int nputs(const char *data, size_t length);
-extern int putchar(int data);
-extern int putint(int data);
+typedef int (*nputs_fn_t)(const char *data, size_t length, void *userptr);
 
-int printf(const char* restrict format, ...) {
-    va_list args;
-    va_start(args, format);
-
+static int __printf(nputs_fn_t nputs_fn, void *userptr,
+                    const char *restrict format, va_list args) {
     int written = 0;
+    int retval;
 
     while (*format != 0) {
         if (*format == '%') {
-            *format++;
+            format++;
             switch (*format) {
+                case 0:
+                    return written;
                 case 'c': {
-                    *format++;
-                    written += putchar(va_arg(args, int));
+                    format++;
+                    char ch = (char)va_arg(args, int);
+                    if (!(retval = nputs_fn(&ch, 1, userptr)))
+                        return written;
+                    written += retval;
                     break;
                 }
                 case 's': {
-                    *format++;
-                    const char *str = va_arg(args, const char*);
-                    written += nputs(str, strlen(str));
+                    format++;
+                    const char *str = va_arg(args, const char *);
+                    if (!(retval = nputs_fn(str, strlen(str), userptr)))
+                        return written;
+                    written += retval;
                     break;
                 }
                 default: {
-                    written += putchar('%');
+                    if (!(retval = nputs_fn(format - 1, 1, userptr)))
+                        return written;
+                    written += retval;
                     break;
                 }
             }
@@ -45,9 +52,74 @@ int printf(const char* restrict format, ...) {
             amount++;
             format++;
         }
-        written += nputs(format_start, amount);
+        if (!(retval = nputs_fn(format_start, amount, userptr)))
+            return written;
+        written += retval;
     }
 
-    va_end(args);
     return written;
+}
+
+// regular printf
+static int printf_nputs(const char *data, size_t length, void *userptr) {
+    return nputs(data, length);
+}
+
+int printf(const char *restrict format, ...) {
+    va_list args;
+    va_start(args, format);
+    int ret = __printf(printf_nputs, 0, format, args);
+    va_end(args);
+
+    return ret;
+}
+
+// string
+struct sprintf_slice {
+    char *str;
+    size_t remaining;
+};
+
+static int sprintf_nputs(const char *data, size_t length, void *userptr) {
+    struct sprintf_slice *slice = (struct sprintf_slice *)userptr;
+    if(slice->remaining > 0) {
+        size_t copy_sz = 0;
+        if (length > slice->remaining) {
+            copy_sz = slice->remaining;
+        } else {
+            copy_sz = length;
+        }
+        strncpy(slice->str, data, copy_sz);
+        slice->remaining -= copy_sz;
+        slice->str += copy_sz + 1; // skip nul
+        return copy_sz;
+    } else {
+        return 0;
+    }
+}
+
+int sprintf(char *str, const char *restrict format, ...) {
+    va_list args;
+    va_start(args, format);
+    struct sprintf_slice slice = {
+        .str = str,
+        .remaining = INT_MAX,
+    };
+    int ret = __printf(sprintf_nputs, &slice, format, args);
+    va_end(args);
+
+    return ret;
+}
+
+int snprintf(char *str, size_t size, const char *restrict format, ...) {
+    va_list args;
+    va_start(args, format);
+    struct sprintf_slice slice = {
+        .str = str,
+        .remaining = size,
+    };
+    int ret = __printf(sprintf_nputs, &slice, format, args);
+    va_end(args);
+
+    return ret;
 }

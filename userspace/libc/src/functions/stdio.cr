@@ -7,7 +7,7 @@ struct FILE
     0
   end
 
-  def gets(str, size)
+  def fgets(str, size)
     idx = read @fd, str, size
     if idx == SYSCALL_ERR
       # TODO
@@ -16,7 +16,16 @@ struct FILE
     str[idx] = 0u8
   end
 
-  def puts(str)
+  def fputs(str)
+  end
+
+  # rw
+  def fread(ptr, size)
+    read(@fd, ptr.as(LibC::String), size.to_i32).to_u32
+  end
+
+  def fwrite(ptr, size)
+    write(@fd, ptr.as(LibC::String), size.to_i32).to_u32
   end
 
 end
@@ -68,20 +77,20 @@ fun ftell(stream : Void*) : Int32
 end
 
 fun fread(ptr : UInt8*, size : LibC::SizeT, nmemb : LibC::SizeT, stream : Void*) : LibC::SizeT
-  0u32
+  stream.as(FILE*).value.fread ptr, size * nmemb
 end
 
 fun fwrite(ptr : UInt8*, size : LibC::SizeT, nmemb : LibC::SizeT, stream : Void*) : LibC::SizeT
-  0u32
+  stream.as(FILE*).value.fwrite ptr, size * nmemb
 end
 
 fun fgets(str : LibC::String, size : Int32, stream : Void*) : LibC::String
-  stream.as(FILE*).value.gets str, size
+  stream.as(FILE*).value.fgets str, size
   str
 end
 
 fun fputs(str : LibC::String, stream : Void*) : Int32
-  0
+  stream.as(FILE*).value.fwrite(str, strlen(str)).to_i32
 end
 
 # prints
