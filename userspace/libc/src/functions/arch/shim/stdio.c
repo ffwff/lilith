@@ -1,6 +1,7 @@
 #include <stdarg.h>
 #include <stddef.h>
 #include <string.h>
+#include <stdio.h>
 
 void *stdin, *stdout, *stderr;
 
@@ -69,6 +70,20 @@ int printf(const char *restrict format, ...) {
     va_list args;
     va_start(args, format);
     int ret = __printf(printf_nputs, 0, format, args);
+    va_end(args);
+
+    return ret;
+}
+
+// fprintf
+static int fprintf_nputs(const char *data, size_t length, void *userptr) {
+    return fnputs(data, length, (FILE*)userptr);
+}
+
+int fprintf(FILE *stream, const char *restrict format, ...) {
+    va_list args;
+    va_start(args, format);
+    int ret = __printf(fprintf_nputs, stream, format, args);
     va_end(args);
 
     return ret;

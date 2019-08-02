@@ -153,3 +153,44 @@ fun memcpy(dst : UInt8*, src : UInt8*, n : LibC::SizeT) : Void*
   end
   dst.as(Void*)
 end
+
+fun memmove(dst : UInt8*, src : UInt8*, n : LibC::SizeT) : Void*
+  if src.address < dst.address
+    src += n.to_i64
+    dst += n.to_i64
+    until n == 0
+      dst.value = src.value
+      dst += -1
+      src += -1
+      n -= 1
+    end
+  else
+    until n == 0
+      dst.value = src.value
+      dst += 1
+      src += 1
+      n -= 1
+    end
+  end
+  dst.as(Void*)
+end
+
+fun memcmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : Int32
+  while n > 0 && (s1.value == s2.value)
+    s1 += 1
+    s2 += 1
+    n -= 1
+  end
+  return 0 if n == 0
+  (s1.value - s2.value).to_i32
+end
+
+fun memchr(str : LibC::String, c : Int32, n : LibC::SizeT) : LibC::String
+  until n == 0
+    if str.value == c
+      return str
+    end
+    n -= 1
+  end
+  LibC::String.null
+end

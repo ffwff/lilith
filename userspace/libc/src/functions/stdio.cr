@@ -7,6 +7,7 @@ struct FILE
     0
   end
 
+  #
   def fgets(str, size)
     idx = read @fd, str, size
     if idx == SYSCALL_ERR
@@ -16,7 +17,26 @@ struct FILE
     str[idx] = 0u8
   end
 
+  def fgetc
+    0
+  end
+
+  def feof
+    1
+  end
+
   def fputs(str)
+    write(@fd, str, strlen(str).to_i32).to_i32
+  end
+
+  def fnputs(str, len)
+    write(@fd, str, len.to_i32).to_i32
+  end
+
+  def fputc(c)
+    buffer = uninitialized Int8[1]
+    buffer.to_unsafe[0] = c.to_i8
+    write(1, buffer.to_unsafe, 1).to_i32
   end
 
   # rw
@@ -89,8 +109,20 @@ fun fgets(str : LibC::String, size : Int32, stream : Void*) : LibC::String
   str
 end
 
+fun fgetc(stream : Void*) : Int32
+  stream.as(FILE*).value.fgetc
+end
+
+fun feof(stream : Void*) : Int32
+  stream.as(FILE*).value.feof
+end
+
 fun fputs(str : LibC::String, stream : Void*) : Int32
-  stream.as(FILE*).value.fwrite(str, strlen(str)).to_i32
+  stream.as(FILE*).value.fputs str
+end
+
+fun fnputs(data : LibC::String, len : LibC::SizeT,  stream : Void*) : Int32
+  stream.as(FILE*).value.fnputs data, len
 end
 
 # prints
@@ -108,4 +140,19 @@ fun putchar(c : Int32) : Int32
   buffer = uninitialized Int8[1]
   buffer.to_unsafe[0] = c.to_i8
   write(1, buffer.to_unsafe, 1)
+end
+
+fun putc(c : Int32, stream : Void*) : Int32
+  stream.as(FILE*).value.fputc c
+end
+
+fun fputc(c : Int32, stream : Void*) : Int32
+  stream.as(FILE*).value.fputc c
+end
+
+# get
+fun getchar : Int32
+  retval = 0
+  read(0, pointerof(retval).as(LibC::String), 1)
+  retval
 end
