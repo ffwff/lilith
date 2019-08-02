@@ -12,14 +12,14 @@ fun strlen(str : LibC::String) : LibC::SizeT
     return 0u32
   end
   i = 0u32
-  while str[i] != 0
+  until str[i] == 0
     i += 1
   end
   i
 end
 
 fun strcmp(s1 : LibC::String, s2 : LibC::String) : Int32
-  while s1.value && (s1.value == s2.value)
+  while s1.value != 0 && (s1.value == s2.value)
     s1 += 1
     s2 += 1
   end

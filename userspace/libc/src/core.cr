@@ -29,11 +29,11 @@ struct Pointer(T)
   end
 
   def self.malloc
-    malloc(sizeof(T).to_u64).as(T*)
+    MALLOC.malloc(sizeof(T).to_u32).as(T*)
   end
 
   def free
-    free(self.as(Void*))
+    MALLOC.free(self.as(Void*))
   end
 
   #

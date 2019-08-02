@@ -3,7 +3,7 @@
 #include <string.h>
 #include <syscalls.h>
 
-static void spawn_process(char *s, char **argv) {
+void spawn_process(char *s, char **argv) {
     pid_t child = spawnv(s, argv);
     if (child > 0)
         waitpid(child, 0, 0);

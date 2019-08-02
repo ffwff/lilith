@@ -58,7 +58,9 @@ end
 
 # prints
 fun puts(data : LibC::String) : Int32
-  write(1, data, strlen(data).to_i32)
+  ret = write(1, data, strlen(data).to_i32)
+  ret += putchar '\n'.ord.to_i32
+  ret
 end
 
 fun nputs(data : LibC::String, len : LibC::SizeT) : Int32
