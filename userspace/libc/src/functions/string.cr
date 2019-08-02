@@ -46,6 +46,7 @@ fun strcpy(dst : LibC::String, src : LibC::String) : LibC::String
     src += 1
     dst += 1
   end
+  dst.value = 0
   retval
 end
 
@@ -53,7 +54,7 @@ fun strncpy(dst : LibC::String, src : LibC::String, n : LibC::SizeT) : LibC::Str
   retval = dst
   until n == 0
     dst.value = src.value
-    return retval if dst.value == 0
+    return retval if src.value == 0
     src += 1
     dst += 1
     n -= 1
@@ -102,7 +103,7 @@ fun strcat(dst : LibC::String, src : LibC::String) : LibC::String
   end
   while true
     dst.value = src.value
-    return ret if dst.value == 0
+    return ret if src.value == 0
     dst += 1
     src += 1
   end
@@ -116,7 +117,7 @@ fun strncat(dst : LibC::String, src : LibC::String, n : LibC::SizeT) : LibC::Str
   end
   until n == 0
     dst.value = src.value
-    return ret if dst.value == 0
+    return ret if src.value == 0
     dst += 1
     src += 1
     n -= 1

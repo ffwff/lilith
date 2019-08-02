@@ -82,7 +82,9 @@ struct sprintf_slice {
 
 static int sprintf_nputs(const char *data, size_t length, void *userptr) {
     struct sprintf_slice *slice = (struct sprintf_slice *)userptr;
-    if(slice->remaining > 0) {
+    if(slice->str == 0) {
+        return length;
+    } else if(slice->remaining > 0) {
         size_t copy_sz = 0;
         if (length > slice->remaining) {
             copy_sz = slice->remaining;
@@ -90,8 +92,9 @@ static int sprintf_nputs(const char *data, size_t length, void *userptr) {
             copy_sz = length;
         }
         strncpy(slice->str, data, copy_sz);
+        slice->str[copy_sz] = 0;
         slice->remaining -= copy_sz;
-        slice->str += copy_sz + 1; // skip nul
+        slice->str += copy_sz; // skip nul
         return copy_sz;
     } else {
         return 0;
