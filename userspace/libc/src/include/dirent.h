@@ -15,8 +15,8 @@ struct dirent {
     char d_name[256];
 };
 
-DIR *opendir(const char *dirname);
-int closedir(DIR *dirp);
-struct dirent* readdir(DIR *dirp);
+extern DIR *opendir(const char *dirname);
+extern int closedir(DIR *dirp);
+extern struct dirent* readdir(DIR *dirp);
 
 #endif _PDCLIB_DIRENT_H

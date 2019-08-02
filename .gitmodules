@@ -1,3 +1,0 @@
-[submodule "userspace/pdclib"]
-	path = userspace/pdclib
-	url = https://github.com/DevSolar/pdclib

@@ -1,7 +1,7 @@
 #ifndef _LIBC_SYSCALLS
 #define _LIBC_SYSCALLS
 
-#include <stdlib.h>
+#include <stddef.h>
 
 int open(char *device, int flags);
 long write(int fd, void *str, size_t len);

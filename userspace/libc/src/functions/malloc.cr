@@ -309,9 +309,8 @@ private struct Malloc
       ptr
     else
       # reallocate it
-      # TODO: find a more efficient implementation
       new_ptr = malloc size
-      LibC.memcpy new_ptr, ptr, hdr.value.size
+      memcpy new_ptr.as(UInt8*), ptr.as(UInt8*), hdr.value.size
       free ptr
       new_ptr
     end
@@ -324,7 +323,7 @@ MALLOC = Malloc.new
 # c functions
 fun calloc(nmeb : UInt32, size : UInt32) : Void*
   ptr = MALLOC.malloc nmeb * size
-  LibC.memset ptr, 0, nmeb * size
+  memset ptr.as(UInt8*), 0u32, nmeb * size
   ptr
 end
 
