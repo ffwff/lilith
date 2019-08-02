@@ -5,6 +5,9 @@
 
 void *stdin, *stdout, *stderr;
 
+static const char null_str[] = "(null)";
+static const size_t null_str_length = sizeof(null_str);
+
 extern int nputs(const char *data, size_t length);
 typedef int (*nputs_fn_t)(const char *data, size_t length, void *userptr);
 
@@ -30,15 +33,17 @@ static int __printf(nputs_fn_t nputs_fn, void *userptr,
                 case 's': {
                     format++;
                     const char *str = va_arg(args, const char *);
-                    if (!(retval = nputs_fn(str, strlen(str), userptr)))
+                    if(str == 0) {
+                        if (!(retval = nputs_fn(null_str, null_str_length, userptr))) {
+                            return written;
+                        }
+                    } else if (!(retval = nputs_fn(str, strlen(str), userptr)))
                         return written;
                     written += retval;
                     break;
                 }
                 default: {
-                    if (!(retval = nputs_fn(format - 1, 1, userptr)))
-                        return written;
-                    written += retval;
+                    format--;
                     break;
                 }
             }

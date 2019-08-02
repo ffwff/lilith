@@ -14,6 +14,7 @@ typedef int32_t intptr_t;
 typedef int32_t ptrdiff_t;
 #define SIZET_MAX   UINT32_MAX
 #define SIZE_MAX    UINT32_MAX
+#define INTPTR_MAX  UINT32_MAX
 
 #define INT16_MAX   0x7FFF
 #define INT16_MIN   INT16_MAX

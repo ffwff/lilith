@@ -41,4 +41,4 @@ int getchar(void);
 #define SEEK_CUR 1
 #define SEEK_END 2
 
-#define EOF 0
+#define EOF (char)-1

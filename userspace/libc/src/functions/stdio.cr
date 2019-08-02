@@ -1,14 +1,17 @@
 struct FILE
 
+  @eof = false
+
   def initialize(@fd : Int32)
   end
 
-  def flush : Int32
+  def fflush : Int32
     0
   end
 
   #
   def fgets(str, size)
+    return 0 if @eof
     idx = read @fd, str, size
     if idx == SYSCALL_ERR
       # TODO
@@ -18,11 +21,17 @@ struct FILE
   end
 
   def fgetc
-    0
+    return 0 if @eof
+    retval = 0
+    read @fd, pointerof(retval).as(LibC::String), 1
+    if retval == 0
+      @eof = true
+    end
+    retval
   end
 
   def feof
-    1
+    @eof ? 1 : 0
   end
 
   def fputs(str)
@@ -36,11 +45,12 @@ struct FILE
   def fputc(c)
     buffer = uninitialized Int8[1]
     buffer.to_unsafe[0] = c.to_i8
-    write(1, buffer.to_unsafe, 1).to_i32
+    write(@fd, buffer.to_unsafe, 1).to_i32
   end
 
   # rw
   def fread(ptr, size)
+    return 0u32 if @eof
     read(@fd, ptr.as(LibC::String), size.to_i32).to_u32
   end
 
@@ -77,22 +87,26 @@ end
 
 # file operations
 fun fopen(file : LibC::String, mode : LibC::String) : Void*
+  abort
   Pointer(Void).null
 end
 
 fun fclose(stream : Void*) : Int32
+  abort
   0
 end
 
 fun fflush(stream : Void*) : Int32
-  stream.as(FILE*).value.flush
+  stream.as(FILE*).value.fflush
 end
 
 fun fseek(stream : Void*, offset : Int32, whence : Int32) : Int32
+  abort
   0
 end
 
 fun ftell(stream : Void*) : Int32
+  abort
   0
 end
 
