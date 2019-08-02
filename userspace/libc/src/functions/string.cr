@@ -1,12 +1,3 @@
-fun strdup(str : LibC::String) : LibC::String
-  if str.null?
-    return Pointer(UInt8).null
-  end
-  new_str = calloc(strlen(str) + 1, 1).as(LibC::String)
-  strcpy new_str, str
-  new_str
-end
-
 fun strlen(str : LibC::String) : LibC::SizeT
   if str.null?
     return 0u32
@@ -18,7 +9,18 @@ fun strlen(str : LibC::String) : LibC::SizeT
   i
 end
 
-fun strcmp(s1 : LibC::String, s2 : LibC::String) : Int32
+# dup
+fun strdup(str : LibC::String) : LibC::String
+  if str.null?
+    return LibC::String.null
+  end
+  new_str = calloc(strlen(str) + 1, 1).as(LibC::String)
+  strcpy new_str, str
+  new_str
+end
+
+# cmp
+fun strcmp(s1 : LibC::UString, s2 : LibC::UString) : Int32
   while s1.value != 0 && (s1.value == s2.value)
     s1 += 1
     s2 += 1
@@ -26,17 +28,40 @@ fun strcmp(s1 : LibC::String, s2 : LibC::String) : Int32
   (s1.value - s2.value).to_i32
 end
 
+fun strncmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : Int32
+  while n > 0 && s1.value != 0 && (s1.value == s2.value)
+    s1 += 1
+    s2 += 1
+    n -= 1
+  end
+  return 0 if n == 0
+  (s1.value - s2.value).to_i32
+end
+
+# cpy
 fun strcpy(dst : LibC::String, src : LibC::String) : LibC::String
-  return dst if dst.null?
-  return src if src.null?
   retval = dst
   until src.value == 0
     dst.value = src.value
     src += 1
+    dst += 1
   end
   retval
 end
 
+fun strncpy(dst : LibC::String, src : LibC::String, n : LibC::SizeT) : LibC::String
+  retval = dst
+  until n == 0
+    dst.value = src.value
+    return retval if dst.value == 0
+    src += 1
+    dst += 1
+    n -= 1
+  end
+  retval
+end
+
+# tok
 module Strtok
   extend self
 
@@ -67,6 +92,46 @@ end
 
 fun strtok(str : LibC::String, delim : LibC::String) : LibC::String
   Strtok.strtok(str, delim)
+end
+
+# cat
+fun strcat(dst : LibC::String, src : LibC::String) : LibC::String
+  ret = dst
+  until dst.value == 0
+    dst += 1
+  end
+  while true
+    dst.value = src.value
+    return ret if dst.value == 0
+    dst += 1
+    src += 1
+  end
+  ret # unreachable
+end
+
+fun strncat(dst : LibC::String, src : LibC::String, n : LibC::SizeT) : LibC::String
+  ret = dst
+  until dst.value == 0
+    dst += 1
+  end
+  until n == 0
+    dst.value = src.value
+    return ret if dst.value == 0
+    dst += 1
+    src += 1
+    n -= 1
+  end
+  dst.value = 0
+  ret
+end
+
+# chr
+fun strchr(str : LibC::String, c : Int32) : LibC::String
+  until str.value == c
+    str += 1
+    return LibC::String.null if str.value == 0
+  end
+  str
 end
 
 # memory

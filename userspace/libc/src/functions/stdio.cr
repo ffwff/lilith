@@ -47,13 +47,41 @@ module Stdio
 end
 
 # file operations
-fun fflush(file : Void*) : Int32
-  file.as(FILE*).value.flush
+fun fopen(file : LibC::String, mode : LibC::String) : Void*
+  Pointer(Void).null
 end
 
-fun fgets(str : LibC::String, size : Int32, file : Void*) : LibC::String
-  file.as(FILE*).value.gets str, size
+fun fclose(stream : Void*) : Int32
+  0
+end
+
+fun fflush(stream : Void*) : Int32
+  stream.as(FILE*).value.flush
+end
+
+fun fseek(stream : Void*, offset : Int32, whence : Int32) : Int32
+  0
+end
+
+fun ftell(stream : Void*) : Int32
+  0
+end
+
+fun fread(ptr : UInt8*, size : LibC::SizeT, nmemb : LibC::SizeT, stream : Void*) : LibC::SizeT
+  0u32
+end
+
+fun fwrite(ptr : UInt8*, size : LibC::SizeT, nmemb : LibC::SizeT, stream : Void*) : LibC::SizeT
+  0u32
+end
+
+fun fgets(str : LibC::String, size : Int32, stream : Void*) : LibC::String
+  stream.as(FILE*).value.gets str, size
   str
+end
+
+fun fputs(str : LibC::String, stream : Void*) : Int32
+  0
 end
 
 # prints
@@ -68,7 +96,7 @@ fun nputs(data : LibC::String, len : LibC::SizeT) : Int32
 end
 
 fun putchar(c : Int32) : Int32
-  buffer = uninitialized UInt8[1]
-  buffer.to_unsafe[0] = c.to_u8
+  buffer = uninitialized Int8[1]
+  buffer.to_unsafe[0] = c.to_i8
   write(1, buffer.to_unsafe, 1)
 end
