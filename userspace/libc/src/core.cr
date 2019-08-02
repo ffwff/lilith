@@ -1,9 +1,8 @@
 lib LibC
   alias String = UInt8*
+  alias Pid = Int32
+  alias SizeT = UInt32
 end
-
-alias Pid = Int32
-alias SizeT = UInt32
 
 # Ints
 struct Int

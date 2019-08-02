@@ -3,6 +3,14 @@
 #include <string.h>
 #include <syscalls.h>
 
+static void spawn_process(char *s, char **argv) {
+    pid_t child = spawnv(s, argv);
+    if (child > 0)
+        waitpid(child, 0, 0);
+    else
+        printf("unknown command or file name\n");
+}
+
 int main(int argc, char **argv) {
     // tty
     open("/kbd", 0);
@@ -18,9 +26,8 @@ int main(int argc, char **argv) {
 
         char buf[256]={0};
         fgets(buf, sizeof(buf), stdin);
-        buf[strlen(buf) - 1] = 0;
 
-        char *tok = strtok(buf, " ");
+        char *tok = strtok(buf, " \n");
         if (tok != NULL) {
             if(strcmp(tok, "cd") == NULL) {
                 chdir(strtok(NULL, ""));
@@ -32,11 +39,7 @@ int main(int argc, char **argv) {
                 while((tok = strtok(NULL, " ")) != NULL && idx < MAX_ARGS) {
                     argv[idx] = tok;
                 }
-                pid_t child = spawnv(buf, argv);
-                if(child > 0)
-                    waitpid(child, 0, 0);
-                else
-                    printf("unknown command or file name\n");
+                spawn_process(buf, argv);
                 free(argv);
             }
             fflush(stdout);

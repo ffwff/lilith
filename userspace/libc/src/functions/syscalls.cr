@@ -63,11 +63,11 @@ fun abort
   Pointer(UInt32).null.value = 0
 end
 
-fun spawnv(file : LibC::String, argv : UInt8**) : Pid
+fun spawnv(file : LibC::String, argv : UInt8**) : LibC::Pid
   sysenter(SC_SPAWN, file.address.to_u32, argv.address.to_u32).to_i32
 end
 
-fun waitpid(pid : Pid, status : Int32*, options : Int32) : Pid
+fun waitpid(pid : LibC::Pid, status : Int32*, options : Int32) : LibC::Pid
   sysenter(SC_WAITPID, pid, 0).to_i32
 end
 

@@ -5,6 +5,7 @@ lib LibC
 end
 
 fun _start(argc : Int32, argv : UInt8**)
+  Stdio.init
   LibC.main argc, argv
   _exit
 end
