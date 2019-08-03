@@ -63,18 +63,16 @@ class KbdFS < VFS
         Paging.enable
         case msg.buffering
         when VFSNode::Buffering::Unbuffered
-          msg.slice[0] = ch.ord.to_u8
+          msg.respond ch.ord.to_u8
           msg.process.status = Multiprocessing::Process::Status::Unwait
           msg.process.frame.not_nil!.eax = 1
           false
         else
           if ch == '\b' && msg.offset > 0
-            msg.offset -= 1
-            msg.slice[msg.offset] = 0u8
+            msg.respond 0
             false
           else
-            msg.slice[msg.offset] = ch.ord.to_u8
-            msg.offset += 1
+            msg.respond ch.ord.to_u8
             if (msg.buffering == VFSNode::Buffering::LineBuffered && ch == '\n') ||
                 msg.finished?
               msg.process.status = Multiprocessing::Process::Status::Unwait

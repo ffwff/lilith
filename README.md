@@ -1,6 +1,6 @@
 # lilith
 
-A POSIX-like x86 kernel written in Crystal.
+A POSIX-like x86 kernel/userspace written in Crystal.
 
 ## Building
 

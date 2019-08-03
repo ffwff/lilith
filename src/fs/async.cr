@@ -2,10 +2,10 @@ class VFSReadMessage
   @next_msg : VFSReadMessage? = nil
   property next_msg
 
-  getter slice, process
+  getter process
 
   @offset = 0
-  property offset
+  getter offset
 
   @buffering = VFSNode::Buffering::Unbuffered
   getter buffering
@@ -16,7 +16,24 @@ class VFSReadMessage
   end
 
   def finished?
-    offset >= slice.size
+    offset == @slice.size
+  end
+
+  def respond(buf)
+    size = min(buf.size, @slice.size - @offset)
+    if size > 0
+      size.times do |i|
+        @slice[@offset] = buf[i]
+        @offset += 1
+      end
+    end
+  end
+
+  def respond(ch)
+    unless finished?
+      @slice[@offset] = ch
+      @offset += 1
+    end
   end
 end
 
