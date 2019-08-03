@@ -104,7 +104,7 @@ end
 fun fopen(file : LibC::String, mode : LibC::String) : Void*
   # TODO: mode
   fd = open(file, 0)
-  if fd == SYSCALL_ERR
+  if fd.to_u32 == SYSCALL_ERR
     return Pointer(Void).null
   end
   stream = Pointer(FILE).malloc
@@ -116,7 +116,10 @@ end
 fun fclose(stream : Void*) : Int32
   stream = stream.as(FILE*)
   close(stream.value.fd)
-  stream.free
+  unless stream.value.fd <= STDERR
+    # TODO
+    stream.free
+  end
   0
 end
 

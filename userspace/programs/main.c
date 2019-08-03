@@ -15,6 +15,7 @@ int main(int argc, char **argv) {
     // tty
     open("/kbd", 0);
     open("/vga", 0);
+    open("/vga", 0);
 
     // shell
     char *path = calloc(PATH_MAX + 1, 1);
@@ -26,19 +27,22 @@ int main(int argc, char **argv) {
 
         char buf[256]={0};
         fgets(buf, sizeof(buf), stdin);
+        buf[strlen(buf) - 1] = 0; // trim '\n'
 
-        char *tok = strtok(buf, " \n");
+        char *tok = strtok(buf, " ");
         if (tok != NULL) {
             if(strcmp(tok, "cd") == NULL) {
                 chdir(strtok(NULL, ""));
             } else {
                 const int MAX_ARGS = 256;
-                char **argv = calloc(MAX_ARGS, sizeof(char *));
+                char **argv = malloc(MAX_ARGS * sizeof(char *));
                 argv[0] = tok;
                 int idx = 1;
-                while((tok = strtok(NULL, " ")) != NULL && idx < MAX_ARGS) {
+                while((tok = strtok(NULL, " ")) != NULL && idx < (MAX_ARGS - 1)) {
                     argv[idx] = tok;
+                    idx++;
                 }
+                argv[idx] = NULL;
                 spawn_process(buf, argv);
                 free(argv);
             }
