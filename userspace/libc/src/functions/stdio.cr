@@ -1,47 +1,27 @@
 EOF = -1
+STDIN  = 0
+STDOUT = 1
+STDERR = 2
 
 struct FILE
 
-  # FIXME: IO doesnt work correctly
+  # TODO: file buffering
 
   @eof = false
 
   def initialize(@fd : Int32)
   end
 
+  # misc
   def fflush : Int32
     0
-  end
-
-  #
-  def fgets(str, size)
-    if @eof
-      str[0] = 0u8
-      return str
-    end
-    idx = read @fd, str, size
-    if idx == SYSCALL_ERR
-      # TODO
-      abort
-    end
-    str[idx] = 0u8
-    str
-  end
-
-  def fgetc
-    return EOF if @eof
-    retval = 0
-    read @fd, pointerof(retval).as(LibC::String), 1
-    if retval == 0
-      @eof = true
-    end
-    retval
   end
 
   def feof
     @eof ? 1 : 0
   end
 
+  # reading
   def fputs(str)
     write(@fd, str, strlen(str).to_i32).to_i32
   end
@@ -56,9 +36,27 @@ struct FILE
     write(@fd, buffer.to_unsafe, 1).to_i32
   end
 
+  # getting
+  def fgets(str, size)
+    idx = read @fd, str, size
+    if idx == SYSCALL_ERR
+      # TODO
+      abort
+    end
+    # TODO: handle line buffering
+    str[idx] = 0u8
+    str
+  end
+
+  def fgetc
+    # return EOF if @eof
+    retval = 0
+    read @fd, pointerof(retval).as(LibC::String), 1
+    retval
+  end
+
   # rw
   def fread(ptr, size)
-    return 0u32 if @eof
     read(@fd, ptr.as(LibC::String), size.to_i32).to_u32
   end
 
@@ -77,9 +75,9 @@ end
 module Stdio
   extend self
 
-  @@stdin = FILE.new 0
-  @@stdout = FILE.new 1
-  @@stderr = FILE.new 2
+  @@stdin = FILE.new  STDIN
+  @@stdout = FILE.new STDOUT
+  @@stderr = FILE.new STDERR
 
   def stdin; @@stdin; end
   def stdout; @@stdout; end
@@ -89,6 +87,12 @@ module Stdio
     LibC.stdin  = pointerof(@@stdin).as(Void*)
     LibC.stdout = pointerof(@@stdout).as(Void*)
     LibC.stderr = pointerof(@@stderr).as(Void*)
+  end
+
+  def flush
+    @@stdin.flush
+    @@stdout.flush
+    @@stderr.flush
   end
 
 end
@@ -148,19 +152,19 @@ end
 
 # prints
 fun puts(data : LibC::String) : Int32
-  ret = write(1, data, strlen(data).to_i32)
+  ret = write(STDOUT, data, strlen(data).to_i32)
   ret += putchar '\n'.ord.to_i32
   ret
 end
 
 fun nputs(data : LibC::String, len : LibC::SizeT) : Int32
-  write(1, data, len.to_i32)
+  write(STDOUT, data, len.to_i32)
 end
 
 fun putchar(c : Int32) : Int32
   buffer = uninitialized Int8[1]
   buffer.to_unsafe[0] = c.to_i8
-  write(1, buffer.to_unsafe, 1)
+  write(STDOUT, buffer.to_unsafe, 1)
 end
 
 fun putc(c : Int32, stream : Void*) : Int32
@@ -174,6 +178,6 @@ end
 # get
 fun getchar : Int32
   retval = 0
-  read(0, pointerof(retval).as(LibC::String), 1)
+  read(STDIN, pointerof(retval).as(LibC::String), 1)
   retval
 end

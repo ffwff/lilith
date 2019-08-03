@@ -16,7 +16,7 @@ class VFSReadMessage
   end
 
   def finished?
-    offset > slice.size
+    offset >= slice.size
   end
 end
 
