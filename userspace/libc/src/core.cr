@@ -21,6 +21,16 @@ class Object
     pointerof(x).as(T*).value
   end
 
+  macro property(*names)
+    {% for name in names %}
+    def {{ name.id }}
+      @{{ name.id }}
+    end
+    def {{ name.id }}=(@{{ name.id }})
+    end
+    {% end %}
+  end
+
 end
 
 # Pointers

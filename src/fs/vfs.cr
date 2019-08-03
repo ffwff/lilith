@@ -19,6 +19,9 @@ abstract class VFSNode
   abstract def open(path : Slice) : VFSNode?
   abstract def read(slice : Slice(UInt8), offset : UInt32,
                     process : Multiprocessing::Process? = nil) : Int32
+  def read(&block)
+    # for internal kernel reading
+  end
   abstract def write(slice : Slice) : Int32
 
   abstract def read_queue : VFSReadQueue?

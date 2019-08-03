@@ -24,9 +24,6 @@ class KbdFsNode < VFSNode
     nil
   end
 
-  def read(&block)
-  end
-
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
     VFS_READ_WAIT

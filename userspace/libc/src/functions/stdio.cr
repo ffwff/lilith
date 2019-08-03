@@ -8,8 +8,11 @@ struct FILE
   # TODO: file buffering
 
   @eof = false
+  @fd = 0
+  property eof, fd
 
-  def initialize(@fd : Int32)
+  def initialize(@fd)
+    @eof = false
   end
 
   # misc
@@ -90,21 +93,30 @@ module Stdio
   end
 
   def flush
-    @@stdin.flush
-    @@stdout.flush
-    @@stderr.flush
+    @@stdin.fflush
+    @@stdout.fflush
+    @@stderr.fflush
   end
 
 end
 
 # file operations
 fun fopen(file : LibC::String, mode : LibC::String) : Void*
-  abort
-  Pointer(Void).null
+  # TODO: mode
+  fd = open(file, 0)
+  if fd == SYSCALL_ERR
+    return Pointer(Void).null
+  end
+  stream = Pointer(FILE).malloc
+  stream.value.eof = false
+  stream.value.fd = fd
+  stream.as(Void*)
 end
 
 fun fclose(stream : Void*) : Int32
-  abort
+  stream = stream.as(FILE*)
+  close(stream.value.fd)
+  stream.free
   0
 end
 

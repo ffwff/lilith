@@ -66,7 +66,11 @@ end
 module Strtok
   extend self
 
-  @@data = LibC::String.null
+  @@saveptr = LibC::String.null
+
+  def saveptr
+    pointerof(@@saveptr)
+  end
 
   private def check_delim?(ch, delim : LibC::String)
     until delim.value == 0
@@ -76,23 +80,29 @@ module Strtok
     false
   end
   
-  def strtok(str : LibC::String, delim : LibC::String) : LibC::String
-    arg_begin = str.null? ? @@data : str
+  def strtok_r(str : LibC::String, delim : LibC::String, saveptr : LibC::String*) : LibC::String
+    arg_begin = str.null? ? saveptr.value : str
+    return saveptr.value if str.null? && saveptr.value.null?
     arg = arg_begin
     until arg.value == 0
       if check_delim?(arg.value, delim)
         arg.value = 0
-        @@data = arg + 1
+        saveptr.value = arg + 1
         return arg_begin
       end
       arg += 1
     end
-    return LibC::String.null
+    saveptr.value = LibC::String.null
+    arg_begin
   end
 end
 
 fun strtok(str : LibC::String, delim : LibC::String) : LibC::String
-  Strtok.strtok(str, delim)
+  Strtok.strtok_r(str, delim, Strtok.saveptr)
+end
+
+fun strtok_r(str : LibC::String, delim : LibC::String, saveptr : LibC::String*) : LibC::String
+  Strtok.strtok_r(str, delim, saveptr)
 end
 
 # cat
