@@ -13,7 +13,7 @@ typedef int (*nputs_fn_t)(const char *data, size_t length, void *userptr);
 
 #define ITOA_BUFFER_LEN 128
 
-static char *__printf_itoa_buf = "0123456789abcdefghijklmnopqrstuvwxyz";
+char __printf_itoa_buf[] = "0123456789abcdefghijklmnopqrstuvwxyz";
 
 static void __printf_reverse(char *str, int length) {
     for (int i = 0, j = length - 1; i < j; i++, j--) {
@@ -49,6 +49,7 @@ static int __printf(nputs_fn_t nputs_fn, void *userptr,
 
     while (*format != 0) {
         if (*format == '%') {
+            char __itoa_buf[ITOA_BUFFER_LEN];
             format++;
             switch (*format) {
                 case 0:
@@ -73,20 +74,19 @@ static int __printf(nputs_fn_t nputs_fn, void *userptr,
                     written += retval;
                     break;
                 }
-            #define HANDLE_INT_FORMAT(formatc, base)              \
-                case formatc: {                                   \
-                    format++;                                     \
-                    int num = va_arg(args, int);                  \
-                    char s[ITOA_BUFFER_LEN];                      \
-                    int length = __printf_itoa(num, base, s);     \
-                    if (!(retval = nputs_fn(s, length, userptr))) \
-                        return written;                           \
-                    written += retval;                            \
-                    break;                                        \
-                }
-                HANDLE_INT_FORMAT('d', 10)
-                HANDLE_INT_FORMAT('x', 16)
-                HANDLE_INT_FORMAT('o', 8)
+#define HANDLE_INT_FORMAT(formatc, base)                       \
+    case formatc: {                                            \
+        format++;                                              \
+        int num = va_arg(args, int);                           \
+        int length = __printf_itoa(num, base, __itoa_buf);     \
+        if (!(retval = nputs_fn(__itoa_buf, length, userptr))) \
+            return written;                                    \
+        written += retval;                                     \
+        break;                                                 \
+    }
+                    HANDLE_INT_FORMAT('d', 10)
+                    HANDLE_INT_FORMAT('x', 16)
+                    HANDLE_INT_FORMAT('o', 8)
                 default: {
                     format--;
                     break;

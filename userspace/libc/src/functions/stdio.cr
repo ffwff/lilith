@@ -1,4 +1,8 @@
+EOF = -1
+
 struct FILE
+
+  # FIXME: IO doesnt work correctly
 
   @eof = false
 
@@ -11,17 +15,21 @@ struct FILE
 
   #
   def fgets(str, size)
-    return 0 if @eof
+    if @eof
+      str[0] = 0u8
+      return str
+    end
     idx = read @fd, str, size
     if idx == SYSCALL_ERR
       # TODO
       abort
     end
     str[idx] = 0u8
+    str
   end
 
   def fgetc
-    return 0 if @eof
+    return EOF if @eof
     retval = 0
     read @fd, pointerof(retval).as(LibC::String), 1
     if retval == 0
@@ -120,7 +128,6 @@ end
 
 fun fgets(str : LibC::String, size : Int32, stream : Void*) : LibC::String
   stream.as(FILE*).value.fgets str, size
-  str
 end
 
 fun fgetc(stream : Void*) : Int32
