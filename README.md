@@ -44,7 +44,7 @@ make run_img
 * [x] FAT16 support
 * [x] Basic syscalls (open, read, write, spawn,...)
 * [x] Preemptive multitasking!
-* [x] Userpsace C library written in Crystal/C based on [PDCLib](https://github.com/DevSolar/pdclib/)
+* [x] Userspace C library written in Crystal/C
 * [ ] And much more as I go...
 
 ## Credits
