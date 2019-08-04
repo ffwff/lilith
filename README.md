@@ -47,10 +47,6 @@ make run_img
 * [x] Userspace C library written in Crystal/C
 * [ ] And much more as I go...
 
-## Credits
-
-* [PDCLib](https://github.com/DevSolar/pdclib/)
-
 ## License
 
 This program is licensed under GPLv3.
