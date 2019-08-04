@@ -56,6 +56,14 @@ struct Pointer(T)
     (self + offset.to_i64).value = data
   end
 
+  def +(offset : Int)
+    self + offset.to_i64
+  end
+
+  def -(offset : Int)
+    self - offset.to_i64
+  end
+
   #
   def null?
     address == 0
@@ -73,5 +81,36 @@ end
 class String
   def to_unsafe
     pointerof(@c)
+  end
+end
+
+# Enums
+struct Enum
+  def ==(other)
+    value == other.value
+  end
+
+  def !=(other)
+    value != other.value
+  end
+
+  def ===(other)
+    value == other.value
+  end
+
+  def |(other : self)
+    self.class.new(value | other.value)
+  end
+
+  def &(other : self)
+    self.class.new(value & other.value)
+  end
+
+  def ~
+    self.class.new(~value)
+  end
+
+  def includes?(other : self)
+    (value & other.value) != 0
   end
 end

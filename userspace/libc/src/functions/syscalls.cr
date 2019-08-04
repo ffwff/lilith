@@ -61,6 +61,8 @@ end
 
 fun abort
   Pointer(UInt32).null.value = 0
+  while true
+  end
 end
 
 fun spawnv(file : LibC::String, argv : UInt8**) : LibC::Pid
