@@ -78,7 +78,7 @@ clean:
 # debug
 toolchain/crystal:
 	cd toolchain && git clone https://github.com/crystal-lang/crystal && \
-	cd crystal && git checkout fbfe8b62f && \
+	cd crystal && git checkout 0.30.0 && \
 	patch -p1 < ../crystal.patch
 
 $(CR): toolchain/crystal

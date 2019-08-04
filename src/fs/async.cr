@@ -31,7 +31,7 @@ class VFSReadMessage
 
   def respond(ch)
     unless finished?
-      @slice[@offset] = ch
+      @slice[@offset] = ch.to_u8
       @offset += 1
     end
   end
