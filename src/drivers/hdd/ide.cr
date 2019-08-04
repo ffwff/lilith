@@ -211,12 +211,12 @@ class AtaDevice
     debug "status: ", status, '\n'
     return if status == 0
 
-    X86.outb cmd_port, 0x02
-
     # read device identifier
-    device = uninitialized Kernel::AtaIdentify
+    # TODO: use this somewhere
+    X86.outb cmd_port, 0x02
+    device = Pointer(Kernel::AtaIdentify).mmalloc
     begin
-      buf = Pointer(UInt16).new(pointerof(device).address)
+      buf = device.as(UInt16*)
       256.times do |i|
         buf[i] = X86.inw disk_port
       end
@@ -226,11 +226,13 @@ class AtaDevice
     {% for key in ["serial", "firmware", "model"] %}
       {% key = key.id %}
       i = 0
-      while i < device.{{ key }}.size
-        device.{{ key }}[i], device.{{ key }}[i+1] = device.{{ key }}[i+1], device.{{ key }}[i]
+      while i < device.value.{{ key }}.size
+        device.value.{{ key }}[i], device.value.{{ key }}[i+1] = \
+        device.value.{{ key }}[i+1], device.value.{{ key }}[i]
         i += 2
       end
     {% end %}
+    device.mfree
   end
 
   @buffer = Pointer(UInt16).null
