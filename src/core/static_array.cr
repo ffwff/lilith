@@ -1,11 +1,11 @@
 struct StaticArray(T, N)
   macro [](*args)
-        %array = uninitialized StaticArray(typeof({{*args}}), {{args.size}})
-        {% for arg, i in args %}
-        %array.to_unsafe[{{i}}] = {{arg}}
-        {% end %}
-        %array
-    end
+    %array = uninitialized StaticArray(typeof({{*args}}), {{args.size}})
+    {% for arg, i in args %}
+      %array.to_unsafe[{{i}}] = {{arg}}
+    {% end %}
+    %array
+  end
 
   def to_unsafe : Pointer(T)
     pointerof(@buffer)
@@ -33,7 +33,7 @@ struct StaticArray(T, N)
 
   def each : Nil
     {% for i in 0...N %}
-            yield self[{{i}}]
-        {% end %}
+      yield self[{{i}}]
+    {% end %}
   end
 end

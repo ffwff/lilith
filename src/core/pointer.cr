@@ -42,8 +42,8 @@ struct Pointer(T)
   def self.malloc(size)
     LibGc.unsafe_malloc(size.to_u32 * sizeof(T), true).as(T*)
   end
-  
-  def self.mmalloc(size)
+
+  def self.mmalloc(size = 1)
     new KERNEL_ARENA.malloc(size.to_u32 * sizeof(T)).to_u64
   end
 

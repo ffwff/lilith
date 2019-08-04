@@ -23,6 +23,10 @@ struct Slice(T)
     @buffer[idx] = value
   end
 
+  def to_unsafe
+    @buffer
+  end
+
   def each(&block)
     i = 0
     while i < @size
