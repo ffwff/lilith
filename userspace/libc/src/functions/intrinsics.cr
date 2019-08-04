@@ -1,6 +1,6 @@
 # Intrinsics as exported by LLVM.
 # Use `Intrinsics` to have a unified API across LLVM versions.
-lib LibIntrinsics
+lib Intrinsics
   fun debugtrap = "llvm.debugtrap"
   {% if flag?(:bits64) %}
     {% if compare_versions(Crystal::LLVM_VERSION, "7.0.0") < 0 %}

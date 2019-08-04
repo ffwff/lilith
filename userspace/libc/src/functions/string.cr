@@ -147,11 +147,11 @@ end
 
 # memory
 fun memset(dst : UInt8*, c : UInt32, n : LibC::SizeT) : Void*
-  i = 0
-  while i < n
-    dst[i] = c.to_u8
-    i += 1
-  end
+  asm(
+    "cld\nrep stosb"
+    :: "{al}"(c.to_u8), "{edi}"(dst), "{ecx}"(n)
+    : "volatile", "memory"
+  )
   dst.as(Void*)
 end
 

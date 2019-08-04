@@ -1,4 +1,4 @@
-# NOTE: we only do identity paging
+require "./fastmem.cr"
 
 lib PageStructs
   alias Page = UInt32
@@ -150,7 +150,7 @@ module Paging
         # claim a page for storing the page table
         pt_iaddr = claim_frame
         pt_addr = pt_iaddr.to_u32 * 0x1000 + @@frame_base_addr
-        memset Pointer(UInt8).new(pt_addr.to_u64), 0, 4096
+        zero_page Pointer(UInt8).new(pt_addr.to_u64)
         if user
           pt_addr |= PT_MASK
         else
@@ -195,7 +195,7 @@ module Paging
     iaddr = claim_frame
     pd_addr = iaddr.to_u32 * 0x1000 + @@frame_base_addr
     pd = Pointer(PageStructs::PageDirectory).new(pd_addr.to_u64)
-    memset Pointer(UInt8).new(pd_addr.to_u64), 0, 4096
+    zero_page Pointer(UInt8).new(pd_addr.to_u64)
 
     # copy lower half (kernel half)
     KERNEL_TABLES.times do |i|
