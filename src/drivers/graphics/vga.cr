@@ -53,32 +53,61 @@ private struct VgaInstance < OutputDriver
     @buffer[offset x, y] = color_code(fg, bg, a)
   end
 
-  def putc(ch : UInt8)
+
+  private def putchar(ch : UInt8)
     if ch == '\n'.ord.to_u8
-      VGA_STATE.newline
+      VgaState.newline
       return
     elsif ch == 8u8
-      VGA_STATE.backspace
-      putc(VGA_STATE.cx, VGA_STATE.cy, VGA_STATE.fg, VGA_STATE.bg, ' '.ord.to_u8)
+      VgaState.backspace
+      putc(VgaState.cx, VgaState.cy, VgaState.fg, VgaState.bg, ' '.ord.to_u8)
       return
     end
-    if VGA_STATE.cy >= VGA_HEIGHT
+    if VgaState.cy >= VGA_HEIGHT
       scroll
     end
-    putc(VGA_STATE.cx, VGA_STATE.cy, VGA_STATE.fg, VGA_STATE.bg, ch)
-    VGA_STATE.advance
+    putc(VgaState.cx, VgaState.cy, VgaState.fg, VgaState.bg, ch)
+    VgaState.advance
+  end
+
+  def putc(ch : UInt8)
+    ansi_handler = VgaState.ansi_handler
+    if ansi_handler.nil?
+      return putchar(ch)
+    end
+    seq = ansi_handler.parse ch
+    case seq
+    when AnsiHandler::CsiSequence
+      case seq.type
+      when AnsiHandler::CsiSequenceType::EraseInLine
+        blank = color_code VgaState.fg, VgaState.bg, ' '.ord.to_u8
+        if seq.arg_n == 0 && VgaState.cy < VGA_HEIGHT - 1
+          x = VgaState.cx
+          while x < VGA_WIDTH
+            Serial.puts x, ' ', VgaState.cy, '\n'
+            @buffer[offset x, VgaState.cy] = blank
+            x += 1
+          end
+        end
+      when AnsiHandler::CsiSequenceType::MoveCursor
+        VgaState.cx = min(seq.arg_n.not_nil!.to_i32, VGA_WIDTH - 1)
+        VgaState.cy = min(seq.arg_m.not_nil!.to_i32, VGA_HEIGHT - 1)
+      end
+    when UInt8
+      putchar seq
+    end
   end
 
   def puts(*args)
     args.each do |arg|
       arg.to_s self
     end
-    move_cursor VGA_STATE.cx, VGA_STATE.cy + 1
+    move_cursor VgaState.cx, VgaState.cy + 1
   end
 
   # Scrolls the terminal
   private def scroll
-    blank = color_code VGA_STATE.fg, VGA_STATE.bg, ' '.ord.to_u8
+    blank = color_code VgaState.fg, VgaState.bg, ' '.ord.to_u8
     (VGA_HEIGHT - 1).times do |y|
       VGA_WIDTH.times do |x|
         @buffer[offset x, y] = @buffer[offset x, (y + 1)]
@@ -87,7 +116,7 @@ private struct VgaInstance < OutputDriver
     VGA_WIDTH.times do |x|
       @buffer[VGA_SIZE - VGA_WIDTH + x] = blank
     end
-    VGA_STATE.wrapback
+    VgaState.wrapback
   end
 
   # Cursor
@@ -112,64 +141,62 @@ private struct VgaInstance < OutputDriver
   end
 end
 
-# HACK?: store VgaState separate from VgaInstance
-# because for some reason its state variables get reset
-# whenever puts is called
-private struct VgaState
-  @cx : Int32 = 0
-  @cy : Int32 = 0
-  @fg : VgaColor = VgaColor::White
-  @bg : VgaColor = VgaColor::Black
+module VgaState
+  extend self
 
-  def cx
-    @cx
+  @@cx = 0
+  @@cy = 0
+  @@fg = VgaColor::White
+  @@bg = VgaColor::Black
+  
+  def cx; @@cx; end
+  def cy; @@cy; end
+  def fg; @@fg; end
+  def bg; @@bg; end
+  
+  def cx=(@@cx); end
+  def cy=(@@cy); end
+  def fg=(@@fg); end
+  def bg=(@@bg); end
+  
+  @@ansi_handler : AnsiHandler? = nil
+  def ansi_handler
+    if !Multiprocessing.current_process.nil? && @@ansi_handler.nil?
+      # TODO better way of initializing this
+      @@ansi_handler = AnsiHandler.new
+    end
+    @@ansi_handler
   end
 
-  def cy
-    @cy
-  end
-
-  def fg
-    @fg
-  end
-
-  def bg
-    @bg
-  end
-
-  @[AlwaysInline]
   def advance
-    if @cx >= VGA_WIDTH
+    if @@cx >= VGA_WIDTH
       newline
     else
-      @cx += 1
+      @@cx += 1
     end
   end
 
-  @[AlwaysInline]
   def backspace
-    if @cx == 0 && @cy > 0
-      @cx = VGA_WIDTH
-      @cy -= 1
+    if @@cx == 0 && @@cy > 0
+      @@cx = VGA_WIDTH
+      @@cy -= 1
     else
-      @cx -= 1
+      @@cx -= 1
     end
   end
 
   def newline
-    if @cy == VGA_HEIGHT
+    if @@cy == VGA_HEIGHT
       wrapback
     end
-    @cx = 0
-    @cy += 1
+    @@cx = 0
+    @@cy += 1
   end
 
-  @[AlwaysInline]
   def wrapback
-    @cx = 0
-    @cy = VGA_HEIGHT - 1
+    @@cx = 0
+    @@cy = VGA_HEIGHT - 1
   end
 end
 
-VGA       = VgaInstance.new
-VGA_STATE = VgaState.new
+VGA = VgaInstance.new
