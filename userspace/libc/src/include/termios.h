@@ -3,9 +3,9 @@
 typedef unsigned int tcflag_t;
 typedef unsigned int cc_t;
 
-#define NCCS 2
 #define VTIME 0
-#define VMIN 1
+#define VMIN  1
+#define NCCS  2
 
 struct termios {
     tcflag_t c_iflag; /* input modes */
@@ -21,17 +21,16 @@ int tcsetattr(int fd, int optional_actions,
 
 #define TCSAFLUSH 0
 
-#define BRKINT  0
-#define ICRNL   0
-#define INPCK   0
-#define ISTRIP  0
-#define IXON    0
+#define BRKINT (1 << 0)
+#define ICRNL  (1 << 1)
+#define INPCK  (1 << 2)
+#define ISTRIP (1 << 3)
+#define IXON   (1 << 4)
+#define OPOST  (1 << 5)
 
-#define OPOST   0
+#define CS8     (1 << 0)
 
-#define CS8     0
-
-#define ECHO    0
-#define ICANON  0
-#define IEXTEN  0
-#define ISIG    0
+#define ECHO    (1 << 0)
+#define ICANON  (1 << 1)
+#define IEXTEN  (1 << 2)
+#define ISIG    (1 << 3)

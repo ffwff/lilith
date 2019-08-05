@@ -3,6 +3,7 @@ lib LibC
   alias UString = UInt8*
   alias Pid = Int32
   alias SizeT = UInt32
+  alias SSizeT = Int32
 end
 
 # Ints

@@ -42,6 +42,10 @@ fun read(fd : Int32, str : LibC::String, len : Int32) : Int32
   sysenter(SC_READ, fd, pointerof(buf).address.to_u32).to_i32
 end
 
+fun ftruncate(fd : Int32, length : UInt32) : Int32
+  -1
+end
+
 fun remove(str : LibC::String) : Int32
   -1
 end

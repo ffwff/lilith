@@ -9,4 +9,4 @@ struct winsize {
 
 #define TIOCGWINSZ 0
 
-int ioctl(int fildes, int request, void *arg);
+int ioctl(int fd, int request, void *arg);

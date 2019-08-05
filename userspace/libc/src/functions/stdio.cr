@@ -333,6 +333,12 @@ fun getchar : Int32
   retval
 end
 
+fun getline(lineptr : LibC::String*, n : LibC::SizeT*, stream : Void*) : LibC::SSizeT
+  # TODO
+  0
+  #stream.as(File*).value.getline lineptr, n
+end
+
 # errors
 fun perror(s : LibC::String)
 end

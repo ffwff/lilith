@@ -404,13 +404,6 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     end
     frame.eax = pudata.heap_end
     pudata.heap_end += incr
-  # debug
-  when SC_DBG
-    arg = try(checked_pointer(frame.ebx)).as(SyscallData::StringArgument*)
-    str = try(checked_slice(arg.value.str, arg.value.len))
-    str.each do |ch|
-      Serial.puts ch.unsafe_chr
-    end
   else
     frame.eax = SYSCALL_ERR
   end
