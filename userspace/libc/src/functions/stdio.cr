@@ -5,7 +5,7 @@ STDERR = 2
 
 FILE_BUFFER_SZ = 256
 
-struct FileBuffer
+class FileBuffer
 
   @buffer = Pointer(UInt8).null
   @pos = 0
@@ -63,7 +63,7 @@ struct FileBuffer
 
 end
 
-struct File
+class File
 
   @[Flags]
   enum Status
@@ -91,6 +91,8 @@ struct File
 
   def _finalize
     close @fd
+    # @wbuffer.free
+    # @rbuffer.free
   end
 
   def parse_mode(mode)

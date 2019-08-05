@@ -55,7 +55,9 @@ private struct VgaInstance < OutputDriver
 
 
   private def putchar(ch : UInt8)
-    if ch == '\n'.ord.to_u8
+    if ch == '\r'.ord.to_u8
+      return
+    elsif ch == '\n'.ord.to_u8
       VgaState.newline
       return
     elsif ch == 8u8
@@ -84,7 +86,6 @@ private struct VgaInstance < OutputDriver
         if seq.arg_n == 0 && VgaState.cy < VGA_HEIGHT - 1
           x = VgaState.cx
           while x < VGA_WIDTH
-            Serial.puts x, ' ', VgaState.cy, '\n'
             @buffer[offset x, VgaState.cy] = blank
             x += 1
           end

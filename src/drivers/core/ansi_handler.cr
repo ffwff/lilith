@@ -1,9 +1,9 @@
 class AnsiHandler
 
   enum State : Int32
-    Default     = 0
-    EscapeBegin = 0x69
-    Csi         = 2
+    Default
+    EscapeBegin
+    Csi
   end
 
   enum CsiSequenceType
@@ -23,6 +23,8 @@ class AnsiHandler
   getter state
   @arg_n : UInt16? = nil
   @arg_m : UInt16? = nil
+  @csi_m = false
+  @csi_priv = false
 
   private def digit?(ch)
     ch >= '0'.ord.to_u8 && ch <= '9'.ord.to_u8
@@ -36,6 +38,8 @@ class AnsiHandler
     @state = State::Default
     @arg_n = nil
     @arg_m = nil
+    @csi_m = false
+    @csi_priv = false
   end
 
   def parse(ch)
@@ -43,24 +47,37 @@ class AnsiHandler
     when State::Default
       if ch == 0x1B
         @state = State::EscapeBegin
-        return nil
       else
-        return ch
+        ch
       end
     when State::EscapeBegin
       if ch == '['.ord.to_u8
         @state = State::Csi
-        return nil
       else
-        return reset
+        reset
       end
     when State::Csi
       if digit?(ch)
-        if @arg_n.nil?
-          @arg_n = to_digit(ch).to_u16
+        if @csi_m
+          if @arg_m.nil?
+            @arg_m = to_digit(ch).to_u16
+          else
+            @arg_m = @arg_m.not_nil! * 10 + to_digit(ch).to_u16
+          end
         else
-          @arg_n = @arg_n.not_nil! * 10 + to_digit(ch).to_u16
+          if @arg_n.nil?
+            @arg_n = to_digit(ch).to_u16
+          else
+            @arg_n = @arg_n.not_nil! * 10 + to_digit(ch).to_u16
+          end
         end
+      elsif ch == ';'.ord.to_u8
+        if @arg_n.nil?
+          return reset
+        end
+        @csi_m = true
+      elsif ch == '?'.ord.to_u8
+        @csi_priv = true
       elsif ch == 'H'.ord.to_u8
         if @arg_n.nil? && @arg_m.nil?
           seq = CsiSequence.new(CsiSequenceType::MoveCursor, 0, 0)
@@ -68,13 +85,18 @@ class AnsiHandler
           seq = CsiSequence.new(CsiSequenceType::MoveCursor, @arg_n, @arg_m)
         end
         reset
-        return seq
+        seq
+      elsif ch == 'h'.ord.to_u8
+        if @csi_priv
+          # TODO
+        end
+        reset
       elsif !@arg_n.nil? && ch == 'K'.ord.to_u8
         seq = CsiSequence.new(CsiSequenceType::EraseInLine, @arg_n)
         reset
-        return seq
+        seq
       else
-        return reset
+        reset
       end
     end
   end
