@@ -45,3 +45,4 @@ clean:
 	rm -f *.o libc.a libm.a
 	rm -f src/**/*.o
 	rm -f src/**/**/*.o
+	rm -f src/**/**/**/*.o

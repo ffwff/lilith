@@ -20,9 +20,9 @@ static int __sscanf_ngets(char *buffer, size_t length, void *userptr) {
     if(slice->str == 0) {
         return length;
     } else if (slice->overflow_ch != 0) {
-        char ch = slice->overflow_ch;
+        buffer[0] = slice->overflow_ch;
         slice->overflow_ch = 0;
-        return ch;
+        return 1;
     } else if (slice->remaining > 0) {
         size_t copy_sz = 0;
         if (length > slice->remaining) {
@@ -70,10 +70,12 @@ static int __sscanf(ngets_fn_t ngets_fn, nungetc_fn_t ungetc_fn, void *userptr,
                 }
                 case 's': {
                     // TODO
+                    format++;
                     abort();
                     break;
                 }
                 case 'd': {
+                    format++;
                     char ch = 0;
                     int num = 0;
                     int sign = 1;
