@@ -57,9 +57,7 @@ struct FileBuffer
     if @is_write
       retval = write(fd, @buffer.as(LibC::String), @pos)
     end
-    if retval != EOF
-      @pos = 0
-    end
+    @pos = 0
     retval
   end
 

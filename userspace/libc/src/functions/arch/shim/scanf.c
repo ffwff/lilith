@@ -9,7 +9,7 @@ typedef int (*ngets_fn_t)(char *buffer, size_t length, void *userptr);
 typedef void (*nungetc_fn_t)(char ch, void *userptr);
 
 struct sscanf_slice {
-    char *str;
+    const char *str;
     size_t remaining;
     // overflow character for parsing ints and the like
     char overflow_ch;
@@ -87,6 +87,7 @@ static int __sscanf(ngets_fn_t ngets_fn, nungetc_fn_t ungetc_fn, void *userptr,
                     } else {
                         return readden;
                     }
+                    readden++;
                     // digits
                     while ((retval = ngets_fn(&ch, 1, userptr))) {
                         if (isdigit(ch)) {
@@ -95,9 +96,12 @@ static int __sscanf(ngets_fn_t ngets_fn, nungetc_fn_t ungetc_fn, void *userptr,
                         } else {
                             break;
                         }
+                        readden++;
                     }
                     // return the last character to the buffer
-                    ungetc_fn(ch, userptr);
+                    if(retval) {
+                        ungetc_fn(ch, userptr);
+                    }
                     // negate if necessary
                     num *= sign;
                     // store
@@ -132,12 +136,12 @@ static int __sscanf(ngets_fn_t ngets_fn, nungetc_fn_t ungetc_fn, void *userptr,
     return readden;
 }
 
-int sscanf(char *str, const char *format, ...) {
+int sscanf(const char *str, const char *format, ...) {
     va_list args;
     va_start(args, format);
     struct sscanf_slice slice = {
         .str = str,
-        .remaining = INT_MAX,
+        .remaining = strlen(str),
         .overflow_ch = 0,
     };
     int ret = __sscanf(__sscanf_ngets, __scanf_ungetc, &slice, format, args);

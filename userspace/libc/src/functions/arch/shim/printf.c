@@ -33,9 +33,9 @@ static int __printf_itoa(int num, int base, char *str) {
         num /= base;
         if(!num) break;
     }
+    i++;
     if(sign) {
-        str[i] = '-';
-        i += 1;
+        str[i++] = '-';
     }
     __printf_reverse(str, i);
     str[i] = 0;
