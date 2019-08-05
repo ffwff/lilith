@@ -20,7 +20,7 @@ def sysenter(eax, ebx)
 end
 
 # IO
-fun open(device : LibC::String, flags : Int32) : Int32
+fun _open(device : LibC::String, flags : Int32, mode : UInt32) : Int32
   sysenter(SC_OPEN, device.address.to_u32, flags).to_i32
 end
 

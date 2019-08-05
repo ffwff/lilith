@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdarg.h>
 
 typedef void FILE;
 
@@ -32,10 +33,21 @@ int fprintf(FILE *stream, const char *format, ...);
 int dprintf(int fd, const char *format, ...);
 int sprintf(char *str, const char *format, ...);
 int snprintf(char *str, size_t size, const char *format, ...);
+int sscanf(const char *str, const char *format, ...);
+
+int vsnprintf(char *str, size_t size, const char *format, va_list ap);
 
 int putc(int c, FILE *stream);
 int puts(const char *s);
 int getchar(void);
+
+void perror(const char *s);
+
+ssize_t getline(char **lineptr, size_t *n, FILE *stream);
+
+#define STDIN_FILENO  0
+#define STDOUT_FILENO 1
+#define STDERR_FILENO 2
 
 #define SEEK_SET 0
 #define SEEK_CUR 1

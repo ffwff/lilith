@@ -257,7 +257,26 @@ module Multiprocessing
       @frame.not_nil!
     end
 
-    # control
+    # initialize
+    def self.spawn_user(file, udata)
+      built = false
+      p = Multiprocessing::Process.new(udata) do |process|
+        if (err = ElfReader.load(process, file.not_nil!)).nil?
+          argv_builder = ArgvBuilder.new process
+          udata.argv.each do |arg|
+            argv_builder.from_string arg.not_nil!
+          end
+          argv_builder.build
+          built = true
+          true
+        else
+          false
+        end
+      end
+      return p if built
+    end
+
+    # deinitialize
     def remove
       Multiprocessing.n_process -= 1
       @prev_process.not_nil!.next_process = @next_process

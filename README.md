@@ -22,6 +22,12 @@ A Makefile is provided for building the userspace toolchain, to build it, go to 
 
 Once built, a patched version of GCC/Binutils will be installed in `userspace/toolchain/tools/bin`, simply set your PATH variable to that location and you can use the toolchain (with the `i386-elf-lilith` prefix)
 
+To compile C programs for the system, you'll also need to build the libc. In the `userspace/toolchain` directory, do:
+
+```
+make build_libc
+```
+
 ## Running
 
 A Pentium 4 compatible PC is required to run the OS. The Makefile provides a script which will run QEMU on the kernel:

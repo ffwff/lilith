@@ -52,7 +52,7 @@ struct FileBuffer
       retval = write(fd, @buffer.as(LibC::String), @pos)
     end
     if retval != EOF
-      @pos -= retval
+      @pos = 0
     end
     retval
   end
@@ -231,7 +231,7 @@ end
 # file operations
 fun fopen(file : LibC::String, mode : LibC::String) : Void*
   # TODO: mode
-  fd = open(file, 0)
+  fd = _open(file, 0, 0)
   if fd.to_u32 == SYSCALL_ERR
     return Pointer(Void).null
   end

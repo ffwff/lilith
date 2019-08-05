@@ -1,4 +1,5 @@
 #pragma once
+#include <stdint.h>
 
-typedef unsigned long time_t;
+typedef uint32_t time_t;
 time_t time(time_t *tloc);
