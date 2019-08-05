@@ -33,9 +33,10 @@ int fprintf(FILE *stream, const char *format, ...);
 int dprintf(int fd, const char *format, ...);
 int sprintf(char *str, const char *format, ...);
 int snprintf(char *str, size_t size, const char *format, ...);
-int sscanf(const char *str, const char *format, ...);
 
 int vsnprintf(char *str, size_t size, const char *format, va_list ap);
+
+int sscanf(char *str, const char *format, ...);
 
 int putc(int c, FILE *stream);
 int puts(const char *s);

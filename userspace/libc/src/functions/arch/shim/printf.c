@@ -156,10 +156,12 @@ static int sprintf_nputs(const char *data, size_t length, void *userptr) {
         } else {
             copy_sz = length;
         }
+        if (!copy_sz)
+            return 0;
         strncpy(slice->str, data, copy_sz);
         slice->str[copy_sz] = 0;
         slice->remaining -= copy_sz;
-        slice->str += copy_sz; // skip nul
+        slice->str += copy_sz;
         return copy_sz;
     } else {
         return 0;

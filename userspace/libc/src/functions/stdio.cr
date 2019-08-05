@@ -108,6 +108,10 @@ struct File
     end
   end
 
+  private def line_buffered?
+    @buffering == Buffering::LineBuffered
+  end
+
   # buffer
   @wbuffer = FileBuffer.new
   @rbuffer = FileBuffer.new
@@ -130,7 +134,7 @@ struct File
     if @buffering == Buffering::Unbuffered
       write(@fd, str, len).to_i32
     else
-      @wbuffer.fwrite(@fd, str.as(UInt8*), len, @buffering == Buffering::LineBuffered)
+      @wbuffer.fwrite(@fd, str.as(UInt8*), len, line_buffered?)
     end
   end
 
@@ -139,7 +143,7 @@ struct File
     if @buffering == Buffering::Unbuffered
       write(@fd, str, len.to_i32).to_i32
     else
-      @wbuffer.fwrite(@fd, str.as(UInt8*), len.to_i32, @buffering == Buffering::LineBuffered)
+      @wbuffer.fwrite(@fd, str.as(UInt8*), len.to_i32, line_buffered?)
     end
   end
 
@@ -196,7 +200,7 @@ struct File
     if @buffering == Buffering::Unbuffered
       write(@fd, ptr.as(LibC::String), len.to_i32).to_u32
     else
-      ret = @wbuffer.fwrite(@fd, ptr.as(UInt8*), len.to_i32, @buffering == Buffering::LineBuffered)
+      ret = @wbuffer.fwrite(@fd, ptr.as(UInt8*), len.to_i32, line_buffered?)
       ret == EOF ? 0u32 : ret.to_u32
     end
   end
@@ -213,7 +217,7 @@ module Stdio
   extend self
 
   @@stdin  = File.new STDIN , File::Status::Read , File::Buffering::Unbuffered
-  @@stdout = File.new STDOUT, File::Status::Write, File::Buffering::Unbuffered
+  @@stdout = File.new STDOUT, File::Status::Write, File::Buffering::LineBuffered
   @@stderr = File.new STDERR, File::Status::Write, File::Buffering::Unbuffered
 
   def stdin; @@stdin; end
@@ -329,4 +333,8 @@ fun getchar : Int32
   retval = 0
   read(STDIN, pointerof(retval).as(LibC::String), 1)
   retval
+end
+
+# errors
+fun perror(s : LibC::String)
 end

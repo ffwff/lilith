@@ -13,12 +13,13 @@ int ftruncate(int fildes, off_t length);
 
 typedef long pid_t;
 pid_t spawnv(char *file, char **argv);
+void _exit();
+
 pid_t waitpid(pid_t pid, int *status, int options);
 pid_t getpid();
+
 int getcwd(char *buf, unsigned long length);
 int chdir(char *buf);
-
-int atexit(void (*function)(void));
 
 #define PATH_MAX 4096
 

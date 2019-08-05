@@ -145,6 +145,18 @@ fun strchr(str : LibC::String, c : Int32) : LibC::String
   str
 end
 
+# str
+fun strstr(s1 : LibC::UString, s2 : LibC::UString) : LibC::UString
+  n = strlen s2.as(LibC::String)
+  until s1.value == 0
+    if memcmp(s1, s2, n) == 0
+      return s1
+    end
+    s1 += 1
+  end
+  LibC::UString.null
+end
+
 # memory
 fun memset(dst : UInt8*, c : UInt32, n : LibC::SizeT) : Void*
   asm(
@@ -202,5 +214,10 @@ fun memchr(str : LibC::String, c : Int32, n : LibC::SizeT) : LibC::String
     end
     n -= 1
   end
+  LibC::String.null
+end
+
+# errors
+fun strerror(errnum : Int32) : LibC::String
   LibC::String.null
 end
