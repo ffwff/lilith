@@ -38,8 +38,14 @@ struct FileBuffer
       i += 1
     end
     if line_buffered?
-      # TODO
-      abort
+      pos = @pos
+      @pos = offset
+      if flush(fd) == EOF
+        @pos = pos
+        return i
+      end
+      @pos = pos - offset
+      memmove(@buffer, @buffer + offset, @pos.to_u32)
     else
       flush fd
     end
@@ -59,7 +65,7 @@ struct FileBuffer
 
 end
 
-struct FILE
+struct File
 
   @[Flags]
   enum Status
@@ -82,7 +88,7 @@ struct FILE
   @fd = 0
   property fd
 
-  def initialize(@fd, @status)
+  def initialize(@fd, @status, @buffering)
   end
 
   def _finalize
@@ -206,9 +212,9 @@ end
 module Stdio
   extend self
 
-  @@stdin = FILE.new  STDIN , FILE::Status::Read
-  @@stdout = FILE.new STDOUT, FILE::Status::Write
-  @@stderr = FILE.new STDERR, FILE::Status::Write
+  @@stdin  = File.new STDIN , File::Status::Read , File::Buffering::Unbuffered
+  @@stdout = File.new STDOUT, File::Status::Write, File::Buffering::Unbuffered
+  @@stderr = File.new STDERR, File::Status::Write, File::Buffering::Unbuffered
 
   def stdin; @@stdin; end
   def stdout; @@stdout; end
@@ -231,18 +237,18 @@ end
 # file operations
 fun fopen(file : LibC::String, mode : LibC::String) : Void*
   # TODO: mode
-  fd = _open(file, 0, 0)
+  fd = open(file, 0, 0)
   if fd.to_u32 == SYSCALL_ERR
     return Pointer(Void).null
   end
-  stream = Pointer(FILE).malloc
+  stream = Pointer(File).malloc
   stream.value.fd = fd
   stream.value.parse_mode mode
   stream.as(Void*)
 end
 
 fun fclose(stream : Void*) : Int32
-  stream = stream.as(FILE*)
+  stream = stream.as(File*)
   stream.value._finalize
   unless stream.value.fd <= STDERR
     # TODO
@@ -252,7 +258,7 @@ fun fclose(stream : Void*) : Int32
 end
 
 fun fflush(stream : Void*) : Int32
-  stream.as(FILE*).value.fflush
+  stream.as(File*).value.fflush
 end
 
 fun fseek(stream : Void*, offset : Int32, whence : Int32) : Int32
@@ -266,31 +272,31 @@ fun ftell(stream : Void*) : Int32
 end
 
 fun fread(ptr : UInt8*, size : LibC::SizeT, nmemb : LibC::SizeT, stream : Void*) : LibC::SizeT
-  stream.as(FILE*).value.fread ptr, size * nmemb
+  stream.as(File*).value.fread ptr, size * nmemb
 end
 
 fun fwrite(ptr : UInt8*, size : LibC::SizeT, nmemb : LibC::SizeT, stream : Void*) : LibC::SizeT
-  stream.as(FILE*).value.fwrite ptr, size * nmemb
+  stream.as(File*).value.fwrite ptr, size * nmemb
 end
 
 fun fgets(str : LibC::String, size : Int32, stream : Void*) : LibC::String
-  stream.as(FILE*).value.fgets str, size
+  stream.as(File*).value.fgets str, size
 end
 
 fun fgetc(stream : Void*) : Int32
-  stream.as(FILE*).value.fgetc
+  stream.as(File*).value.fgetc
 end
 
 fun feof(stream : Void*) : Int32
-  stream.as(FILE*).value.feof ? 1 : 0
+  stream.as(File*).value.feof ? 1 : 0
 end
 
 fun fputs(str : LibC::String, stream : Void*) : Int32
-  stream.as(FILE*).value.fputs str
+  stream.as(File*).value.fputs str
 end
 
 fun fnputs(data : LibC::String, len : LibC::SizeT,  stream : Void*) : Int32
-  stream.as(FILE*).value.fnputs data, len
+  stream.as(File*).value.fnputs data, len
 end
 
 # prints
@@ -311,11 +317,11 @@ fun putchar(c : Int32) : Int32
 end
 
 fun putc(c : Int32, stream : Void*) : Int32
-  stream.as(FILE*).value.fputc c
+  stream.as(File*).value.fputc c
 end
 
 fun fputc(c : Int32, stream : Void*) : Int32
-  stream.as(FILE*).value.fputc c
+  stream.as(File*).value.fputc c
 end
 
 # get

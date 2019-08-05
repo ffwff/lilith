@@ -180,6 +180,9 @@ int sprintf(char *str, const char *restrict format, ...) {
 }
 
 int snprintf(char *str, size_t size, const char *restrict format, ...) {
+    if(size < 1)
+        return 0;
+
     va_list args;
     va_start(args, format);
     struct sprintf_slice slice = {
@@ -189,5 +192,17 @@ int snprintf(char *str, size_t size, const char *restrict format, ...) {
     int ret = __printf(sprintf_nputs, &slice, format, args);
     va_end(args);
 
+    return ret;
+}
+
+int vsnprintf(char *str, size_t size, const char *restrict format, va_list args) {
+    if(size < 1)
+        return 0;
+
+    struct sprintf_slice slice = {
+        .str = str,
+        .remaining = size,
+    };
+    int ret = __printf(sprintf_nputs, &slice, format, args);
     return ret;
 }

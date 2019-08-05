@@ -5,9 +5,7 @@
 typedef unsigned long mode_t;
 typedef unsigned long off_t;
 
-int _open(char *device, int flags, mode_t mode);
-#define open(device, flags) _open(device, flags, 0)
-#define open(device, flags, mode) _open(device, flags, mode)
+int open(char *device, int flags, mode_t mode);
 int close(int fd);
 long write(int fd, void *str, size_t len);
 long read(int fd, char *str, unsigned long len);
