@@ -15,6 +15,8 @@ class VFSReadMessage
                  @buffering)
   end
 
+  getter slice
+
   def finished?
     offset == @slice.size
   end

@@ -8,6 +8,8 @@ struct Slice(T)
     new Pointer(T).malloc(sz), sz
   end
 
+  # manual malloc: this should only be used when the slice is
+  # to be cleaned up before the function returns
   def self.mmalloc(sz)
     new Pointer(T).mmalloc(sz), sz
   end

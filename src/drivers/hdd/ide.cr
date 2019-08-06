@@ -232,6 +232,8 @@ class AtaDevice
         i += 2
       end
     {% end %}
+
+    # cleanup
     device.mfree
   end
 

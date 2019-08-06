@@ -57,6 +57,13 @@ class Keyboard
     CtrlR  = 1 << 4
   end
 
+  enum SpecialKeys
+    UpArrow
+    DownArrow
+    LeftArrow
+    RightArrow
+  end
+
   @current_keycode : Char? = nil
   getter current_keycode
 
@@ -75,9 +82,11 @@ class Keyboard
   end
 
   @last_e0 = false
+  @last_f0 = false
 
   def callback
     keycode = X86.inb(0x60)
+    # Serial.puts "kc: ", keycode,'\n'
     case keycode
     when 0x2A # left shift pressed
       @modifiers |= Modifiers::ShiftL
@@ -103,7 +112,25 @@ class Keyboard
       @last_e0 = false
     when 0xE0 # left/right control modifier
       @last_e0 = true
+    when 0xF0
+      @last_f0 = true
+      return
     else
+      if @last_e0
+        case keycode
+        when 0x48 # up
+          @kbdfs.not_nil!.on_key SpecialKeys::UpArrow
+        when 0x50 # down
+          @kbdfs.not_nil!.on_key SpecialKeys::DownArrow
+        when 0x4b # left
+          @kbdfs.not_nil!.on_key SpecialKeys::LeftArrow
+        when 0x4d # right
+          @kbdfs.not_nil!.on_key SpecialKeys::RightArrow
+        end
+        @last_e0 = false
+        @last_f0 = false
+        return
+      end
       keycode = keycode.to_i8
       if keycode > 0
         if @modifiers.includes?(Modifiers::ShiftL) ||
@@ -117,5 +144,6 @@ class Keyboard
         end
       end
     end
+    @last_f0 = false
   end
 end

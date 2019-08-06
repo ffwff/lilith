@@ -12,6 +12,13 @@ class KbdFsNode < VFSNode
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
+    if @fs.ansi_remaining > 0
+      size = min @fs.ansi_remaining, slice.size
+      size.times do |i|
+        slice[i] = @fs.ansi_buf_pop
+      end
+      return size
+    end
     VFS_READ_WAIT
   end
 
@@ -73,7 +80,7 @@ class KbdFS < VFS
     true
   end
 
-  def on_key(ch)
+  def on_key(ch : Char)
     n = ch.ord.to_u8
 
     if @kbd.modifiers.includes?(Keyboard::Modifiers::CtrlL) ||
@@ -140,4 +147,59 @@ class KbdFS < VFS
       Paging.enable
     end
   end
+
+  def on_key(key : Keyboard::SpecialKeys)
+    case key
+    when Keyboard::SpecialKeys::UpArrow
+      ansi_buf_set StaticArray[0x1B, '['.ord, 'A'.ord]
+    when Keyboard::SpecialKeys::DownArrow
+      ansi_buf_set StaticArray[0x1B, '['.ord, 'B'.ord]
+    when Keyboard::SpecialKeys::RightArrow
+      ansi_buf_set StaticArray[0x1B, '['.ord, 'C'.ord]
+    when Keyboard::SpecialKeys::LeftArrow
+      ansi_buf_set StaticArray[0x1B, '['.ord, 'D'.ord]
+    end
+
+    Idt.lock do
+      last_page_dir = Paging.current_page_dir
+      root.read_queue.not_nil!.keep_if do |msg|
+        dir = msg.process.phys_page_dir
+        Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
+        Paging.enable
+        size = min ansi_remaining, msg.slice.size
+        size.times do |i|
+          msg.slice[i] = ansi_buf_pop
+        end
+        msg.process.status = Multiprocessing::Process::Status::Unwait
+        msg.process.frame.not_nil!.eax = size
+        false
+      end
+      Paging.current_page_dir = last_page_dir
+      Paging.enable
+    end
+  end
+
+  # buffer to store ansi characters
+  @ansi_buf = uninitialized UInt8[16]
+  @ansi_remaining = 0
+  getter ansi_remaining
+
+  private def ansi_buf_set(str)
+    i = min str.size, @ansi_buf.size
+    @ansi_remaining = i
+    i -= 1
+    j = 0
+    while j < @ansi_remaining
+      @ansi_buf[j] = str[i].to_u8
+      i -= 1
+      j += 1
+    end
+  end
+
+  def ansi_buf_pop
+    @ansi_remaining -= 1
+    ch = @ansi_buf[@ansi_remaining]
+    ch
+  end
+
 end
