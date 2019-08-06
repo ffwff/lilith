@@ -7,11 +7,11 @@ lib LibCrystal
 end
 
 fun __crystal_malloc64(size : UInt64) : Void*
-  LibGc.unsafe_malloc size.to_u32
+  Gc.unsafe_malloc size.to_u32
 end
 
 fun __crystal_malloc_atomic64(size : UInt64) : Void*
-  LibGc.unsafe_malloc size.to_u32, true
+  Gc.unsafe_malloc size.to_u32, true
 end
 
 # white nodes
@@ -33,7 +33,7 @@ private lib Kernel
   fun kget_stack : UInt32
 end
 
-module LibGc
+module Gc
   extend self
 
   @@first_white_node = Pointer(Kernel::GcNode).null

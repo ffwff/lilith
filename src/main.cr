@@ -62,9 +62,9 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   #
   VGA.puts "initializing kernel garbage collector...\n"
-  LibGc.init Kernel.data_start.address.to_u32,
-        Kernel.data_end.address.to_u32,
-        Kernel.stack_end.address.to_u32
+  Gc.init Kernel.data_start.address.to_u32,
+          Kernel.data_end.address.to_u32,
+          Kernel.stack_end.address.to_u32
 
   #
   ide = nil
