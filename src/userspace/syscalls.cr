@@ -220,7 +220,6 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     end
   when SC_IOCTL
     fdi = frame.ebx.to_i32
-    Serial.puts fdi, '\n'
     fd = try(pudata.get_fd(fdi))
     arg = try(checked_pointer(frame.edx)).as(SyscallData::IoctlArgument*)
     request, data = arg.value.request, try(checked_pointer(arg.value.data.address.to_u32))

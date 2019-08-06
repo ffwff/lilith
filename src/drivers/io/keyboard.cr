@@ -93,7 +93,6 @@ class Keyboard
           kc = KEYBOARD_MAP[keycode]?
         end
         if !@kbdfs.nil? && !kc.nil?
-          VGA.putc_input kc.ord.to_u8
           @kbdfs.not_nil!.on_key kc
         end
       end

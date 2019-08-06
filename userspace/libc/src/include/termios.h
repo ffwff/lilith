@@ -19,8 +19,6 @@ int tcgetattr(int fd, struct termios *termios_p);
 int tcsetattr(int fd, int optional_actions,
               const struct termios *termios_p);
 
-#define TCSAFLUSH 0
-
 #define BRKINT (1 << 0)
 #define ICRNL  (1 << 1)
 #define INPCK  (1 << 2)

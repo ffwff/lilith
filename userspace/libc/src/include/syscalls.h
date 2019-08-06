@@ -30,3 +30,7 @@ int chdir(char *buf);
 #define O_RDWR   (O_RDONLY | O_WRONLY)
 
 #define O_CREAT  (1 << 2)
+
+#define TCSAFLUSH   0
+#define TCSAGETS    1
+#define TIOCGWINSZ  2

@@ -7,6 +7,4 @@ struct winsize {
     unsigned short ws_ypixel; /* vertical size, pixels */
 };
 
-#define TIOCGWINSZ 0
-
 int ioctl(int fd, int request, void *arg);

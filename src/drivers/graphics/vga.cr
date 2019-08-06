@@ -72,7 +72,7 @@ private struct VgaInstance < OutputDriver
     VgaState.advance
   end
 
-  def putc(ch : UInt8, display? = true)
+  def putc(ch : UInt8)
     ansi_handler = VgaState.ansi_handler
     if ansi_handler.nil?
       return putchar(ch)
@@ -95,15 +95,8 @@ private struct VgaInstance < OutputDriver
         VgaState.cy = min(seq.arg_m.not_nil!.to_i32, VGA_HEIGHT - 1)
       end
     when UInt8
-      if display?
-        putchar seq
-      end
+      putchar seq
     end
-  end
-
-  def putc_input(ch : UInt8)
-    putc ch, VgaState.echo_input?
-    move_cursor VgaState.cx, VgaState.cy + 1
   end
 
   def puts(*args)
@@ -167,13 +160,6 @@ module VgaState
   def fg=(@@fg); end
   def bg=(@@bg); end
 
-  @@echo_input = true
-  def echo_input?
-    @@echo_input
-  end
-  def echo_input=(@@echo_input)
-  end
-  
   @@ansi_handler : AnsiHandler? = nil
   def ansi_handler
     if !Multiprocessing.current_process.nil? && @@ansi_handler.nil?

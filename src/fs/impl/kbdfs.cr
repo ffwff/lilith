@@ -2,7 +2,7 @@ class KbdFsNode < VFSNode
   @read_queue : VFSReadQueue? = nil
   getter read_queue
 
-  def initialize
+  def initialize(@fs : KbdFS)
     @read_queue = VFSReadQueue.new
   end
 
@@ -18,19 +18,31 @@ class KbdFsNode < VFSNode
   def write(slice : Slice) : Int32
     0
   end
+
+  def ioctl(request : Int32, data : Void*) : Int32
+    case request
+    when SC_IOCTL_TCSAFLUSH
+      data = data.as(IoctlData::Termios*).value
+      @fs.echo_input = data.c_lflag.includes?(TermiosData::LFlag::ECHO)
+      0
+    when SC_IOCTL_TCSAGETS
+      IoctlHandler.tcsa_gets(data)
+    else
+      -1
+    end
+  end
+
 end
 
 class KbdFS < VFS
-  def name
-    @name.not_nil!
-  end
+  getter name
 
   @next_node : VFS? = nil
   property next_node
 
   def initialize(kbd : Keyboard)
     @name = GcString.new "kbd"
-    @root = KbdFsNode.new
+    @root = KbdFsNode.new self
     kbd.kbdfs = self
   end
 
@@ -38,7 +50,15 @@ class KbdFS < VFS
     @root.not_nil!
   end
 
+  @echo_input = true
+  def echo_input; @echo_input; end
+  def echo_input=(@echo_input); end
+
   def on_key(ch)
+    if @echo_input
+      VGA.puts ch
+    end
+
     Idt.lock do
       last_page_dir = Paging.current_page_dir
       root.read_queue.not_nil!.keep_if do |msg|
