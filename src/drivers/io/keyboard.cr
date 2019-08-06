@@ -51,15 +51,17 @@ KEYBOARD_MAP_SHIFT = StaticArray[
 class Keyboard
   @[Flags]
   enum Modifiers
-    None   = 0x0
-    ShiftL = 0x1
-    ShiftR = 0x2
+    ShiftL = 1 << 0
+    ShiftR = 1 << 1
+    CtrlL  = 1 << 3
+    CtrlR  = 1 << 4
   end
 
   @current_keycode : Char? = nil
   getter current_keycode
 
   @modifiers = Modifiers::None
+  getter modifiers
 
   @kbdfs : KbdFS? = nil
   property kbdfs
@@ -72,6 +74,8 @@ class Keyboard
     X86.outb 0xF4, 0
   end
 
+  @last_e0 = false
+
   def callback
     keycode = X86.inb(0x60)
     case keycode
@@ -83,11 +87,27 @@ class Keyboard
       @modifiers &= ~Modifiers::ShiftL
     when 0xB6 # right shift released
       @modifiers &= ~Modifiers::ShiftR
+    when 0x1D # control pressed
+      if @last_e0
+        @modifiers |= Modifiers::CtrlR
+      else
+        @modifiers |= Modifiers::CtrlL
+      end
+      @last_e0 = false
+    when 0x9D # control released
+      if @last_e0
+        @modifiers &= ~Modifiers::CtrlR
+      else
+        @modifiers &= ~Modifiers::CtrlL
+      end
+      @last_e0 = false
+    when 0xE0 # left/right control modifier
+      @last_e0 = true
     else
       keycode = keycode.to_i8
       if keycode > 0
         if @modifiers.includes?(Modifiers::ShiftL) ||
-          @modifiers.includes?(Modifiers::ShiftR)
+           @modifiers.includes?(Modifiers::ShiftR)
           kc = KEYBOARD_MAP_SHIFT[keycode]? || KEYBOARD_MAP[keycode]?
         else
           kc = KEYBOARD_MAP[keycode]?

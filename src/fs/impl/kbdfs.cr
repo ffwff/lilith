@@ -49,10 +49,10 @@ class KbdFS < VFS
   @next_node : VFS? = nil
   property next_node
 
-  def initialize(kbd : Keyboard)
+  def initialize(@kbd : Keyboard)
     @name = GcString.new "kbd"
     @root = KbdFsNode.new self
-    kbd.kbdfs = self
+    @kbd.kbdfs = self
   end
 
   def root
@@ -74,10 +74,36 @@ class KbdFS < VFS
   end
 
   def on_key(ch)
-    if ch == '\n' && !@canonical
-      VGA.newline
-    elsif should_print ch
-      VGA.puts ch
+    n = ch.ord.to_u8
+
+    if @kbd.modifiers.includes?(Keyboard::Modifiers::CtrlL) ||
+       @kbd.modifiers.includes?(Keyboard::Modifiers::CtrlR)
+      n = (case ch
+      when 'c'
+        3
+      when 'd'
+        4
+      when 'f'
+        6
+      when 'h'
+        5
+      when 'l'
+        12
+      when 'q'
+        17
+      when 's'
+        19
+      when 'u'
+        21
+      else
+        return
+      end).to_u8
+    else
+      if ch == '\n' && !@canonical
+        VGA.newline
+      elsif should_print ch
+        VGA.puts ch
+      end
     end
 
     Idt.lock do
@@ -88,7 +114,7 @@ class KbdFS < VFS
         Paging.enable
         case msg.buffering
         when VFSNode::Buffering::Unbuffered
-          msg.respond ch.ord.to_u8
+          msg.respond n
           msg.process.status = Multiprocessing::Process::Status::Unwait
           msg.process.frame.not_nil!.eax = 1
           false
@@ -97,7 +123,7 @@ class KbdFS < VFS
             msg.respond 0
             false
           else
-            msg.respond ch.ord.to_u8
+            msg.respond n
             if (msg.buffering == VFSNode::Buffering::LineBuffered && ch == '\n') ||
                 msg.finished?
               msg.process.status = Multiprocessing::Process::Status::Unwait
