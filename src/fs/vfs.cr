@@ -9,12 +9,18 @@ abstract class VFSNode
     FullyBuffered
   end
 
-  abstract def size : Int
-  abstract def name : GcString?
+  def size : Int
+    0
+  end
+  def name : GcString?
+  end
 
-  abstract def parent : VFSNode?
-  abstract def next_node : VFSNode?
-  abstract def first_child : VFSNode?
+  def parent : VFSNode?
+  end
+  def next_node : VFSNode?
+  end
+  def first_child : VFSNode?
+  end
 
   abstract def open(path : Slice) : VFSNode?
   abstract def read(slice : Slice(UInt8), offset : UInt32,
@@ -23,6 +29,9 @@ abstract class VFSNode
     # for internal kernel reading
   end
   abstract def write(slice : Slice) : Int32
+  def ioctl(request : Int32, data : Void*) : Int32
+    -1
+  end
 
   abstract def read_queue : VFSReadQueue?
 end

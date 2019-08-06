@@ -9,6 +9,8 @@ class AnsiHandler
   enum CsiSequenceType
     EraseInLine
     MoveCursor
+    ShowCursor
+    HideCursor
   end
 
   struct CsiSequence
@@ -80,19 +82,30 @@ class AnsiHandler
         @csi_priv = true
       elsif ch == 'H'.ord.to_u8
         if @arg_n.nil? && @arg_m.nil?
-          seq = CsiSequence.new(CsiSequenceType::MoveCursor, 0, 0)
+          seq = CsiSequence.new CsiSequenceType::MoveCursor, 0, 0
         else
-          seq = CsiSequence.new(CsiSequenceType::MoveCursor, @arg_n, @arg_m)
+          seq = CsiSequence.new CsiSequenceType::MoveCursor, @arg_n, @arg_m
         end
         reset
         seq
       elsif ch == 'h'.ord.to_u8
         if @csi_priv
-          # TODO
+          if @arg_n == 25
+            seq = CsiSequence.new CsiSequenceType::ShowCursor
+          end
         end
         reset
+        seq
+      elsif ch == 'l'.ord.to_u8
+        if @csi_priv
+          if @arg_n == 25
+            seq = CsiSequence.new CsiSequenceType::HideCursor
+          end
+        end
+        reset
+        seq
       elsif !@arg_n.nil? && ch == 'K'.ord.to_u8
-        seq = CsiSequence.new(CsiSequenceType::EraseInLine, @arg_n)
+        seq = CsiSequence.new CsiSequenceType::EraseInLine, @arg_n
         reset
         seq
       else

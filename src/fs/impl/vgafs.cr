@@ -2,20 +2,6 @@ class VGAFsNode < VFSNode
   def initialize(@fs : VGAFS)
   end
 
-  #
-  def size : Int
-    0
-  end
-
-  def name; end
-
-  def parent; end
-
-  def next_node; end
-
-  def first_child; end
-
-  #
   def open(path : Slice) : VFSNode?
     nil
   end
@@ -30,6 +16,22 @@ class VGAFsNode < VFSNode
       VGA.puts ch.unsafe_chr
     end
     slice.size
+  end
+
+  def ioctl(request : Int32, data : Void*) : Int32
+    case request
+    when SC_IOCTL_TCSAFLUSH
+      data = data.as(IoctlData::Termios*).value
+      VgaState.echo_input = data.c_lflag.includes?(TermiosData::LFlag::ECHO)
+      #Serial.puts "inputs: ", VgaState.echo_input?,'\n'
+      0
+    when SC_IOCTL_TCSAGETS
+      IoctlHandler.tcsa_gets(data)
+    when SC_IOCTL_TIOCGWINSZ
+      IoctlHandler.winsize(data, VGA_WIDTH, VGA_HEIGHT, 0, 0)
+    else
+      -1
+    end
   end
 
   def read_queue

@@ -174,7 +174,7 @@ module ElfReader
     unless vfs.size > 0
       return ParserError::EmptyFile
     end
-    Paging.alloc_page_pg(process.initial_esp - 0x1000, true, true, 1)
+    Paging.alloc_page_pg(process.initial_esp - 0x1000 * 4, true, true, npages: 4)
     mmap_list : GcArray(MemMapNode)? = nil
     mmap_append_idx = 0
     mmap_idx = 0
@@ -198,7 +198,7 @@ module ElfReader
             page_start = Paging.alloc_page_pg(data.p_vaddr,
               (data.p_flags & ElfStructs::Elf32PFlags::PF_W) == ElfStructs::Elf32PFlags::PF_W,
               true, npages)
-            memset Pointer(UInt8).new(page_start.to_u64), 0, npages * 0x1000
+            zero_page Pointer(UInt8).new(page_start.to_u64), npages
           end
           # heap should start right after the last segment
           heap_start = Paging.aligned(data.p_vaddr + data.p_memsz)

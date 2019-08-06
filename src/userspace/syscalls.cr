@@ -37,6 +37,11 @@ lib SyscallData
     status : Int32*
     options : UInt32
   end
+
+  struct IoctlArgument
+    request : Int32
+    data    : Void*
+  end
 end
 
 # path parser
@@ -213,6 +218,13 @@ fun ksyscall_handler(frame : SyscallData::Registers)
     else
       frame.eax = SYSCALL_ERR
     end
+  when SC_IOCTL
+    fdi = frame.ebx.to_i32
+    Serial.puts fdi, '\n'
+    fd = try(pudata.get_fd(fdi))
+    arg = try(checked_pointer(frame.edx)).as(SyscallData::IoctlArgument*)
+    request, data = arg.value.request, try(checked_pointer(arg.value.data.address.to_u32))
+    frame.eax = fd.node.not_nil!.ioctl(request, data)
   when SC_CLOSE
     fdi = frame.ebx.to_i32
     if pudata.close_fd(fdi)

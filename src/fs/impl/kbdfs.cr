@@ -6,20 +6,6 @@ class KbdFsNode < VFSNode
     @read_queue = VFSReadQueue.new
   end
 
-  #
-  def size : Int
-    0
-  end
-
-  def name; end
-
-  def parent; end
-
-  def next_node; end
-
-  def first_child; end
-
-  #
   def open(path : Slice) : VFSNode?
     nil
   end
@@ -53,8 +39,6 @@ class KbdFS < VFS
   end
 
   def on_key(ch)
-    VGA.puts ch
-
     Idt.lock do
       last_page_dir = Paging.current_page_dir
       root.read_queue.not_nil!.keep_if do |msg|

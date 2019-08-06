@@ -1,26 +1,15 @@
-lib LibC
-
-  struct WinSize
-    ws_row : UInt16
-    ws_col : UInt16
-    ws_xpixel : UInt16
-    ws_ypixel : UInt16
-  end
-
-end
-
 TIOCGWINSZ = 0
 
-fun ioctl(fd : Int32, request : Int32, arg : Void*) : Int32
-  if request == TIOCGWINSZ
-    arg = arg.as(LibC::WinSize*)
-    # TODO
-    arg.value.ws_row = 24
-    arg.value.ws_col = 80
-    arg.value.ws_xpixel = 16
-    arg.value.ws_ypixel = 8
-    0
-  else
-    -1
+lib LibC
+  struct SyscallIoctlArgument
+    request : Int32
+    data    : Void*
   end
+end
+
+fun ioctl(fd : Int32, request : Int32, data : Void*) : Int32
+  arg = uninitialized LibC::SyscallIoctlArgument
+  arg.request = request
+  arg.data = data
+  sysenter(SC_IOCTL, fd, pointerof(arg).address.to_u32).to_i32
 end
