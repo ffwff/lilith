@@ -43,7 +43,8 @@ private struct Malloc
   end
 
   # minimum size of header + data
-  MIN_ALLOC_SIZE = sizeof(Data::Header) + 8 + sizeof(Data::Footer)
+  MIN_ALLOC_SIZE = 8
+  MIN_ALLOC_DATA = sizeof(Data::Header) + MIN_ALLOC_SIZE + sizeof(Data::Footer)
 
   # start of the heap
   @heap_start = 0u32
@@ -120,7 +121,7 @@ private struct Malloc
           # dbg "non-free header in free list? "; hdr.dbg
           abort
         end
-        if (hdr.value.size - data_sz) >= MIN_ALLOC_SIZE
+        if (hdr.value.size - data_sz) >= MIN_ALLOC_DATA
           # we can reasonably split this header for more allocation
 
           # the current layout for the chunk can be seen like this:
@@ -163,8 +164,12 @@ private struct Malloc
   end
 
   def malloc(size : UInt32) : Void*
-    unless aligned?(size)
-      size = align_up(size)
+    if size < MIN_ALLOC_DATA
+      size = MIN_ALLOC_DATA.to_u32
+    else
+      unless aligned?(size)
+        size = align_up(size)
+      end
     end
     data_size = size
     size += sizeof(Data::Footer)

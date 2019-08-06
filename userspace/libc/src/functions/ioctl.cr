@@ -15,7 +15,7 @@ fun ioctl(fd : Int32, request : Int32, arg : Void*) : Int32
   if request == TIOCGWINSZ
     arg = arg.as(LibC::WinSize*)
     # TODO
-    arg.value.ws_row = 25
+    arg.value.ws_row = 24
     arg.value.ws_col = 80
     arg.value.ws_xpixel = 16
     arg.value.ws_ypixel = 8

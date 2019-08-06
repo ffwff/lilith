@@ -52,7 +52,7 @@ end
 
 fun strncpy(dst : LibC::String, src : LibC::String, n : LibC::SizeT) : LibC::String
   retval = dst
-  while n > 0
+  until n == 0
     dst.value = src.value
     return retval if src.value == 0
     src += 1
@@ -125,7 +125,7 @@ fun strncat(dst : LibC::String, src : LibC::String, n : LibC::SizeT) : LibC::Str
   until dst.value == 0
     dst += 1
   end
-  while n > 0
+  until n == 0
     dst.value = src.value
     return ret if src.value == 0
     dst += 1
@@ -180,10 +180,10 @@ fun memmove(dst : UInt8*, src : UInt8*, n : LibC::SizeT) : Void*
   if src.address < dst.address
     src += n.to_i64
     dst += n.to_i64
-    while n > 0
-      dst.value = src.value
+    until n == 0
       dst -= 1
       src -= 1
+      dst.value = src.value
       n -= 1
     end
   else
@@ -203,7 +203,8 @@ fun memcmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : Int32
 end
 
 fun memchr(str : LibC::String, c : Int32, n : LibC::SizeT) : LibC::String
-  while n > 0
+  until n == 0
+    str += 1
     if str.value == c
       return str
     end
