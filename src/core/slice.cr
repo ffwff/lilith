@@ -4,6 +4,10 @@ struct Slice(T)
   def initialize(@buffer : Pointer(T), @size : Int32)
   end
 
+  def self.malloc(sz)
+    new Pointer(T).malloc(sz), sz
+  end
+
   def self.mmalloc(sz)
     new Pointer(T).mmalloc(sz), sz
   end
