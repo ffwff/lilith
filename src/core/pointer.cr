@@ -76,7 +76,7 @@ struct Pointer(T)
   end
 
   def -(offset : Int)
-    self - offset.to_i64
+    self + (offset.to_i64 * -1)
   end
 
   def ==(other)
