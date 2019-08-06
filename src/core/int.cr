@@ -87,3 +87,9 @@ end
 def max(a, b)
   a > b ? a : b
 end
+
+def clamp(x, min, max)
+  return min if x < min
+  return max if x > max
+  x
+end

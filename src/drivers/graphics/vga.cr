@@ -72,6 +72,11 @@ private struct VgaInstance < OutputDriver
     VgaState.advance
   end
 
+  def newline
+    VgaState.newline
+    move_cursor VgaState.cx, VgaState.cy
+  end
+
   def putc(ch : UInt8)
     ansi_handler = VgaState.ansi_handler
     if ansi_handler.nil?
@@ -91,8 +96,9 @@ private struct VgaInstance < OutputDriver
           end
         end
       when AnsiHandler::CsiSequenceType::MoveCursor
-        VgaState.cx = min(seq.arg_n.not_nil!.to_i32, VGA_WIDTH - 1)
-        VgaState.cy = min(seq.arg_m.not_nil!.to_i32, VGA_HEIGHT - 1)
+        VgaState.cx = clamp(seq.arg_m.not_nil!.to_i32 - 1, 0, VGA_WIDTH)
+        VgaState.cy = clamp(seq.arg_n.not_nil!.to_i32 - 1, 0, VGA_HEIGHT)
+        move_cursor VgaState.cx, VgaState.cy
       end
     when UInt8
       putchar seq
@@ -181,7 +187,7 @@ module VgaState
     if @@cx == 0 && @@cy > 0
       @@cx = VGA_WIDTH
       @@cy -= 1
-    else
+    elsif @@cx > 0
       @@cx -= 1
     end
   end

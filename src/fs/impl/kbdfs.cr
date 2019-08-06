@@ -24,9 +24,18 @@ class KbdFsNode < VFSNode
     when SC_IOCTL_TCSAFLUSH
       data = data.as(IoctlData::Termios*).value
       @fs.echo_input = data.c_lflag.includes?(TermiosData::LFlag::ECHO)
+      @fs.canonical = data.c_lflag.includes?(TermiosData::LFlag::ICANON)
       0
     when SC_IOCTL_TCSAGETS
-      IoctlHandler.tcsa_gets(data)
+      IoctlHandler.tcsa_gets(data) do |termios|
+        if @fs.echo_input
+          termios.c_lflag |= TermiosData::LFlag::ECHO
+        end
+        if @fs.canonical
+          termios.c_lflag |= TermiosData::LFlag::ICANON
+        end
+        termios
+      end
     else
       -1
     end
@@ -51,11 +60,23 @@ class KbdFS < VFS
   end
 
   @echo_input = true
-  def echo_input; @echo_input; end
-  def echo_input=(@echo_input); end
+  property echo_input
+  @canonical = true
+  property canonical
+
+  private def should_print(ch)
+    if ch.ord >= 0x20 && ch.ord <= 0x7e
+      if !@echo_input
+        return false
+      end
+    end
+    true
+  end
 
   def on_key(ch)
-    if @echo_input
+    if ch == '\n' && !@canonical
+      VGA.newline
+    elsif should_print ch
       VGA.puts ch
     end
 

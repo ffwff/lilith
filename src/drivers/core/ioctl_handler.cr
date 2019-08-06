@@ -64,12 +64,14 @@ module IoctlHandler
     0
   end
 
-  def tcsa_gets(data)
+  def tcsa_gets(data, &block)
     data = data.as(IoctlData::Termios*)
-    data.value.c_iflag = TermiosData::IFlag::None
-    data.value.c_oflag = TermiosData::OFlag::None
-    data.value.c_cflag = TermiosData::CFlag::None
-    data.value.c_lflag = TermiosData::LFlag::None
+    termios = uninitialized IoctlData::Termios
+    termios.c_iflag = TermiosData::IFlag::None
+    termios.c_oflag = TermiosData::OFlag::None
+    termios.c_cflag = TermiosData::CFlag::None
+    termios.c_lflag = TermiosData::LFlag::None
+    data.value = yield termios
     0
   end
 

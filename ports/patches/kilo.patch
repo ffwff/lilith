@@ -1,0 +1,22 @@
+diff --git a/kilo.c b/kilo.c
+index 9490a77..d19e4bb 100644
+--- a/kilo.c
++++ b/kilo.c
+@@ -114,14 +114,14 @@ enum KEY_ACTION{
+         CTRL_D = 4,         /* Ctrl-d */
+         CTRL_F = 6,         /* Ctrl-f */
+         CTRL_H = 8,         /* Ctrl-h */
+-        TAB = 9,            /* Tab */
++        TAB = '\t',            /* Tab */
+         CTRL_L = 12,        /* Ctrl+l */
+-        ENTER = 13,         /* Enter */
++        ENTER = '\n',         /* Enter */
+         CTRL_Q = 17,        /* Ctrl-q */
+         CTRL_S = 19,        /* Ctrl-s */
+         CTRL_U = 21,        /* Ctrl-u */
+         ESC = 27,           /* Escape */
+-        BACKSPACE =  127,   /* Backspace */
++        BACKSPACE = '\b',   /* Backspace */
+         /* The following are just soft codes, not really reported by the
+          * terminal directly. */
+         ARROW_LEFT = 1000,

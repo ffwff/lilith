@@ -81,14 +81,18 @@ class AnsiHandler
       elsif ch == '?'.ord.to_u8
         @csi_priv = true
       elsif ch == 'H'.ord.to_u8
-        if @arg_n.nil? && @arg_m.nil?
-          seq = CsiSequence.new CsiSequenceType::MoveCursor, 0, 0
-        else
-          seq = CsiSequence.new CsiSequenceType::MoveCursor, @arg_n, @arg_m
+        # move cursor
+        if @arg_n.nil?
+          @arg_n = 0u16
         end
+        if @arg_m.nil?
+          @arg_m = 0u16
+        end
+        seq = CsiSequence.new CsiSequenceType::MoveCursor, @arg_n, @arg_m
         reset
         seq
       elsif ch == 'h'.ord.to_u8
+        # show cursor
         if @csi_priv
           if @arg_n == 25
             seq = CsiSequence.new CsiSequenceType::ShowCursor
@@ -97,6 +101,7 @@ class AnsiHandler
         reset
         seq
       elsif ch == 'l'.ord.to_u8
+        # hide cursor
         if @csi_priv
           if @arg_n == 25
             seq = CsiSequence.new CsiSequenceType::HideCursor
@@ -104,6 +109,10 @@ class AnsiHandler
         end
         reset
         seq
+      elsif ch == 'm'.ord.to_u8
+        # SGR
+        Serial.puts "unhandled sgr: ", @arg_n, '\n'
+        reset
       elsif !@arg_n.nil? && ch == 'K'.ord.to_u8
         seq = CsiSequence.new CsiSequenceType::EraseInLine, @arg_n
         reset

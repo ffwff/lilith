@@ -1,26 +1,26 @@
-fun toupper(c : Int32) : Int32
-  if c >= 'a'.ord && c <= 'z'.ord
-    c = c - 'a'.ord + 'A'.ord
+fun toupper(ch : Int32) : Int32
+  if ch >= 'a'.ord && ch <= 'z'.ord
+    ch = ch - 'a'.ord + 'A'.ord
   end
-  c
+  ch
 end
 
-fun tolower(c : Int32) : Int32
-  if c >= 'A'.ord && c <= 'Z'.ord
-    c = c - 'A'.ord + 'a'.ord
+fun tolower(ch : Int32) : Int32
+  if ch >= 'A'.ord && ch <= 'Z'.ord
+    ch = ch - 'A'.ord + 'a'.ord
   end
-  c
+  ch
 end
 
-fun isspace(c : Int32) : Int32
-  c = c.unsafe_chr
-  (c == ' ' || c == '\t' || c == '\r' || c == '\n') ? 1 : 0
+fun isspace(ch : Int32) : Int32
+  ch = ch.unsafe_chr
+  (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n') ? 1 : 0
 end
 
-fun isprint(c : Int32) : Int32
-  (c >= 0x20 && c <= 0x7e) ? 1 : 0
+fun isprint(ch : Int32) : Int32
+  (ch >= 0x20 && ch <= 0x7e) ? 1 : 0
 end
 
-fun isdigit(c : Int32) : Int32
-  (c >= '0'.ord && c <= '9'.ord) ? 1 : 0
+fun isdigit(ch : Int32) : Int32
+  (ch >= '0'.ord && ch <= '9'.ord) ? 1 : 0
 end
