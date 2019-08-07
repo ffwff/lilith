@@ -1,24 +1,26 @@
-struct PMallocState
-  @addr = 0u32
-  property addr
-  @start = 0u32
-  property start
+module Pmalloc
+  extend self
+
+  @@addr = 0u32
+  def addr; @@addr; end
+  def addr=(@@addr); end
+  @@start = 0u32
+  def start; @@start; end
+  def start=(@@start); end
 
   def alloc(size : Int)
-    last = @addr
-    @addr += size.to_u32
+    last = @@addr
+    @@addr += size.to_u32
     last
   end
 
   def alloca(size : Int)
-    if (@addr & 0xFFFF_F000) != 0
-      @addr = (@addr & 0xFFFF_F000) + 0x1000
+    if (@@addr & 0xFFFF_F000) != 0
+      @@addr = (@@addr & 0xFFFF_F000) + 0x1000
     end
     alloc(size)
   end
 end
-
-PMALLOC_STATE = PMallocState.new
 
 struct Pointer(T)
   def self.null
@@ -27,19 +29,19 @@ struct Pointer(T)
 
   # pre-pg malloc
   def self.pmalloc(size : Int)
-    ptr = new PMALLOC_STATE.alloc(size.to_u32 * sizeof(T)).to_u64
+    ptr = new Pmalloc.alloc(size.to_u32 * sizeof(T)).to_u64
     memset ptr.as(UInt8*), 0, size.to_u32 * sizeof(T)
     ptr
   end
 
   def self.pmalloc
-    ptr = new PMALLOC_STATE.alloc(sizeof(T)).to_u64
+    ptr = new Pmalloc.alloc(sizeof(T)).to_u64
     memset ptr.as(UInt8*), 0, sizeof(T).to_u32
     ptr
   end
 
   def self.pmalloc_a
-    ptr = new PMALLOC_STATE.alloca(sizeof(T)).to_u64
+    ptr = new Pmalloc.alloca(sizeof(T)).to_u64
     memset ptr.as(UInt8*), 0, sizeof(T).to_u32
     ptr
   end

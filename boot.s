@@ -45,9 +45,9 @@ _start:
     and $0xFFFB, %ax
     or $0x2, %ax
     mov %eax, %cr0
-    # setup fxsr, xmmexcpt, pge
+    # setup fxsr, xmmexcpt, pge, pae
     mov %cr4, %eax
-    or $0x680, %ax
+    or $0x6A0, %ax
     mov %eax, %cr4
     # run the function
     call kmain
@@ -188,10 +188,16 @@ kcpuex_handler_no_err 31
 
 # paging
 kenable_paging:
+    # switch to long mode through setting EFER
+    mov $0xC0000080, %ecx
+    rdmsr
+    or $0x100, %eax
+    wrmsr
+    # Enable paging
     mov 4(%esp), %eax
     mov %eax, %cr3
     mov %cr0, %eax
-    or $0x80000000, %eax # Enable paging!
+    or $0x80000000, %eax
     mov %eax, %cr0
     ret
 kdisable_paging:

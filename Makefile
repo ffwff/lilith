@@ -14,12 +14,12 @@ else
 	CRFLAGS += -d
 endif
 
-QEMUFLAGS ?=
+QEMU = qemu-system-x86_64
 
 QEMUFLAGS += \
 	-rtc base=localtime \
 	-monitor telnet:127.0.0.1:7777,server,nowait \
-	-m 64M \
+	-m 2G \
 	-serial stdio \
 	-no-shutdown -no-reboot \
 	-vga std
@@ -41,23 +41,31 @@ build/kernel: $(KERNEL_OBJ)
 
 #
 run: build/kernel
-	-qemu-system-i386 -kernel $^ $(QEMUFLAGS)
+	-$(QEMU) -kernel $^ $(QEMUFLAGS)
 
 run_img: build/kernel drive.img
-	qemu-system-i386 -kernel build/kernel $(QEMUFLAGS) -hda drive.img
+	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda drive.img
 
 rungdb: build/kernel
-	qemu-system-i386 -S -kernel $^ $(QEMUFLAGS) -gdb tcp::9000 &
+	$(QEMU) -S -kernel $^ $(QEMUFLAGS) -gdb tcp::9000 &
 	gdb -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
 	-@pkill qemu
 
 rungdb_img: build/kernel drive.img
-	qemu-system-i386 -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
-	sleep 0.1s && gdb -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'b breakpoint' -ex 'continue' build/kernel
+	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
+	sleep 0.1s && gdb -quiet \
+		-ex 'set arch i386:x86-64:intel' \
+		-ex 'target remote localhost:9000' \
+		-ex 'b kmain' \
+		-ex 'continue' \
+		-ex 'disconnect' \
+		-ex 'set arch i386:x86-64:intel' \
+		-ex 'target remote localhost:9000' \
+		build/kernel
 	-@pkill qemu
 
 rungdb_img_custom: build/kernel drive.img
-	qemu-system-i386 -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
+	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
 	gdb -quiet -ex 'target remote localhost:9000' $(GDB_ARGS)
 	-@pkill qemu
 
