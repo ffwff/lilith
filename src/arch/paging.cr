@@ -1,4 +1,5 @@
 require "./fastmem.cr"
+require "./frame_allocator.cr"
 
 lib PageStructs
   alias Page = UInt32
@@ -26,16 +27,9 @@ module Paging
   # present, us, rw
   PT_MASK = 0x7
 
-  # NOTE: paging module should not be used after
-  # it is set up, any memory allocated in the pmalloc
-  # functions is unmapped
-  @@frame_base_addr : UInt32 = 0
-  @@frame_length : UInt32 = 0
-  @@frames = PBitArray.null
-  @@frames_search_from : Int32 = 0
-
+  @@usable_physical_memory = 0u64
   def usable_physical_memory
-    @@frame_length
+    @@usable_physical_memory
   end
 
   @@current_page_dir = Pointer(PageStructs::PageDirectory).null
@@ -54,26 +48,24 @@ module Paging
     stack_start : Void*, stack_end : Void*,
     mboot_header : Multiboot::MultibootInfo*
   )
-    cur_mmap_addr = mboot_header[0].mmap_addr
-    mmap_end_addr = cur_mmap_addr + mboot_header[0].mmap_length
+    cur_mmap_addr = mboot_header.value.mmap_addr
+    mmap_end_addr = cur_mmap_addr + mboot_header.value.mmap_length
 
     while cur_mmap_addr < mmap_end_addr
       cur_entry = Pointer(Multiboot::MemoryMapTable).new(cur_mmap_addr.to_u64)
 
-      if cur_entry[0].base_addr != 0 && cur_entry[0].type == MULTIBOOT_MEMORY_AVAILABLE
-        entry = cur_entry[0]
-        @@frame_base_addr = entry.base_addr.to_u32
-        @@frame_length = entry.length.to_u32
-        break
+      if cur_entry.value.base_addr != 0 && cur_entry.value.type == MULTIBOOT_MEMORY_AVAILABLE
+        entry = cur_entry.value
+        FrameAllocator.add_region entry.base_addr, entry.length
+        @@usable_physical_memory += entry.length
       end
 
       cur_mmap_addr += cur_entry[0].size + sizeof(UInt32)
     end
 
-    panic "can't find page frames" if @@frame_length == 0
-    nframes = @@frame_length.to_i32.unsafe_div 0x1000
-    @@frames = PBitArray.new nframes
-    Serial.puts "page: ", pointerof(@@frames), '\n'
+    FrameAllocator.each_region do |region|
+      Serial.puts region, '\n'
+    end
 
     @@current_page_dir = Pointer(PageStructs::PageDirectory).pmalloc_a
     @@kernel_page_dir = @@current_page_dir
@@ -101,9 +93,9 @@ module Paging
     end
     # claim placement heap segment
     # we do this because the kernel's page table lies here:
-    i = PMALLOC_STATE.start.to_u32
+    i = PMALLOC_STATE.start.to_u64
     while i <= aligned(PMALLOC_STATE.addr)
-      @@frames[frame_index_for_address i] = true
+      FrameAllocator.initial_claim(i)
       i += 0x1000
     end
     # -- switch page directory
@@ -139,17 +131,15 @@ module Paging
     while virt_addr < virt_addr_end
       # Serial.puts "virt addr: ", Pointer(Void).new(virt_addr.to_u64), "\n"
       # allocate page frame
-      iaddr = claim_frame
-      addr = iaddr.to_u32 * 0x1000 + @@frame_base_addr
+      iaddr, addr = FrameAllocator.claim_with_addr
 
       # create new page
       page_addr = virt_addr.unsafe_div 0x1000
-      table_idx = page_addr.unsafe_div 1024
+      table_idx = page_addr.unsafe_div 0x1000
       if @@current_page_dir.value.tables[table_idx] == 0
         # page table isn't present
         # claim a page for storing the page table
-        pt_iaddr = claim_frame
-        pt_addr = pt_iaddr.to_u32 * 0x1000 + @@frame_base_addr
+        pt_iaddr, pt_addr = FrameAllocator.claim_with_addr
         zero_page Pointer(UInt8).new(pt_addr.to_u64)
         if user
           pt_addr |= PT_MASK
@@ -192,8 +182,7 @@ module Paging
   # NOTE: paging must be disabled for these to work
   def alloc_process_page_dir
     # claim frame for page directory
-    iaddr = claim_frame
-    pd_addr = iaddr.to_u32 * 0x1000 + @@frame_base_addr
+    iaddr, pd_addr = FrameAllocator.claim_with_addr
     pd = Pointer(PageStructs::PageDirectory).new(pd_addr.to_u64)
     zero_page Pointer(UInt8).new(pd_addr.to_u64)
 
@@ -221,38 +210,19 @@ module Paging
         while j < 1024
           if pt.value.pages[j] != 0
             frame = pt.value.pages[j] & 0xFFFF_F000
-            declaim_frame(frame_index_for_address(frame))
+            FrameAllocator.declaim_addr(frame.to_u64)
           end
           j += 1
         end
-        declaim_frame(frame_index_for_address(pta))
+        FrameAllocator.declaim_addr(pta.to_u64)
       end
       i += 1
     end
 
     # free itself
-    declaim_frame(frame_index_for_address(pda))
+    FrameAllocator.declaim_addr(pda.to_u64)
 
     Paging.enable
-  end
-
-  # frame alloc
-  @[AlwaysInline]
-  private def frame_index_for_address(address : UInt32) : Int32
-    (address - @@frame_base_addr).unsafe_div(0x1000).to_i32
-  end
-
-  private def claim_frame
-    idx, iaddr = @@frames.first_unset_from @@frames_search_from
-    @@frames_search_from = max idx, @@frames_search_from
-    panic "no more physical memory!" if iaddr == -1
-    @@frames[iaddr] = true
-    iaddr
-  end
-
-  private def declaim_frame(idx)
-    @@frames_search_from = min idx, @@frames_search_from
-    @@frames[idx] = false
   end
 
   # page creation
@@ -272,7 +242,7 @@ module Paging
   private def alloc_page_init(rw : Bool, user : Bool, address : UInt32)
     phys = address
     address = address.unsafe_div(0x1000)
-    table_idx = address.unsafe_div(1024).to_i32
+    table_idx = address.unsafe_div(0x1000).to_i32
     if @@current_page_dir.value.tables[table_idx] == 0
       ptr = Pointer(PageStructs::PageTable).pmalloc_a
       pt_addr = ptr.address.to_u32
@@ -286,30 +256,28 @@ module Paging
       ptr = Pointer(PageStructs::PageTable).new((@@current_page_dir.value.tables[table_idx] & 0xFFFF_F000).to_u64)
     end
     page = page_create(rw, user, phys)
-    ptr.value.pages[address.unsafe_mod 1024] = page
+    ptr.value.pages[address.unsafe_mod 0x1000] = page
   end
 
   private def alloc_frame(rw : Bool, user : Bool, address : UInt32)
-    idx = frame_index_for_address address
-    panic "already allocated" if @@frames[idx]
-    @@frames[idx] = true
+    FrameAllocator.initial_claim(address.to_u64)
     alloc_page_init(rw, user, address)
   end
 
   # page alloc at runtime
   private def alloc_page(rw : Bool, user : Bool, address : UInt32, phys : UInt32)
     address = address.unsafe_div(0x1000)
-    table_idx = address.unsafe_div(1024).to_i32
+    table_idx = address.unsafe_div(0x1000).to_i32
     page = page_create(rw, user, phys)
     panic "no table for page" if @@current_page_dir.value.tables[table_idx] == 0
     ptr = Pointer(PageStructs::PageTable).new((@@current_page_dir.value.tables[table_idx] & 0xFFFF_F000).to_u64)
-    ptr.value.pages[address.unsafe_mod 1024] = page
+    ptr.value.pages[address.unsafe_mod 0x1000] = page
   end
 
   private def free_page(address : UInt32)
     address = address.unsafe_div(0x1000)
-    table_idx = address.unsafe_div(1024).to_i32
+    table_idx = address.unsafe_div(0x1000).to_i32
     panic "no table for page" if @@current_page_dir.value.tables[table_idx].null?
-    @@current_page_dir.value.tables[table_idx].value.pages[address.unsafe_mod 1024] = 0
+    @@current_page_dir.value.tables[table_idx].value.pages[address.unsafe_mod 0x1000] = 0
   end
 end
