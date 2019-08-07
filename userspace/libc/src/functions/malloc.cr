@@ -94,20 +94,19 @@ private struct Malloc
 
   # unchains a header from the free list
   private def unchain_header(hdr : Data::Header*)
-    # dbg "unchain: "; hdr.dbg; dbg "\n"
-    if hdr.value.prev_header.null?
-      # first in linked list
-      if !hdr.value.next_header.null?
-        hdr.value.next_header.value.prev_header = Pointer(Data::Header).null
-      end
+    if hdr == @first_free_header
       @first_free_header = hdr.value.next_header
-    else
-      # middle in linked list
-      hdr.value.prev_header.value.next_header = hdr.value.next_header
-      if !hdr.value.next_header.null?
-        hdr.value.next_header.value.prev_header = hdr.value.prev_header
-      end
     end
+    unless hdr.value.next_header.null?
+      # hdr->next->prev = hdr->prev
+      hdr.value.next_header.value.prev_header = hdr.value.prev_header
+    end
+    unless hdr.value.prev_header.null?
+      # hdr->prev->next = hdr->next
+      hdr.value.prev_header.value.next_header = hdr.value.next_header
+    end
+    hdr.value.prev_header = Pointer(Data::Header).null
+    hdr.value.next_header = Pointer(Data::Header).null
   end
 
   # search free list for suitable area
@@ -177,10 +176,10 @@ private struct Malloc
     if (hdr = search_free_list(data_size)).null?
       hdr = alloc_header size
       hdr.value.size = data_size
+      hdr.value.prev_header = Pointer(Data::Header).null
+      hdr.value.next_header = Pointer(Data::Header).null
     end
     hdr.value.magic = MAGIC
-    hdr.value.prev_header = Pointer(Data::Header).null
-    hdr.value.next_header = Pointer(Data::Header).null
 
     ftr = Pointer(Data::Footer).new(hdr.address + sizeof(Data::Header) + hdr.value.size)
     ftr.value.header = hdr
