@@ -257,10 +257,6 @@ private struct Malloc
       unchain_header next_hdr
       new_hdr = prev_hdr
       new_ftr = footer_for_block(next_hdr)
-      if new_ftr.value.magic != FOOTER_MAGIC
-        # dbg "invalid magic for footer "; next_hdr.dbg
-        abort
-      end
 
       # resize prev
       new_ftr.value.header = new_hdr
@@ -272,10 +268,6 @@ private struct Malloc
       unchain_header next_hdr
       new_hdr = hdr
       new_ftr = footer_for_block(next_hdr)
-      if new_ftr.value.magic != FOOTER_MAGIC
-        # dbg "invalid magic for footer "; new_ftr.dbg
-        abort
-      end
 
       # resize current
       new_ftr.value.header = new_hdr
@@ -290,10 +282,6 @@ private struct Malloc
       # case 3: prev is freed and next is allocated
       new_hdr = prev_hdr
       new_ftr = footer_for_block(hdr)
-      if new_ftr.value.magic != FOOTER_MAGIC
-        # dbg "invalid magic for footer "; new_ftr.dbg
-        abort
-      end
 
       # resize prev
       new_ftr.value.header = new_hdr
@@ -335,6 +323,23 @@ private struct Malloc
       # |hdr|-----|ftr||hdr|----|ftr||hdr|-----|ftr|
       # ^ prev         ^ cur         ^ next    ^
       if !prev_hdr.null? && !next_hdr.null? &&
+          prev_hdr.value.magic == MAGIC && next_hdr.value.magic == MAGIC_FREE
+        # prioritise this case first because we wouldn't need to move memory
+        # case 2: prev is allocated and next is freed
+        new_size = footer_for_block(next_hdr).address - hdr.address - sizeof(Data::Header)
+        if new_size >= size
+          unchain_header next_hdr
+
+          new_hdr = hdr
+          new_ftr = footer_for_block(next_hdr)
+
+          new_hdr.value.magic = MAGIC
+          new_hdr.value.size = new_size
+
+          new_ftr.value.header = new_hdr
+          return ptr
+        end
+      elsif !prev_hdr.null? && !next_hdr.null? &&
         prev_hdr.value.magic == MAGIC_FREE && next_hdr.value.magic == MAGIC_FREE
         # case 1: prev & next are freed
         new_size = footer_for_block(next_hdr).address - prev_hdr.address - sizeof(Data::Header)
