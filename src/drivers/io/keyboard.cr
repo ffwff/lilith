@@ -62,6 +62,7 @@ class Keyboard
     DownArrow
     LeftArrow
     RightArrow
+    Delete
   end
 
   @current_keycode : Char? = nil
@@ -126,6 +127,8 @@ class Keyboard
           @kbdfs.not_nil!.on_key SpecialKeys::LeftArrow
         when 0x4d # right
           @kbdfs.not_nil!.on_key SpecialKeys::RightArrow
+        when 0x53 # delete
+          @kbdfs.not_nil!.on_key SpecialKeys::Delete
         end
         @last_e0 = false
         @last_f0 = false

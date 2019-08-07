@@ -158,6 +158,8 @@ class KbdFS < VFS
       ansi_buf_set StaticArray[0x1B, '['.ord, 'C'.ord]
     when Keyboard::SpecialKeys::LeftArrow
       ansi_buf_set StaticArray[0x1B, '['.ord, 'D'.ord]
+    when Keyboard::SpecialKeys::Delete
+      ansi_buf_set StaticArray[0x1B, '['.ord, '3'.ord, '~'.ord]
     end
 
     Idt.lock do
