@@ -44,6 +44,14 @@ struct Pointer(T)
     Malloc.malloc(sizeof(T).to_u32).as(T*)
   end
 
+  def self.malloc(sz)
+    Malloc.malloc(sizeof(T).to_u32 * sz).as(T*)
+  end
+
+  def realloc(sz)
+    Malloc.realloc(self.as(Void*), sizeof(T).to_u32 * sz).as(T*)
+  end
+
   def free
     Malloc.free(self.as(Void*))
   end

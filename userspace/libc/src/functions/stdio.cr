@@ -129,7 +129,7 @@ class File
 
   # reading
   def fputs(str)
-    return 0 unless @status.includes?(Status::Write)
+    return -1 unless @status.includes?(Status::Write)
     len = strlen(str).to_i32
     if @buffering == Buffering::Unbuffered
       write(@fd, str, len).to_i32
@@ -139,7 +139,7 @@ class File
   end
 
   def fnputs(str, len)
-    return 0 unless @status.includes?(Status::Write)
+    return -1 unless @status.includes?(Status::Write)
     if @buffering == Buffering::Unbuffered
       write(@fd, str, len.to_i32).to_i32
     else
@@ -148,7 +148,7 @@ class File
   end
 
   def fputc(c)
-    return 0 unless @status.includes?(Status::Write)
+    return -1 unless @status.includes?(Status::Write)
     buffer = uninitialized Int8[1]
     buffer.to_unsafe[0] = c.to_i8
     write(@fd, buffer.to_unsafe, 1).to_i32
@@ -173,7 +173,7 @@ class File
   end
 
   def fgetc
-    return 0 unless @status.includes?(Status::Read)
+    return -1 unless @status.includes?(Status::Read)
     if @buffering == Buffering::Unbuffered
       retval = 0
       read @fd, pointerof(retval).as(LibC::String), 1
@@ -182,6 +182,38 @@ class File
       abort
       0
     end
+  end
+
+  GETLINE_INITIAL = 128u32
+  def getline(lineptr : LibC::String*, n : LibC::SizeT*)
+    if lineptr.value.null? && n.value == 0
+      n.value = GETLINE_INITIAL
+      lineptr.value = LibC::String.malloc(n.value)
+    end
+    line = lineptr.value
+    line_size = n.value
+    i = 0
+    while i < line_size
+      if (ch = fgetc) == -1
+        return -1
+      end
+      if i == line_size - 2
+        line_size *= 2
+        n.value = line_size
+        line = line.realloc(line_size)
+        lineptr.value = line
+      end
+      line[i] = ch.to_i8
+      if ch == 0
+        return i
+      elsif ch == '\n'.ord
+        i += 1
+        line[i] = 0
+        return i
+      end
+      i += 1
+    end
+    i
   end
 
   # rw
@@ -336,9 +368,7 @@ fun getchar : Int32
 end
 
 fun getline(lineptr : LibC::String*, n : LibC::SizeT*, stream : Void*) : LibC::SSizeT
-  # TODO
-  0
-  #stream.as(File*).value.getline lineptr, n
+  stream.as(File*).value.getline lineptr, n
 end
 
 # errors
