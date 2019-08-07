@@ -139,8 +139,7 @@ private struct Malloc
       # the region between | and / denotes the user's data
       # [|hdr|---------/---------------|ftr|]
       #                <-  remaining  ->
-      new_ftr = Pointer(Data::Footer)
-        .new(hdr.address + sizeof(Data::Header) + hdr.value.size)
+      new_ftr = footer_for_block(hdr)
       if new_ftr.value.magic != FOOTER_MAGIC
         # dbg "invalid magic for footer "; new_ftr.dbg
         abort
@@ -197,10 +196,42 @@ private struct Malloc
     Pointer(Data::Footer).new(hdr.address - sizeof(Data::Footer))
   end
 
+  private def footer_for_block(hdr)
+    Pointer(Data::Footer)
+      .new(hdr.address + sizeof(Data::Header) + hdr.value.size)
+  end
+
   private def header_after(hdr : Data::Header*)
     Pointer(Data::Header)
       .new(hdr.address + sizeof(Data::Header) +
           hdr.value.size + sizeof(Data::Footer))
+  end
+
+  private def prev_block_hdr(hdr : Data::Header*)
+    prev_hdr = if hdr.address.to_u32 == @heap_start
+                 Pointer(Data::Header).null
+               else
+                 footer_before(hdr).value.header
+               end
+    if !prev_hdr.null? &&
+        prev_hdr.value.magic != MAGIC && prev_hdr.value.magic != MAGIC_FREE
+      # dbg "free: invalid magic number for prev_hdr"
+      abort
+    end
+    prev_hdr
+  end
+
+  private def next_block_hdr(hdr : Data::Header*)
+    next_hdr = header_after(hdr)
+    if next_hdr.address.to_u32 >= @heap_placement
+      next_hdr = Pointer(Data::Header).null
+    end
+    if !next_hdr.null? &&
+        next_hdr.value.magic != MAGIC && next_hdr.value.magic != MAGIC_FREE
+      # dbg "free: invalid magic number for next_hdr\n"
+      abort
+    end
+    next_hdr
   end
 
   def free(ptr : Void*)
@@ -213,26 +244,7 @@ private struct Malloc
       abort
     end
 
-    prev_hdr = if hdr.address.to_u32 == @heap_start
-                 Pointer(Data::Header).null
-               else
-                 footer_before(hdr).value.header
-               end
-    if !prev_hdr.null? &&
-        prev_hdr.value.magic != MAGIC && prev_hdr.value.magic != MAGIC_FREE
-      # dbg "free: invalid magic number for prev_hdr"
-      abort
-    end
-
-    next_hdr = header_after(hdr)
-    if next_hdr.address.to_u32 >= @heap_placement
-      next_hdr = Pointer(Data::Header).null
-    end
-    if !next_hdr.null? &&
-        next_hdr.value.magic != MAGIC && next_hdr.value.magic != MAGIC_FREE
-      # dbg "free: invalid magic number for next_hdr\n"
-      abort
-    end
+    prev_hdr, next_hdr = prev_block_hdr(hdr), next_block_hdr(hdr)
 
     # try to coalesce blocks when freeing
     # |hdr|-----|ftr||hdr|----|ftr||hdr|-----|ftr|
@@ -245,8 +257,7 @@ private struct Malloc
       # case 1: prev is freed and next is freed
       unchain_header next_hdr
       new_hdr = prev_hdr
-      new_ftr = Pointer(Data::Footer)
-        .new(next_hdr.address + sizeof(Data::Header) + next_hdr.value.size)
+      new_ftr = footer_for_block(next_hdr)
       if new_ftr.value.magic != FOOTER_MAGIC
         # dbg "invalid magic for footer "; next_hdr.dbg
         abort
@@ -261,8 +272,7 @@ private struct Malloc
       # case 2: prev is allocated and next is freed
       unchain_header next_hdr
       new_hdr = hdr
-      new_ftr = Pointer(Data::Footer)
-        .new(next_hdr.address + sizeof(Data::Header) + next_hdr.value.size)
+      new_ftr = footer_for_block(next_hdr)
       if new_ftr.value.magic != FOOTER_MAGIC
         # dbg "invalid magic for footer "; new_ftr.dbg
         abort
@@ -280,8 +290,7 @@ private struct Malloc
       # dbg "case 3\n"
       # case 3: prev is freed and next is allocated
       new_hdr = prev_hdr
-      new_ftr = Pointer(Data::Footer)
-        .new(hdr.address + sizeof(Data::Header) + hdr.value.size)
+      new_ftr = footer_for_block(hdr)
       if new_ftr.value.magic != FOOTER_MAGIC
         # dbg "invalid magic for footer "; new_ftr.dbg
         abort
