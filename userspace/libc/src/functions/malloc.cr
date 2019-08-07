@@ -355,6 +355,21 @@ private struct Malloc
 
           new_ftr.value.header = new_hdr
         end
+      elsif !prev_hdr.null? && !next_hdr.null? &&
+        prev_hdr.value.magic == MAGIC_FREE && next_hdr.value.magic == MAGIC
+        # case 1: prev is freed and next is allocated
+        new_size = footer_for_block(hdr).address - prev_hdr.address - sizeof(Data::Header)
+        if new_size >= size
+          unchain_header prev_hdr
+
+          new_hdr = prev_hdr
+          new_ftr = footer_for_block(next_hdr)
+
+          new_hdr.value.magic = MAGIC
+          new_hdr.value.size = new_size
+
+          new_ftr.value.header = new_hdr
+        end
       end
 
       if !new_hdr.null? && !new_ftr.null?
