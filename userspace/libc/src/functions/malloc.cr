@@ -140,10 +140,6 @@ private struct Malloc
       # [|hdr|---------/---------------|ftr|]
       #                <-  remaining  ->
       new_ftr = footer_for_block(hdr)
-      if new_ftr.value.magic != FOOTER_MAGIC
-        # dbg "invalid magic for footer "; new_ftr.dbg
-        abort
-      end
       hdr.value.size = data_sz
 
       # move the old footer
@@ -197,8 +193,11 @@ private struct Malloc
   end
 
   private def footer_for_block(hdr)
-    Pointer(Data::Footer)
-      .new(hdr.address + sizeof(Data::Header) + hdr.value.size)
+    ftr = Pointer(Data::Footer).new(hdr.address + sizeof(Data::Header) + hdr.value.size)
+    if ftr.value.magic != FOOTER_MAGIC
+      abort
+    end
+    ftr
   end
 
   private def header_after(hdr : Data::Header*)
@@ -327,8 +326,44 @@ private struct Malloc
       ptr
     else
       # reallocate it
+      old_size = hdr.value.size
+
+      prev_hdr, next_hdr = prev_block_hdr(hdr), next_block_hdr(hdr)
+      new_hdr = Pointer(Data::Header).null
+      new_ftr = Pointer(Data::Header).null
+
+      # |hdr|-----|ftr||hdr|----|ftr||hdr|-----|ftr|
+      # ^ prev         ^ cur         ^ next    ^
+      if !prev_hdr.null? && !next_hdr.null? &&
+        prev_hdr.value.magic == MAGIC_FREE && next_hdr.value.magic == MAGIC_FREE
+        # case 1: prev & next are freed
+        new_size = footer_for_block(next_hdr).address - prev_hdr.address - sizeof(Data::Header)
+        if new_size >= size
+          unchain_header prev_hdr
+          unchain_header next_hdr
+
+          new_hdr = prev_hdr
+          new_ftr = footer_for_block(next_hdr)
+
+          new_hdr.value.magic = MAGIC
+          new_hdr.value.size = new_size
+
+          new_ftr.value.header = new_hdr
+        end
+      end
+
+      if !new_hdr.null? && !new_ftr.null?
+        # move data over
+        new_ptr = Pointer(Void).new(new_hdr.address + sizeof(Data::Header))
+        memmove new_ptr.as(UInt8*), ptr.as(UInt8*), old_size
+
+        # split the block
+        split_block new_hdr, size
+        return new_ptr
+      end
+
       new_ptr = malloc size
-      memcpy new_ptr.as(UInt8*), ptr.as(UInt8*), hdr.value.size
+      memcpy new_ptr.as(UInt8*), ptr.as(UInt8*), old_size
       free ptr
       new_ptr
     end
