@@ -120,39 +120,7 @@ private struct Malloc
           # dbg "non-free header in free list? "; hdr.dbg
           abort
         end
-        if (hdr.value.size - data_sz) >= MIN_ALLOC_DATA
-          # we can reasonably split this header for more allocation
-
-          # the current layout for the chunk can be seen like this:
-          # the region between | and / denotes the user's data
-          # [|hdr|---------/---------------|ftr|]
-          #                <-  remaining  ->
-          new_ftr = Pointer(Data::Footer)
-            .new(hdr.address + sizeof(Data::Header) + hdr.value.size)
-          if new_ftr.value.magic != FOOTER_MAGIC
-            # dbg "invalid magic for footer "; new_ftr.dbg
-            abort
-          end
-          hdr.value.size = data_sz
-
-          # move the old footer
-          # [|hdr|---------/|ftr|----------|ftr|]
-          ftr = Pointer(Data::Footer).new(hdr.address + sizeof(Data::Header) + data_sz)
-          ftr.value.magic = FOOTER_MAGIC
-          ftr.value.header = hdr
-
-          # create the header
-          # [|hdr|---------/|ftr||hdr|-----|ftr|]
-          #                      <-       ->
-          new_hdr = Pointer(Data::Header).new(ftr.address + sizeof(Data::Footer))
-          new_hdr.value.magic = MAGIC_FREE
-          new_hdr.value.size = new_ftr.address - new_hdr.address - sizeof(Data::Header)
-          chain_header new_hdr
-          new_hdr.value.prev_header = Pointer(Data::Header).null
-          new_hdr.value.next_header = Pointer(Data::Header).null
-
-          new_ftr.value.header = new_hdr
-        end
+        split_block hdr, data_sz
         # remove header from list
         unchain_header hdr
         return hdr
@@ -160,6 +128,43 @@ private struct Malloc
       hdr = hdr.value.next_header
     end
     Pointer(Data::Header).null
+  end
+
+  # split the block
+  private def split_block(hdr : Data::Header*, data_sz : UInt32)
+    if (hdr.value.size - data_sz) >= MIN_ALLOC_DATA
+      # we can reasonably split this header for more allocation
+
+      # the current layout for the chunk can be seen like this:
+      # the region between | and / denotes the user's data
+      # [|hdr|---------/---------------|ftr|]
+      #                <-  remaining  ->
+      new_ftr = Pointer(Data::Footer)
+        .new(hdr.address + sizeof(Data::Header) + hdr.value.size)
+      if new_ftr.value.magic != FOOTER_MAGIC
+        # dbg "invalid magic for footer "; new_ftr.dbg
+        abort
+      end
+      hdr.value.size = data_sz
+
+      # move the old footer
+      # [|hdr|---------/|ftr|----------|ftr|]
+      ftr = Pointer(Data::Footer).new(hdr.address + sizeof(Data::Header) + data_sz)
+      ftr.value.magic = FOOTER_MAGIC
+      ftr.value.header = hdr
+
+      # create the header
+      # [|hdr|---------/|ftr||hdr|-----|ftr|]
+      #                      <-       ->
+      new_hdr = Pointer(Data::Header).new(ftr.address + sizeof(Data::Footer))
+      new_hdr.value.magic = MAGIC_FREE
+      new_hdr.value.size = new_ftr.address - new_hdr.address - sizeof(Data::Header)
+      chain_header new_hdr
+      new_hdr.value.prev_header = Pointer(Data::Header).null
+      new_hdr.value.next_header = Pointer(Data::Header).null
+
+      new_ftr.value.header = new_hdr
+    end
   end
 
   def malloc(size : UInt32) : Void*
