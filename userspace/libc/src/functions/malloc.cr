@@ -1,6 +1,7 @@
 # simple free-list based memory allocator
 # reference: https://moss.cs.iit.edu/cs351/slides/slides-malloc.pdf
-private struct Malloc
+module Malloc
+  extend self
 
   MAGIC = 0x1badc0fe
   MAGIC_FREE = 0x2badc0fe
@@ -47,37 +48,37 @@ private struct Malloc
   MIN_ALLOC_DATA = sizeof(Data::Header) + MIN_ALLOC_SIZE + sizeof(Data::Footer)
 
   # start of the heap
-  @heap_start = 0u32
+  @@heap_start = 0u32
   # end of the heap (must be page aligned)
-  @heap_end = 0u32
+  @@heap_end = 0u32
   # placement address for allocating new headers
-  @heap_placement = 0u32
+  @@heap_placement = 0u32
   # first header in free list
-  @first_free_header : Data::Header* = Pointer(Data::Header).null
+  @@first_free_header : Data::Header* = Pointer(Data::Header).null
 
   private def alloc_header(size : UInt32) : Data::Header*
     total_size = sizeof(Data::Header) + size
     units = unit_aligned size
-    if @heap_end == 0
+    if @@heap_end == 0
       # first allocation
       cur_placement = sbrk(units)
-      @heap_start = cur_placement.address.to_u32
-      @heap_placement = cur_placement.address.to_u32 + total_size
-      @heap_end = cur_placement.address.to_u32 + units
+      @@heap_start = cur_placement.address.to_u32
+      @@heap_placement = cur_placement.address.to_u32 + total_size
+      @@heap_end = cur_placement.address.to_u32 + units
       cur_placement.as(Data::Header*)
     else
       # subsequent allocations with end of heap known
-      if @heap_placement + total_size > @heap_end
+      if @@heap_placement + total_size > @@heap_end
         # not enough memory in page, allocate another one
-        cur_placement = @heap_placement
+        cur_placement = @@heap_placement
         sbrk(units)
-        @heap_end += units
-        @heap_placement += total_size
+        @@heap_end += units
+        @@heap_placement += total_size
         Pointer(Data::Header).new(cur_placement.to_u64)
       else
         # enough memory, increase the placement addr and return
-        cur_placement = @heap_placement
-        @heap_placement += total_size
+        cur_placement = @@heap_placement
+        @@heap_placement += total_size
         Pointer(Data::Header).new(cur_placement.to_u64)
       end
     end
@@ -85,17 +86,17 @@ private struct Malloc
 
   # chains a header to the free list
   private def chain_header(hdr : Data::Header*)
-    hdr.value.next_header = @first_free_header
-    if !@first_free_header.null?
-      @first_free_header.value.prev_header = hdr
+    hdr.value.next_header = @@first_free_header
+    if !@@first_free_header.null?
+      @@first_free_header.value.prev_header = hdr
     end
-    @first_free_header = hdr
+    @@first_free_header = hdr
   end
 
   # unchains a header from the free list
   private def unchain_header(hdr : Data::Header*)
-    if hdr == @first_free_header
-      @first_free_header = hdr.value.next_header
+    if hdr == @@first_free_header
+      @@first_free_header = hdr.value.next_header
     end
     unless hdr.value.next_header.null?
       # hdr->next->prev = hdr->prev
@@ -111,7 +112,7 @@ private struct Malloc
 
   # search free list for suitable area
   private def search_free_list(data_sz : UInt32) : Data::Header*
-    hdr = @first_free_header
+    hdr = @@first_free_header
     while !hdr.null?
       # dbg "found size: "; hdr.value.size.dbg; dbg " "; data_sz.dbg; dbg "\n"
       if hdr.value.size >= data_sz
@@ -207,7 +208,7 @@ private struct Malloc
   end
 
   private def prev_block_hdr(hdr : Data::Header*)
-    prev_hdr = if hdr.address.to_u32 == @heap_start
+    prev_hdr = if hdr.address.to_u32 == @@heap_start
                  Pointer(Data::Header).null
                else
                  footer_before(hdr).value.header
@@ -222,7 +223,7 @@ private struct Malloc
 
   private def next_block_hdr(hdr : Data::Header*)
     next_hdr = header_after(hdr)
-    if next_hdr.address.to_u32 >= @heap_placement
+    if next_hdr.address.to_u32 >= @@heap_placement
       next_hdr = Pointer(Data::Header).null
     end
     if !next_hdr.null? &&
@@ -391,23 +392,21 @@ private struct Malloc
 
 end
 
-MALLOC = Malloc.new
-
 # c functions
 fun calloc(nmeb : UInt32, size : UInt32) : Void*
-  ptr = MALLOC.malloc nmeb * size
+  ptr = Malloc.malloc nmeb * size
   memset ptr.as(UInt8*), 0u32, nmeb * size
   ptr
 end
 
 fun malloc(size : UInt32) : Void*
-  MALLOC.malloc size
+  Malloc.malloc size
 end
 
 fun free(ptr : Void*)
-  MALLOC.free ptr
+  Malloc.free ptr
 end
 
 fun realloc(ptr : Void*, size : UInt32) : Void*
-  MALLOC.realloc ptr, size
+  Malloc.realloc ptr, size
 end

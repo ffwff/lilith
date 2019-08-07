@@ -41,11 +41,11 @@ struct Pointer(T)
   end
 
   def self.malloc
-    MALLOC.malloc(sizeof(T).to_u32).as(T*)
+    Malloc.malloc(sizeof(T).to_u32).as(T*)
   end
 
   def free
-    MALLOC.free(self.as(Void*))
+    Malloc.free(self.as(Void*))
   end
 
   #
