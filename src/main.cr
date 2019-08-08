@@ -35,9 +35,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   Multiprocessing.fxsave_region = Kernel.fxsave_region
 
-  # setup memory management
   VGA.puts "Booting lilith...\n"
-  KernelArena.start_addr = Kernel.stack_end.address.to_u32 + 0x1000
 
   VGA.puts "initializing gdtr...\n"
   Gdt.init_table
@@ -63,6 +61,8 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   #
   VGA.puts "initializing kernel garbage collector...\n"
+  # reserve 1 page for PML4
+  KernelArena.start_addr = Kernel.stack_end.address.to_u32 + 0x1000
   Gc.init Kernel.data_start.address.to_u32,
           Kernel.data_end.address.to_u32,
           Kernel.stack_end.address.to_u32

@@ -20,12 +20,12 @@ lib PageStructs
     pdpt : UInt64[512]
   end
 
+  fun kenable_long_mode(addr : UInt32)
   fun kenable_paging(addr : UInt32)
   fun kdisable_paging
 end
 
 USERSPACE_START = 0x4000_0000u32
-KERNEL_TABLES = USERSPACE_START.unsafe_div(0x400000)
 
 module Paging
   extend self
@@ -40,18 +40,25 @@ module Paging
     @@usable_physical_memory
   end
 
+  @@enabled = false
+
   @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).null
   @@kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).null
 
   @@pml4_table = Pointer(PageStructs::PML4Table).null
+  @@pml4_table_virt = Pointer(PageStructs::PML4Table).null
 
-  def current_page_dir
-    #@@current_page_dir
-    panic "unimpl"
-    Pointer(PageStructs::PageDirectory).null
+  def current_pdpt
+    @@current_pdpt
   end
 
-  def current_page_dir=(x)
+  def current_pdpt=(x)
+    @@current_pdpt = x
+    if @@enabled
+      @@pml4_table_virt.value.pdpt[0] = @@current_pdpt.address | PT_MASK_GLOBAL
+    else
+      @@pml4_table.value.pdpt[0] = @@current_pdpt.address | PT_MASK_GLOBAL
+    end
   end
   #def current_page_dir=(@@current_page_dir); end
 
@@ -84,7 +91,6 @@ module Paging
     @@kernel_pdpt = @@current_pdpt
 
     @@pml4_table = Pointer(PageStructs::PML4Table).pmalloc_a
-    Serial.puts @@current_pdpt, '\n'
     @@pml4_table.value.pdpt[0] = @@current_pdpt.address | PT_MASK_GLOBAL
 
     # vga
@@ -125,6 +131,9 @@ module Paging
       alloc_frame true, false, i
       i += 0x1000
     end
+    # map pml4 to virtual memory
+    @@pml4_table_virt = Pointer(PageStructs::PML4Table).new(stack_end.address)
+    alloc_page_init true, false, @@pml4_table.address.to_u32, @@pml4_table_virt.address.to_u32
     # claim placement heap segment
     # we do this because the kernel's page table lies here:
     i = Pmalloc.start.to_u64
@@ -133,7 +142,7 @@ module Paging
       i += 0x1000
     end
     # -- switch page directory
-    enable
+    enable_long_mode
   end
 
   def aligned(x : UInt32) : UInt32
@@ -148,14 +157,17 @@ module Paging
   end
 
   # state
-  @[AlwaysInline]
-  def enable
-    addr = @@pml4_table.address.to_u32
-    PageStructs.kenable_paging(addr)
+  private def enable_long_mode
+    PageStructs.kenable_long_mode(@@pml4_table.address.to_u32)
   end
 
-  @[AlwaysInline]
+  def enable
+    @@enabled = true
+    PageStructs.kenable_paging(@@pml4_table.address.to_u32)
+  end
+
   def disable
+    @@enabled = false
     PageStructs.kdisable_paging
   end
 
@@ -174,6 +186,7 @@ module Paging
       # allocate page frame
       phys_addr = FrameAllocator.claim_with_addr
       dir_idx, table_idx, page_idx = page_layer_indexes(virt_addr)
+      Serial.puts "idx: ", dir_idx, ' ', table_idx, ' ', page_idx, "\n"
 
       # directory
       if @@current_pdpt.value.dirs[dir_idx] == 0
@@ -210,6 +223,11 @@ module Paging
       virt_addr += 0x1000
     end
 
+    if virt_addr_start == 0x4000_0000u32
+      Serial.puts @@pml4_table, '\n'
+      breakpoint
+    end
+
     enable
     Idt.enable
 
@@ -218,7 +236,7 @@ module Paging
   end
 
   def free_page_pg(virt_addr_start : UInt32, npages : UInt32 = 1)
-    panic "unimpl"
+    panic "unimpl1"
     {% if false %}
     Idt.disable
     disable
@@ -238,29 +256,22 @@ module Paging
     {% end %}
   end
 
-  # allocate page directories for processes
+  # (de)allocate page directories for processes
   # NOTE: paging must be disabled for these to work
-  def alloc_process_page_dir
-    panic "unimpl"
-    return 0u64
-    {% if false %}
+  def alloc_process_pdpt
     # claim frame for page directory
-    pd_addr = FrameAllocator.claim_with_addr
-    pd = Pointer(PageStructs::PageDirectory).new(pd_addr.to_u64)
-    zero_page Pointer(UInt8).new(pd_addr.to_u64)
+    pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(FrameAllocator.claim_with_addr)
+    zero_page pdpt.as(UInt8*)
 
-    # copy lower half (kernel half)
-    KERNEL_TABLES.times do |i|
-      pd.value.tables[i] = @@kernel_page_dir.value.tables[i]
-    end
+    # copy lower kernel directory (first 1GB)
+    pdpt.value.dirs[0] = @@kernel_pdpt.value.dirs[0]
 
     # return
-    pd.address
-    {% end %}
+    pdpt.address
   end
 
-  def free_process_page_dir(pda : UInt32)
-    panic "unimpl"
+  def free_process_pdpt(pda : UInt32)
+    panic "unimpl2"
     {% if false %}
     Paging.disable
 
@@ -310,8 +321,11 @@ module Paging
   end
 
   # identity map pages at init
-  private def alloc_page_init(rw : Bool, user : Bool, addr : UInt32)
-    dir_idx, table_idx, page_idx = page_layer_indexes(addr)
+  private def alloc_page_init(rw : Bool, user : Bool, addr : UInt32, virt_addr=0u32)
+    if virt_addr == 0
+      virt_addr = addr
+    end
+    dir_idx, table_idx, page_idx = page_layer_indexes(virt_addr)
     # Serial.puts Pointer(Void).new(addr.to_u64), dir_idx, ' ', table_idx, ' ', page_idx, '\n'
 
     # directory

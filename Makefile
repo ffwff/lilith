@@ -24,6 +24,8 @@ QEMUFLAGS += \
 	-no-shutdown -no-reboot \
 	-vga std
 
+GDB = /usr/local/bin/gdb
+
 .PHONY: kernel
 all: build/kernel
 
@@ -48,15 +50,16 @@ run_img: build/kernel drive.img
 
 rungdb: build/kernel
 	$(QEMU) -S -kernel $^ $(QEMUFLAGS) -gdb tcp::9000 &
-	gdb -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
+	$(GDB) -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
 	-@pkill qemu
 
 rungdb_img: build/kernel drive.img
 	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
-	sleep 0.1s && gdb -quiet \
+	sleep 0.1s && $(GDB) -quiet \
 		-ex 'set arch i386:x86-64:intel' \
 		-ex 'target remote localhost:9000' \
-		-ex 'b kmain' \
+		-ex 'hb kmain' \
+		-ex 'hb breakpoint' \
 		-ex 'continue' \
 		-ex 'disconnect' \
 		-ex 'set arch i386:x86-64:intel' \
@@ -66,7 +69,7 @@ rungdb_img: build/kernel drive.img
 
 rungdb_img_custom: build/kernel drive.img
 	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
-	gdb -quiet -ex 'target remote localhost:9000' $(GDB_ARGS)
+	$(GDB) -quiet -ex 'target remote localhost:9000' $(GDB_ARGS)
 	-@pkill qemu
 
 runiso: os.iso
@@ -75,8 +78,8 @@ os.iso: build/kernel
 	cp $^ /tmp/iso
 	cp grub.cfg /tmp/iso/boot/grub
 	grub-mkrescue -o os.iso /tmp/iso
-	qemu-system-i386 -S -cdrom os.iso $(QEMUFLAGS) -gdb tcp::9000 &
-	gdb -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
+	$(QEMU) -S -cdrom os.iso $(QEMUFLAGS) -gdb tcp::9000 &
+	$(GDB) -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
 	-@pkill qemu
 
 clean:
