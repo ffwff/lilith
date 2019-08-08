@@ -53,8 +53,8 @@ module Multiprocessing
     property initial_esp
 
     # physical location of the process' page directory
-    @phys_page_dir : UInt32 = 0u32
-    property phys_page_dir
+    @phys_pg_struct : UInt32 = 0u32
+    property phys_pg_struct
 
     # interrupt frame for preemptive multitasking
     @frame : IdtData::Registers? = nil
@@ -156,17 +156,17 @@ module Multiprocessing
       Idt.disable
 
       @pid = Multiprocessing.pids
-      last_page_dir = Pointer(PageStructs::PageDirectory).null
+      last_pg_struct = Pointer(PageStructs::PageDirectoryPointerTable).null
       if !kernel_process?
         if @pid != 0
           Paging.disable
-          last_page_dir = Paging.current_page_dir
-          page_dir = Paging.alloc_process_page_dir
-          Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new page_dir
+          last_pg_struct = Paging.current_pdpt
+          page_dir = Paging.alloc_process_pdpt
+          Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_dir
           Paging.enable
-          @phys_page_dir = page_dir.to_u32
+          @phys_pg_struct = page_dir.to_u32
         else
-          @phys_page_dir = Paging.current_page_dir.address.to_u32
+          @phys_pg_struct = Paging.current_pdpt.address.to_u32
         end
       end
       Multiprocessing.pids += 1
@@ -174,9 +174,9 @@ module Multiprocessing
       # setup pages
       unless yield self
         # unable to setup, bailing
-        if !last_page_dir.null? && !kernel_process?
+        if !last_pg_struct.null? && !kernel_process?
           Paging.disable
-          Paging.current_page_dir = last_page_dir
+          Paging.current_pdpt = last_pg_struct
           Paging.enable
         end
         Idt.enable
@@ -192,9 +192,9 @@ module Multiprocessing
         Multiprocessing.last_process = self
       end
 
-      if !last_page_dir.null? && !kernel_process?
+      if !last_pg_struct.null? && !kernel_process?
         Paging.disable
-        Paging.current_page_dir = last_page_dir
+        Paging.current_pdpt = last_pg_struct
         Paging.enable
       end
 
@@ -203,11 +203,11 @@ module Multiprocessing
 
     def initial_switch
       Multiprocessing.current_process = self
-      dir = @phys_page_dir # this must be stack allocated
+      dir = @phys_pg_struct # this must be stack allocated
       # because it's placed in the virtual kernel heap
       panic "page dir is nil" if dir == 0
       Paging.disable
-      Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
+      Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(dir.to_u64)
       Paging.enable
       asm("jmp kswitch_usermode" :: "{edx}"(@initial_eip),
                                     "{ecx}"(@initial_esp),
@@ -387,14 +387,14 @@ module Multiprocessing
 
     # switch page directory
     if !next_process.kernel_process?
-      dir = next_process.phys_page_dir # this must be stack allocated
+      dir = next_process.phys_pg_struct # this must be stack allocated
       # because it's placed in the virtual kernel heap
       panic "null page directory" if dir == 0
-      Paging.current_page_dir = Pointer(PageStructs::PageDirectory).new(dir.to_u64)
+      Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(dir.to_u64)
       {% if remove %}
-        current_page_dir = current_process.phys_page_dir
-        Paging.free_process_page_dir(current_page_dir)
-        current_process.phys_page_dir = 0u32
+        current_page_dir = current_process.phys_pg_struct
+        Paging.free_process_pdpt(current_page_dir)
+        current_process.phys_pg_struct = 0u32
       {% else %}
         Paging.enable
       {% end %}

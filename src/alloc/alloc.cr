@@ -93,18 +93,24 @@ private struct Pool
   end
 end
 
-private struct KernelArena
-  # linked list free pools for sizes of 2^4, 2^5 ... 2^10
-  @free_pools = uninitialized Kernel::PoolHeader*[6]
-  @start_addr = 0u32
-  @placement_addr = 0u32
+module KernelArena
+  extend self
 
-  getter start_addr
-  def start_addr=(@start_addr)
-    @placement_addr = @start_addr
+  # linked list free pools for sizes of 2^4, 2^5 ... 2^10
+  @@free_pools = uninitialized Kernel::PoolHeader*[6]
+  @@start_addr = 0u32
+  @@placement_addr = 0u32
+
+  def start_addr
+    @@start_addr
+  end
+  def start_addr=(@@start_addr)
+    @@placement_addr = @@start_addr
   end
 
-  getter placement_addr
+  def placement_addr
+    @@placement_addr
+  end
 
   # free pool chaining
   @[AlwaysInline]
@@ -121,12 +127,12 @@ private struct KernelArena
 
   # pool
   private def new_pool(buffer_size : UInt32) : Pool
-    addr = @placement_addr
+    addr = @@placement_addr
     unless addr < USERSPACE_START
       panic "out of kernel virtual addresses"
     end
-    Paging.alloc_page_pg(@placement_addr, true, false)
-    @placement_addr += 0x1000
+    Paging.alloc_page_pg(@@placement_addr, true, false)
+    @@placement_addr += 0x1000
 
     pool_hdr = Pointer(Kernel::PoolHeader).new(addr.to_u64)
     pool_hdr.value.block_buffer_size = buffer_size
@@ -143,14 +149,14 @@ private struct KernelArena
     panic "only supports sizes of <= 1024" if sz > 1024
     pool_size = max(32, sz.nearest_power_of_2).to_u32
     idx = idx_for_pool_size pool_size
-    if @free_pools[idx].null?
+    if @@free_pools[idx].null?
       # create a new pool if there isn't any freed
       pool = new_pool(pool_size)
       chain_pool pool
       pool.get_free_block
     else
       # reuse existing pool
-      pool = Pool.new @free_pools[idx]
+      pool = Pool.new @@free_pools[idx]
       if pool.first_free_block.null?
         # pop if pool is full
         # break circular chains in the tail node of linked list
@@ -189,8 +195,8 @@ private struct KernelArena
   private def chain_pool(pool)
     idx = idx_for_pool_size pool.block_buffer_size
     if pool.header.value.next_pool.null?
-      pool.header.value.next_pool = @free_pools[idx]
-      @free_pools[idx] = pool.header
+      pool.header.value.next_pool = @@free_pools[idx]
+      @@free_pools[idx] = pool.header
     end
   end
 
@@ -204,5 +210,3 @@ private struct KernelArena
     pool_hdr.value.block_buffer_size
   end
 end
-
-KERNEL_ARENA = KernelArena.new

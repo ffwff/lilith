@@ -43,7 +43,7 @@ class GcArray(T)
   end
 
   private def recalculate_capacity
-    @capacity = (KERNEL_ARENA.block_size_for_ptr(@ptr) - GC_ARRAY_HEADER_SIZE)
+    @capacity = (KernelArena.block_size_for_ptr(@ptr) - GC_ARRAY_HEADER_SIZE)
       .unsafe_div(sizeof(Void*)).to_i32
   end
 

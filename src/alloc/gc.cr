@@ -70,7 +70,7 @@ module Gc
       word = Pointer(UInt32).new(i.to_u64).value
       # subtract to get the pointer to the header
       word -= sizeof(Kernel::GcNode)
-      if word >= KERNEL_ARENA.start_addr && word <= KERNEL_ARENA.placement_addr
+      if word >= KernelArena.start_addr && word <= KernelArena.placement_addr
         node = @@first_white_node
         prev = Pointer(Kernel::GcNode).null
         found = false
@@ -160,7 +160,7 @@ module Gc
           start = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode) + GC_ARRAY_HEADER_SIZE)
           while i < len
             addr = start[i]
-            if addr >= KERNEL_ARENA.start_addr && addr <= KERNEL_ARENA.placement_addr
+            if addr >= KernelArena.start_addr && addr <= KernelArena.placement_addr
               # mark the header as gray
               header = Pointer(Kernel::GcNode).new(addr.to_u64 - sizeof(Kernel::GcNode))
               debug_mark node, header
@@ -198,7 +198,7 @@ module Gc
               # lookup the buffer address in its offset
               addr = Pointer(UInt32).new(buffer_addr + pos.to_u64 * 4).value
               debug "pointer@", pos, " ", Pointer(Void).new(buffer_addr + pos.to_u64 * 4), " = ", Pointer(Void).new(addr.to_u64), "\n"
-              unless addr >= KERNEL_ARENA.start_addr && addr <= KERNEL_ARENA.placement_addr
+              unless addr >= KernelArena.start_addr && addr <= KernelArena.placement_addr
                 # must be a nil union, skip
                 pos += 1
                 offsets = offsets.unsafe_shr 1
@@ -263,7 +263,7 @@ module Gc
           panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
           debug "free ", node, " ", (node.as(UInt8*)+8) ," ", (node.as(UInt8*)+8).as(UInt32*)[0], "\n"
           next_node = node.value.next_node
-          KERNEL_ARENA.free node.address.to_u32
+          KernelArena.free node.address.to_u32
           node = next_node
         end
         @@first_white_node = @@first_black_node
@@ -291,7 +291,7 @@ module Gc
       cycle
     end
     size += sizeof(Kernel::GcNode)
-    header = Pointer(Kernel::GcNode).new(KERNEL_ARENA.malloc(size).to_u64)
+    header = Pointer(Kernel::GcNode).new(KernelArena.malloc(size).to_u64)
     # move the barrier forwards by immediately graying out the header
     header.value.magic = atomic ? GC_NODE_MAGIC_GRAY_ATOMIC : GC_NODE_MAGIC_GRAY
     # append node to linked list

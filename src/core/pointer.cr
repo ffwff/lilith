@@ -52,11 +52,11 @@ struct Pointer(T)
   end
 
   def self.mmalloc(size = 1)
-    new KERNEL_ARENA.malloc(size.to_u32 * sizeof(T)).to_u64
+    new KernelArena.malloc(size.to_u32 * sizeof(T)).to_u64
   end
 
   def mfree
-    KERNEL_ARENA.free(self.address.to_u32)
+    KernelArena.free(self.address.to_u32)
   end
 
   # methods

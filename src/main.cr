@@ -37,7 +37,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   # setup memory management
   VGA.puts "Booting lilith...\n"
-  KERNEL_ARENA.start_addr = Kernel.stack_end.address.to_u32 + 0x1000
+  KernelArena.start_addr = Kernel.stack_end.address.to_u32 + 0x1000
 
   VGA.puts "initializing gdtr...\n"
   Gdt.init_table
@@ -49,6 +49,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   VGA.puts "initializing idt...\n"
   Idt.init_interrupts
   Idt.init_table
+  Idt.status_mask = true
 
   # paging, &block
   VGA.puts "initializing paging...\n"
@@ -59,8 +60,6 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
                 Kernel.stack_start, Kernel.stack_end,
                 mboot_header)
   VGA.puts "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
-
-  breakpoint
 
   #
   VGA.puts "initializing kernel garbage collector...\n"
@@ -103,9 +102,6 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   VGA.puts "setting up syscalls...\n"
   Kernel.ksyscall_setup
-
-  Idt.disable
-  Idt.status_mask = true
 
   idle_process = Multiprocessing::Process.new(nil, false) do |process|
     process.initial_eip = (->Kernel.kidle_loop).pointer.address.to_u32
