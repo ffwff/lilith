@@ -46,8 +46,8 @@ module FrameAllocator
         return
       end
       iaddr = iaddr.not_nil!
-      addr = iaddr.to_u32 * 0x1000 + @base_addr
-      Tuple.new(iaddr, addr)
+      addr = iaddr.to_u64 * 0x1000 + @base_addr
+      addr
     end
 
     def declaim_addr(addr : UInt64)
@@ -114,7 +114,7 @@ module FrameAllocator
       end
     end
     panic "no more physical memory!"
-    Tuple.new(0, 0u32)
+    0u64
   end
 
 end

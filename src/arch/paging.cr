@@ -144,7 +144,7 @@ module Paging
     page_idx  = addr.unsafe_shr(12) & (0x200 - 1)
     table_idx = addr.unsafe_shr(21) & (0x200 - 1)
     dir_idx   = addr.unsafe_shr(30) & (0x200 - 1)
-    Tuple.new(dir_idx, table_idx, page_idx)
+    Tuple.new(dir_idx.to_i32, table_idx.to_i32, page_idx.to_i32)
   end
 
   # state
@@ -162,9 +162,6 @@ module Paging
   # allocate page when pg is enabled
   # returns page address
   def alloc_page_pg(virt_addr_start : UInt32, rw : Bool, user : Bool, npages : UInt32 = 1) : UInt32
-    panic "unimpl"
-    return 0u32
-    {% if false %}
     Idt.disable
     disable
 
@@ -173,26 +170,42 @@ module Paging
 
     # claim
     while virt_addr < virt_addr_end
-      # Serial.puts "virt addr: ", Pointer(Void).new(virt_addr.to_u64), "\n"
+      Serial.puts "virt addr: ", Pointer(Void).new(virt_addr.to_u64), "\n"
       # allocate page frame
-      iaddr, addr = FrameAllocator.claim_with_addr
+      phys_addr = FrameAllocator.claim_with_addr
+      dir_idx, table_idx, page_idx = page_layer_indexes(virt_addr)
 
-      # create new page
-      page_addr = virt_addr.unsafe_div 0x1000
-      table_idx = page_addr.unsafe_div 0x1000
-      if @@current_page_dir.value.tables[table_idx] == 0
-        # page table isn't present
-        # claim a page for storing the page table
-        pt_iaddr, pt_addr = FrameAllocator.claim_with_addr
-        zero_page Pointer(UInt8).new(pt_addr.to_u64)
+      # directory
+      if @@current_pdpt.value.dirs[dir_idx] == 0
+        pd = Pointer(PageStructs::PageDirectory).new(FrameAllocator.claim_with_addr)
+        paddr = pd.address
         if user
-          pt_addr |= PT_MASK
+          paddr |= PT_MASK
         else
-          pt_addr |= PT_MASK_GLOBAL
+          paddr |= PT_MASK_GLOBAL
         end
-        @@current_page_dir.value.tables[table_idx] = pt_addr
+        @@current_pdpt.value.dirs[dir_idx] = paddr
+      else
+        pd = Pointer(PageStructs::PageDirectory).new(t_addr @@current_pdpt.value.dirs[dir_idx])
       end
-      alloc_page(rw, user, virt_addr, addr)
+
+      # table
+      if pd.value.tables[table_idx] == 0
+        pt = Pointer(PageStructs::PageTable).new(FrameAllocator.claim_with_addr)
+        paddr = pt.address
+        if user
+          paddr |= PT_MASK
+        else
+          paddr |= PT_MASK_GLOBAL
+        end
+        pd.value.tables[table_idx] = paddr
+      else
+        pt = Pointer(PageStructs::PageTable).new(t_addr pd.value.tables[table_idx])
+      end
+
+      # page
+      page = page_create(rw, user, phys_addr)
+      pt.value.pages[page_idx] = page
 
       virt_addr += 0x1000
     end
@@ -202,7 +215,6 @@ module Paging
 
     # return page
     virt_addr_start
-    {% end %}
   end
 
   def free_page_pg(virt_addr_start : UInt32, npages : UInt32 = 1)
@@ -233,7 +245,7 @@ module Paging
     return 0u64
     {% if false %}
     # claim frame for page directory
-    iaddr, pd_addr = FrameAllocator.claim_with_addr
+    pd_addr = FrameAllocator.claim_with_addr
     pd = Pointer(PageStructs::PageDirectory).new(pd_addr.to_u64)
     zero_page Pointer(UInt8).new(pd_addr.to_u64)
 
@@ -293,65 +305,50 @@ module Paging
     page
   end
 
-  # page alloc at init
   private def t_addr(addr : UInt64)
     addr & 0xFFFF_F000
   end
 
+  # identity map pages at init
   private def alloc_page_init(rw : Bool, user : Bool, addr : UInt32)
     dir_idx, table_idx, page_idx = page_layer_indexes(addr)
-    Serial.puts Pointer(Void).new(addr.to_u64), dir_idx, ' ', table_idx, ' ', page_idx, '\n'
+    # Serial.puts Pointer(Void).new(addr.to_u64), dir_idx, ' ', table_idx, ' ', page_idx, '\n'
 
-    # pdpt
+    # directory
     if @@current_pdpt.value.dirs[dir_idx] == 0
-      ptr = Pointer(PageStructs::PageDirectory).pmalloc_a
-      addr = ptr.address
+      pd = Pointer(PageStructs::PageDirectory).pmalloc_a
+      paddr = pd.address
       if user
-        addr |= PT_MASK
+        paddr |= PT_MASK
       else
-        addr |= PT_MASK_GLOBAL
+        paddr |= PT_MASK_GLOBAL
       end
-      @@current_pdpt.value.dirs[dir_idx] = addr
+      @@current_pdpt.value.dirs[dir_idx] = paddr
+    else
+      pd = Pointer(PageStructs::PageDirectory).new(t_addr @@current_pdpt.value.dirs[dir_idx])
     end
 
-    # directory
-    page_dir = Pointer(PageStructs::PageDirectory).new(t_addr @@current_pdpt.value.dirs[dir_idx])
-    if page_dir.value.tables[table_idx] == 0
-      ptr = Pointer(PageStructs::PageTable).pmalloc_a
-      addr = ptr.address
+    # table
+    if pd.value.tables[table_idx] == 0
+      pt = Pointer(PageStructs::PageTable).pmalloc_a
+      paddr = pt.address
       if user
-        addr |= PT_MASK
+        paddr |= PT_MASK
       else
-        addr |= PT_MASK_GLOBAL
+        paddr |= PT_MASK_GLOBAL
       end
-      page_dir.value.tables[table_idx] = addr
+      pd.value.tables[table_idx] = paddr
+    else
+      pt = Pointer(PageStructs::PageTable).new(t_addr pd.value.tables[table_idx])
     end
 
-    # directory
-    page_table = Pointer(PageStructs::PageTable).new(t_addr page_dir.value.tables[table_idx])
+    # page
     page = page_create(rw, user, addr.to_u64)
-    page_table.value.pages[page_idx] = page
+    pt.value.pages[page_idx] = page
   end
 
   private def alloc_frame(rw : Bool, user : Bool, address : UInt32)
     FrameAllocator.initial_claim(address.to_u64)
     alloc_page_init(rw, user, address)
-  end
-
-  # page alloc at runtime
-  private def alloc_page(rw : Bool, user : Bool, address : UInt32, phys : UInt32)
-    address = address.unsafe_div(0x1000)
-    table_idx = address.unsafe_div(0x1000).to_i32
-    page = page_create(rw, user, phys)
-    panic "no table for page" if @@current_page_dir.value.tables[table_idx] == 0
-    ptr = Pointer(PageStructs::PageTable).new((@@current_page_dir.value.tables[table_idx] & 0xFFFF_F000).to_u64)
-    ptr.value.pages[address.unsafe_mod 0x1000] = page
-  end
-
-  private def free_page(address : UInt32)
-    address = address.unsafe_div(0x1000)
-    table_idx = address.unsafe_div(0x1000).to_i32
-    panic "no table for page" if @@current_page_dir.value.tables[table_idx].null?
-    @@current_page_dir.value.tables[table_idx].value.pages[address.unsafe_mod 0x1000] = 0
   end
 end

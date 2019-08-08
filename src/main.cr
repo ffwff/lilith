@@ -39,7 +39,6 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   VGA.puts "Booting lilith...\n"
   KERNEL_ARENA.start_addr = Kernel.stack_end.address.to_u32 + 0x1000
 
-  {% if false %}
   VGA.puts "initializing gdtr...\n"
   Gdt.init_table
 
@@ -50,7 +49,6 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   VGA.puts "initializing idt...\n"
   Idt.init_interrupts
   Idt.init_table
-  {% end %}
 
   # paging, &block
   VGA.puts "initializing paging...\n"
@@ -61,6 +59,8 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
                 Kernel.stack_start, Kernel.stack_end,
                 mboot_header)
   VGA.puts "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
+
+  breakpoint
 
   #
   VGA.puts "initializing kernel garbage collector...\n"
