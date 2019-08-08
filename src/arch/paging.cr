@@ -223,11 +223,6 @@ module Paging
       virt_addr += 0x1000
     end
 
-    if virt_addr_start == 0x4000_0000u32
-      Serial.puts @@pml4_table, '\n'
-      breakpoint
-    end
-
     enable
     Idt.enable
 

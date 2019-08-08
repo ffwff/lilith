@@ -200,7 +200,7 @@ kenable_paging:
     mov %eax, %cr3
     mov %cr0, %eax
     or $0x80000000, %eax
-    mov %eax, %cr0
+    mov %eax, %cr0 # tss32 => tss64
     ret
 kdisable_paging:
     mov %cr0, %eax
@@ -235,6 +235,15 @@ ksyscall_setup:
     wrmsr
     ret
 ksyscall_stub:
+    # switch to protected mode
+    mov %cr0, %edi
+    and $0x7fffffff, %edi
+    mov %edi, %cr0
+    ljmp $0x08, $.ksyscall_compat
+.ksyscall_compat:
+    # switch back to compatibility mode
+    or $0x80000000, %edi
+    mov %edi, %cr0
     # load kernel segment descriptor
     mov $KERNEL_DATA_SELECTOR, %di
     mov %di, %ds

@@ -17,34 +17,20 @@ private lib Kernel
 
   @[Packed]
   struct Tss
-    prev_tss : UInt32
-    esp0 : UInt32 # The stack pointer to load when we change to kernel mode.
-    ss0 : UInt32  # The stack segment to load when we change to kernel mode.
-    # Unused:
-    esp1 : UInt32
-    ss1 : UInt32
-    esp2 : UInt32
-    ss2 : UInt32
-    cr3 : UInt32
-    eip : UInt32
-    eflags : UInt32
-    eax : UInt32
-    ecx : UInt32
-    edx : UInt32
-    ebx : UInt32
-    esp : UInt32
-    ebp : UInt32
-    esi : UInt32
-    edi : UInt32
-    es : UInt32
-    cs : UInt32
-    ss : UInt32
-    ds : UInt32
-    fs : UInt32
-    gs : UInt32
-    ldt : UInt32
-    trap : UInt16
-    iomap_base : UInt16
+    reserved : UInt32
+    rsp0 : UInt64
+    rsp1 : UInt64
+    rsp2 : UInt64
+    reserved_1 : UInt64
+    ist_1 : UInt64
+    ist_2 : UInt64
+    ist_3 : UInt64
+    ist_4 : UInt64
+    ist_5 : UInt64
+    ist_6 : UInt64
+    ist_7 : UInt64
+    reserved_2 : UInt64
+    iopb : UInt32
   end
 
   fun kload_gdt(ptr : UInt32)
@@ -70,7 +56,7 @@ module Gdt
     init_gdt_entry 2, 0x0, 0xFFFFFFFF, 0x92, 0xCF # kernel data
     init_gdt_entry 3, 0x0, 0xFFFFFFFF, 0xFA, 0xCF # user code
     init_gdt_entry 4, 0x0, 0xFFFFFFFF, 0xF2, 0xCF # user data
-    init_tss 5, 0x10, 0x0, 0x0b, 0x13
+    init_tss 5
 
     Kernel.kload_gdt pointerof(@@gdtr).address.to_u32
     Kernel.kload_tss
@@ -92,21 +78,17 @@ module Gdt
     @@gdt[num] = entry
   end
 
-  private def init_tss(num : Int32, ss0 : UInt32, esp0 : UInt32, cs : UInt32, ds : UInt32)
+  private def init_tss(num : Int32)
     base = pointerof(@@tss).address.to_u32
     limit = base + sizeof(Kernel::Tss)
-    init_gdt_entry num, base, limit, 0xE9, 0x00
-    @@tss.ss0 = ss0
-    @@tss.esp0 = esp0
-    @@tss.cs = cs
-    @@tss.ss = @@tss.ds = @@tss.es = @@tss.fs = @@tss.gs = ds
+    init_gdt_entry num, base, limit, 0xE9, 0xCF
   end
 
   def stack
-    @@tss.esp0
+    @@tss.rsp0
   end
 
   def stack=(stack : UInt32)
-    @@tss.esp0 = stack
+    @@tss.rsp0 = stack
   end
 end
