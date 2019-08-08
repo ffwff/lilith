@@ -67,7 +67,7 @@ kload_gdt:
     ret
 # tss
 kload_tss:
-    mov $0x2b, %ax
+    mov $0x0, %ax
     ltr %ax
     ret
 # idt

@@ -49,7 +49,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Idt.init_table
   Idt.status_mask = true
 
-  # paging, &block
+  # paging
   VGA.puts "initializing paging...\n"
   Pmalloc.start = Paging.aligned(Kernel.kernel_end.address.to_u32)
   Pmalloc.addr = Paging.aligned(Kernel.kernel_end.address.to_u32)
@@ -58,6 +58,8 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
                 Kernel.stack_start, Kernel.stack_end,
                 mboot_header)
   VGA.puts "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
+
+  asm("mov %ax, %cs")
 
   #
   VGA.puts "initializing kernel garbage collector...\n"
