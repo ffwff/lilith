@@ -1,5 +1,7 @@
 ARCH=i686-elf
+ARCH64=x86_64-elf
 AS=$(ARCH)-as
+AS64=$(ARCH64)-as
 LD=$(ARCH)-ld
 LIBGCC=$(shell $(ARCH)-gcc -print-libgcc-file-name)
 LDFLAGS=-m elf_i386 -T link.ld
@@ -33,9 +35,13 @@ build/main.cr.o: $(KERNEL_SRC)
 	@echo "CR src/main.cr"
 	@FREESTANDING=1 $(CR) build $(CRFLAGS) src/main.cr -o build/main.cr
 
-build/boot.o: boot.s
+build/%.o: src/asm/%.s
 	@echo "AS $<"
 	@$(AS) $^ -o $@
+
+build/boot64.o: boot64.s
+	@echo "AS64 $<"
+	@$(AS64) $^ -o $@
 
 build/kernel: $(KERNEL_OBJ)
 	@echo "LD $^ => $@"
