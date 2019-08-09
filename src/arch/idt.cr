@@ -95,12 +95,12 @@ module Idt
 
     # cpu exception handlers
     {% for i in 0..31 %}
-      init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
+      #init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
     {% end %}
 
     # hw interrupts
     {% for i in 0..15 %}
-      init_idt_entry {{ i + 32 }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kirq{{ i.id }}).pointer.address, INTERRUPT_GATE
+      #init_idt_entry {{ i + 32 }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kirq{{ i.id }}).pointer.address, INTERRUPT_GATE
     {% end %}
 
     Kernel.kload_idt pointerof(@@idtr).address.to_u32
@@ -180,6 +180,8 @@ end
 EX_PAGEFAULT = 14
 
 fun kcpuex_handler(frame : IdtData::ExceptionRegisters)
+  panic "unhandled"
+  {% if false %}
   case frame.int_no
   when EX_PAGEFAULT
     faulting_address = 0u32
@@ -209,4 +211,5 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters)
   else
     panic "fault: ", frame.int_no, ' ', frame.errcode, '\n'
   end
+  {% end %}
 end

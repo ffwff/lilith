@@ -33,6 +33,8 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     panic "Kernel should be booted from a multiboot bootloader!"
   end
 
+  {% if false %}
+
   Multiprocessing.fxsave_region = Kernel.fxsave_region
 
   VGA.puts "Booting lilith...\n"
@@ -132,4 +134,5 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   while true
   end
+  {% end %}
 end

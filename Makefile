@@ -1,12 +1,11 @@
-ARCH=i686-elf
-ARCH64=x86_64-elf
+ARCH=x86_64-elf
 AS=$(ARCH)-as
-AS64=$(ARCH64)-as
 LD=$(ARCH)-ld
-LIBGCC=$(shell $(ARCH)-gcc -print-libgcc-file-name)
-LDFLAGS=-m elf_i386 -T link.ld
+ARCH32=i686-elf
+AS32=$(ARCH32)-as
+LD32=$(ARCH32)-ld
 CR=toolchain/crystal/.build/crystal
-CRFLAGS=--cross-compile --target $(ARCH) --mcpu=pentium4 --prelude ./prelude.cr
+CRFLAGS=--cross-compile --target $(ARCH) --prelude ./prelude.cr
 KERNEL_OBJ=build/main.cr.o build/boot.o
 KERNEL_SRC=$(wildcard src/*.cr src/*/*.cr)
 
@@ -16,7 +15,7 @@ else
 	CRFLAGS += -d
 endif
 
-QEMU = qemu-system-i386
+QEMU = qemu-system-x86_64
 
 QEMUFLAGS += \
 	-rtc base=localtime \
@@ -37,15 +36,19 @@ build/main.cr.o: $(KERNEL_SRC)
 
 build/%.o: src/asm/%.s
 	@echo "AS $<"
-	@$(AS) $^ -o $@
+	@$(AS) $^ -o $@ -Isrc/asm
 
-build/boot64.o: boot64.s
-	@echo "AS64 $<"
-	@$(AS64) $^ -o $@
+build/multiboot.o: src/asm/multiboot.s
+	@echo "AS $<"
+	@$(AS32) $^ -o $@ -Isrc/asm
 
-build/kernel: $(KERNEL_OBJ)
+build/kernel64: $(KERNEL_OBJ)
+	@echo "LD64 $^ => $@"
+	@$(LD) -T link64.ld -o $@ $^
+
+build/kernel: $(KERNEL_OBJ) build/multiboot.o
 	@echo "LD $^ => $@"
-	@$(LD) $(LDFLAGS) -o $@ $^ $(LIBGCC)
+	@$(LD32) -T link.ld -o $@ build/multiboot.o
 
 #
 run: build/kernel
@@ -61,7 +64,16 @@ rungdb: build/kernel
 
 rungdb_img: build/kernel drive.img
 	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
-	sleep 0.1s && $(GDB) -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'b breakpoint' -ex 'continue' build/kernel
+	sleep 0.1s && $(GDB) -quiet \
+		-ex 'set arch i386:x86-64:intel' \
+		-ex 'target remote localhost:9000' \
+		-ex 'hb kmain' \
+		-ex 'hb breakpoint' \
+		-ex 'continue' \
+		-ex 'disconnect' \
+		-ex 'set arch i386:x86-64:intel' \
+		-ex 'target remote localhost:9000' \
+		build/kernel
 	-@pkill qemu
 
 rungdb_img_custom: build/kernel drive.img
