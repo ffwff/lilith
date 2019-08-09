@@ -18,4 +18,83 @@
 .section .text
 .global _bootstrap_start
 _bootstrap_start:
+    # store multiboot
+    mov %eax, (multiboot_magic)
+    mov %ebx, (multiboot_header)
+    # global descriptor table
+    lgdt (gdt_table)
+    # setup fxsr, xmmexcpt, pge, pae
+    mov %cr4, %eax
+    or $0x6A0, %ax
+    mov %eax, %cr4
+    # enable long mode by setting EFER flag
+    mov $0xC0000080, %ecx
+    rdmsr
+    or $0x100, %eax
+    wrmsr
+    # enable paging
+    mov $pml4, %eax
+    mov %eax, %cr3
+    mov %cr0, %eax
+    or $0x80000000, %eax
+    mov %eax, %cr0
+    ljmp $0x08, $_bootstrap_long_mode
+_bootstrap_long_mode:
     hlt
+
+multiboot_magic: .long 0
+multiboot_header: .long 0
+
+.section .data
+# global descriptor table
+gdt_table:
+    .word 3 * 8 - 1 # size
+    .long gdt_null # offset
+    .long 0
+
+gdt_null:
+    .quad 0
+
+gdt_code:
+    .word 0xFFFF # limit 0..15
+    .word 0 # base 0..15
+    .byte 0 # base 16.24
+    .byte 0x9A # access
+    .byte 0xAF # flags/attrs
+    .byte 0 # base 24..31
+
+gdt_data:
+    .word 0xFFFF # limit 0..15
+    .word 0 # base 0..15
+    .byte 0 # base 16.24
+    .byte 0x92 # access
+    .byte 0xAF # flags/attrs
+    .byte 0 # base 24..31
+
+# identity page the kernel for loading
+# pml4
+.align 0x1000
+pml4:
+    .long pdpt + 0x7
+    .long 0
+    .skip 0x1000 - 8
+# pdpt
+.align 0x1000
+pdpt:
+    .long pd + 0x7
+    .long 0
+    .skip 0x1000 - 8
+# pd
+.align 0x1000
+pd:
+    .long pt + 0x7
+    .long 0
+    .skip 0x1000 - 8
+# pt
+.align 0x1000
+pt:
+.set i, 0
+.rept 512
+    .quad (i * 0x1000) | 0x3
+    .set i, i+1
+.endr

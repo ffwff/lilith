@@ -39,16 +39,16 @@ build/%.o: src/asm/%.s
 	@$(AS) $^ -o $@ -Isrc/asm
 
 build/multiboot.o: src/asm/multiboot.s
-	@echo "AS $<"
-	@$(AS32) $^ -o $@ -Isrc/asm
+	@echo "AS32 $<"
+	$(AS32) $^ -o $@ -Isrc/asm
 
 build/kernel64: $(KERNEL_OBJ)
 	@echo "LD64 $^ => $@"
 	@$(LD) -T link64.ld -o $@ $^
 
-build/kernel: $(KERNEL_OBJ) build/multiboot.o
+build/kernel: build/multiboot.o
 	@echo "LD $^ => $@"
-	@$(LD32) -T link.ld -o $@ build/multiboot.o
+	@$(LD32) -T link.ld -z max-page-size=0x1000 -o $@ build/multiboot.o
 
 #
 run: build/kernel
@@ -67,8 +67,7 @@ rungdb_img: build/kernel drive.img
 	sleep 0.1s && $(GDB) -quiet \
 		-ex 'set arch i386:x86-64:intel' \
 		-ex 'target remote localhost:9000' \
-		-ex 'hb kmain' \
-		-ex 'hb breakpoint' \
+		-ex 'hb _bootstrap_start' \
 		-ex 'continue' \
 		-ex 'disconnect' \
 		-ex 'set arch i386:x86-64:intel' \
