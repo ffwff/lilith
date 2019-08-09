@@ -24,11 +24,11 @@ kcpuint_end:
 .global stack_start
 .global stack_end
 fxsave_region:
-    .long fxsave_region_asm
+    .quad fxsave_region_asm
 stack_start:
-    .long stack_bottom
+    .quad stack_bottom
 stack_end:
-    .long stack_top
+    .quad stack_top
 .align 16
 fxsave_region_asm:
 .skip 512

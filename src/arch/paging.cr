@@ -20,18 +20,19 @@ lib PageStructs
     pdpt : UInt64[512]
   end
 
-  fun kenable_long_mode(addr : UInt32)
-  fun kenable_paging(addr : UInt32)
+  fun kenable_paging(addr : PageStructs::PML4Table*)
   fun kdisable_paging
 end
 
-USERSPACE_START = 0x4000_0000u32
+USERSPACE_START = 0x4000_0000u64
 
 module Paging
   extend self
 
   # present, us, rw, global
   PT_MASK_GLOBAL = 0x107
+  # global mask, ps
+  PT_MASK_IDENTITY = 0x183
   # present, us, rw
   PT_MASK = 0x7
 
@@ -51,7 +52,8 @@ module Paging
 
   def current_pdpt=(@@current_pdpt)
   end
-  #def current_page_dir=(@@current_page_dir); end
+
+  @@pml4_table = Pointer(PageStructs::PML4Table).null
 
   def init_table(
     text_start : Void*, text_end : Void*,
@@ -59,6 +61,13 @@ module Paging
     stack_start : Void*, stack_end : Void*,
     mboot_header : Multiboot::MultibootInfo*
   )
+    Serial.puts text_start, "\n"
+    Serial.puts text_end, "\n"
+    Serial.puts data_start, "\n"
+    Serial.puts data_end, "\n"
+    Serial.puts stack_start, "\n"
+    Serial.puts stack_end, "\n"
+
     cur_mmap_addr = mboot_header.value.mmap_addr
     mmap_end_addr = cur_mmap_addr + mboot_header.value.mmap_length
 
@@ -74,12 +83,21 @@ module Paging
       cur_mmap_addr += cur_entry[0].size + sizeof(UInt32)
     end
 
-    FrameAllocator.each_region do |region|
-      Serial.puts region, '\n'
-    end
+    @@pml4_table = Pointer(PageStructs::PML4Table).pmalloc_a
 
+    # allocate for the kernel's pdpt
     @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).pmalloc_a
     @@kernel_pdpt = @@current_pdpt
+    @@pml4_table.value.pdpt[0] = @@kernel_pdpt.address | PT_MASK_GLOBAL
+
+    # identity map the physical memory on the higher half
+    identity_map_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).pmalloc_a
+    dirs, _, _ = page_layer_indexes(@@usable_physical_memory)
+    (dirs + 1).times do |i|
+      pg = (i.to_u64 * 0x4000_0000u64) | PT_MASK_IDENTITY
+      identity_map_pdpt.value.dirs[i] = pg
+    end
+    @@pml4_table.value.pdpt[256] = identity_map_pdpt.address | PT_MASK_GLOBAL
 
     # vga
     alloc_page_init false, false, 0xb8000
@@ -126,8 +144,14 @@ module Paging
       FrameAllocator.initial_claim(i)
       i += 0x1000
     end
-    # -- switch page directory
+
+    # enable paging
     enable
+
+    # update memory regions' inner pointers
+    FrameAllocator.each_region do |region|
+      region.update_inner_pointers
+    end
   end
 
   def aligned(x : USize) : USize
@@ -144,7 +168,7 @@ module Paging
   # state
   def enable
     @@enabled = true
-    PageStructs.kenable_paging(@@current_pdpt.address.to_u32)
+    asm("mov $0, %cr3" :: "r"(@@pml4_table) : "volatile", "memory")
   end
 
   def disable

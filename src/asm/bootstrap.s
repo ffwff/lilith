@@ -72,7 +72,7 @@ gdt_data:
     .byte 0xAF # flags/attrs
     .byte 0 # base 24..31
 
-# identity page the kernel for loading
+# identity page the first 1GiB of physical memory
 # pml4
 .align 0x1000
 pml4:
@@ -82,23 +82,8 @@ pml4:
 # pdpt
 .align 0x1000
 pdpt:
-    .long pd + 0x7
-    .long 0
+    .quad 0x87
     .skip 0x1000 - 8
-# pd
-.align 0x1000
-pd:
-    .long pt + 0x7
-    .long 0
-    .skip 0x1000 - 8
-# pt
-.align 0x1000
-pt:
-.set i, 0
-.rept 512
-    .quad (i * 0x1000) | 0x3
-    .set i, i+1
-.endr
 
 .section .kernel64
 .incbin "build/kernel64.bin"

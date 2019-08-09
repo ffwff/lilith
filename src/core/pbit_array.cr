@@ -14,6 +14,10 @@ struct PBitArray
   private def initialize(@size, @pointer)
   end
 
+  def update_inner_pointers
+    @pointer.address = @pointer.address | 0x8000_0000_0000_0000
+  end
+
   # methods
   def []=(k : Int, value : Bool)
     panic "pbitarray: out of range" if k > size || k < 0

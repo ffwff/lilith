@@ -80,21 +80,12 @@ struct Int
   end
 
   def to_usize
-    self.as(USize)
+    self.to_u64
   end
 
   def to_isize
-    self.as(ISize)
+    self.to_i64
   end
-end
-
-struct Int32
-
-  def to_usize
-    x = self
-    pointerof(x).as(USize*).value
-  end
-
 end
 
 alias ISize = Int64

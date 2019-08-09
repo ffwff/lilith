@@ -7,6 +7,7 @@ module FrameAllocator
     getter base_addr, length
 
     @frames = PBitArray.null
+    getter frames
 
     @search_from = 0
 
@@ -46,7 +47,7 @@ module FrameAllocator
         return
       end
       iaddr = iaddr.not_nil!
-      addr = iaddr.to_u64 * 0x1000 + @base_addr
+      addr = iaddr.to_usize * 0x1000 + @base_addr
       addr
     end
 
@@ -58,6 +59,10 @@ module FrameAllocator
       @search_from = min idx, @search_from
       @frames[idx] = false
       true
+    end
+
+    def update_inner_pointers
+      @frames.update_inner_pointers
     end
   end
 
