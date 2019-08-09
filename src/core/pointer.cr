@@ -1,20 +1,20 @@
 module Pmalloc
   extend self
 
-  @@addr = 0u32
+  @@addr = 0u64
   def addr; @@addr; end
   def addr=(@@addr); end
-  @@start = 0u32
+  @@start = 0u64
   def start; @@start; end
   def start=(@@start); end
 
-  def alloc(size : Int)
+  def alloc(size : USize)
     last = @@addr
-    @@addr += size.to_u32
+    @@addr += size
     last
   end
 
-  def alloca(size : Int)
+  def alloca(size : USize)
     if (@@addr & 0xFFFF_F000) != 0
       @@addr = (@@addr & 0xFFFF_F000) + 0x1000
     end
@@ -29,34 +29,34 @@ struct Pointer(T)
 
   # pre-pg malloc
   def self.pmalloc(size : Int)
-    ptr = new Pmalloc.alloc(size.to_u32 * sizeof(T)).to_u64
-    memset ptr.as(UInt8*), 0, size.to_u32 * sizeof(T)
+    ptr = new Pmalloc.alloc(size.to_usize * sizeof(T))
+    memset ptr.as(UInt8*), 0u64, size.to_usize * sizeof(T)
     ptr
   end
 
   def self.pmalloc
-    ptr = new Pmalloc.alloc(sizeof(T)).to_u64
-    memset ptr.as(UInt8*), 0, sizeof(T).to_u32
+    ptr = new Pmalloc.alloc(sizeof(T).to_usize)
+    memset ptr.as(UInt8*), 0u64, sizeof(T).to_usize
     ptr
   end
 
   def self.pmalloc_a
-    ptr = new Pmalloc.alloca(sizeof(T)).to_u64
-    memset ptr.as(UInt8*), 0, sizeof(T).to_u32
+    ptr = new Pmalloc.alloca(sizeof(T).to_usize)
+    memset ptr.as(UInt8*), 0u64, sizeof(T).to_usize
     ptr
   end
 
   # pg malloc
   def self.malloc(size)
-    Gc.unsafe_malloc(size.to_u32 * sizeof(T), true).as(T*)
+    Gc.unsafe_malloc(size.to_usize * sizeof(T), true).as(T*)
   end
 
   def self.mmalloc(size = 1)
-    new KernelArena.malloc(size.to_u32 * sizeof(T)).to_u64
+    new KernelArena.malloc(size.to_usize * sizeof(T))
   end
 
   def mfree
-    KernelArena.free(self.address.to_u32)
+    KernelArena.free(self.address)
   end
 
   # methods

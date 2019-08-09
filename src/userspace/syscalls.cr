@@ -165,6 +165,7 @@ private macro try(expr)
 end
 
 fun ksyscall_handler(frame : SyscallData::Registers)
+  {% if false %}
   process = Multiprocessing.current_process.not_nil!
   pudata = process.udata
   # Serial.puts "syscall ", frame.eax, " from ", process.pid, '\n'
@@ -418,4 +419,5 @@ fun ksyscall_handler(frame : SyscallData::Registers)
   else
     frame.eax = SYSCALL_ERR
   end
+  {% end %}
 end

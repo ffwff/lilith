@@ -1,4 +1,4 @@
-fun memset(dst : UInt8*, c : UInt32, n : UInt32) : Void*
+fun memset(dst : UInt8*, c : USize, n : USize) : Void*
   asm(
     "cld\nrep stosb"
     :: "{al}"(c.to_u8), "{edi}"(dst), "{ecx}"(n)
@@ -7,7 +7,7 @@ fun memset(dst : UInt8*, c : UInt32, n : UInt32) : Void*
   dst.as(Void*)
 end
 
-fun memcpy(dst : UInt8*, src : UInt8*, n : UInt32) : Void*
+fun memcpy(dst : UInt8*, src : UInt8*, n : USize) : Void*
   i = 0
   while i < n
     dst[i] = src[i]

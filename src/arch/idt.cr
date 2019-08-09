@@ -1,6 +1,6 @@
 IDT_SIZE                   =     256
 INTERRUPT_GATE             = 0x8Eu16
-KERNEL_CODE_SEGMENT_OFFSET = 0x18u16
+KERNEL_CODE_SEGMENT_OFFSET = 0x08u16
 
 private lib Kernel
   {% for i in 0..31 %}

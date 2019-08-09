@@ -53,7 +53,7 @@ module Multiprocessing
     property initial_esp
 
     # physical location of the process' page directory
-    @phys_pg_struct : UInt32 = 0u32
+    @phys_pg_struct : USize = 0u64
     property phys_pg_struct
 
     # interrupt frame for preemptive multitasking
@@ -83,7 +83,7 @@ module Multiprocessing
       property pwait
 
       # group id
-      @pgid = 0u32
+      @pgid = 0u64
       property pgid
 
       # files
@@ -95,8 +95,8 @@ module Multiprocessing
       property cwd_node
 
       # heap location
-      @heap_start = 0u32
-      @heap_end = 0u32
+      @heap_start = 0u64
+      @heap_end = 0u64
       property heap_start, heap_end
 
       # argv
@@ -164,9 +164,9 @@ module Multiprocessing
           page_dir = Paging.alloc_process_pdpt
           Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_dir
           Paging.enable
-          @phys_pg_struct = page_dir.to_u32
+          @phys_pg_struct = page_dir
         else
-          @phys_pg_struct = Paging.current_pdpt.address.to_u32
+          @phys_pg_struct = Paging.current_pdpt.address
         end
       end
       Multiprocessing.pids += 1
@@ -359,6 +359,7 @@ module Multiprocessing
   # NOTE: this must be a macro so that it will be inlined so that
   # the "frame" argument will a reference to the register frame on the stack
   macro switch_process(frame, remove = false)
+    {% if false %}
     {% if frame == nil %}
       current_process = Multiprocessing.current_process.not_nil!
       {% if remove %}
@@ -394,7 +395,7 @@ module Multiprocessing
       {% if remove %}
         current_page_dir = current_process.phys_pg_struct
         Paging.free_process_pdpt(current_page_dir)
-        current_process.phys_pg_struct = 0u32
+        current_process.phys_pg_struct = 0u64
       {% else %}
         Paging.enable
       {% end %}
@@ -424,6 +425,7 @@ module Multiprocessing
 
     {% if frame == nil %}
     asm("jmp kcpuint_end" :: "{esp}"(pointerof(process_frame)) : "volatile")
+    {% end %}
     {% end %}
   end
 

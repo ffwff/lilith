@@ -10,8 +10,13 @@ SECTIONS
         *(.text)
     }
 
-    .data BLOCK(4K) : ALIGN(4K)
+    . = ALIGN(4K);
+    _DATA_START = .;
+    .data : ALIGN(4K)
     {
         *(.data)
+        . = 0x120000 - _DATA_START;
+        kernel64 = .;
+        *(.kernel64*)
     }
 }

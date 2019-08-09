@@ -38,9 +38,10 @@ _bootstrap_start:
     mov %cr0, %eax
     or $0x80000000, %eax
     mov %eax, %cr0
-    ljmp $0x08, $_bootstrap_long_mode
-_bootstrap_long_mode:
-    hlt
+    # restore multiboot
+    mov (multiboot_magic), %eax
+    mov (multiboot_header), %ebx
+    ljmp $0x08, $kernel64
 
 multiboot_magic: .long 0
 multiboot_header: .long 0
@@ -98,3 +99,6 @@ pt:
     .quad (i * 0x1000) | 0x3
     .set i, i+1
 .endr
+
+.section .kernel64
+.incbin "build/kernel64.bin"

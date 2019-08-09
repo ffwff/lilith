@@ -78,7 +78,27 @@ struct Int
       io.putc ch
     end
   end
+
+  def to_usize
+    self.as(USize)
+  end
+
+  def to_isize
+    self.as(ISize)
+  end
 end
+
+struct Int32
+
+  def to_usize
+    x = self
+    pointerof(x).as(USize*).value
+  end
+
+end
+
+alias ISize = Int64
+alias USize = UInt64
 
 def min(a, b)
   a < b ? a : b

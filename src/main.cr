@@ -33,8 +33,6 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     panic "Kernel should be booted from a multiboot bootloader!"
   end
 
-  {% if false %}
-
   Multiprocessing.fxsave_region = Kernel.fxsave_region
 
   VGA.puts "Booting lilith...\n"
@@ -53,13 +51,17 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   # paging
   VGA.puts "initializing paging...\n"
-  Pmalloc.start = Paging.aligned(Kernel.kernel_end.address.to_u32)
-  Pmalloc.addr = Paging.aligned(Kernel.kernel_end.address.to_u32)
+  Pmalloc.start = Paging.aligned(Kernel.kernel_end.address)
+  Pmalloc.addr = Paging.aligned(Kernel.kernel_end.address)
   Paging.init_table(Kernel.text_start, Kernel.text_end,
                 Kernel.data_start, Kernel.data_end,
                 Kernel.stack_start, Kernel.stack_end,
                 mboot_header)
   VGA.puts "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
+
+  panic "ok"
+
+  {% if false %}
 
   asm("mov %ax, %cs")
 

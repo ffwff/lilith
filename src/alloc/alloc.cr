@@ -8,10 +8,10 @@ private MAGIC_POOL_HEADER = 0xC0FEC0FE
 
 private lib Kernel
   struct PoolHeader
-    block_buffer_size : UInt32
+    block_buffer_size : USize
     next_pool : PoolHeader*
     first_free_block : PoolBlockHeader*
-    magic_number : UInt32
+    magic_number : USize
   end
 
   struct PoolBlockHeader
@@ -55,16 +55,16 @@ private struct Pool
   # methods
   def init_blocks
     # NOTE: first_free_block must be set before doing this
-    i = first_free_block.address.to_u32
-    end_addr = @header.address.to_u32 + 0x1000 - block_size * 2
+    i = first_free_block.address
+    end_addr = @header.address + 0x1000 - block_size * 2
     # fill next_free_block field of all except last one
     while i < end_addr
-      ptr = Pointer(Kernel::PoolBlockHeader).new i.to_u64
-      ptr.value.next_free_block = Pointer(Kernel::PoolBlockHeader).new(i.to_u64 + block_size)
+      ptr = Pointer(Kernel::PoolBlockHeader).new i
+      ptr.value.next_free_block = Pointer(Kernel::PoolBlockHeader).new(i + block_size)
       i += block_size
     end
     # fill last one with zero
-    ptr = Pointer(Kernel::PoolBlockHeader).new i.to_u64
+    ptr = Pointer(Kernel::PoolBlockHeader).new i
     ptr.value.next_free_block = Pointer(Kernel::PoolBlockHeader).null
   end
 
@@ -79,15 +79,15 @@ private struct Pool
 
   # obtain a free block and pop it from the pool
   # returns a pointer to the buffer
-  def get_free_block : UInt32
+  def get_free_block : USize
     block = first_free_block
     @header.value.first_free_block = block.value.next_free_block
-    block.address.to_u32 + BLOCK_HEADER_SIZE
+    block.address + BLOCK_HEADER_SIZE
   end
 
   # release a free block
-  def release_block(addr : UInt32)
-    block = Pointer(Kernel::PoolBlockHeader).new(addr.to_u64 - BLOCK_HEADER_SIZE)
+  def release_block(addr : USize)
+    block = Pointer(Kernel::PoolBlockHeader).new(addr - BLOCK_HEADER_SIZE)
     block.value.next_free_block = @header.value.first_free_block
     @header.value.first_free_block = block
   end
@@ -98,8 +98,8 @@ module KernelArena
 
   # linked list free pools for sizes of 2^4, 2^5 ... 2^10
   @@free_pools = uninitialized Kernel::PoolHeader*[6]
-  @@start_addr = 0u32
-  @@placement_addr = 0u32
+  @@start_addr = 0u64
+  @@placement_addr = 0u64
 
   def start_addr
     @@start_addr
@@ -114,7 +114,7 @@ module KernelArena
 
   # free pool chaining
   @[AlwaysInline]
-  private def idx_for_pool_size(sz : UInt32)
+  private def idx_for_pool_size(sz : USize)
     case sz
     when  32; 0
     when  64; 1
@@ -126,7 +126,7 @@ module KernelArena
   end
 
   # pool
-  private def new_pool(buffer_size : UInt32) : Pool
+  private def new_pool(buffer_size : USize) : Pool
     addr = @@placement_addr
     unless addr < USERSPACE_START
       panic "out of kernel virtual addresses"
@@ -134,10 +134,10 @@ module KernelArena
     Paging.alloc_page_pg(@@placement_addr, true, false)
     @@placement_addr += 0x1000
 
-    pool_hdr = Pointer(Kernel::PoolHeader).new(addr.to_u64)
+    pool_hdr = Pointer(Kernel::PoolHeader).new(addr)
     pool_hdr.value.block_buffer_size = buffer_size
     pool_hdr.value.next_pool = Pointer(Kernel::PoolHeader).null
-    pool_hdr.value.first_free_block = Pointer(Kernel::PoolBlockHeader).new(addr.to_u64 + Pool::HEADER_SIZE)
+    pool_hdr.value.first_free_block = Pointer(Kernel::PoolBlockHeader).new(addr + Pool::HEADER_SIZE)
     pool_hdr.value.magic_number = MAGIC_POOL_HEADER
     pool = Pool.new pool_hdr
     pool.init_blocks
@@ -145,9 +145,9 @@ module KernelArena
   end
 
   # manual functions
-  def malloc(sz : UInt32) : UInt32
+  def malloc(sz : USize) : USize
     panic "only supports sizes of <= 1024" if sz > 1024
-    pool_size = max(32, sz.nearest_power_of_2).to_u32
+    pool_size = max(32u64, sz.nearest_power_of_2.to_usize)
     idx = idx_for_pool_size pool_size
     if @@free_pools[idx].null?
       # create a new pool if there isn't any freed
@@ -185,7 +185,7 @@ module KernelArena
   end
 
   # TODO reuse empty free pools to different size
-  def free(ptr : UInt32)
+  def free(ptr : USize)
     pool_hdr = Pointer(Kernel::PoolHeader).new(ptr.to_u64 & 0xFFFF_F000)
     pool = Pool.new pool_hdr
     pool.release_block ptr

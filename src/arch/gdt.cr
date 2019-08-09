@@ -33,14 +33,14 @@ private lib Kernel
     iopb : UInt32
   end
 
-  fun kload_gdt(ptr : UInt32)
+  fun kload_gdt(ptr : USize)
   fun kload_tss
 end
 
 module Gdt
   extend self
 
-  GDT_SIZE = 8
+  GDT_SIZE = 6
   @@gdtr = uninitialized Kernel::Gdtr
   @@gdt = uninitialized Kernel::GdtEntry[GDT_SIZE]
   @@tss = uninitialized Kernel::Tss
@@ -52,20 +52,18 @@ module Gdt
     # this must be placed in the following order
     # so that sysenter sets the selectors correctly
     init_gdt_entry 0, 0x0, 0x0, 0x0, 0x0          # null
-    init_gdt_entry 1, 0x0, 0xFFFFFFFF, 0x9A, 0xCF # kernel code
-    init_gdt_entry 2, 0x0, 0xFFFFFFFF, 0x92, 0xCF # kernel data
-    init_gdt_entry 3, 0x0, 0xFFFFFFFF, 0x9A, 0xAF # kernel code (64-bit)
-    init_gdt_entry 4, 0x0, 0xFFFFFFFF, 0x92, 0xAF # kernel data (64-bit)
-    init_gdt_entry 5, 0x0, 0xFFFFFFFF, 0xFA, 0xCF # user code
-    init_gdt_entry 6, 0x0, 0xFFFFFFFF, 0xF2, 0xCF # user data
-    init_tss 7
+    init_gdt_entry 1, 0x0, 0xFFFFFFFF, 0x9A, 0xAF # kernel code (64-bit)
+    init_gdt_entry 2, 0x0, 0xFFFFFFFF, 0x92, 0xAF # kernel data (64-bit)
+    init_gdt_entry 3, 0x0, 0xFFFFFFFF, 0xFA, 0xCF # user code
+    init_gdt_entry 4, 0x0, 0xFFFFFFFF, 0xF2, 0xCF # user data
+    init_tss 5
 
     Kernel.kload_gdt pointerof(@@gdtr).address.to_u32
     Kernel.kload_tss
   end
 
-  private def init_gdt_entry(num : Int32,
-                             base : UInt32, limit : UInt32, access : UInt32, gran : UInt32)
+  private def init_gdt_entry(num : ISize,
+                             base : USize, limit : USize, access : USize, gran : USize)
     entry = Kernel::GdtEntry.new
 
     entry.base_low = (base & 0xFFFF).to_u16
@@ -74,23 +72,23 @@ module Gdt
     entry.limit_low = (limit & 0xFFFF).to_u16
     entry.granularity = (limit.unsafe_shr(16) & 0x0F).to_u8
 
-    entry.granularity |= gran & 0xF0
+    entry.granularity |= gran
     entry.access = access.to_u8
 
     @@gdt[num] = entry
   end
 
-  private def init_tss(num : Int32)
-    base = pointerof(@@tss).address.to_u32
+  private def init_tss(num : ISize)
+    base = pointerof(@@tss).address
     limit = base + sizeof(Kernel::Tss)
-    init_gdt_entry num, base, limit, 0xE9, 0xCF
+    init_gdt_entry num, base, limit, 0xE9, 0xAF
   end
 
   def stack
     @@tss.rsp0
   end
 
-  def stack=(stack : UInt32)
+  def stack=(stack : USize)
     @@tss.rsp0 = stack
   end
 end

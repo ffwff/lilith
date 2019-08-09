@@ -174,7 +174,7 @@ module ElfReader
     unless vfs.size > 0
       return ParserError::EmptyFile
     end
-    Paging.alloc_page_pg(process.initial_esp - 0x1000 * 4, true, true, npages: 4)
+    Paging.alloc_page_pg(process.initial_esp.to_usize - 0x1000 * 4, true, true, npages: 4)
     mmap_list : GcArray(MemMapNode)? = nil
     mmap_append_idx = 0
     mmap_idx = 0
@@ -183,7 +183,7 @@ module ElfReader
       when ElfStructs::Elf32Header
         data = data.as(ElfStructs::Elf32Header)
         process.initial_eip = data.e_entry
-        mmap_list = GcArray(MemMapNode).new data.e_phnum.to_i32
+        mmap_list = GcArray(MemMapNode).new data.e_phnum
       when ElfStructs::Elf32ProgramHeader
         data = data.as(ElfStructs::Elf32ProgramHeader)
         if data.p_memsz > 0
@@ -192,16 +192,16 @@ module ElfReader
           mmap_list.not_nil![mmap_append_idx] = ins_node
           mmap_append_idx += 1
           if data.p_flags & ElfStructs::Elf32PFlags::PF_R
-            npages = data.p_memsz.unsafe_shr(12) + 1
+            npages = data.p_memsz.to_usize.unsafe_shr(12) + 1
             panic "can't map to lower memory range" if data.p_vaddr < USERSPACE_START
             # create page and zero-initialize it
-            page_start = Paging.alloc_page_pg(data.p_vaddr,
+            page_start = Paging.alloc_page_pg(data.p_vaddr.to_usize,
               (data.p_flags & ElfStructs::Elf32PFlags::PF_W) == ElfStructs::Elf32PFlags::PF_W,
               true, npages)
-            zero_page Pointer(UInt8).new(page_start.to_u64), npages
+            zero_page Pointer(UInt8).new(page_start), npages
           end
           # heap should start right after the last segment
-          heap_start = Paging.aligned(data.p_vaddr + data.p_memsz)
+          heap_start = Paging.aligned(data.p_vaddr.to_usize + data.p_memsz.to_usize)
           process.udata.heap_start = max process.udata.heap_start, heap_start
         end
       when Tuple(UInt32, UInt8)
@@ -211,7 +211,7 @@ module ElfReader
           if offset == mmap_node.file_offset + mmap_node.filesz - 1
             mmap_idx += 1
           elsif offset >= mmap_node.file_offset && offset < mmap_node.file_offset + mmap_node.filesz
-            ptr = Pointer(UInt8).new(mmap_node.vaddr.to_u64)
+            ptr = Pointer(UInt8).new(mmap_node.vaddr.to_usize)
             ptr[offset - mmap_node.file_offset] = byte
           end
         end

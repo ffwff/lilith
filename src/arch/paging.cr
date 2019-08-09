@@ -102,26 +102,26 @@ module Paging
     end
 
     # text segment
-    i = text_start.address.to_u32
-    while i < text_end.address.to_u32
+    i = text_start.address
+    while i < text_end.address
       alloc_frame false, false, i
       i += 0x1000
     end
     # data segment
-    i = data_start.address.to_u32
-    while i < data_end.address.to_u32
+    i = data_start.address
+    while i < data_end.address
       alloc_frame true, false, i
       i += 0x1000
     end
     # stack segment
-    i = stack_start.address.to_u32
-    while i < stack_end.address.to_u32
+    i = stack_start.address
+    while i < stack_end.address
       alloc_frame true, false, i
       i += 0x1000
     end
     # claim placement heap segment
     # we do this because the kernel's page table lies here:
-    i = Pmalloc.start.to_u64
+    i = Pmalloc.start
     while i <= aligned(Pmalloc.addr)
       FrameAllocator.initial_claim(i)
       i += 0x1000
@@ -130,11 +130,11 @@ module Paging
     enable
   end
 
-  def aligned(x : UInt32) : UInt32
+  def aligned(x : USize) : USize
     (x & 0xFFFF_F000) + 0x1000
   end
 
-  private def page_layer_indexes(addr : UInt32)
+  private def page_layer_indexes(addr : USize)
     page_idx  = addr.unsafe_shr(12) & (0x200 - 1)
     table_idx = addr.unsafe_shr(21) & (0x200 - 1)
     dir_idx   = addr.unsafe_shr(30) & (0x200 - 1)
@@ -154,7 +154,7 @@ module Paging
 
   # allocate page when pg is enabled
   # returns page address
-  def alloc_page_pg(virt_addr_start : UInt32, rw : Bool, user : Bool, npages : UInt32 = 1) : UInt32
+  def alloc_page_pg(virt_addr_start : USize, rw : Bool, user : Bool, npages : USize = 1) : USize
     Idt.disable
     disable
 
@@ -211,7 +211,7 @@ module Paging
     virt_addr_start
   end
 
-  def free_page_pg(virt_addr_start : UInt32, npages : UInt32 = 1)
+  def free_page_pg(virt_addr_start : USize, npages : USize = 1)
     panic "unimpl1"
     {% if false %}
     Idt.disable
@@ -246,7 +246,7 @@ module Paging
     pdpt.address
   end
 
-  def free_process_pdpt(pdtpa : UInt32)
+  def free_process_pdpt(pdtpa : USize)
     panic "unimpl2"
     {% if false %}
     Paging.disable
@@ -290,7 +290,7 @@ module Paging
   end
 
   # identity map pages at init
-  private def alloc_page_init(rw : Bool, user : Bool, addr : UInt32, virt_addr=0u32)
+  private def alloc_page_init(rw : Bool, user : Bool, addr : USize, virt_addr=0u64)
     if virt_addr == 0
       virt_addr = addr
     end
@@ -326,12 +326,12 @@ module Paging
     end
 
     # page
-    page = page_create(rw, user, addr.to_u64)
+    page = page_create(rw, user, addr)
     pt.value.pages[page_idx] = page
   end
 
-  private def alloc_frame(rw : Bool, user : Bool, address : UInt32)
-    FrameAllocator.initial_claim(address.to_u64)
+  private def alloc_frame(rw : Bool, user : Bool, address : USize)
+    FrameAllocator.initial_claim(address)
     alloc_page_init(rw, user, address)
   end
 end

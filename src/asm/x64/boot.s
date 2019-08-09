@@ -1,10 +1,18 @@
+# -- text
+
 .section .text
+.include "gdt.s"
+.include "idt.s"
 .include "paging.s"
 
+.section .bootstrap
 .global _start
 .extern kmain
 _start:
-    ret
+    mov $stack_top, %rsp # set stack pointer
+    mov %rax, %rdi
+    mov %rbx, %rsi
+    call kmain
 
 .global kcpuint_end
 kcpuint_end:

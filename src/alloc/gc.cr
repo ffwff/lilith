@@ -7,11 +7,11 @@ lib LibCrystal
 end
 
 fun __crystal_malloc64(size : UInt64) : Void*
-  Gc.unsafe_malloc size.to_u32
+  Gc.unsafe_malloc size
 end
 
 fun __crystal_malloc_atomic64(size : UInt64) : Void*
-  Gc.unsafe_malloc size.to_u32, true
+  Gc.unsafe_malloc size, true
 end
 
 # white nodes
@@ -115,6 +115,8 @@ module Gc
     fix_white
   end
 
+  POINTER_SZ = sizeof(Void*)
+
   def cycle
     # marking phase
     if !@@root_scanned
@@ -122,8 +124,8 @@ module Gc
       # conservatively scan the stack for pointers
       # Serial.puts @@data_start, ' ', @@data_end, '\n'
       scan_region @@data_start.not_nil!, @@data_end.not_nil!
-      stack_start = 0
-      asm("mov %esp, $0;" : "=r"(stack_start) :: "volatile")
+      stack_start = 0u64
+      asm("mov %rsp, $0" : "=r"(stack_start) :: "volatile")
       # NOTE: this causes a segfault! examine it
       scan_region stack_start, @@stack_end.not_nil!
       @@root_scanned = true
@@ -148,8 +150,8 @@ module Gc
 
         node.value.magic = GC_NODE_MAGIC_BLACK
 
-        buffer_addr = node.address.to_u64 + sizeof(Kernel::GcNode) + sizeof(Void*)
-        header_ptr = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode))
+        buffer_addr = node.address + sizeof(Kernel::GcNode) + sizeof(Void*)
+        header_ptr = Pointer(USize).new(node.address + sizeof(Kernel::GcNode))
         # get its type id
         type_id = header_ptr[0]
         debug "type: ", type_id, "\n"
@@ -157,7 +159,7 @@ module Gc
         if type_id == GC_ARRAY_HEADER_TYPE
           len = header_ptr[1]
           i = 0
-          start = Pointer(UInt32).new(node.address.to_u64 + sizeof(Kernel::GcNode) + GC_ARRAY_HEADER_SIZE)
+          start = Pointer(USize).new(node.address + sizeof(Kernel::GcNode) + GC_ARRAY_HEADER_SIZE)
           while i < len
             addr = start[i]
             if addr >= KernelArena.start_addr && addr <= KernelArena.placement_addr
@@ -196,8 +198,8 @@ module Gc
           while offsets != 0
             if offsets & 1
               # lookup the buffer address in its offset
-              addr = Pointer(UInt32).new(buffer_addr + pos.to_u64 * 4).value
-              debug "pointer@", pos, " ", Pointer(Void).new(buffer_addr + pos.to_u64 * 4), " = ", Pointer(Void).new(addr.to_u64), "\n"
+              addr = Pointer(USize).new(buffer_addr + pos * POINTER_SZ).value
+              # debug "pointer@", pos, " ", Pointer(Void).new(buffer_addr + pos * POINTER_SZ), " = ", Pointer(Void).new(addr), "\n"
               unless addr >= KernelArena.start_addr && addr <= KernelArena.placement_addr
                 # must be a nil union, skip
                 pos += 1
@@ -206,7 +208,7 @@ module Gc
               end
 
               # mark the header as gray
-              header = Pointer(Kernel::GcNode).new(addr.to_u64 - sizeof(Kernel::GcNode))
+              header = Pointer(Kernel::GcNode).new(addr - sizeof(Kernel::GcNode))
               debug_mark node, header
               case header.value.magic
               when GC_NODE_MAGIC
@@ -261,9 +263,9 @@ module Gc
         node = @@first_white_node
         while !node.null?
           panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
-          debug "free ", node, " ", (node.as(UInt8*)+8) ," ", (node.as(UInt8*)+8).as(UInt32*)[0], "\n"
+          #debug "free ", node, " ", (node.as(UInt8*)+8) ," ", (node.as(UInt8*)+8).as(UInt32*)[0], "\n"
           next_node = node.value.next_node
-          KernelArena.free node.address.to_u32
+          KernelArena.free node.address
           node = next_node
         end
         @@first_white_node = @@first_black_node
@@ -286,12 +288,12 @@ module Gc
     end
   end
 
-  def unsafe_malloc(size : UInt32, atomic = false)
+  def unsafe_malloc(size : USize, atomic = false)
     if @@enabled
       cycle
     end
     size += sizeof(Kernel::GcNode)
-    header = Pointer(Kernel::GcNode).new(KernelArena.malloc(size).to_u64)
+    header = Pointer(Kernel::GcNode).new(KernelArena.malloc(size))
     # move the barrier forwards by immediately graying out the header
     header.value.magic = atomic ? GC_NODE_MAGIC_GRAY_ATOMIC : GC_NODE_MAGIC_GRAY
     # append node to linked list
@@ -299,7 +301,7 @@ module Gc
       push(@@first_gray_node, header)
     end
     # return
-    ptr = Pointer(Void).new(header.address.to_u64 + sizeof(Kernel::GcNode))
+    ptr = Pointer(Void).new(header.address + sizeof(Kernel::GcNode))
     debug self, '\n' if @@enabled
     ptr
   end
@@ -308,8 +310,8 @@ module Gc
   private def out_nodes(io, first_node)
     node = first_node
     while !node.null?
-      body = node.as(UInt32*) + 2
-      type_id = (node + 1).as(UInt32*)[0]
+      body = node.as(USize*) + 2
+      type_id = (node + 1).as(USize*)[0]
       io.puts body, " (", type_id, ")"
       io.puts ", " if !node.value.next_node.null?
       node = node.value.next_node
@@ -337,18 +339,18 @@ module Gc
 
   private def debug_mark(parent : Kernel::GcNode*, child : Kernel::GcNode*, node? = true)
     return
-    cbody = child.as(UInt32*) + 2
-    ctype_id = (child + 1).as(UInt32*)[0]
-    if node?
-      pbody = parent.as(UInt32*) + 2
-      ptype_id = (parent + 1).as(UInt32*)[0]
-      #if ctype_id == GC_ARRAY_HEADER_TYPE
-        Serial.puts "mark ", parent, " (", ptype_id, "): ", child, '\n'
-      #end
-    else
-      #if ctype_id == GC_ARRAY_HEADER_TYPE
-        Serial.puts "mark ", parent, ": ", child, '\n'
-      #end
-    end
+    #cbody = child.as(UInt32*) + 2
+    #ctype_id = (child + 1).as(UInt32*)[0]
+    #if node?
+    #  pbody = parent.as(UInt32*) + 2
+    #  ptype_id = (parent + 1).as(UInt32*)[0]
+    #  #if ctype_id == GC_ARRAY_HEADER_TYPE
+    #    Serial.puts "mark ", parent, " (", ptype_id, "): ", child, '\n'
+    #  #end
+    #else
+    #  #if ctype_id == GC_ARRAY_HEADER_TYPE
+    #    Serial.puts "mark ", parent, ": ", child, '\n'
+    #  #end
+    #end
   end
 end

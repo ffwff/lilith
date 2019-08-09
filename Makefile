@@ -5,7 +5,7 @@ ARCH32=i686-elf
 AS32=$(ARCH32)-as
 LD32=$(ARCH32)-ld
 CR=toolchain/crystal/.build/crystal
-CRFLAGS=--cross-compile --target $(ARCH) --prelude ./prelude.cr
+CRFLAGS=--cross-compile --target $(ARCH) --prelude ./prelude.cr --error-trace
 KERNEL_OBJ=build/main.cr.o build/boot.o
 KERNEL_SRC=$(wildcard src/*.cr src/*/*.cr)
 
@@ -23,32 +23,37 @@ QEMUFLAGS += \
 	-m 2G \
 	-serial stdio \
 	-no-shutdown -no-reboot \
-	-vga std
+	-vga std \
+	-d int
 
 GDB = /usr/local/bin/gdb
 
-.PHONY: kernel
+.PHONY: kernel src/asm/bootstrap.s
 all: build/kernel
 
 build/main.cr.o: $(KERNEL_SRC)
 	@echo "CR src/main.cr"
 	@FREESTANDING=1 $(CR) build $(CRFLAGS) src/main.cr -o build/main.cr
 
-build/%.o: src/asm/%.s
+build/%.o: src/asm/x64/%.s
 	@echo "AS $<"
-	@$(AS) $^ -o $@ -Isrc/asm
-
-build/multiboot.o: src/asm/multiboot.s
-	@echo "AS32 $<"
-	$(AS32) $^ -o $@ -Isrc/asm
+	@$(AS) $^ -o $@ -Isrc/asm/x64
 
 build/kernel64: $(KERNEL_OBJ)
 	@echo "LD64 $^ => $@"
 	@$(LD) -T link64.ld -o $@ $^
 
-build/kernel: build/multiboot.o
+# bootstrapping code
+build/kernel: build/bootstrap.o
 	@echo "LD $^ => $@"
-	@$(LD32) -T link.ld -z max-page-size=0x1000 -o $@ build/multiboot.o
+	@$(LD32) -T link.ld -o $@ build/bootstrap.o
+
+build/kernel64.bin: build/kernel64
+	objcopy --output-target=binary $< $@
+
+build/bootstrap.o: src/asm/bootstrap.s build/kernel64.bin
+	@echo "AS32 $<"
+	$(AS32) $< -o $@
 
 #
 run: build/kernel
@@ -67,12 +72,12 @@ rungdb_img: build/kernel drive.img
 	sleep 0.1s && $(GDB) -quiet \
 		-ex 'set arch i386:x86-64:intel' \
 		-ex 'target remote localhost:9000' \
-		-ex 'hb _bootstrap_start' \
+		-ex 'hb kmain' \
 		-ex 'continue' \
 		-ex 'disconnect' \
 		-ex 'set arch i386:x86-64:intel' \
 		-ex 'target remote localhost:9000' \
-		build/kernel
+		build/kernel64
 	-@pkill qemu
 
 rungdb_img_custom: build/kernel drive.img
