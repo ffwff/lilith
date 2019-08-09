@@ -8,6 +8,8 @@ module FrameAllocator
 
     @frames = PBitArray.null
     getter frames
+    protected def frames=(@frames)
+    end
 
     @search_from = 0
 
@@ -60,14 +62,14 @@ module FrameAllocator
       @frames[idx] = false
       true
     end
-
-    def update_inner_pointers
-      @frames.update_inner_pointers
-    end
   end
 
   @@first_region = Pointer(Region).null
   @@last_region = Pointer(Region).null
+
+  @@is_paging_setup = false
+  def is_paging_setup=(@@is_paging_setup)
+  end
 
   def add_region(base_addr : UInt64, length : UInt64)
     region = Pointer(Region).pmalloc
@@ -84,7 +86,21 @@ module FrameAllocator
   def each_region(&block)
     region = @@first_region
     while !region.null?
+      if @@is_paging_setup
+        new_addr = region.address | PTR_IDENTITY_MASK
+        region = Pointer(Region).new new_addr
+      end
       yield region.value
+      region = region.value.next_region
+    end
+  end
+
+  def update_inner_pointers
+    region = @@first_region
+    while !region.null?
+      new_addr = region.value.frames.to_unsafe.address | PTR_IDENTITY_MASK
+      size = region.value.frames.size
+      region.value.frames = PBitArray.new(size, Pointer(UInt32).new(new_addr))
       region = region.value.next_region
     end
   end

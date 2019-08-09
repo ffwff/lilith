@@ -24,7 +24,7 @@ private lib Kernel
     type_attr : UInt8  # type and attributes
     offset_2  : UInt16 # offset bits 16..31
     offset_3  : UInt32 # offset bits 32..63
-    zero     : UInt32
+    zero      : UInt32
   end
 
   fun kload_idt(idtr : UInt32)
@@ -43,16 +43,15 @@ lib IdtData
     eip, cs, eflags, useresp, ss : UInt32
   end
 
-  @[Packed]
   struct ExceptionRegisters
-    # Data segment selector
-    ds : UInt16
     # Pushed by pushad:
-    edi, esi, ebp, esp, ebx, edx, ecx, eax : UInt32
+    rdi, rsi,
+    r15, r14, r13, r12, r11, r10, r9, r8,
+    rdx, rcx, rbx, rax : UInt64
     # Interrupt number
-    int_no, errcode : UInt32
+    int_no, errcode : UInt64
     # Pushed by the processor automatically.
-    eip, cs, eflags, useresp, ss : UInt32
+    ss, userrsp, rflags, cs, rip : UInt64
   end
 end
 
@@ -179,8 +178,8 @@ end
 
 EX_PAGEFAULT = 14
 
-fun kcpuex_handler(frame : IdtData::ExceptionRegisters)
-  panic "unhandled"
+fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
+  panic "unhandled: ", frame.value.int_no
   {% if false %}
   case frame.int_no
   when EX_PAGEFAULT

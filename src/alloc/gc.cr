@@ -29,8 +29,6 @@ private lib Kernel
     next_node : GcNode*
     magic : UInt32
   end
-
-  fun kget_stack : UInt32
 end
 
 module Gc
@@ -42,7 +40,7 @@ module Gc
   @@enabled = false
   @@root_scanned = false
 
-  def init(@@data_start : UInt32, @@data_end : UInt32, @@stack_end : UInt32)
+  def init(@@data_start : USize, @@data_end : USize, @@stack_end : USize)
     @@enabled = true
   end
 
@@ -67,7 +65,7 @@ module Gc
     i = start_addr
     fix_white = false
     while i < end_addr - word_size
-      word = Pointer(UInt32).new(i.to_u64).value
+      word = Pointer(USize).new(i.to_u64).value
       # subtract to get the pointer to the header
       word -= sizeof(Kernel::GcNode)
       if word >= KernelArena.start_addr && word <= KernelArena.placement_addr
@@ -75,7 +73,7 @@ module Gc
         prev = Pointer(Kernel::GcNode).null
         found = false
         while !node.null?
-          if node.address.to_u32 == word
+          if node.address == word
             # word looks like a valid gc header pointer!
             # remove from current list
             if move_list
@@ -86,7 +84,7 @@ module Gc
               end
             end
             # add to gray list
-            debug_mark Pointer(Kernel::GcNode).new(i.to_u64), node, false
+            debug_mark Pointer(Kernel::GcNode).new(i), node, false
             case node.value.magic
             when GC_NODE_MAGIC
               node.value.magic = GC_NODE_MAGIC_GRAY
@@ -185,6 +183,7 @@ module Gc
         # lookup its offsets
         offsets = LibCrystal.type_offsets type_id
         if offsets == 0
+          panic "zero offset?!"
           # there is no offset found for this type, yet it's not atomic
           # then conservatively scan the region
           size = LibCrystal.type_size type_id
@@ -263,7 +262,7 @@ module Gc
         node = @@first_white_node
         while !node.null?
           panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
-          #debug "free ", node, " ", (node.as(UInt8*)+8) ," ", (node.as(UInt8*)+8).as(UInt32*)[0], "\n"
+          # Serial.puts "free ", node, " ", (node.as(UInt8*)+8) ," ", (node.as(UInt8*)+8).as(UInt64*)[0], "\n"
           next_node = node.value.next_node
           KernelArena.free node.address
           node = next_node
@@ -302,7 +301,8 @@ module Gc
     end
     # return
     ptr = Pointer(Void).new(header.address + sizeof(Kernel::GcNode))
-    debug self, '\n' if @@enabled
+    Serial.puts self, '\n' if @@enabled
+    #debug self, '\n' if @@enabled
     ptr
   end
 

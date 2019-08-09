@@ -25,6 +25,7 @@ lib PageStructs
 end
 
 USERSPACE_START = 0x4000_0000u64
+PTR_IDENTITY_MASK = 0xFFFF_8000_0000_0000u64
 
 module Paging
   extend self
@@ -43,6 +44,7 @@ module Paging
 
   @@enabled = false
 
+  # identity-mapped virtual addresses of the page directory pointer table
   @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).null
   @@kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).null
 
@@ -50,7 +52,9 @@ module Paging
     @@current_pdpt
   end
 
-  def current_pdpt=(@@current_pdpt)
+  def current_pdpt=(x)
+    new_addr = x.address | PTR_IDENTITY_MASK
+    @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new new_addr
   end
 
   @@pml4_table = Pointer(PageStructs::PML4Table).null
@@ -61,12 +65,6 @@ module Paging
     stack_start : Void*, stack_end : Void*,
     mboot_header : Multiboot::MultibootInfo*
   )
-    Serial.puts text_start, "\n"
-    Serial.puts text_end, "\n"
-    Serial.puts data_start, "\n"
-    Serial.puts data_end, "\n"
-    Serial.puts stack_start, "\n"
-    Serial.puts stack_end, "\n"
 
     cur_mmap_addr = mboot_header.value.mmap_addr
     mmap_end_addr = cur_mmap_addr + mboot_header.value.mmap_length
@@ -145,13 +143,15 @@ module Paging
       i += 0x1000
     end
 
+    # update memory regions' inner pointers to identity mapped ones
+    FrameAllocator.update_inner_pointers
+    FrameAllocator.is_paging_setup = true
+    new_addr = @@current_pdpt.address | PTR_IDENTITY_MASK
+    @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(new_addr)
+    @@kernel_pdpt = @@current_pdpt
+
     # enable paging
     enable
-
-    # update memory regions' inner pointers
-    FrameAllocator.each_region do |region|
-      region.update_inner_pointers
-    end
   end
 
   def aligned(x : USize) : USize
@@ -187,41 +187,39 @@ module Paging
 
     # claim
     while virt_addr < virt_addr_end
-      Serial.puts "virt addr: ", Pointer(Void).new(virt_addr.to_u64), "\n"
       # allocate page frame
-      phys_addr = FrameAllocator.claim_with_addr
       dir_idx, table_idx, page_idx = page_layer_indexes(virt_addr)
-      Serial.puts "idx: ", dir_idx, ' ', table_idx, ' ', page_idx, "\n"
 
       # directory
       if @@current_pdpt.value.dirs[dir_idx] == 0
-        pd = Pointer(PageStructs::PageDirectory).new(FrameAllocator.claim_with_addr)
-        paddr = pd.address
+        paddr = FrameAllocator.claim_with_addr
         if user
           paddr |= PT_MASK
         else
           paddr |= PT_MASK_GLOBAL
         end
         @@current_pdpt.value.dirs[dir_idx] = paddr
+        pd = Pointer(PageStructs::PageDirectory).new(mt_addr paddr)
       else
-        pd = Pointer(PageStructs::PageDirectory).new(t_addr @@current_pdpt.value.dirs[dir_idx])
+        pd = Pointer(PageStructs::PageDirectory).new(mt_addr @@current_pdpt.value.dirs[dir_idx])
       end
 
       # table
       if pd.value.tables[table_idx] == 0
-        pt = Pointer(PageStructs::PageTable).new(FrameAllocator.claim_with_addr)
-        paddr = pt.address
+        paddr = FrameAllocator.claim_with_addr
         if user
           paddr |= PT_MASK
         else
           paddr |= PT_MASK_GLOBAL
         end
         pd.value.tables[table_idx] = paddr
+        pt = Pointer(PageStructs::PageTable).new(mt_addr paddr)
       else
-        pt = Pointer(PageStructs::PageTable).new(t_addr pd.value.tables[table_idx])
+        pt = Pointer(PageStructs::PageTable).new(mt_addr pd.value.tables[table_idx])
       end
 
       # page
+      phys_addr = FrameAllocator.claim_with_addr
       page = page_create(rw, user, phys_addr)
       pt.value.pages[page_idx] = page
 
@@ -309,8 +307,14 @@ module Paging
     page
   end
 
+  # table address
   private def t_addr(addr : UInt64)
-    addr & 0xFFFF_F000
+    addr & 0xFFFF_FFFF_FFFF_F000u64
+  end
+
+  # mapped table address
+  private def mt_addr(addr : UInt64)
+    (addr & 0xFFFF_FFFF_FFFF_F000u64) | PTR_IDENTITY_MASK
   end
 
   # identity map pages at init

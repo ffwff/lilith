@@ -59,18 +59,12 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
                 mboot_header)
   VGA.puts "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
 
-  panic "ok"
-
-  {% if false %}
-
-  asm("mov %ax, %cs")
-
   #
   VGA.puts "initializing kernel garbage collector...\n"
-  KernelArena.start_addr = Kernel.stack_end.address.to_u32 + 0x1000
-  Gc.init Kernel.data_start.address.to_u32,
-          Kernel.data_end.address.to_u32,
-          Kernel.stack_end.address.to_u32
+  KernelArena.start_addr = Kernel.stack_end.address + 0x1000
+  Gc.init Kernel.data_start.address,
+          Kernel.data_end.address,
+          Kernel.stack_end.address
 
   #
   ide = nil
@@ -105,6 +99,10 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     ROOTFS.append(fs)
   end
 
+
+  panic "ok"
+
+  {% if false %}
   VGA.puts "setting up syscalls...\n"
   Kernel.ksyscall_setup
 

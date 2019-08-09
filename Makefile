@@ -23,8 +23,7 @@ QEMUFLAGS += \
 	-m 512M \
 	-serial stdio \
 	-no-shutdown -no-reboot \
-	-vga std \
-	-d int
+	-vga std
 
 GDB = /usr/local/bin/gdb
 

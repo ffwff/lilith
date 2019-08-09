@@ -3,6 +3,10 @@ struct PBitArray
   getter size
   @pointer = Pointer(UInt32).null
 
+  def to_unsafe
+    @pointer
+  end
+
   def initialize(@size : Int32)
     @pointer = Pointer(UInt32).pmalloc malloc_size
   end
@@ -11,11 +15,7 @@ struct PBitArray
     new 0, Pointer(UInt32).null
   end
 
-  private def initialize(@size, @pointer)
-  end
-
-  def update_inner_pointers
-    @pointer.address = @pointer.address | 0x8000_0000_0000_0000
+  def initialize(@size, @pointer)
   end
 
   # methods
