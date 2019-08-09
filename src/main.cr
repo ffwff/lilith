@@ -63,7 +63,6 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   #
   VGA.puts "initializing kernel garbage collector...\n"
-  # reserve 1 page for PML4
   KernelArena.start_addr = Kernel.stack_end.address.to_u32 + 0x1000
   Gc.init Kernel.data_start.address.to_u32,
           Kernel.data_end.address.to_u32,

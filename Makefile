@@ -16,7 +16,7 @@ else
 	CRFLAGS += -d
 endif
 
-QEMU = qemu-system-x86_64
+QEMU = qemu-system-i386
 
 QEMUFLAGS += \
 	-rtc base=localtime \
@@ -61,16 +61,7 @@ rungdb: build/kernel
 
 rungdb_img: build/kernel drive.img
 	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
-	sleep 0.1s && $(GDB) -quiet \
-		-ex 'set arch i386:x86-64:intel' \
-		-ex 'target remote localhost:9000' \
-		-ex 'hb kmain' \
-		-ex 'hb breakpoint' \
-		-ex 'continue' \
-		-ex 'disconnect' \
-		-ex 'set arch i386:x86-64:intel' \
-		-ex 'target remote localhost:9000' \
-		build/kernel
+	sleep 0.1s && $(GDB) -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'b breakpoint' -ex 'continue' build/kernel
 	-@pkill qemu
 
 rungdb_img_custom: build/kernel drive.img

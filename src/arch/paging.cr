@@ -45,20 +45,11 @@ module Paging
   @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).null
   @@kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).null
 
-  @@pml4_table = Pointer(PageStructs::PML4Table).null
-  @@pml4_table_virt = Pointer(PageStructs::PML4Table).null
-
   def current_pdpt
     @@current_pdpt
   end
 
-  def current_pdpt=(x)
-    @@current_pdpt = x
-    if @@enabled
-      @@pml4_table_virt.value.pdpt[0] = @@current_pdpt.address | PT_MASK_GLOBAL
-    else
-      @@pml4_table.value.pdpt[0] = @@current_pdpt.address | PT_MASK_GLOBAL
-    end
+  def current_pdpt=(@@current_pdpt)
   end
   #def current_page_dir=(@@current_page_dir); end
 
@@ -89,9 +80,6 @@ module Paging
 
     @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).pmalloc_a
     @@kernel_pdpt = @@current_pdpt
-
-    @@pml4_table = Pointer(PageStructs::PML4Table).pmalloc_a
-    @@pml4_table.value.pdpt[0] = @@current_pdpt.address | PT_MASK_GLOBAL
 
     # vga
     alloc_page_init false, false, 0xb8000
@@ -131,9 +119,6 @@ module Paging
       alloc_frame true, false, i
       i += 0x1000
     end
-    # map pml4 to virtual memory
-    @@pml4_table_virt = Pointer(PageStructs::PML4Table).new(stack_end.address)
-    alloc_page_init true, false, @@pml4_table.address.to_u32, @@pml4_table_virt.address.to_u32
     # claim placement heap segment
     # we do this because the kernel's page table lies here:
     i = Pmalloc.start.to_u64
@@ -142,7 +127,7 @@ module Paging
       i += 0x1000
     end
     # -- switch page directory
-    enable_long_mode
+    enable
   end
 
   def aligned(x : UInt32) : UInt32
@@ -157,13 +142,9 @@ module Paging
   end
 
   # state
-  private def enable_long_mode
-    PageStructs.kenable_long_mode(@@pml4_table.address.to_u32)
-  end
-
   def enable
     @@enabled = true
-    PageStructs.kenable_paging(@@pml4_table.address.to_u32)
+    PageStructs.kenable_paging(@@current_pdpt.address.to_u32)
   end
 
   def disable
@@ -265,34 +246,27 @@ module Paging
     pdpt.address
   end
 
-  def free_process_pdpt(pda : UInt32)
+  def free_process_pdpt(pdtpa : UInt32)
     panic "unimpl2"
     {% if false %}
     Paging.disable
 
-    pd = Pointer(PageStructs::PageDirectory).new(pda.to_u64)
-    # free the higher half
-    i = KERNEL_TABLES
-    while i < 1024
-      pta = pd.value.tables[i] & 0xFFFF_F000
-      pt = Pointer(PageStructs::PageTable).new(pta.to_u64)
+    pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(pdtpa.to_u64)
+    # free directories
+    i = 1
+    while i < 4
+      pd = Pointer(PageStructs::PageDirectory).new(pdpt.value.dirs[i] & 0xFFFF_F000)
       # free tables
-      if pta != 0
-        j = 0
-        while j < 1024
-          if pt.value.pages[j] != 0
-            frame = pt.value.pages[j] & 0xFFFF_F000
-            FrameAllocator.declaim_addr(frame.to_u64)
-          end
-          j += 1
+      if !pd.null?
+        512.times do |j|
+          pta = pd.value.
         end
-        FrameAllocator.declaim_addr(pta.to_u64)
       end
       i += 1
     end
 
     # free itself
-    FrameAllocator.declaim_addr(pda.to_u64)
+    FrameAllocator.declaim_addr(pdtpa.to_u64)
 
     Paging.enable
     {% end %}
