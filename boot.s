@@ -25,7 +25,6 @@ USER_DATA_SELECTOR = 0x23
 .global kload_tss
 .global kload_idt
 .global kirq_stub
-.global kenable_long_mode
 .global kenable_paging
 .global kdisable_paging
 .global ksyscall_setup
@@ -188,12 +187,6 @@ kcpuex_handler_no_err 30
 kcpuex_handler_no_err 31
 
 # paging
-kenable_long_mode:
-    # switch to long mode through setting EFER
-    mov $0xC0000080, %ecx
-    rdmsr
-    or $0x100, %eax
-    wrmsr
 kenable_paging:
     # Enable paging
     mov 4(%esp), %eax
