@@ -16,7 +16,9 @@
 .long 1024, 768, 32 # Width, height, depth
 
 .section .text
+KERNEL_CODE_SELECTOR = 0x08
 KERNEL_DATA_SELECTOR = 0x10
+KERNEL_DATA64_SELECTOR = 0x20
 USER_DATA_SELECTOR = 0x23
 # code
 .global _start
@@ -62,7 +64,7 @@ kload_gdt:
     mov %cr0, %eax
     or $1, %al           # Set Protected Mode flag
     mov %eax, %cr0
-    ljmp $0x08, $.flush_gdt
+    ljmp $KERNEL_CODE_SELECTOR, $.flush_gdt
 .flush_gdt:
     ret
 # tss
@@ -142,6 +144,11 @@ kcpuex_stub:
 .macro kcpuex_handler_err number
 .global kcpuex\number
 kcpuex\number:
+    # in case exception happens in 32-bit code
+    push %eax
+    mov $KERNEL_DATA64_SELECTOR, %ax
+    mov %ax, %ss
+    pop %eax
     push $\number
     jmp kcpuex_stub
 .endm
@@ -239,7 +246,7 @@ ksyscall_stub:
     mov %cr0, %edi
     and $0x7fffffff, %edi
     mov %edi, %cr0
-    ljmp $0x08, $.ksyscall_compat
+    ljmp $KERNEL_CODE_SELECTOR, $.ksyscall_compat
 .ksyscall_compat:
     # switch back to compatibility mode
     or $0x80000000, %edi

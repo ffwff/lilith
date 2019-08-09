@@ -40,7 +40,7 @@ end
 module Gdt
   extend self
 
-  GDT_SIZE = 7
+  GDT_SIZE = 8
   @@gdtr = uninitialized Kernel::Gdtr
   @@gdt = uninitialized Kernel::GdtEntry[GDT_SIZE]
   @@tss = uninitialized Kernel::Tss
@@ -54,10 +54,11 @@ module Gdt
     init_gdt_entry 0, 0x0, 0x0, 0x0, 0x0          # null
     init_gdt_entry 1, 0x0, 0xFFFFFFFF, 0x9A, 0xCF # kernel code
     init_gdt_entry 2, 0x0, 0xFFFFFFFF, 0x92, 0xCF # kernel data
-    init_gdt_entry 3, 0x0, 0xFFFFFFFF, 0xFA, 0xCF # user code
-    init_gdt_entry 4, 0x0, 0xFFFFFFFF, 0xF2, 0xCF # user data
-    init_gdt_entry 5, 0x0, 0xFFFFFFFF, 0x9A, 0xEF # kernel code (64-bit code)
-    init_tss 6
+    init_gdt_entry 3, 0x0, 0xFFFFFFFF, 0x9A, 0xAF # kernel code (64-bit)
+    init_gdt_entry 4, 0x0, 0xFFFFFFFF, 0x92, 0xAF # kernel data (64-bit)
+    init_gdt_entry 5, 0x0, 0xFFFFFFFF, 0xFA, 0xCF # user code
+    init_gdt_entry 6, 0x0, 0xFFFFFFFF, 0xF2, 0xCF # user data
+    init_tss 7
 
     Kernel.kload_gdt pointerof(@@gdtr).address.to_u32
     Kernel.kload_tss
