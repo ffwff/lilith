@@ -66,8 +66,8 @@ class GcString
   private def expand
     @capacity *= 2
     old_buffer = @buffer
-    @buffer = Pointer(UInt8).malloc(@capacity.to_u32)
-    memcpy(@buffer, old_buffer, @size.to_u32)
+    @buffer = Pointer(UInt8).malloc(@capacity)
+    memcpy(@buffer, old_buffer, @size.to_usize)
   end
 
   def resize(size : Int32)

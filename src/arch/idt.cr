@@ -31,16 +31,15 @@ private lib Kernel
 end
 
 lib IdtData
-  @[Packed]
   struct Registers
-    # Data segment selector
-    ds : UInt16
     # Pushed by pushad:
-    edi, esi, ebp, esp, ebx, edx, ecx, eax : UInt32
+    rdi, rsi,
+    r15, r14, r13, r12, r11, r10, r9, r8,
+    rdx, rcx, rbx, rax : UInt64
     # Interrupt number
-    int_no : UInt32
+    int_no, errcode : UInt64
     # Pushed by the processor automatically.
-    eip, cs, eflags, useresp, ss : UInt32
+    ss, userrsp, rflags, cs, rip : UInt64
   end
 
   struct ExceptionRegisters
@@ -153,26 +152,26 @@ module Idt
   end
 end
 
-fun kirq_handler(frame : IdtData::Registers)
+fun kirq_handler(frame : IdtData::Registers*)
   # send EOI signal to PICs
-  if frame.int_no >= 8
+  if frame.value.int_no >= 8
     # send to slave
     X86.outb 0xA0, 0x20
   end
   # send to master
   X86.outb 0x20, 0x20
 
-  if frame.int_no == 0 && Multiprocessing.n_process > 1
+  if frame.value.int_no == 0 && Multiprocessing.n_process > 1
     # preemptive multitasking...
     Multiprocessing.switch_process(frame)
   end
 
-  if Idt.irq_handlers[frame.int_no].pointer.null?
-    if frame.int_no != 0
-      Serial.puts "no handler for ", frame.int_no, "\n"
+  if Idt.irq_handlers[frame.value.int_no].pointer.null?
+    if frame.value.int_no != 0
+      Serial.puts "no handler for ", frame.value.int_no, "\n"
     end
   else
-    Idt.irq_handlers[frame.int_no].call
+    Idt.irq_handlers[frame.value.int_no].call
   end
 end
 

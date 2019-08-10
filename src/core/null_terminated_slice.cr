@@ -13,7 +13,7 @@ struct NullTerminatedSlice
     @buffer[idx]
   end
 
-  def [](range : Range(ISize, ISize))
+  def [](range : Range(Int, Int))
     panic "NullTerminatedSlice: out of range" if range.begin > range.end
     Slice(UInt8).new(@buffer + range.begin, range.size)
   end

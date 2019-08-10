@@ -27,10 +27,11 @@ _bootstrap_start:
     mov %cr4, %eax
     or $0x6A0, %ax
     mov %eax, %cr4
-    # enable long mode by setting EFER flag
+    # set the EFER flags
     mov $0xC0000080, %ecx
     rdmsr
-    or $0x100, %eax
+    # enable long mode, syscalls
+    or $0x101, %eax
     wrmsr
     # enable paging
     mov $pml4, %eax

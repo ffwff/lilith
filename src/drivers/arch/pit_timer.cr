@@ -1,7 +1,9 @@
 private PIT_TIME = 1193180
 
-struct PitInstance
-  def initialize
+module Pit
+  extend self
+
+  def init
     X86.outb(0x43, 0x36)
     divisor = PIT_TIME.unsafe_div(60)
     l = (divisor & 0xFF).to_u8

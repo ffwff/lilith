@@ -41,7 +41,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Gdt.init_table
 
   # drivers
-  pit = PitInstance.new
+  Pit.init
 
   # interrupt tables
   VGA.puts "initializing idt...\n"
@@ -99,10 +99,6 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     ROOTFS.append(fs)
   end
 
-
-  panic "ok"
-
-  {% if false %}
   VGA.puts "setting up syscalls...\n"
   Kernel.ksyscall_setup
 
@@ -132,6 +128,9 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     m_process.initial_switch
   end
 
+  panic "ok"
+
+  {% if false %}
   while true
   end
   {% end %}

@@ -159,12 +159,13 @@ module Multiprocessing
       last_pg_struct = Pointer(PageStructs::PageDirectoryPointerTable).null
       if !kernel_process?
         if @pid != 0
-          Paging.disable
           last_pg_struct = Paging.current_pdpt
-          page_dir = Paging.alloc_process_pdpt
-          Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_dir
+          breakpoint
+          page_struct = Paging.alloc_process_pdpt
+          Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_struct
+          breakpoint
           Paging.enable
-          @phys_pg_struct = page_dir
+          @phys_pg_struct = page_struct
         else
           @phys_pg_struct = Paging.current_pdpt.address
         end
@@ -175,7 +176,6 @@ module Multiprocessing
       unless yield self
         # unable to setup, bailing
         if !last_pg_struct.null? && !kernel_process?
-          Paging.disable
           Paging.current_pdpt = last_pg_struct
           Paging.enable
         end
@@ -193,7 +193,6 @@ module Multiprocessing
       end
 
       if !last_pg_struct.null? && !kernel_process?
-        Paging.disable
         Paging.current_pdpt = last_pg_struct
         Paging.enable
       end
@@ -206,30 +205,28 @@ module Multiprocessing
       dir = @phys_pg_struct # this must be stack allocated
       # because it's placed in the virtual kernel heap
       panic "page dir is nil" if dir == 0
-      Paging.disable
       Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(dir.to_u64)
       Paging.enable
-      asm("jmp kswitch_usermode" :: "{edx}"(@initial_eip),
-                                    "{ecx}"(@initial_esp),
-                                    "{ebp}"(USER_STACK_TOP)
-                                 : "volatile")
+      asm("jmp kswitch_usermode32"
+          :: "{rcx}"(@initial_eip),
+             "{rsp}"(@initial_esp)
+          : "volatile")
     end
 
     # new register frame for multitasking
     def new_frame
       frame = IdtData::Registers.new
       # Stack
-      frame.useresp = @initial_esp
-      frame.esp = @initial_esp
+      frame.userrsp = @initial_esp
       # Pushed by the processor automatically.
-      frame.eip = @initial_eip
+      frame.rip = @initial_eip
       if kernel_process?
-        frame.eflags = 0x202u32
+        frame.rflags = 0x202u32
         frame.cs = 0x08u32
         frame.ds = 0x10u32
         frame.ss = 0x10u32
       else
-        frame.eflags = 0x212u32
+        frame.rflags = 0x212u32
         frame.cs = 0x1Bu32
         frame.ds = 0x23u32
         frame.ss = 0x23u32
@@ -238,19 +235,22 @@ module Multiprocessing
       @frame.not_nil!
     end
 
-    def new_frame(syscall_frame)
+    # create a frame for when the process wakes up
+    def new_frame(syscall_frame : SyscallData::Registers)
       frame = IdtData::Registers.new
-      # Stack
-      frame.useresp = USER_STACK_TOP
-      frame.esp = USER_STACK_TOP
+      # Stack (this should be restored by interrupt handler automatically)
+      frame.userrsp = USER_STACK_TOP
       # Pushed by the processor automatically.
-      frame.eip = @initial_eip
-      frame.eflags = 0x212u32
+      frame.rip = @initial_eip
+      frame.rflags = 0x212u32
       frame.cs = 0x1Bu32
-      frame.ds = 0x23u32
       frame.ss = 0x23u32
       # registers
-      {% for id in ["edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax"] %}
+      {% for id in [
+          "rdi", "rsi",
+          "r15", "r14", "r13", "r12", "r11", "r10", "r9", "r8",
+          "rdx", "rcx", "rbx", "rax"
+        ] %}
       frame.{{ id.id }} = syscall_frame.{{ id.id }}
       {% end %}
       @frame = frame
@@ -300,9 +300,9 @@ module Multiprocessing
   end
 
   def setup_tss
-    esp0 = 0u32
-    asm("mov %esp, $0;" : "=r"(esp0) :: "volatile")
-    Gdt.stack = esp0
+    rsp0 = 0u64
+    asm("mov %rsp, $0" : "=r"(rsp0) :: "volatile")
+    Gdt.stack = rsp0
   end
 
   private def can_switch(process)
@@ -358,6 +358,11 @@ module Multiprocessing
   # context switch
   # NOTE: this must be a macro so that it will be inlined so that
   # the "frame" argument will a reference to the register frame on the stack
+  def switch_process(frame, remove = false)
+    panic "not impl"
+  end
+
+  {% if false %}
   macro switch_process(frame, remove = false)
     {% if false %}
     {% if frame == nil %}
@@ -428,6 +433,7 @@ module Multiprocessing
     {% end %}
     {% end %}
   end
+  {% end %}
 
   def switch_process_no_save
     Multiprocessing.switch_process(nil)

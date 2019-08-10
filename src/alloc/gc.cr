@@ -301,8 +301,8 @@ module Gc
     end
     # return
     ptr = Pointer(Void).new(header.address + sizeof(Kernel::GcNode))
-    Serial.puts self, '\n' if @@enabled
-    #debug self, '\n' if @@enabled
+    #Serial.puts self, '\n' if @@enabled
+    debug self, '\n' if @@enabled
     ptr
   end
 

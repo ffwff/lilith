@@ -2,13 +2,13 @@ private PORT = 0x3F8
 
 private struct SerialInstance < OutputDriver
   def initialize
-    X86.outb((PORT + 1).to_u16, 0x00.to_u8) # Disable all interrupts
-    X86.outb((PORT + 3).to_u16, 0x80.to_u8) # Enable DLAB (set baud rate divisor)
-    X86.outb((PORT + 0).to_u16, 0x03.to_u8) # Set divisor to 3 (lo byte) 38400 baud
-    X86.outb((PORT + 1).to_u16, 0x00.to_u8) #                  (hi byte)
-    X86.outb((PORT + 3).to_u16, 0x03.to_u8) # 8 bits, no parity, one stop bit
-    X86.outb((PORT + 2).to_u16, 0xC7.to_u8) # Enable FIFO, clear them, with 14-byte threshold
-    X86.outb((PORT + 4).to_u16, 0x0B.to_u8) # IRQs enabled, RTS/DSR set
+    X86.outb((PORT + 1).to_u16, 0x00u8) # Disable all interrupts
+    X86.outb((PORT + 3).to_u16, 0x80u8) # Enable DLAB (set baud rate divisor)
+    X86.outb((PORT + 0).to_u16, 0x03u8) # Set divisor to 3 (lo byte) 38400 baud
+    X86.outb((PORT + 1).to_u16, 0x00u8) #                  (hi byte)
+    X86.outb((PORT + 3).to_u16, 0x03u8) # 8 bits, no parity, one stop bit
+    X86.outb((PORT + 2).to_u16, 0xC7u8) # Enable FIFO, clear them, with 14-byte threshold
+    X86.outb((PORT + 4).to_u16, 0x0Bu8) # IRQs enabled, RTS/DSR set
   end
 
   #

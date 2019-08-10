@@ -123,7 +123,7 @@ class KbdFS < VFS
         when VFSNode::Buffering::Unbuffered
           msg.respond n
           msg.process.status = Multiprocessing::Process::Status::Unwait
-          msg.process.frame.not_nil!.eax = 1
+          msg.process.frame.not_nil!.rax = 1
           false
         else
           if ch == '\b' && msg.offset > 0
@@ -134,7 +134,7 @@ class KbdFS < VFS
             if (msg.buffering == VFSNode::Buffering::LineBuffered && ch == '\n') ||
                 msg.finished?
               msg.process.status = Multiprocessing::Process::Status::Unwait
-              msg.process.frame.not_nil!.eax = msg.offset
+              msg.process.frame.not_nil!.rax = msg.offset
               false
             else
               true
@@ -173,7 +173,7 @@ class KbdFS < VFS
           msg.slice[i] = ansi_buf_pop
         end
         msg.process.status = Multiprocessing::Process::Status::Unwait
-        msg.process.frame.not_nil!.eax = size
+        msg.process.frame.not_nil!.rax = size
         false
       end
       Paging.current_pdpt = last_pg_struct

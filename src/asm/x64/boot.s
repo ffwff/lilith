@@ -4,6 +4,9 @@
 .include "gdt.s"
 .include "idt.s"
 .include "paging.s"
+.include "syscalls.s"
+.include "idle.s"
+.include "user.s"
 
 .section .bootstrap
 .global _start
