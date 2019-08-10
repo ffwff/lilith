@@ -162,7 +162,7 @@ module Multiprocessing
           last_pg_struct = Paging.current_pdpt
           page_struct = Paging.alloc_process_pdpt
           Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_struct
-          Paging.enable
+          Paging.flush
           @phys_pg_struct = page_struct
         else
           @phys_pg_struct = Paging.current_pdpt.address
@@ -175,7 +175,7 @@ module Multiprocessing
         # unable to setup, bailing
         if !last_pg_struct.null? && !kernel_process?
           Paging.current_pdpt = last_pg_struct
-          Paging.enable
+          Paging.flush
         end
         Idt.enable
         return
@@ -192,7 +192,7 @@ module Multiprocessing
 
       if !last_pg_struct.null? && !kernel_process?
         Paging.current_pdpt = last_pg_struct
-        Paging.enable
+        Paging.flush
       end
 
       Idt.enable
@@ -204,7 +204,7 @@ module Multiprocessing
       # because it's placed in the virtual kernel heap
       panic "page dir is nil" if dir == 0
       Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(dir.to_u64)
-      Paging.enable
+      Paging.flush
       asm("jmp kswitch_usermode32"
           :: "{rcx}"(@initial_eip),
              "{rsp}"(@initial_esp)

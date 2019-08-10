@@ -118,7 +118,7 @@ class KbdFS < VFS
       root.read_queue.not_nil!.keep_if do |msg|
         dir = msg.process.phys_pg_struct
         Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(dir.to_u64)
-        Paging.enable
+        Paging.flush
         case msg.buffering
         when VFSNode::Buffering::Unbuffered
           msg.respond n
@@ -144,7 +144,7 @@ class KbdFS < VFS
       end
 
       Paging.current_pdpt = last_pg_struct
-      Paging.enable
+      Paging.flush
     end
   end
 
@@ -167,7 +167,7 @@ class KbdFS < VFS
       root.read_queue.not_nil!.keep_if do |msg|
         dir = msg.process.phys_pg_struct
         Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(dir.to_u64)
-        Paging.enable
+        Paging.flush
         size = min ansi_remaining, msg.slice.size
         size.times do |i|
           msg.slice[i] = ansi_buf_pop
@@ -177,7 +177,7 @@ class KbdFS < VFS
         false
       end
       Paging.current_pdpt = last_pg_struct
-      Paging.enable
+      Paging.flush
     end
   end
 

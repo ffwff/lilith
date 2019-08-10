@@ -26,24 +26,10 @@ ksyscall_setup:
 ksyscall_stub:
     fxsave (fxsave_region)
     pusha64
-    mov %ds, %rbx
-    push %rbx
-    mov %ss, %rbx
-    mov %bx, %ds
-    # debug
-    cmp $0x8, %rax
-    jne test_neq
-    #
-test_eq: # wtf
-    mov $0x40009190, %r8
-    movq $0x41414141, (%r8)
-test_neq:
     # call the handler
     mov %rsp, %rdi
     call ksyscall_handler
     # return
-    pop %rax
-    mov %ax, %ds
     popa64
     fxrstor (fxsave_region)
     mov %rcx, %rsp

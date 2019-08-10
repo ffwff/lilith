@@ -16,16 +16,17 @@ else
 endif
 
 QEMU = qemu-system-x86_64
+# QEMU = /tmp/qemu/build/x86_64-softmmu/qemu-system-x86_64
 
 QEMUFLAGS += \
 	-rtc base=localtime \
 	-monitor telnet:127.0.0.1:7777,server,nowait \
-	-m 512M \
+	-m 1G \
 	-serial stdio \
 	-no-shutdown -no-reboot \
-	-vga std -d int
+	-vga std
 
-GDB = /usr/local/bin/gdb
+GDB = /usr/bin/gdb
 
 .PHONY: kernel src/asm/bootstrap.s
 all: build/kernel
@@ -95,7 +96,7 @@ os.iso: build/kernel
 	-@pkill qemu
 
 clean:
-	rm -f build/*.o
+	rm -f build/*
 	rm -f kernel
 
 # debug

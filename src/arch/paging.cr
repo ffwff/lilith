@@ -42,8 +42,6 @@ module Paging
     @@usable_physical_memory
   end
 
-  @@enabled = false
-
   # identity-mapped virtual addresses of the page directory pointer table
   @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).null
   @@kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).null
@@ -159,7 +157,7 @@ module Paging
     @@kernel_pdpt = @@current_pdpt
 
     # enable paging
-    enable
+    flush
   end
 
   def aligned(x : USize) : USize
@@ -174,8 +172,7 @@ module Paging
   end
 
   # state
-  def enable
-    @@enabled = true
+  def flush
     asm("mov $0, %cr3" :: "r"(@@pml4_table) : "volatile", "memory")
   end
 
@@ -215,11 +212,12 @@ module Paging
       page = page_create(rw, user, phys_addr)
       pt.value.pages[page_idx] = page
 
+      asm("invlpg ($0)" :: "r"(virt_addr) : "memory")
       virt_addr += 0x1000
     end
 
-    asm("invlpg $0" :: "memory"(virt_addr) : "volatile", "memory")
     Idt.enable
+    #flush
 
     # return page
     virt_addr_start
