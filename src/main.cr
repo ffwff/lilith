@@ -127,11 +127,4 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     Multiprocessing.setup_tss
     m_process.initial_switch
   end
-
-  panic "ok"
-
-  {% if false %}
-  while true
-  end
-  {% end %}
 end

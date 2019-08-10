@@ -160,10 +160,8 @@ module Multiprocessing
       if !kernel_process?
         if @pid != 0
           last_pg_struct = Paging.current_pdpt
-          breakpoint
           page_struct = Paging.alloc_process_pdpt
           Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_struct
-          breakpoint
           Paging.enable
           @phys_pg_struct = page_struct
         else

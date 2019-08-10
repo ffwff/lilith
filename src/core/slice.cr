@@ -20,12 +20,12 @@ struct Slice(T)
   end
 
   def [](idx : Int)
-    panic "Slice: out of range" if idx > @size || idx < 0
+    panic "Slice: out of range" if idx >= @size || idx < 0
     @buffer[idx]
   end
 
   def []=(idx : Int, value : T)
-    panic "Slice: out of range" if idx > @size || idx < 0
+    panic "Slice: out of range" if idx >= @size || idx < 0
     @buffer[idx] = value
   end
 

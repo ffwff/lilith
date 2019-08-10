@@ -34,7 +34,7 @@ stack_end:
     .quad stack_top
 .align 16
 fxsave_region_asm:
-.skip 512
+    .skip 512
 
 # -- stack
 .section .stack

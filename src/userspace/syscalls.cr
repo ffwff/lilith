@@ -4,6 +4,7 @@ require "./argv_builder.cr"
 
 lib SyscallData
   struct Registers
+    ds : UInt64
     rdi, rsi,
     r15, r14, r13, r12, r11, r10, r9, r8,
     rdx, rcx, rbx, rax : UInt64
@@ -207,7 +208,8 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     fd = try(pudata.get_fd(fdi))
     arg = try(checked_pointer32(fv.rdx)).as(SyscallData::StringArgument32*)
     str = try(checked_slice32(arg.value.str, arg.value.len))
-    Serial.puts "write: ", str, '\n'
+    Serial.puts "size: ", str, '\n'
+    Serial.puts "obj: ", str.to_unsafe[0], '\n'
     fv.rax = fd.not_nil!.node.not_nil!.write(str)
   when SC_SEEK
     fdi = fv.rbx.to_i32
@@ -368,15 +370,20 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
       fv.rax = SYSCALL_ERR
       return
     end
-    str = try(checked_slice32(arg.value.str, arg.value.len))
-    idx = 0
-    pudata.cwd.each do |ch|
-      break if idx == str.size
-      str[idx] = ch
-      idx += 1
-    end
-    str[idx] = 0
-    fv.rax = idx
+    x = Pointer(UInt8).new(arg.value.str.to_u64)
+    Serial.puts x, '\n'
+    x[0] = 0x41
+    x[1] = 0x0
+    fv.rax = 100
+    #str = Slice(UInt8).new(Pointer(UInt8).new(arg.value.str.to_u64), len)
+    #idx = 0
+    #pudata.cwd.each do |ch|
+    #  break if idx == str.size - 1
+    #  str[idx] = ch
+    #  idx += 1
+    #end
+    #str[idx] = 0
+    #fv.rax = idx
   when SC_CHDIR
     path = NullTerminatedSlice.new(try(checked_pointer32(fv.rbx)).as(UInt8*))
     if (t = append_paths path, pudata.cwd, pudata.cwd_node).nil?
