@@ -95,12 +95,12 @@ module Idt
 
     # cpu exception handlers
     {% for i in 0..31 %}
-      #init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
+      # init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
     {% end %}
 
     # hw interrupts
     {% for i in 0..15 %}
-      #init_idt_entry {{ i + 32 }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kirq{{ i.id }}).pointer.address, INTERRUPT_GATE
+      init_idt_entry {{ i + 32 }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kirq{{ i.id }}).pointer.address, INTERRUPT_GATE
     {% end %}
 
     Kernel.kload_idt pointerof(@@idtr).address.to_u32
@@ -146,7 +146,7 @@ module Idt
 
   def lock(&block)
     if @@status_mask
-      panic "multiple masks"
+      return yield
     end
     @@status_mask = true
     yield
@@ -155,7 +155,8 @@ module Idt
 end
 
 fun kirq_handler(frame : IdtData::Registers*)
-  panic "nope"
+  Serial.puts frame.value.int_no, '\n'
+
   # send EOI signal to PICs
   if frame.value.int_no >= 8
     # send to slave
@@ -166,7 +167,7 @@ fun kirq_handler(frame : IdtData::Registers*)
 
   if frame.value.int_no == 0 && Multiprocessing.n_process > 1
     # preemptive multitasking...
-    # frame.value = Multiprocessing.switch_process(frame.value)
+    Multiprocessing.switch_process(frame)
   end
 
   if Idt.irq_handlers[frame.value.int_no].pointer.null?
@@ -181,7 +182,7 @@ end
 EX_PAGEFAULT = 14
 
 fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
-  panic "unhandled: ", frame.value.int_no
+  panic "unhandled: ", frame.value.int_no, ": ", frame.value.errcode
   {% if false %}
   case frame.int_no
   when EX_PAGEFAULT

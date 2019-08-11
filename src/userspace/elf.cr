@@ -174,7 +174,7 @@ module ElfReader
     unless vfs.size > 0
       return ParserError::EmptyFile
     end
-    Paging.alloc_page_pg(process.initial_esp.to_usize - 0x1000 * 4, true, true, npages: 4)
+    Paging.alloc_page_pg(process.initial_sp.to_usize - 0x1000 * 4, true, true, npages: 4)
     mmap_list : GcArray(MemMapNode)? = nil
     mmap_append_idx = 0
     mmap_idx = 0
@@ -182,7 +182,7 @@ module ElfReader
       case data
       when ElfStructs::Elf32Header
         data = data.as(ElfStructs::Elf32Header)
-        process.initial_eip = data.e_entry
+        process.initial_ip = data.e_entry.to_usize
         mmap_list = GcArray(MemMapNode).new data.e_phnum
       when ElfStructs::Elf32ProgramHeader
         data = data.as(ElfStructs::Elf32ProgramHeader)

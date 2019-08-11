@@ -27,6 +27,7 @@ ksyscall_stub:
     fxsave (fxsave_region)
     pusha64
     # call the handler
+    cld
     mov %rsp, %rdi
     call ksyscall_handler
     # return

@@ -5,7 +5,6 @@
 .include "idt.s"
 .include "paging.s"
 .include "syscalls.s"
-.include "idle.s"
 .include "user.s"
 
 .section .bootstrap
@@ -23,17 +22,17 @@ kcpuint_end:
 
 # -- data
 .section .data
-.global fxsave_region
+.global fxsave_region_ptr
 .global stack_start
 .global stack_end
-fxsave_region:
-    .quad fxsave_region_asm
+fxsave_region_ptr:
+    .quad fxsave_region
 stack_start:
     .quad stack_bottom
 stack_end:
     .quad stack_top
 .align 16
-fxsave_region_asm:
+fxsave_region:
     .skip 512
 
 # -- stack

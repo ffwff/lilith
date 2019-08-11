@@ -12,6 +12,6 @@ kload_gdt:
 
 .global kload_tss
 kload_tss:
-    xor %rax, %rax
-    ltr %ax
+    mov $0x2b, %bx
+    ltr %bx
     ret

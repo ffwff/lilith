@@ -1,9 +1,6 @@
 .section .text
 .include "cpuex.s"
 
-PUSHA_SIZE = 14 * 8
-INT_FRAME_SIZE = PUSHA_SIZE + 7 * 8
-
 .macro pusha64
     # gp registers
     push %rax
@@ -59,3 +56,35 @@ kcpuex_stub:
     pusha64
     mov %rsp, %rdi
     call kcpuex_handler
+    # TODO: return
+    popa64
+    iret
+
+# irq
+.altmacro
+.macro kirq_handler_label number
+.global kirq\number
+kirq\number:
+    push $\number
+    jmp kirq_stub
+.endm
+.set i, 0
+.rept 16
+    kirq_handler_label %i
+    .set i, i+1
+.endr
+
+.extern kirq_handler
+kirq_stub:
+    fxsave (fxsave_region)
+    pusha64
+    # call the handler
+    cld
+    mov %rsp, %rdi
+    call kirq_handler
+    # return
+    popa64
+    fxrstor (fxsave_region)
+    add $8, %rsp # skip int_no
+    iretq
+

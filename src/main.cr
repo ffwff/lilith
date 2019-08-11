@@ -18,22 +18,26 @@ lib Kernel
   fun ksyscall_setup
   fun kidle_loop
 
-  $fxsave_region : UInt8*
+  $fxsave_region_ptr : UInt8*
   $kernel_end : Void*
   $text_start : Void*; $text_end : Void*
   $data_start : Void*; $data_end : Void*
   $stack_start : Void*; $stack_end : Void*
 end
 
-#
 ROOTFS = RootFS.new
+
+fun idle_loop
+  while true
+  end
+end
 
 fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   if mboot_magic != MULTIBOOT_BOOTLOADER_MAGIC
     panic "Kernel should be booted from a multiboot bootloader!"
   end
 
-  Multiprocessing.fxsave_region = Kernel.fxsave_region
+  Multiprocessing.fxsave_region = Kernel.fxsave_region_ptr
 
   VGA.puts "Booting lilith...\n"
 
@@ -102,8 +106,14 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   VGA.puts "setting up syscalls...\n"
   Kernel.ksyscall_setup
 
+  rsp0 = 0u64
+  asm("mov %rsp, $0" : "=r"(rsp0) :: "volatile")
+  Gdt.stack = rsp0
+  Gdt.flush_tss
+
   idle_process = Multiprocessing::Process.new(nil, false) do |process|
-    process.initial_eip = (->Kernel.kidle_loop).pointer.address.to_u32
+    process.initial_sp = rsp0
+    process.initial_ip = (->idle_loop).pointer.address
   end
 
   if main_bin.nil?
@@ -122,9 +132,9 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
       panic "unable to load main.bin"
     end
 
-    m_process = m_process.not_nil!
     Idt.status_mask = false
-    Multiprocessing.setup_tss
+
+    m_process = m_process.not_nil!
     m_process.initial_switch
   end
 end

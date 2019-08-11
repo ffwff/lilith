@@ -4,8 +4,8 @@ module Multiprocessing
   extend self
 
   # must be page aligned
-  USER_STACK_TOP        = 0xFFFF_F000u32
-  USER_STACK_SIZE       =   0x80_0000u32 # 8 mb
+  USER_STACK_TOP        = 0xFFFF_F000u64
+  USER_STACK_SIZE       =   0x80_0000u64 # 8 mb
   USER_STACK_BOTTOM_MAX = USER_STACK_TOP - USER_STACK_SIZE
   USER_STACK_BOTTOM     = 0x8000_0000u32
 
@@ -54,11 +54,11 @@ module Multiprocessing
 
     protected def next_process=(@next_process); end
 
-    @initial_eip : UInt32 = 0x8000_0000u32
-    property initial_eip
+    @initial_ip = 0x8000_0000u64
+    property initial_ip
 
-    @initial_esp : UInt32 = USER_STACK_TOP
-    property initial_esp
+    @initial_sp = 0xFFFF_FFFFu64
+    property initial_sp
 
     # physical location of the process' page directory
     @phys_pg_struct : USize = 0u64
@@ -214,8 +214,8 @@ module Multiprocessing
       Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(dir.to_u64)
       Paging.flush
       asm("jmp kswitch_usermode32"
-          :: "{rcx}"(@initial_eip),
-             "{rsp}"(@initial_esp)
+          :: "{rcx}"(@initial_ip),
+             "{rsp}"(@initial_sp)
           : "volatile")
     end
 
@@ -223,9 +223,9 @@ module Multiprocessing
     def new_frame
       @frame = IdtData::Registers.new
       # Stack
-      @frame.not_nil!.userrsp = @initial_esp
+      @frame.not_nil!.userrsp = @initial_sp
       # Pushed by the processor automatically.
-      @frame.not_nil!.rip = @initial_eip
+      @frame.not_nil!.rip = @initial_ip
       if kernel_process?
         @frame.not_nil!.rflags = KERNEL_RFLAGS
         @frame.not_nil!.cs = KERNEL_CS_SEGMENT
@@ -298,12 +298,6 @@ module Multiprocessing
       io.puts " next_process: ", next_process.nil? ? "nil" : next_process.not_nil!.pid, ", "
       io.puts "}"
     end
-  end
-
-  def setup_tss
-    rsp0 = 0u64
-    asm("mov %rsp, $0" : "=r"(rsp0) :: "volatile")
-    Gdt.stack = rsp0
   end
 
   private def can_switch(process)
@@ -409,9 +403,10 @@ module Multiprocessing
   end
 
   def switch_process(frame : IdtData::Registers*)
-    switch_process_save_and_load do |process|
+    current_process = switch_process_save_and_load do |process|
       process.frame = frame.value
     end
+    frame.value = current_process.frame.not_nil!
   end
 
   def switch_process(frame : SyscallData::Registers*)
