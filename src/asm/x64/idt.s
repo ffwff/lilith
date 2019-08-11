@@ -21,9 +21,15 @@ INT_FRAME_SIZE = PUSHA_SIZE + 7 * 8
     # scan registers
     push %rsi
     push %rdi
+    # segment registers
+    mov %ds, %ax
+    push %rax
 .endm
 
 .macro popa64
+    # segment registers
+    pop %rax
+    mov %ax, %ds
     # scan registers
     pop %rdi
     pop %rsi

@@ -33,24 +33,26 @@ end
 lib IdtData
   struct Registers
     # Pushed by pushad:
+    ds,
     rdi, rsi,
     r15, r14, r13, r12, r11, r10, r9, r8,
     rdx, rcx, rbx, rax : UInt64
     # Interrupt number
-    int_no, errcode : UInt64
+    int_no : UInt64
     # Pushed by the processor automatically.
-    ss, userrsp, rflags, cs, rip : UInt64
+    rip, cs, rflags, userrsp, ss : UInt64
   end
 
   struct ExceptionRegisters
     # Pushed by pushad:
+    ds,
     rdi, rsi,
     r15, r14, r13, r12, r11, r10, r9, r8,
     rdx, rcx, rbx, rax : UInt64
     # Interrupt number
     int_no, errcode : UInt64
     # Pushed by the processor automatically.
-    ss, userrsp, rflags, cs, rip : UInt64
+    rip, cs, rflags, userrsp, ss : UInt64
   end
 end
 
@@ -153,6 +155,7 @@ module Idt
 end
 
 fun kirq_handler(frame : IdtData::Registers*)
+  panic "nope"
   # send EOI signal to PICs
   if frame.value.int_no >= 8
     # send to slave
@@ -163,7 +166,7 @@ fun kirq_handler(frame : IdtData::Registers*)
 
   if frame.value.int_no == 0 && Multiprocessing.n_process > 1
     # preemptive multitasking...
-    Multiprocessing.switch_process(frame)
+    # frame.value = Multiprocessing.switch_process(frame.value)
   end
 
   if Idt.irq_handlers[frame.value.int_no].pointer.null?

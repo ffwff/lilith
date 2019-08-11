@@ -9,6 +9,14 @@ module Multiprocessing
   USER_STACK_BOTTOM_MAX = USER_STACK_TOP - USER_STACK_SIZE
   USER_STACK_BOTTOM     = 0x8000_0000u32
 
+  USER_CS_SEGMENT = 0x10
+  USER_SS_SEGMENT = 0x23
+  USER_RFLAGS = 0x212
+
+  KERNEL_CS_SEGMENT = 0x08
+  KERNEL_SS_SEGMENT = 0x10
+  KERNEL_RFLAGS = 0x202
+
   @@current_process : Process? = nil
 
   def current_process
@@ -213,45 +221,40 @@ module Multiprocessing
 
     # new register frame for multitasking
     def new_frame
-      frame = IdtData::Registers.new
+      @frame = IdtData::Registers.new
       # Stack
-      frame.userrsp = @initial_esp
+      @frame.not_nil!.userrsp = @initial_esp
       # Pushed by the processor automatically.
-      frame.rip = @initial_eip
+      @frame.not_nil!.rip = @initial_eip
       if kernel_process?
-        frame.rflags = 0x202u32
-        frame.cs = 0x08u32
-        frame.ds = 0x10u32
-        frame.ss = 0x10u32
+        @frame.not_nil!.rflags = KERNEL_RFLAGS
+        @frame.not_nil!.cs = KERNEL_CS_SEGMENT
+        @frame.not_nil!.ss = KERNEL_SS_SEGMENT
+        @frame.not_nil!.ds = KERNEL_SS_SEGMENT
       else
-        frame.rflags = 0x212u32
-        frame.cs = 0x1Bu32
-        frame.ds = 0x23u32
-        frame.ss = 0x23u32
+        @frame.not_nil!.rflags = USER_RFLAGS
+        @frame.not_nil!.cs = USER_CS_SEGMENT
+        @frame.not_nil!.ds = USER_SS_SEGMENT
+        @frame.not_nil!.ss = USER_SS_SEGMENT
       end
-      @frame = frame
       @frame.not_nil!
     end
 
-    # create a frame for when the process wakes up
-    def new_frame(syscall_frame : SyscallData::Registers)
-      frame = IdtData::Registers.new
-      # Stack (this should be restored by interrupt handler automatically)
-      frame.userrsp = USER_STACK_TOP
-      # Pushed by the processor automatically.
-      frame.rip = @initial_eip
-      frame.rflags = 0x212u32
-      frame.cs = 0x1Bu32
-      frame.ss = 0x23u32
-      # registers
+    def new_frame_from_syscall(syscall_frame : SyscallData::Registers*)
+      @frame = IdtData::Registers.new
+
       {% for id in [
           "rdi", "rsi",
           "r15", "r14", "r13", "r12", "r11", "r10", "r9", "r8",
           "rdx", "rcx", "rbx", "rax"
         ] %}
-      frame.{{ id.id }} = syscall_frame.{{ id.id }}
+      @frame.not_nil!.{{ id.id }} = syscall_frame.value.{{ id.id }}
       {% end %}
-      @frame = frame
+      # new_frame.ds = USER_SS_SEGMENT
+      @frame.not_nil!.ss = USER_SS_SEGMENT
+      @frame.not_nil!.cs = USER_CS_SEGMENT
+      @frame.not_nil!.rflags = USER_RFLAGS
+
       @frame.not_nil!
     end
 
@@ -354,34 +357,23 @@ module Multiprocessing
   end
 
   # context switch
-  # NOTE: this must be a macro so that it will be inlined so that
-  # the "frame" argument will a reference to the register frame on the stack
-  def switch_process(frame, remove = false)
-    panic "not impl"
-  end
+  private def switch_process_save_and_load(remove = false, &block)
+    # get next process
+    current_process = Multiprocessing.current_process.not_nil!
+    if remove
+      current_process.status = Multiprocessing::Process::Status::Removed
+    end
+    next_process = Multiprocessing.next_process.not_nil!
+    current_process.remove if remove
 
-  {% if false %}
-  macro switch_process(frame, remove = false)
-    {% if false %}
-    {% if frame == nil %}
-      current_process = Multiprocessing.current_process.not_nil!
-      {% if remove %}
-        current_process.status = Multiprocessing::Process::Status::Removed
-      {% end %}
-        next_process = Multiprocessing.next_process.not_nil!
-      {% if remove %}
-        current_process.remove
-      {% end %}
-    {% else %}
-      # save current process' state
-      current_process = Multiprocessing.current_process.not_nil!
-      current_process.frame = {{ frame }}
+    # save current process' state
+    unless remove
+      # current_process.frame = frame?.not_nil!
+      yield current_process
       if !current_process.fxsave_region.null?
         memcpy current_process.fxsave_region, Multiprocessing.fxsave_region, 512
       end
-      # load process's state
-      next_process = Multiprocessing.next_process.not_nil!
-    {% end %}
+    end
 
     process_frame = if next_process.frame.nil?
       next_process.new_frame
@@ -391,54 +383,47 @@ module Multiprocessing
 
     # switch page directory
     if !next_process.kernel_process?
-      dir = next_process.phys_pg_struct # this must be stack allocated
-      # because it's placed in the virtual kernel heap
-      panic "null page directory" if dir == 0
-      Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(dir.to_u64)
-      {% if remove %}
-        current_page_dir = current_process.phys_pg_struct
-        Paging.free_process_pdpt(current_page_dir)
+      Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+        .new(next_process.phys_pg_struct)
+      Paging.flush
+      if remove
+        Paging.free_process_pdpt(current_process.phys_pg_struct)
         current_process.phys_pg_struct = 0u64
-      {% else %}
-        Paging.enable
-      {% end %}
+      end
     end
 
     # wake up process
     if next_process.status == Multiprocessing::Process::Status::Unwait
       # transition state from kernel syscall
-      process_frame.eip = Pointer(UInt32).new(process_frame.ecx.to_u64)[0]
-      process_frame.useresp = process_frame.ecx
+      process_frame.rip = Pointer(UInt32).new(process_frame.rcx.to_u64)[0]
+      process_frame.userrsp = process_frame.rcx
       next_process.status = Multiprocessing::Process::Status::Normal
     end
 
-    # swap back registers
-    {% if frame != nil %}
-      {% for id in [
-                     "ds",
-                     "edi", "esi", "ebp", "esp", "ebx", "edx", "ecx", "eax",
-                     "eip", "cs", "eflags", "useresp", "ss",
-                   ] %}
-        {{ frame }}.{{ id.id }} = process_frame.{{ id.id }}
-      {% end %}
-    {% end %}
+    # restore fxsave
     if !next_process.fxsave_region.null?
       memcpy Multiprocessing.fxsave_region, next_process.fxsave_region, 512
     end
 
-    {% if frame == nil %}
-    asm("jmp kcpuint_end" :: "{esp}"(pointerof(process_frame)) : "volatile")
-    {% end %}
-    {% end %}
-  end
-  {% end %}
-
-  def switch_process_no_save
-    Multiprocessing.switch_process(nil)
+    next_process
   end
 
-  def switch_process_and_terminate
-    Multiprocessing.switch_process(nil, true)
+  def switch_process(frame : IdtData::Registers*)
+    switch_process_save_and_load do |process|
+      process.frame = frame.value
+    end
+  end
+
+  def switch_process(frame : SyscallData::Registers*)
+    current_process = switch_process_save_and_load do |process|
+      process.new_frame_from_syscall frame
+    end
+    new_frame = current_process.frame.not_nil!
+    asm("jmp ksyscall_switch" :: "{rsp}"(pointerof(new_frame)) : "volatile")
+  end
+
+  def remove_and_switch_process
+    switch_process_save_and_load(true) do; end
   end
 
   # iteration

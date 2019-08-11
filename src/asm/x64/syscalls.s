@@ -35,3 +35,10 @@ ksyscall_stub:
     mov %rcx, %rsp
     mov (%rsp), %rcx
     sysret
+
+.global ksyscall_switch
+ksyscall_switch:
+    popa64
+    fxrstor (fxsave_region)
+    add $8, %rsp # skip int_no
+    iretq

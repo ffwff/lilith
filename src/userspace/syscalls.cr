@@ -4,6 +4,7 @@ require "./argv_builder.cr"
 
 lib SyscallData
   struct Registers
+    ds,
     rdi, rsi,
     r15, r14, r13, r12, r11, r10, r9, r8,
     rdx, rcx, rbx, rax : UInt64
@@ -194,11 +195,10 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
     case result
     when VFS_READ_WAIT
-      process.new_frame fv
       fd.not_nil!.node.not_nil!.read_queue.not_nil!
         .push(VFSReadMessage.new(str, process, fd.not_nil!.buffering))
       process.status = Multiprocessing::Process::Status::WaitIo
-      Multiprocessing.switch_process_no_save
+      Multiprocessing.switch_process(frame)
     else
       fv.rax = result
     end
@@ -207,8 +207,6 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     fd = try(pudata.get_fd(fdi))
     arg = try(checked_pointer32(fv.rdx)).as(SyscallData::StringArgument32*)
     str = try(checked_slice32(arg.value.str, arg.value.len))
-    Serial.puts "size: ", str, '\n'
-    Serial.puts "obj: ", str.to_unsafe[0], '\n'
     fv.rax = fd.not_nil!.node.not_nil!.write(str)
   when SC_SEEK
     fdi = fv.rbx.to_i32
@@ -351,17 +349,17 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
         fv.rax = SYSCALL_ERR
       else
         fv.rax = pid
-        process.new_frame fv
         process.status = Multiprocessing::Process::Status::WaitProcess
         pudata.pwait = cprocess
-        Multiprocessing.switch_process_no_save
+        # new_frame = Multiprocessing.new_frame_from_syscall(frame.value)
+        # Multiprocessing.switch_process(new_frame)
       end
     end
   when SC_EXIT
     if process.pid == 1
       panic "init exited"
     end
-    Multiprocessing.switch_process_and_terminate
+    # Multiprocessing.switch_process_and_terminate
   # working directory
   when SC_GETCWD
     arg = try(checked_pointer32(fv.rbx)).as(SyscallData::StringArgument32*)
