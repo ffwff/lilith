@@ -1,6 +1,6 @@
 # lilith
 
-A POSIX-like x86 kernel/userspace written in Crystal.
+A POSIX-like x86-64 kernel with a 32-bit userspace written in Crystal.
 
 ## Building
 
@@ -14,7 +14,7 @@ make build/kernel
 make toolchain/crystal/.build/crystal
 ```
 
-You will also need an appropriate `i686-elf` gcc/binutils toolchain in order to link and assemble the kernel.
+You will also need an appropriate `x86_64-elf` binutils toolchain in order to link and assemble the kernel, as well as `i686-elf` binutils to build the bootstrap code.
 
 ### Building the userspace
 
@@ -30,7 +30,7 @@ make build_libc
 
 ## Running
 
-A Pentium 4 compatible PC is required to run the OS. The Makefile provides a script which will run QEMU on the kernel:
+A CPU with x64 support (with 1 GiB pages) is required to run the OS. The Makefile provides a script which will run QEMU on the kernel:
 
 ```
 make run
@@ -44,7 +44,7 @@ make run_img
 
 ## Features
 
-* [x] Basic x86 support with paging/interrupts
+* [x] Basic x86-64 support
 * [x] Hybrid conservative-precise incremental garbage collector
 * [x] IDE/ATA support (well, it can only read from primary master)
 * [x] FAT16 support

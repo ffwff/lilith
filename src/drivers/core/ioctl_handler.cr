@@ -42,6 +42,7 @@ lib IoctlData
     ws_ypixel : UInt16
   end
 
+  @[Packed]
   struct Termios
     c_iflag : TermiosData::IFlag
     c_oflag : TermiosData::OFlag
@@ -49,7 +50,6 @@ lib IoctlData
     c_lflag : TermiosData::LFlag
     c_cc : UInt8[TermiosData::NCSS]
   end
-
 end
 
 module IoctlHandler
@@ -66,7 +66,7 @@ module IoctlHandler
 
   def tcsa_gets(data, &block)
     data = data.as(IoctlData::Termios*)
-    termios = uninitialized IoctlData::Termios
+    termios = IoctlData::Termios.new
     termios.c_iflag = TermiosData::IFlag::None
     termios.c_oflag = TermiosData::OFlag::None
     termios.c_cflag = TermiosData::CFlag::None
