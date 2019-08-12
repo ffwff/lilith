@@ -1,18 +1,25 @@
 ARCH=x86_64-elf
+LLVM_ARCH=x86-64
 AS=$(ARCH)-as
 LD=$(ARCH)-ld
+
 ARCH32=i686-elf
 AS32=$(ARCH32)-as
 LD32=$(ARCH32)-ld
 CR=toolchain/crystal/.build/crystal
-CRFLAGS=--cross-compile --target $(ARCH) --prelude ./prelude.cr --error-trace
-KERNEL_OBJ=build/main.cr.o build/boot.o
+LLC=llc
+
+CRFLAGS=--cross-compile --emit llvm-ir --target $(ARCH) --prelude ./prelude.cr --error-trace
+LLCFLAGS=-march=x86-64 -code-model=large -filetype=obj
+ASFLAGS=-Isrc/asm/x64
+LDFLAGS=-T link64.ld
+KERNEL_OBJ=build/main.o build/boot.o
 KERNEL_SRC=$(wildcard src/*.cr src/*/*.cr)
 
 ifeq ($(RELEASE),1)
-	CRFLAGS += --release
+	LLCFLAGS += -O3
 else
-	CRFLAGS += -d
+	LLCFLAGS += -O1
 endif
 
 QEMU = qemu-system-x86_64
@@ -31,17 +38,19 @@ GDB = /usr/bin/gdb
 .PHONY: kernel src/asm/bootstrap.s
 all: build/kernel
 
-build/main.cr.o: $(KERNEL_SRC)
-	@echo "CR src/main.cr"
-	@FREESTANDING=1 $(CR) build $(CRFLAGS) src/main.cr -o build/main.cr
+build/main.o: $(KERNEL_SRC)
+	@echo "CR src/main.cr => build/main.ll"
+	@cd build && FREESTANDING=1 ../$(CR) build $(CRFLAGS) ../src/main.cr -o main
+	@echo "LLC build/main.ll => $@"
+	@$(LLC) $(LLCFLAGS) -o $@ build/main.ll
 
 build/%.o: src/asm/x64/%.s
 	@echo "AS $<"
-	@$(AS) $^ -o $@ -Isrc/asm/x64
+	@$(AS) $(ASFLAGS) $^ -o $@
 
 build/kernel64: $(KERNEL_OBJ)
 	@echo "LD64 $^ => $@"
-	@$(LD) -T link64.ld -o $@ $^
+	@$(LD) $(LDFLAGS) -o $@ $^
 
 # bootstrapping code
 build/kernel: build/bootstrap.o

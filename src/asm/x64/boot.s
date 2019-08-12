@@ -11,14 +11,16 @@
 .global _start
 .extern kmain
 _start:
-    mov $stack_top, %rsp # set stack pointer
+    movabs $stack_top, %rsp
+    # third bootstrap stage: jump to the higher mapped address
+    movabs $_start_higher, %rcx
+    jmp *%rcx
+_start_higher:
+    # call the main function
     mov %rax, %rdi
     mov %rbx, %rsi
-    call kmain
-
-.global kcpuint_end
-kcpuint_end:
-    ret
+    movabs $kmain, %rcx
+    call *%rcx
 
 # -- data
 .section .data

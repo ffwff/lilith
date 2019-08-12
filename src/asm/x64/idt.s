@@ -76,15 +76,17 @@ kirq\number:
 
 .extern kirq_handler
 kirq_stub:
-    fxsave (fxsave_region)
     pusha64
+    movabs $fxsave_region, %rax
+    fxsave (%rax)
     # call the handler
     cld
     mov %rsp, %rdi
     call kirq_handler
     # return
+    movabs $fxsave_region, %rax
+    fxrstor (%rax)
     popa64
-    fxrstor (fxsave_region)
     add $8, %rsp # skip int_no
     iretq
 

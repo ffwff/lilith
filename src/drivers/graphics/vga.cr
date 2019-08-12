@@ -36,6 +36,7 @@ private struct VgaInstance < OutputDriver
 
   # init
   @buffer : UInt16* = Pointer(UInt16).new(0xb8000)
+  property buffer
 
   def initialize
     enable_cursor 0, 1

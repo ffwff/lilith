@@ -7,11 +7,15 @@ ksyscall_setup:
     mov $0x174, %rcx
     wrmsr
     # MSR[SYSENTER_ESP] = %esp
-    mov %rdi, %rax
+    mov %rdi, %rdx # higher part
+    shr $32, %rdx
+    mov %rdi, %rax # lower part
     mov $0x175, %rcx
     wrmsr
     # MSR[SYSENTER_EIP] = ksyscall_stub
-    mov $ksyscall_stub, %rax
+    movabs $ksyscall_stub, %rdx # higher
+    shr $32, %rdx
+    movabs $ksyscall_stub, %rax # lower
     mov $0x176, %rcx
     wrmsr
     # MSR[SYSCALL_STAR] =
@@ -24,15 +28,17 @@ ksyscall_setup:
 .global ksyscall_stub
 .extern ksyscall_handler
 ksyscall_stub:
-    fxsave (fxsave_region)
     pusha64
+    movabs $fxsave_region, %rax
+    fxsave (%rax)
     # call the handler
     cld
     mov %rsp, %rdi
     call ksyscall_handler
     # return
+    movabs $fxsave_region, %rax
+    fxrstor (%rax)
     popa64
-    fxrstor (fxsave_region)
     mov %rcx, %rsp
     mov (%rsp), %rcx
     sysret
@@ -40,6 +46,7 @@ ksyscall_stub:
 .global ksyscall_switch
 ksyscall_switch:
     popa64
-    fxrstor (fxsave_region)
+    movabs $fxsave_region, %rax
+    fxrstor (%rax)
     add $8, %rsp # skip int_no
     iretq

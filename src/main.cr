@@ -55,15 +55,20 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   # paging
   VGA.puts "initializing paging...\n"
-  Pmalloc.start = Paging.aligned(Kernel.kernel_end.address)
-  Pmalloc.addr = Paging.aligned(Kernel.kernel_end.address)
+  # use the physical address of the kernel end for pmalloc
+  Pmalloc.start = Paging.aligned(Kernel.kernel_end.address - KERNEL_OFFSET)
+  Pmalloc.addr = Pmalloc.start
   Paging.init_table(Kernel.text_start, Kernel.text_end,
                 Kernel.data_start, Kernel.data_end,
                 Kernel.stack_start, Kernel.stack_end,
                 mboot_header)
+
+  # fix physical memory location in vga
+  VGA.buffer = Pointer(UInt16).new(VGA.buffer.address | PTR_IDENTITY_MASK)
+
   VGA.puts "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
 
-  #
+  # gc
   VGA.puts "initializing kernel garbage collector...\n"
   KernelArena.start_addr = Kernel.stack_end.address + 0x1000
   Gc.init Kernel.data_start.address,

@@ -24,8 +24,8 @@ lib PageStructs
   fun kdisable_paging
 end
 
-USERSPACE_START = 0x4000_0000u64
 PTR_IDENTITY_MASK = 0xFFFF_8000_0000_0000u64
+KERNEL_OFFSET     = 0x80_0000_0000u64
 
 module Paging
   extend self
@@ -92,7 +92,8 @@ module Paging
     # allocate for the kernel's pdpt
     @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).pmalloc_a
     @@kernel_pdpt = @@current_pdpt
-    @@pml4_table.value.pdpt[0] = @@kernel_pdpt.address | PT_MASK
+    # store it at the kernel offset
+    @@pml4_table.value.pdpt[1] = @@kernel_pdpt.address | PT_MASK
 
     # identity map the physical memory on the higher half
     identity_map_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).pmalloc_a
@@ -103,42 +104,39 @@ module Paging
     end
     @@pml4_table.value.pdpt[256] = identity_map_pdpt.address | PT_MASK
 
-    # vga
-    alloc_page_init false, false, 0xb8000
-
     # claim initial memory
     i = text_start.address
     while i <= text_end.address
-      FrameAllocator.initial_claim(i)
+      FrameAllocator.initial_claim(i - KERNEL_OFFSET)
       i += 0x1000
     end
     i = data_start.address
     while i <= data_end.address
-      FrameAllocator.initial_claim(i)
+      FrameAllocator.initial_claim(i - KERNEL_OFFSET)
       i += 0x1000
     end
     i = stack_start.address
     while i <= stack_end.address
-      FrameAllocator.initial_claim(i)
+      FrameAllocator.initial_claim(i - KERNEL_OFFSET)
       i += 0x1000
     end
 
     # text segment
     i = text_start.address
     while i < text_end.address
-      alloc_frame false, false, i
+      alloc_frame_init false, false, i
       i += 0x1000
     end
     # data segment
     i = data_start.address
     while i < data_end.address
-      alloc_frame true, false, i
+      alloc_frame_init true, false, i
       i += 0x1000
     end
     # stack segment
     i = stack_start.address
     while i < stack_end.address
-      alloc_frame true, false, i
+      alloc_frame_init true, false, i
       i += 0x1000
     end
     # claim placement heap segment
@@ -165,10 +163,11 @@ module Paging
   end
 
   private def page_layer_indexes(addr : USize)
-    page_idx  = addr.unsafe_shr(12) & (0x200 - 1)
-    table_idx = addr.unsafe_shr(21) & (0x200 - 1)
+    pdpt_idx  = addr.unsafe_shr(39) & (0x200 - 1)
     dir_idx   = addr.unsafe_shr(30) & (0x200 - 1)
-    Tuple.new(dir_idx.to_i32, table_idx.to_i32, page_idx.to_i32)
+    table_idx = addr.unsafe_shr(21) & (0x200 - 1)
+    page_idx  = addr.unsafe_shr(12) & (0x200 - 1)
+    Tuple.new(pdpt_idx.to_i32, dir_idx.to_i32, table_idx.to_i32, page_idx.to_i32)
   end
 
   # state
@@ -184,19 +183,24 @@ module Paging
     virt_addr = t_addr(virt_addr_start)
     virt_addr_end = virt_addr_start + npages * 0x1000
 
+    pml4_table = Pointer(PageStructs::PML4Table).new(mt_addr @@pml4_table.address)
+
     # claim
     while virt_addr < virt_addr_end
       # allocate page frame
-      dir_idx, table_idx, page_idx = page_layer_indexes(virt_addr)
+      pdpt_idx, dir_idx, table_idx, page_idx = page_layer_indexes(virt_addr)
+
+      pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+        .new(mt_addr pml4_table.value.pdpt[pdpt_idx])
 
       # directory
-      if @@current_pdpt.value.dirs[dir_idx] == 0
+      if pdpt.value.dirs[dir_idx] == 0
         paddr = FrameAllocator.claim_with_addr | PT_MASK
-        @@current_pdpt.value.dirs[dir_idx] = paddr
+        pdpt.value.dirs[dir_idx] = paddr
         pd = Pointer(PageStructs::PageDirectory).new(mt_addr paddr)
         zero_page pd.as(UInt8*)
       else
-        pd = Pointer(PageStructs::PageDirectory).new(mt_addr @@current_pdpt.value.dirs[dir_idx])
+        pd = Pointer(PageStructs::PageDirectory).new(mt_addr pdpt.value.dirs[dir_idx])
       end
 
       # table
@@ -254,10 +258,6 @@ module Paging
     pdpt_phys = Pointer(PageStructs::PageDirectoryPointerTable).new(mt_addr pdpt.address)
     zero_page pdpt_phys.as(UInt8*)
 
-    # copy lower kernel directory (first 1GB)
-    # Serial.puts pdpt_phys, '\n'
-    pdpt_phys.value.dirs[0] = @@kernel_pdpt.value.dirs[0]
-
     # return
     pdpt.address
   end
@@ -265,7 +265,7 @@ module Paging
   def free_process_pdpt(pdtpa : USize)
     pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(mt_addr pdtpa)
     # free directories
-    i = 1
+    i = 0
     while i < 4
       pd_addr = pdpt.value.dirs[i]
       # free tables
@@ -320,20 +320,20 @@ module Paging
   end
 
   # identity map pages at init
-  private def alloc_page_init(rw : Bool, user : Bool, addr : USize, virt_addr=0u64)
+  private def alloc_page_init(rw : Bool, user : Bool, addr : USize, virt_addr : USize)
     if virt_addr == 0
       virt_addr = addr
     end
-    dir_idx, table_idx, page_idx = page_layer_indexes(virt_addr)
-    # Serial.puts Pointer(Void).new(addr.to_u64), dir_idx, ' ', table_idx, ' ', page_idx, '\n'
+    # since we're only in the init stage, the pdpt table is not gonna change
+    _, dir_idx, table_idx, page_idx = page_layer_indexes(virt_addr)
 
     # directory
-    if @@current_pdpt.value.dirs[dir_idx] == 0
+    if @@kernel_pdpt.value.dirs[dir_idx] == 0
       pd = Pointer(PageStructs::PageDirectory).pmalloc_a
       paddr = pd.address | PT_MASK
-      @@current_pdpt.value.dirs[dir_idx] = paddr
+      @@kernel_pdpt.value.dirs[dir_idx] = paddr
     else
-      pd = Pointer(PageStructs::PageDirectory).new(t_addr @@current_pdpt.value.dirs[dir_idx])
+      pd = Pointer(PageStructs::PageDirectory).new(t_addr @@kernel_pdpt.value.dirs[dir_idx])
     end
 
     # table
@@ -350,8 +350,8 @@ module Paging
     pt.value.pages[page_idx] = page
   end
 
-  private def alloc_frame(rw : Bool, user : Bool, address : USize)
-    FrameAllocator.initial_claim(address)
-    alloc_page_init(rw, user, address)
+  private def alloc_frame_init(rw : Bool, user : Bool, virt_addr : USize)
+    phys_addr = virt_addr - KERNEL_OFFSET
+    alloc_page_init(rw, user, phys_addr, virt_addr)
   end
 end

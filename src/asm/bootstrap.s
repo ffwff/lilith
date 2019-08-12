@@ -42,6 +42,7 @@ _bootstrap_start:
     # restore multiboot
     mov (multiboot_magic), %eax
     mov (multiboot_header), %ebx
+    # jump to second bootstrap stage
     ljmp $0x08, $kernel64
 
 multiboot_magic: .long 0
@@ -79,12 +80,16 @@ gdt_data:
 pml4:
     .long pdpt + 0x7
     .long 0
-    .skip 0x1000 - 8
+    .long pdpt + 0x7
+    .long 0
+pml4_len = . - pml4
+    .skip 0x1000 - pml4_len
 # pdpt
 .align 0x1000
 pdpt:
-    .quad 0x87
-    .skip 0x1000 - 8
+    .quad 0x83 # identity mapped
+pdpt_len = . - pdpt
+    .skip 0x1000 - pdpt_len
 
 .section .kernel64
 .incbin "build/kernel64.bin"
