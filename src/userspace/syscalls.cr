@@ -45,7 +45,7 @@ lib SyscallData
   @[Packed]
   struct IoctlArgument32
     request : Int32
-    data    : Void*
+    data    : UInt32
   end
 end
 
@@ -230,7 +230,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     fdi = fv.rbx.to_i32
     fd = try(pudata.get_fd(fdi))
     arg = try(checked_pointer32(fv.rdx)).as(SyscallData::IoctlArgument32*)
-    request, data = arg.value.request, try(checked_pointer32(arg.value.data.address))
+    request, data = arg.value.request, try(checked_pointer32(arg.value.data))
     fv.rax = fd.node.not_nil!.ioctl(request, data)
   when SC_CLOSE
     fdi = fv.rbx.to_i32
@@ -285,7 +285,8 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     fv.rax = process.pid
   when SC_SPAWN
     path = NullTerminatedSlice.new(try(checked_pointer32(fv.rbx)).as(UInt8*))
-    argv = try(checked_pointer32(fv.rdx)).as(UInt8**)
+    argv = try(checked_pointer32(fv.rdx)).as(UInt32*)
+    Serial.puts argv, '\n'
     vfs_node = parse_path_into_vfs path, pudata.cwd_node
     if vfs_node.nil?
       fv.rax = SYSCALL_ERR
@@ -294,10 +295,11 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
       pargv = GcArray(GcString).new 0
       i = 0
       while i < SC_SPAWN_MAX_ARGS
-        if argv[i].null?
+        if argv[i] == 0
           break
         end
-        arg = NullTerminatedSlice.new(try(checked_pointer32(argv[i].address)).as(UInt8*))
+        arg = NullTerminatedSlice.new(try(checked_pointer32(argv[i].to_u64)).as(UInt8*))
+        Serial.puts arg, '\n'
         pargv.push GcString.new(arg, arg.size)
         i += 1
       end
@@ -351,15 +353,14 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
         fv.rax = pid
         process.status = Multiprocessing::Process::Status::WaitProcess
         pudata.pwait = cprocess
-        # new_frame = Multiprocessing.new_frame_from_syscall(frame.value)
-        # Multiprocessing.switch_process(new_frame)
+        Multiprocessing.switch_process(frame)
       end
     end
   when SC_EXIT
     if process.pid == 1
       panic "init exited"
     end
-    # Multiprocessing.switch_process_and_terminate
+    Multiprocessing.switch_process_and_terminate
   # working directory
   when SC_GETCWD
     arg = try(checked_pointer32(fv.rbx)).as(SyscallData::StringArgument32*)

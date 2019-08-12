@@ -1,4 +1,5 @@
-def checked_pointer32(addr : UInt64) : Void*?
+def checked_pointer32(addr) : Void*?
+  addr = addr.to_u64
   if addr < USERSPACE_START
     nil
   else

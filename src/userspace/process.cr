@@ -9,7 +9,7 @@ module Multiprocessing
   USER_STACK_BOTTOM_MAX = USER_STACK_TOP - USER_STACK_SIZE
   USER_STACK_BOTTOM     = 0x8000_0000u32
 
-  USER_CS_SEGMENT = 0x10
+  USER_CS_SEGMENT = 0x1b
   USER_SS_SEGMENT = 0x23
   USER_RFLAGS = 0x212
 
@@ -222,9 +222,7 @@ module Multiprocessing
     # new register frame for multitasking
     def new_frame
       @frame = IdtData::Registers.new
-      # Stack
       @frame.not_nil!.userrsp = @initial_sp
-      # Pushed by the processor automatically.
       @frame.not_nil!.rip = @initial_ip
       if kernel_process?
         @frame.not_nil!.rflags = KERNEL_RFLAGS
@@ -237,7 +235,6 @@ module Multiprocessing
         @frame.not_nil!.ds = USER_SS_SEGMENT
         @frame.not_nil!.ss = USER_SS_SEGMENT
       end
-      @frame.not_nil!
     end
 
     def new_frame_from_syscall(syscall_frame : SyscallData::Registers*)
@@ -251,11 +248,10 @@ module Multiprocessing
       @frame.not_nil!.{{ id.id }} = syscall_frame.value.{{ id.id }}
       {% end %}
       # new_frame.ds = USER_SS_SEGMENT
-      @frame.not_nil!.ss = USER_SS_SEGMENT
       @frame.not_nil!.cs = USER_CS_SEGMENT
+      @frame.not_nil!.ss = USER_SS_SEGMENT
+      @frame.not_nil!.ds = USER_SS_SEGMENT
       @frame.not_nil!.rflags = USER_RFLAGS
-
-      @frame.not_nil!
     end
 
     # initialize
@@ -358,6 +354,7 @@ module Multiprocessing
       current_process.status = Multiprocessing::Process::Status::Removed
     end
     next_process = Multiprocessing.next_process.not_nil!
+    Multiprocessing.current_process = next_process
     current_process.remove if remove
 
     # save current process' state
@@ -369,10 +366,8 @@ module Multiprocessing
       end
     end
 
-    process_frame = if next_process.frame.nil?
+    if next_process.frame.nil?
       next_process.new_frame
-    else
-      next_process.frame.not_nil!
     end
 
     # switch page directory
@@ -389,8 +384,9 @@ module Multiprocessing
     # wake up process
     if next_process.status == Multiprocessing::Process::Status::Unwait
       # transition state from kernel syscall
-      process_frame.rip = Pointer(UInt32).new(process_frame.rcx.to_u64)[0]
-      process_frame.userrsp = process_frame.rcx
+      next_process.frame.not_nil!.rip =
+        Pointer(UInt32).new(next_process.frame.not_nil!.rcx).value
+      next_process.frame.not_nil!.userrsp = next_process.frame.not_nil!.rcx
       next_process.status = Multiprocessing::Process::Status::Normal
     end
 
@@ -417,8 +413,10 @@ module Multiprocessing
     asm("jmp ksyscall_switch" :: "{rsp}"(pointerof(new_frame)) : "volatile")
   end
 
-  def remove_and_switch_process
-    switch_process_save_and_load(true) do; end
+  def switch_process_and_terminate
+    current_process = switch_process_save_and_load(true) {}
+    new_frame = current_process.frame.not_nil!
+    asm("jmp ksyscall_switch" :: "{rsp}"(pointerof(new_frame)) : "volatile")
   end
 
   # iteration

@@ -269,16 +269,16 @@ class AtaDevice
   end
 end
 
-class Ide
+module Ide
+  extend self
+
   def device(idx)
-    @devices.not_nil![idx].not_nil!
+    @@devices.not_nil![idx].not_nil!
   end
 
   def init_controller
-    debug "Initializing IDE device...\n"
-
-    @devices = GcArray(AtaDevice).new 4
-    devices = @devices.not_nil!
+    @@devices = GcArray(AtaDevice).new 4
+    devices = @@devices.not_nil!
     devices[0] = AtaDevice.new(0, true, 0)
     devices[1] = AtaDevice.new(1, true, 1)
     devices[2] = AtaDevice.new(2, false, 0)
@@ -287,13 +287,8 @@ class Ide
     Idt.register_irq 14, ->ata_primary_irq_handler
     Idt.register_irq 15, ->ata_secondary_irq_handler
     4.times do |idx|
-      devices[idx].not_nil!.init_device
+      device(idx).init_device
     end
-  end
-
-  #
-  def debug(*args)
-    VGA.puts *args
   end
 
   # interrupts
@@ -306,7 +301,7 @@ class Ide
   end
 
   # check pci device
-  def self.pci_device?(vendor_id, device_id)
+  def pci_device?(vendor_id, device_id)
     (vendor_id == 0x8086) && (device_id == 0x7010 || device_id == 0x7111)
   end
 end

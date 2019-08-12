@@ -1,13 +1,7 @@
-GC_ARRAY_HEADER_TYPE = 0xFFFF_FFFF_FFFF_FFFFu64
-GC_ARRAY_HEADER_SIZE = 8
+GC_ARRAY_HEADER_TYPE = 0xFFFF_FFFF_FFFF_FFFFu64  
+GC_ARRAY_HEADER_SIZE = sizeof(USize) * 2
 
 class GcArray(T)
-  GC_GENERIC_TYPES = [
-    GcArray(MemMapNode),
-    GcArray(FileDescriptor),
-    GcArray(AtaDevice),
-    GcArray(GcString),
-  ]
 
   @capacity : Int64 = 0
   getter capacity
@@ -21,10 +15,14 @@ class GcArray(T)
     @ptr[1] = new_size.to_usize
   end
 
+  private def malloc_size(new_size)
+    new_size.to_usize * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
+  end
+
   # init
   def initialize(new_size : Int)
-    malloc_size = new_size.to_usize * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
-    @ptr = Gc.unsafe_malloc(malloc_size).as(USize*)
+    m_size = malloc_size new_size
+    @ptr = Gc.unsafe_malloc(m_size).as(USize*)
     @ptr[0] = GC_ARRAY_HEADER_TYPE
     @ptr[1] = new_size.to_usize
     # clear array
@@ -43,13 +41,14 @@ class GcArray(T)
   end
 
   private def recalculate_capacity
-    @capacity = (KernelArena.block_size_for_ptr(@ptr) - GC_ARRAY_HEADER_SIZE)
+    @capacity = (KernelArena.block_size_for_ptr(@ptr) -
+      (GC_ARRAY_HEADER_SIZE + sizeof(Kernel::GcNode)))
       .unsafe_div(sizeof(Void*)).to_isize
   end
 
   # getter/setter
   def [](idx : Int) : T?
-    panic "GcArray: out of range" if idx < 0 && idx > size
+    panic "GcArray: out of range" if idx < 0 && idx >= size
     if buffer.as(USize*)[idx] == 0
       nil
     else
@@ -58,14 +57,14 @@ class GcArray(T)
   end
 
   def []=(idx : Int, value : T)
-    panic "GcArray: out of range" if idx < 0 && idx > size
+    panic "GcArray: out of range" if idx < 0 && idx >= size
     buffer[idx] = value
   end
 
   # resizing
   private def new_buffer(new_size)
-    malloc_size = new_size.to_usize * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
-    ptr = Gc.unsafe_malloc(malloc_size).as(USize*)
+    m_size = malloc_size new_size
+    ptr = Gc.unsafe_malloc(m_size).as(USize*)
     ptr[0] = GC_ARRAY_HEADER_TYPE
     ptr[1] = new_size.to_usize
     new_buffer = Pointer(USize).new((ptr.address + GC_ARRAY_HEADER_SIZE).to_u64)
@@ -85,7 +84,9 @@ class GcArray(T)
       buffer[size] = value
       self.size += 1
     else
-      panic "gcarray: resize?"
+      new_buffer(size + 1)
+      buffer[size] = value
+      self.size += 1
     end
   end
 

@@ -64,10 +64,6 @@ module Gdt
   @@gdtr = uninitialized Kernel::Gdtr
   @@gdt = uninitialized Kernel::Gdt
   @@tss = uninitialized Kernel::Tss
-  
-  def rsp0
-    @@tss.rsp0
-  end
 
   def init_table
     @@gdtr.size = sizeof(Kernel::Gdt) - 1
@@ -132,11 +128,11 @@ module Gdt
     Kernel.kload_tss
   end
 
-  def stack
-    @@tss.rsp0
+  def stack : Void*
+    Pointer(Void).new(@@tss.rsp0)
   end
 
-  def stack=(stack : USize)
-    @@tss.rsp0 = stack
+  def stack=(stack : Void*)
+    @@tss.rsp0 = stack.address
   end
 end

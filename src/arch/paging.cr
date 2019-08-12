@@ -194,6 +194,7 @@ module Paging
         paddr = FrameAllocator.claim_with_addr | PT_MASK
         @@current_pdpt.value.dirs[dir_idx] = paddr
         pd = Pointer(PageStructs::PageDirectory).new(mt_addr paddr)
+        zero_page pd.as(UInt8*)
       else
         pd = Pointer(PageStructs::PageDirectory).new(mt_addr @@current_pdpt.value.dirs[dir_idx])
       end
@@ -203,6 +204,7 @@ module Paging
         paddr = FrameAllocator.claim_with_addr | PT_MASK
         pd.value.tables[table_idx] = paddr
         pt = Pointer(PageStructs::PageTable).new(mt_addr paddr)
+        zero_page pt.as(UInt8*)
       else
         pt = Pointer(PageStructs::PageTable).new(mt_addr pd.value.tables[table_idx])
       end
@@ -261,29 +263,37 @@ module Paging
   end
 
   def free_process_pdpt(pdtpa : USize)
-    panic "unimpl2"
-    {% if false %}
-    Paging.disable
-
-    pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(pdtpa.to_u64)
+    pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(mt_addr pdtpa)
     # free directories
     i = 1
     while i < 4
-      pd = Pointer(PageStructs::PageDirectory).new(pdpt.value.dirs[i] & 0xFFFF_F000)
+      pd_addr = pdpt.value.dirs[i]
       # free tables
-      if !pd.null?
+      if pd_addr != 0
+        pd = Pointer(PageStructs::PageDirectory).new(mt_addr pd_addr)
+        # Serial.puts pd, '\n'
         512.times do |j|
-          pta = pd.value.
+          pt_addr = t_addr(pd.value.tables[j])
+          if pt_addr != 0
+            pt = Pointer(PageStructs::PageTable).new(mt_addr pt_addr)
+            # Serial.puts pt, '\n'
+            512.times do |k|
+              page_phys = t_addr(pt.value.pages[k])
+              if page_phys != 0
+                # Serial.puts page_phys, '\n'
+                FrameAllocator.declaim_addr(page_phys)
+              end
+            end
+            FrameAllocator.declaim_addr(pt_addr)
+          end
         end
+        FrameAllocator.declaim_addr(pd_addr)
       end
       i += 1
     end
 
     # free itself
     FrameAllocator.declaim_addr(pdtpa.to_u64)
-
-    Paging.enable
-    {% end %}
   end
 
   # page creation

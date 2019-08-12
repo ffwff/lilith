@@ -24,10 +24,10 @@ private GC_NODE_MAGIC_GRAY_ATOMIC = 0x45564103
 private GC_NODE_MAGIC_BLACK        = 0x45564104
 private GC_NODE_MAGIC_BLACK_ATOMIC = 0x45564105
 
-private lib Kernel
+lib Kernel
   struct GcNode
     next_node : GcNode*
-    magic : UInt32
+    magic : USize
   end
 end
 
@@ -60,11 +60,9 @@ module Gc
   private def scan_region(start_addr, end_addr, move_list = true)
     # due to the way this rechains the linked list of white nodes
     # please set move_list=false when not scanning for root nodes
-    # Serial.puts Pointer(Void).new(start_addr.to_u64), ' ', Pointer(Void).new(end_addr.to_u64) ,'\n'
-    word_size = sizeof(Void*)
     i = start_addr
     fix_white = false
-    while i < end_addr - word_size
+    while i < end_addr - sizeof(Void*)
       word = Pointer(USize).new(i.to_u64).value
       # subtract to get the pointer to the header
       word -= sizeof(Kernel::GcNode)
@@ -88,11 +86,15 @@ module Gc
             case node.value.magic
             when GC_NODE_MAGIC
               node.value.magic = GC_NODE_MAGIC_GRAY
-              push(@@first_gray_node, node) if move_list
+              if move_list
+                push(@@first_gray_node, node) 
+              end
               fix_white = true
             when GC_NODE_MAGIC_ATOMIC
               node.value.magic = GC_NODE_MAGIC_GRAY_ATOMIC
-              push(@@first_gray_node, node) if move_list
+              if move_list
+                push(@@first_gray_node, node) 
+              end
               fix_white = true
             when GC_NODE_MAGIC_BLACK | GC_NODE_MAGIC_BLACK_ATOMIC
               panic "invariance broken"
@@ -113,18 +115,14 @@ module Gc
     fix_white
   end
 
-  POINTER_SZ = sizeof(Void*)
-
   def cycle
     # marking phase
     if !@@root_scanned
       # we don't have any gray/black nodes at the beginning of a cycle
       # conservatively scan the stack for pointers
-      # Serial.puts @@data_start, ' ', @@data_end, '\n'
       scan_region @@data_start.not_nil!, @@data_end.not_nil!
       stack_start = 0u64
       asm("mov %rsp, $0" : "=r"(stack_start) :: "volatile")
-      # NOTE: this causes a segfault! examine it
       scan_region stack_start, @@stack_end.not_nil!
       @@root_scanned = true
     elsif !@@first_gray_node.null?
@@ -182,47 +180,36 @@ module Gc
         end
         # lookup its offsets
         offsets = LibCrystal.type_offsets type_id
-        if offsets == 0
-          panic "zero offset?!"
-          # there is no offset found for this type, yet it's not atomic
-          # then conservatively scan the region
-          size = LibCrystal.type_size type_id
-          buffer_end = buffer_addr + size
-          if scan_region buffer_addr, buffer_end, false
-            fix_white = true
-          end
-        else
-          # precisely scan the struct based on the offsets
-          pos = 0
-          while offsets != 0
-            if offsets & 1
-              # lookup the buffer address in its offset
-              addr = Pointer(USize).new(buffer_addr + pos * POINTER_SZ).value
-              # debug "pointer@", pos, " ", Pointer(Void).new(buffer_addr + pos * POINTER_SZ), " = ", Pointer(Void).new(addr), "\n"
-              unless addr >= KernelArena.start_addr && addr <= KernelArena.placement_addr
-                # must be a nil union, skip
-                pos += 1
-                offsets = offsets.unsafe_shr 1
-                next
-              end
-
-              # mark the header as gray
-              header = Pointer(Kernel::GcNode).new(addr - sizeof(Kernel::GcNode))
-              debug_mark node, header
-              case header.value.magic
-              when GC_NODE_MAGIC
-                header.value.magic = GC_NODE_MAGIC_GRAY
-                fix_white = true
-              when GC_NODE_MAGIC_ATOMIC
-                header.value.magic = GC_NODE_MAGIC_GRAY_ATOMIC
-                fix_white = true
-              else
-                # this node is either gray or black
-              end
+        panic "zero offsets" if offsets == 0
+        # precisely scan the struct based on the offsets
+        pos = 0
+        while offsets != 0
+          if offsets & 1
+            # lookup the buffer address in its offset
+            addr = Pointer(USize).new(buffer_addr + pos * sizeof(Void*)).value
+            # debug "pointer@", pos, " ", Pointer(Void).new(buffer_addr + pos * POINTER_SZ), " = ", Pointer(Void).new(addr), "\n"
+            unless addr >= KernelArena.start_addr && addr <= KernelArena.placement_addr
+              # must be a nil union, skip
+              pos += 1
+              offsets = offsets.unsafe_shr 1
+              next
             end
-            pos += 1
-            offsets = offsets.unsafe_shr 1
+            # mark the header as gray
+            header = Pointer(Kernel::GcNode).new(addr - sizeof(Kernel::GcNode))
+            debug_mark node, header
+            case header.value.magic
+            when GC_NODE_MAGIC
+              header.value.magic = GC_NODE_MAGIC_GRAY
+              fix_white = true
+            when GC_NODE_MAGIC_ATOMIC
+              header.value.magic = GC_NODE_MAGIC_GRAY_ATOMIC
+              fix_white = true
+            else
+              # this node is either gray or black
+            end
           end
+          pos += 1
+          offsets = offsets.unsafe_shr 1
         end
         node = node.value.next_node
       end
@@ -338,7 +325,6 @@ module Gc
   end
 
   private def debug_mark(parent : Kernel::GcNode*, child : Kernel::GcNode*, node? = true)
-    return
     #cbody = child.as(UInt32*) + 2
     #ctype_id = (child + 1).as(UInt32*)[0]
     #if node?

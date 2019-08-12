@@ -56,7 +56,7 @@ private struct Pool
   def init_blocks
     # NOTE: first_free_block must be set before doing this
     i = first_free_block.address
-    end_addr = @header.address + 0x1000 - block_size * 2
+    end_addr = @header.address + POOL_SIZE - block_size * 2
     # fill next_free_block field of all except last one
     while i < end_addr
       ptr = Pointer(Kernel::PoolBlockHeader).new i
@@ -128,9 +128,6 @@ module KernelArena
   # pool
   private def new_pool(buffer_size : USize) : Pool
     addr = @@placement_addr
-    unless addr < USERSPACE_START
-      panic "out of kernel virtual addresses"
-    end
     Paging.alloc_page_pg(@@placement_addr, true, false)
     @@placement_addr += 0x1000
 
@@ -186,7 +183,7 @@ module KernelArena
 
   # TODO reuse empty free pools to different size
   def free(ptr : USize)
-    pool_hdr = Pointer(Kernel::PoolHeader).new(ptr.to_u64 & 0xFFFF_F000)
+    pool_hdr = Pointer(Kernel::PoolHeader).new(ptr & 0xFFFF_FFFF_FFFF_F000)
     pool = Pool.new pool_hdr
     pool.release_block ptr
     chain_pool pool
@@ -206,7 +203,7 @@ module KernelArena
   end
 
   def block_size_for_ptr(ptr)
-    pool_hdr = Pointer(Kernel::PoolHeader).new(ptr.address.to_u64 & 0xFFFF_F000)
+    pool_hdr = Pointer(Kernel::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
     pool_hdr.value.block_buffer_size
   end
 end

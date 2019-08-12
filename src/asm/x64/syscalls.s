@@ -7,7 +7,7 @@ ksyscall_setup:
     mov $0x174, %rcx
     wrmsr
     # MSR[SYSENTER_ESP] = %esp
-    mov %rsp, %rax
+    mov %rdi, %rax
     mov $0x175, %rcx
     wrmsr
     # MSR[SYSENTER_EIP] = ksyscall_stub

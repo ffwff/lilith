@@ -155,8 +155,6 @@ module Idt
 end
 
 fun kirq_handler(frame : IdtData::Registers*)
-  Serial.puts frame.value.int_no, '\n'
-
   # send EOI signal to PICs
   if frame.value.int_no >= 8
     # send to slave
@@ -182,7 +180,7 @@ end
 EX_PAGEFAULT = 14
 
 fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
-  panic "unhandled: ", frame.value.int_no, ": ", frame.value.errcode
+  panic "unhandled: ", frame.value.int_no, ",", frame.value.errcode
   {% if false %}
   case frame.int_no
   when EX_PAGEFAULT

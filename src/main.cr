@@ -15,7 +15,7 @@ require "./userspace/elf.cr"
 require "./userspace/mmap_list.cr"
 
 lib Kernel
-  fun ksyscall_setup
+  fun ksyscall_setup(ptr : Void*)
   fun kidle_loop
 
   $fxsave_region_ptr : UInt8*
@@ -70,31 +70,25 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
           Kernel.data_end.address,
           Kernel.stack_end.address
 
-  #
-  ide = nil
-
   VGA.puts "checking PCI buses...\n"
   PCI.check_all_buses do |bus, device, func, vendor_id|
     device_id = PCI.read_field bus, device, func, PCI::PCI_DEVICE_ID, 2
     if Ide.pci_device?(vendor_id, device_id)
-      ide = Ide.new
+      Ide.init_controller
     elsif BGA.pci_device?(vendor_id, device_id)
       # BGA.init_controller bus, device, func
     end
   end
 
-  ide = ide.not_nil!
-  ide.init_controller
-
   kbd = Keyboard.new
   ROOTFS.append(KbdFS.new(kbd))
   ROOTFS.append(VGAFS.new)
 
-  mbr = MBR.read_ata(ide.device(0))
+  mbr = MBR.read_ata(Ide.device(0))
   main_bin : VFSNode? = nil
   if MBR.check_header(mbr)
     VGA.puts "found MBR header...\n"
-    fs = Fat16FS.new ide.device(0), mbr.partitions[0]
+    fs = Fat16FS.new Ide.device(0), mbr.partitions[0]
     fs.root.each_child do |node|
       if node.name == "main.bin"
         main_bin = node
@@ -103,16 +97,12 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     ROOTFS.append(fs)
   end
 
-  VGA.puts "setting up syscalls...\n"
-  Kernel.ksyscall_setup
-
-  rsp0 = 0u64
-  asm("mov %rsp, $0" : "=r"(rsp0) :: "volatile")
-  Gdt.stack = rsp0
+  Gdt.stack = Kernel.stack_end
   Gdt.flush_tss
+  Kernel.ksyscall_setup(Kernel.stack_end)
 
   idle_process = Multiprocessing::Process.new(nil, false) do |process|
-    process.initial_sp = rsp0
+    process.initial_sp = Kernel.stack_end.address
     process.initial_ip = (->idle_loop).pointer.address
   end
 
