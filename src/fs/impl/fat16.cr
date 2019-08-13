@@ -372,7 +372,7 @@ class Fat16FS < VFS
   getter device
 
   def initialize(@device : AtaDevice, partition)
-    VGA.puts "initializing FAT16 filesystem\n"
+    Console.puts "initializing FAT16 filesystem\n"
     bs = Pointer(Fat16Structs::Fat16BootSector).mmalloc
 
     device.read_sector_pointer(bs.as(UInt16*), partition.first_sector)

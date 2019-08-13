@@ -12,9 +12,8 @@ class VGAFsNode < VFSNode
   end
 
   def write(slice : Slice) : Int32
-    Serial.puts "slice: ", slice, '\n'
     slice.each do |ch|
-      VGA.puts ch.unsafe_chr
+      Console.puts ch.unsafe_chr
     end
     slice.size
   end

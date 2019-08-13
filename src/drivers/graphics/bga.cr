@@ -15,28 +15,20 @@ module BGA
   INDEX_PORT = 0x1CEu16
   DATA_PORT  = 0x1CFu16
 
-  @@width = 0u16
-  @@height = 0u16
-  @@mem = Slice(UInt32).new(Pointer(UInt32).null, 0)
-
   def init_controller(bus, device, func)
     X86.outw(INDEX_PORT, 0x0)
     i = X86.inw(DATA_PORT)
     return unless 0xB0C0 <= i && i <= 0xB0C6
     X86.outw(DATA_PORT, 0xB0C4)
     i = X86.inw(DATA_PORT)
-    @@width, @@height = set_resolution(640, 480)
 
-    ptr = Pointer(UInt32).new(PCI.read_field(bus, device, func, PCI::PCI_BAR0, 4).to_u64)
-    @@mem = Slice(UInt32).new(ptr, @@height.to_i32 * @@width.to_i32)
-    Serial.puts @@mem.size, '\n'
-    @@width.times do |x|
-      @@height.times do |y|
-        # 0x00RRGGBB
-        @@mem[offset x, y] = 0x00FF0000
-      end
-    end
-
+    # TODO: move physical mapping somewhere
+    width, height = set_resolution(640, 480)
+    size = width * height * 4
+    phys = Pointer(UInt32).new(PCI.read_field(bus, device, func, PCI::PCI_BAR0, 4).to_u64)
+    virt = Pointer(UInt32).new(phys.address | PTR_IDENTITY_MASK)
+    Paging.alloc_page_pg(virt.address, true, false, size.div_ceil(0x1000).to_usize, phys.address)
+    FbdevState.init_device(width, height, virt)
   end
 
   def pci_device?(vendor_id, device_id)
@@ -70,12 +62,7 @@ module BGA
     X86.outw(INDEX_PORT, INDEX_XRES)
     w = X86.inw(DATA_PORT)
 
-    Tuple.new(w, h)
-  end
-
-  # color
-  private def offset(x, y)
-    y * @@width + x
+    Tuple.new(w.to_i32, h.to_i32)
   end
 
 end

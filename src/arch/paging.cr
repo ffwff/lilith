@@ -177,7 +177,7 @@ module Paging
 
   # allocate page when pg is enabled
   # returns page address
-  def alloc_page_pg(virt_addr_start : UInt64, rw : Bool, user : Bool, npages : USize = 1) : UInt64
+  def alloc_page_pg(virt_addr_start : UInt64, rw : Bool, user : Bool, npages : USize = 1, phys_addr_start : UInt64 = 0) : UInt64
     Idt.disable
 
     virt_addr = t_addr(virt_addr_start)
@@ -214,7 +214,12 @@ module Paging
       end
 
       # page
-      phys_addr = FrameAllocator.claim_with_addr
+      if phys_addr_start != 0
+        phys_addr = phys_addr_start
+        phys_addr_start += 0x1000
+      else
+        phys_addr = FrameAllocator.claim_with_addr
+      end
       page = page_create(rw, user, phys_addr)
       pt.value.pages[page_idx] = page
 

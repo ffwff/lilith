@@ -265,7 +265,7 @@ class AtaDevice
 
   #
   def debug(*args)
-    VGA.puts *args
+    Console.puts *args
   end
 end
 

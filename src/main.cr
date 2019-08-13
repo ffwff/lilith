@@ -39,22 +39,22 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   Multiprocessing.fxsave_region = Kernel.fxsave_region_ptr
 
-  VGA.puts "Booting lilith...\n"
+  Console.puts "Booting lilith...\n"
 
-  VGA.puts "initializing gdtr...\n"
+  Console.puts "initializing gdtr...\n"
   Gdt.init_table
 
   # drivers
   Pit.init
 
   # interrupt tables
-  VGA.puts "initializing idt...\n"
+  Console.puts "initializing idt...\n"
   Idt.init_interrupts
   Idt.init_table
   Idt.status_mask = true
 
   # paging
-  VGA.puts "initializing paging...\n"
+  Console.puts "initializing paging...\n"
   # use the physical address of the kernel end for pmalloc
   Pmalloc.start = Paging.aligned(Kernel.kernel_end.address - KERNEL_OFFSET)
   Pmalloc.addr = Pmalloc.start
@@ -64,24 +64,25 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
                 mboot_header)
 
   # fix physical memory location in vga
-  VGA.buffer = Pointer(UInt16).new(VGA.buffer.address | PTR_IDENTITY_MASK)
+  VgaState.buffer = Pointer(UInt16).new(VgaState.buffer.address | PTR_IDENTITY_MASK)
 
-  VGA.puts "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
+  Console.puts "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
 
   # gc
-  VGA.puts "initializing kernel garbage collector...\n"
+  Console.puts "initializing kernel garbage collector...\n"
   KernelArena.start_addr = Kernel.stack_end.address + 0x1000
   Gc.init Kernel.data_start.address,
           Kernel.data_end.address,
           Kernel.stack_end.address
 
-  VGA.puts "checking PCI buses...\n"
+  Console.puts "checking PCI buses...\n"
   PCI.check_all_buses do |bus, device, func, vendor_id|
     device_id = PCI.read_field bus, device, func, PCI::PCI_DEVICE_ID, 2
     if Ide.pci_device?(vendor_id, device_id)
       Ide.init_controller
     elsif BGA.pci_device?(vendor_id, device_id)
-      # BGA.init_controller bus, device, func
+      BGA.init_controller bus, device, func
+      Console.device = Fbdev
     end
   end
 
@@ -92,7 +93,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   mbr = MBR.read_ata(Ide.device(0))
   main_bin : VFSNode? = nil
   if MBR.check_header(mbr)
-    VGA.puts "found MBR header...\n"
+    Console.puts "found MBR header...\n"
     fs = Fat16FS.new Ide.device(0), mbr.partitions[0]
     fs.root.each_child do |node|
       if node.name == "main.bin"
@@ -112,11 +113,11 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   end
 
   if main_bin.nil?
-    VGA.puts "no main.bin detected.\n"
+    Console.puts "no main.bin detected.\n"
     while true
     end
   else
-    VGA.puts "executing MAIN.BIN...\n"
+    Console.puts "executing MAIN.BIN...\n"
 
     argv = GcArray(GcString).new 0
     argv.push GcString.new("/ata0/main.bin")

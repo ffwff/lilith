@@ -107,9 +107,9 @@ class KbdFS < VFS
       end).to_u8
     else
       if ch == '\n' && !@canonical
-        VGA.newline
+        Console.newline
       elsif should_print ch
-        VGA.puts ch
+        Console.puts ch
       end
     end
 

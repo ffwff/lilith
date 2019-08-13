@@ -34,24 +34,20 @@ private struct VgaInstance < OutputDriver
     y * VGA_WIDTH + x
   end
 
-  # init
-  @buffer : UInt16* = Pointer(UInt16).new(0xb8000)
-  property buffer
-
   def initialize
     enable_cursor 0, 1
     # fill with blank
     blank = color_code VgaColor::White, VgaColor::Black, ' '.ord.to_u8
     VGA_HEIGHT.times do |y|
       VGA_WIDTH.times do |x|
-        @buffer[offset x, y] = blank
+        VgaState.buffer[offset x, y] = blank
       end
     end
   end
 
   def putc(x : Int32, y : Int32, fg : VgaColor, bg : VgaColor, a : UInt8)
     panic "drawing out of bounds (80x25)!" if x > VGA_WIDTH || y > VGA_HEIGHT
-    @buffer[offset x, y] = color_code(fg, bg, a)
+    VgaState.buffer[offset x, y] = color_code(fg, bg, a)
   end
 
 
@@ -92,7 +88,7 @@ private struct VgaInstance < OutputDriver
         if seq.arg_n == 0 && VgaState.cy < VGA_HEIGHT - 1
           x = VgaState.cx
           while x < VGA_WIDTH
-            @buffer[offset x, VgaState.cy] = blank
+            VgaState.buffer[offset x, VgaState.cy] = blank
             x += 1
           end
         end
@@ -118,11 +114,11 @@ private struct VgaInstance < OutputDriver
     blank = color_code VgaState.fg, VgaState.bg, ' '.ord.to_u8
     (VGA_HEIGHT - 1).times do |y|
       VGA_WIDTH.times do |x|
-        @buffer[offset x, y] = @buffer[offset x, (y + 1)]
+        VgaState.buffer[offset x, y] = VgaState.buffer[offset x, (y + 1)]
       end
     end
     VGA_WIDTH.times do |x|
-      @buffer[VGA_SIZE - VGA_WIDTH + x] = blank
+      VgaState.buffer[VGA_SIZE - VGA_WIDTH + x] = blank
     end
     VgaState.wrapback
   end
@@ -204,6 +200,13 @@ module VgaState
   def wrapback
     @@cx = 0
     @@cy = VGA_HEIGHT - 1
+  end
+
+  @@buffer = Pointer(UInt16).new(0xb800)
+  def buffer
+    @@buffer
+  end
+  def buffer=(@@buffer)
   end
 end
 
