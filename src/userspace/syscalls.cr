@@ -172,6 +172,12 @@ private macro try(expr)
   end
 end
 
+private def checked_string_argument(addr)
+  ptr = checked_pointer32(SyscallData::StringArgument32, addr)
+  return ptr if ptr.nil?
+  checked_slice32(ptr.value.str, ptr.value.len)
+end
+
 fun ksyscall_handler(frame : SyscallData::Registers*)
   process = Multiprocessing.current_process.not_nil!
   pudata = process.udata
@@ -179,8 +185,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
   case fv.rax
   # files
   when SC_OPEN
-    path = NullTerminatedSlice.new(try(checked_pointer32(fv.rbx)).as(UInt8*))
-    Serial.puts "open: ", path, '\n'
+    path = try(checked_string_argument(fv.rbx))
     vfs_node = parse_path_into_vfs path, pudata.cwd_node
     if vfs_node.nil?
       fv.rax = SYSCALL_ERR
@@ -190,8 +195,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
   when SC_READ
     fdi = fv.rbx.to_i32
     fd = try(pudata.get_fd(fdi))
-    arg = try(checked_pointer32(fv.rdx)).as(SyscallData::StringArgument32*)
-    str = try(checked_slice32(arg.value.str, arg.value.len))
+    str = try(checked_string_argument(fv.rdx))
     result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
     case result
     when VFS_READ_WAIT
@@ -205,13 +209,12 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
   when SC_WRITE
     fdi = fv.rbx.to_i32
     fd = try(pudata.get_fd(fdi))
-    arg = try(checked_pointer32(fv.rdx)).as(SyscallData::StringArgument32*)
-    str = try(checked_slice32(arg.value.str, arg.value.len))
+    str = try(checked_string_argument(fv.rdx))
     fv.rax = fd.not_nil!.node.not_nil!.write(str)
   when SC_SEEK
     fdi = fv.rbx.to_i32
     fd = try(pudata.get_fd(fdi))
-    arg = try(checked_pointer32(fv.rdx)).as(SyscallData::SeekArgument32*)
+    arg = try(checked_pointer32(SyscallData::SeekArgument32, fv.rdx))
 
     case arg.value.whence
     when SC_SEEK_SET
@@ -229,8 +232,8 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
   when SC_IOCTL
     fdi = fv.rbx.to_i32
     fd = try(pudata.get_fd(fdi))
-    arg = try(checked_pointer32(fv.rdx)).as(SyscallData::IoctlArgument32*)
-    request, data = arg.value.request, try(checked_pointer32(arg.value.data))
+    arg = try(checked_pointer32(SyscallData::IoctlArgument32, fv.rdx))
+    request, data = arg.value.request, try(checked_pointer32(Void, arg.value.data))
     fv.rax = fd.node.not_nil!.ioctl(request, data)
   when SC_CLOSE
     fdi = fv.rbx.to_i32
@@ -243,7 +246,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
   when SC_READDIR
     fdi = fv.rbx.to_i32
     fd = try(pudata.get_fd(fdi))
-    retval = try(checked_pointer32(fv.rdx)).as(SyscallData::DirentArgument32*)
+    retval = try(checked_pointer32(SyscallData::DirentArgument32, fv.rdx))
     if fd.cur_child_end
       fv.rax = 0
       return
@@ -284,8 +287,8 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
   when SC_GETPID
     fv.rax = process.pid
   when SC_SPAWN
-    path = NullTerminatedSlice.new(try(checked_pointer32(fv.rbx)).as(UInt8*))
-    argv = try(checked_pointer32(fv.rdx)).as(UInt32*)
+    path = try(checked_string_argument(fv.rbx))
+    argv = try(checked_pointer32(UInt32, fv.rdx))
     Serial.puts argv, '\n'
     vfs_node = parse_path_into_vfs path, pudata.cwd_node
     if vfs_node.nil?
@@ -298,8 +301,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
         if argv[i] == 0
           break
         end
-        arg = NullTerminatedSlice.new(try(checked_pointer32(argv[i].to_u64)).as(UInt8*))
-        Serial.puts arg, '\n'
+        arg = NullTerminatedSlice.new(try(checked_pointer32(UInt8, argv[i].to_u64)))
         pargv.push GcString.new(arg, arg.size)
         i += 1
       end
@@ -334,7 +336,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     pid = fv.rbx.to_i32
     # Serial.puts "waitpid ", pid, '\n'
     if fv.rdx != 0
-      arg = try(checked_pointer32(fv.rdx)).as(SyscallData::WaitPidArgument32*)
+      arg = try(checked_pointer32(SyscallData::WaitPidArgument32, fv.rdx))
     end
     if pid <= 0
       # wait for any child process
@@ -363,12 +365,11 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     Multiprocessing.switch_process_and_terminate
   # working directory
   when SC_GETCWD
-    arg = try(checked_pointer32(fv.rbx)).as(SyscallData::StringArgument32*)
-    if arg.value.len > PATH_MAX
+    str = try(checked_string_argument(fv.rbx))
+    if str.size > PATH_MAX
       fv.rax = SYSCALL_ERR
       return
     end
-    str = try(checked_slice32(arg.value.str, arg.value.len))
     idx = 0
     pudata.cwd.each do |ch|
       break if idx == str.size - 1
@@ -378,7 +379,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     str[idx] = 0
     fv.rax = idx
   when SC_CHDIR
-    path = NullTerminatedSlice.new(try(checked_pointer32(fv.rbx)).as(UInt8*))
+    path = try(checked_string_argument(fv.rbx))
     if (t = append_paths path, pudata.cwd, pudata.cwd_node).nil?
       fv.rax = SYSCALL_ERR
     else
@@ -391,7 +392,6 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
   # memory management
   when SC_SBRK
     incr = fv.rbx.to_isize
-    Serial.puts "sbrk: ", incr, '\n'
     if incr == 0
       # return the end of the heap if incr = 0
       if pudata.heap_end == 0

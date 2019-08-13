@@ -29,6 +29,11 @@ struct Slice(T)
     @buffer[idx] = value
   end
 
+  def [](range : Range(Int, Int))
+    panic "Slice: out of range" if range.begin > range.end
+    Slice(T).new(@buffer + range.begin, range.size)
+  end
+
   def to_unsafe
     @buffer
   end

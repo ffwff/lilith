@@ -158,7 +158,7 @@ fun strstr(s1 : LibC::UString, s2 : LibC::UString) : LibC::UString
 end
 
 # memory
-fun memset(dst : UInt8*, c : ULibC::Int, n : LibC::SizeT) : Void*
+fun memset(dst : UInt8*, c : LibC::UInt, n : LibC::SizeT) : Void*
   asm(
     "cld\nrep stosb"
     :: "{al}"(c.to_u8), "{edi}"(dst), "{ecx}"(n)

@@ -158,11 +158,11 @@ module Paging
     flush
   end
 
-  def aligned(x : USize) : USize
+  def aligned(x : UInt64) : UInt64
     t_addr(x) + 0x1000
   end
 
-  private def page_layer_indexes(addr : USize)
+  private def page_layer_indexes(addr : UInt64)
     pdpt_idx  = addr.unsafe_shr(39) & (0x200 - 1)
     dir_idx   = addr.unsafe_shr(30) & (0x200 - 1)
     table_idx = addr.unsafe_shr(21) & (0x200 - 1)
@@ -177,7 +177,7 @@ module Paging
 
   # allocate page when pg is enabled
   # returns page address
-  def alloc_page_pg(virt_addr_start : USize, rw : Bool, user : Bool, npages : USize = 1) : USize
+  def alloc_page_pg(virt_addr_start : UInt64, rw : Bool, user : Bool, npages : USize = 1) : UInt64
     Idt.disable
 
     virt_addr = t_addr(virt_addr_start)
@@ -229,7 +229,7 @@ module Paging
     virt_addr_start
   end
 
-  def free_page_pg(virt_addr_start : USize, npages : USize = 1)
+  def free_page_pg(virt_addr_start : UInt64, npages : USize = 1)
     panic "unimpl1"
     {% if false %}
     Idt.disable
@@ -251,7 +251,6 @@ module Paging
   end
 
   # (de)allocate page directories for processes
-  # NOTE: paging must be disabled for these to work
   def alloc_process_pdpt
     # claim frame for page directory
     pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(FrameAllocator.claim_with_addr)
@@ -262,7 +261,7 @@ module Paging
     pdpt.address
   end
 
-  def free_process_pdpt(pdtpa : USize)
+  def free_process_pdpt(pdtpa : UInt64)
     pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(mt_addr pdtpa)
     # free directories
     i = 0
@@ -320,7 +319,7 @@ module Paging
   end
 
   # identity map pages at init
-  private def alloc_page_init(rw : Bool, user : Bool, addr : USize, virt_addr : USize)
+  private def alloc_page_init(rw : Bool, user : Bool, addr : UInt64, virt_addr : UInt64)
     if virt_addr == 0
       virt_addr = addr
     end
@@ -350,8 +349,26 @@ module Paging
     pt.value.pages[page_idx] = page
   end
 
-  private def alloc_frame_init(rw : Bool, user : Bool, virt_addr : USize)
+  private def alloc_frame_init(rw : Bool, user : Bool, virt_addr : UInt64)
     phys_addr = virt_addr - KERNEL_OFFSET
     alloc_page_init(rw, user, phys_addr, virt_addr)
+  end
+
+  # userspace address checking
+  def check_user_addr(addr : UInt64)
+    pdpt_idx, dir_idx, table_idx, page_idx = page_layer_indexes(addr)
+
+    pml4_table = Pointer(PageStructs::PML4Table).new(mt_addr @@pml4_table.address)
+    pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+        .new(mt_addr pml4_table.value.pdpt[pdpt_idx])
+    return false if pdpt.null?
+
+    pd = Pointer(PageStructs::PageDirectory).new(mt_addr pdpt.value.dirs[dir_idx])
+    return false if pd.null?
+
+    pt = Pointer(PageStructs::PageTable).new(mt_addr pd.value.tables[table_idx])
+    return false if pt.null?
+
+    pt.value.pages[page_idx] != 0
   end
 end

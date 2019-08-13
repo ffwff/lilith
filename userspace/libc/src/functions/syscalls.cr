@@ -21,7 +21,10 @@ end
 
 # IO
 fun open(device : LibC::String, flags : LibC::Int, mode : LibC::UInt) : LibC::Int
-  sysenter(SC_OPEN, device.address.to_u32, flags).to_i32
+  buf = uninitialized LibC::SyscallStringArgument
+  buf.str = device
+  buf.len = strlen(device)
+  sysenter(SC_OPEN, pointerof(buf).address.to_u32, flags).to_i32
 end
 
 fun close(fd : LibC::Int) : LibC::Int
@@ -70,7 +73,10 @@ fun abort
 end
 
 fun spawnv(file : LibC::String, argv : UInt8**) : LibC::Pid
-  sysenter(SC_SPAWN, file.address.to_u32, argv.address.to_u32).to_i32
+  buf = uninitialized LibC::SyscallStringArgument
+  buf.str = file
+  buf.len = strlen(file)
+  sysenter(SC_SPAWN, pointerof(buf).address.to_u32, argv.address.to_u32).to_i32
 end
 
 fun waitpid(pid : LibC::Pid, status : LibC::Int*, options : LibC::Int) : LibC::Pid
@@ -86,7 +92,10 @@ fun getcwd(str : LibC::String, len : LibC::Int) : LibC::Int
 end
 
 fun chdir(str : LibC::String) : LibC::Int
-  sysenter(SC_CHDIR, str.address.to_u32).to_i32
+  buf = uninitialized LibC::SyscallStringArgument
+  buf.str = str
+  buf.len = strlen(str)
+  sysenter(SC_CHDIR, pointerof(buf).address.to_u32).to_i32
 end
 
 # malloc
