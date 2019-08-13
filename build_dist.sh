@@ -9,4 +9,5 @@ i386-elf-lilith-gcc -g -o /tmp/main.bin userspace/programs/main.c
 i386-elf-lilith-gcc -o /tmp/ls.bin userspace/programs/ls.c
 sudo cp /tmp/main.bin /mnt
 sudo cp /tmp/ls.bin /mnt
+sudo cp ports/kilo/kilo /mnt/kilo.bin
 sudo umount /mnt || exit 1

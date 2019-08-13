@@ -82,7 +82,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
       Ide.init_controller
     elsif BGA.pci_device?(vendor_id, device_id)
       BGA.init_controller bus, device, func
-      Console.device = Fbdev
+      Console.text_mode = false
     end
   end
 

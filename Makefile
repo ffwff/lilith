@@ -17,8 +17,10 @@ KERNEL_OBJ=build/main.o build/boot.o
 KERNEL_SRC=$(wildcard src/*.cr src/*/*.cr)
 
 ifeq ($(RELEASE),1)
-	LLCFLAGS += -O3
+	CRFLAGS += --release
+	LLCFLAGS += -O2
 else
+	CRFLAGS += -d
 	LLCFLAGS += -O1
 endif
 
@@ -43,9 +45,12 @@ build/main.o: $(KERNEL_SRC)
 	@echo "LLC build/main.ll => $@"
 	@$(LLC) $(LLCFLAGS) -o $@ build/main.ll
 
-build/%.o: src/asm/x64/%.s
+build/boot.o: src/asm/x64/boot.s build/fonts
 	@echo "AS $<"
-	@$(AS) $(ASFLAGS) $^ -o $@
+	@$(AS) $(ASFLAGS) $< -o $@
+
+build/fonts:
+	python extern/gen-fonts.py
 
 build/kernel64: $(KERNEL_OBJ)
 	@echo "LD64 $^ => $@"

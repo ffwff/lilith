@@ -213,10 +213,12 @@ module Multiprocessing
       panic "page dir is nil" if dir == 0
       Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(dir.to_u64)
       Paging.flush
+      new_frame
       asm("jmp kswitch_usermode32"
           :: "{rcx}"(@initial_ip),
+             "{r11}"(@frame.not_nil!.rflags)
              "{rsp}"(@initial_sp)
-          : "volatile")
+          : "volatile", "memory")
     end
 
     # new register frame for multitasking

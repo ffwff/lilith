@@ -8,5 +8,4 @@ kswitch_usermode32:
     mov %ax, %ds
     mov %ax, %fs
     mov %ax, %gs
-    sti
     sysret

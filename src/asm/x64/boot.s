@@ -36,6 +36,7 @@ stack_end:
 .align 16
 fxsave_region:
     .skip 512
+.include "../extern/fonts.s"
 
 # -- stack
 .section .stack

@@ -21,7 +21,7 @@ class VGAFsNode < VFSNode
   def ioctl(request : Int32, data : Void*) : Int32
     case request
     when SC_IOCTL_TIOCGWINSZ
-      IoctlHandler.winsize(data, VGA_WIDTH, VGA_HEIGHT, 0, 0)
+      IoctlHandler.winsize(data, Console.width, Console.height, 0, 0)
     else
       -1
     end
