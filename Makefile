@@ -95,14 +95,24 @@ rungdb_img_custom: build/kernel drive.img
 	-@pkill qemu
 
 runiso: os.iso
+	$(QEMU) -S -boot d -cdrom os.iso -hda drive.img $(QEMUFLAGS) -gdb tcp::9000 &
+	sleep 0.1s && $(GDB) -quiet \
+		-ex 'set arch i386:x86-64:intel' \
+		-ex 'target remote localhost:9000' \
+		-ex 'hb kmain' \
+		-ex 'continue' \
+		-ex 'disconnect' \
+		-ex 'set arch i386:x86-64:intel' \
+		-ex 'target remote localhost:9000' \
+		build/kernel64
+	-@pkill qemu
+
 os.iso: build/kernel
 	rm -rf /tmp/iso && mkdir -p /tmp/iso/boot/grub
 	cp $^ /tmp/iso
 	cp grub.cfg /tmp/iso/boot/grub
+	cp build/kernel /tmp/iso/boot/
 	grub-mkrescue -o os.iso /tmp/iso
-	$(QEMU) -S -cdrom os.iso $(QEMUFLAGS) -gdb tcp::9000 &
-	$(GDB) -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
-	-@pkill qemu
 
 clean:
 	rm -f build/*

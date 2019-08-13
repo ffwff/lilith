@@ -113,6 +113,8 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   if main_bin.nil?
     VGA.puts "no main.bin detected.\n"
+    while true
+    end
   else
     VGA.puts "executing MAIN.BIN...\n"
 

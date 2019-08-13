@@ -9,9 +9,8 @@ binutils:
 	patch -p1 < $(PWD)/patches/binutils.patch >/dev/null
 
 build_binutils: binutils
-	cd binutils && \
-	mkdir -p build && cd build && \
-	../configure --target=i386-elf-lilith --disable-nls --disable-werror --prefix=$(PWD)/tools --disable-gdb --disable-gprof --with-system-zlib --without-selinux && \
+	mkdir -p /tmp/binutils && cd /tmp/binutils && \
+	$(PWD)/binutils/configure --target=i386-elf-lilith --disable-nls --disable-werror --prefix=$(PWD)/tools --disable-gdb --disable-gprof --with-system-zlib --without-selinux && \
 	make -j$(NPROC) && make install
 
 # gcc
