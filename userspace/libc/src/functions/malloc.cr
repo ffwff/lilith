@@ -3,10 +3,10 @@
 module Malloc
   extend self
 
-  MAGIC = 0x1badc0fe
-  MAGIC_FREE = 0x2badc0fe
+  MAGIC        = 0x1badc0fe
+  MAGIC_FREE   = 0x2badc0fe
   FOOTER_MAGIC = 0x1badb011
-  ALLOC_UNIT = 0x1000u32
+  ALLOC_UNIT   = 0x1000u32
 
   def unit_aligned(sz : LibC::UInt)
     (sz & 0xFFFF_F000) + 0x1000

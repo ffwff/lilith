@@ -1,0 +1,52 @@
+diff --git a/hw/9pfs/9p.c b/hw/9pfs/9p.c
+index 983a65091c..3cb58946a7 100644
+--- a/hw/9pfs/9p.c
++++ b/hw/9pfs/9p.c
+@@ -13,6 +13,7 @@
+ 
+ #include "qemu/osdep.h"
+ #include <glib/gprintf.h>
++#include <sys/sysmacros.h>
+ #include "hw/virtio/virtio.h"
+ #include "qapi/error.h"
+ #include "qemu/error-report.h"
+diff --git a/qga/commands-posix.c b/qga/commands-posix.c
+index 73d93eb5ce..9eecdd092c 100644
+--- a/qga/commands-posix.c
++++ b/qga/commands-posix.c
+@@ -14,6 +14,7 @@
+ #include "qemu/osdep.h"
+ #include <sys/ioctl.h>
+ #include <sys/wait.h>
++#include <sys/sysmacros.h>
+ #include <dirent.h>
+ #include "qga/guest-agent-core.h"
+ #include "qga-qmp-commands.h"
+diff --git a/util/memfd.c b/util/memfd.c
+index 4571d1aba8..854aa328e1 100644
+--- a/util/memfd.c
++++ b/util/memfd.c
+@@ -37,7 +37,7 @@
+ #include <sys/syscall.h>
+ #include <asm/unistd.h>
+ 
+-static int memfd_create(const char *name, unsigned int flags)
++static int tmp_memfd_create(const char *name, unsigned int flags)
+ {
+ #ifdef __NR_memfd_create
+     return syscall(__NR_memfd_create, name, flags);
+@@ -71,12 +71,12 @@ void *qemu_memfd_alloc(const char *name, size_t size, unsigned int seals,
+ 
+ #ifdef CONFIG_LINUX
+     if (seals) {
+-        mfd = memfd_create(name, MFD_ALLOW_SEALING | MFD_CLOEXEC);
++        mfd = tmp_memfd_create(name, MFD_ALLOW_SEALING | MFD_CLOEXEC);
+     }
+ 
+     if (mfd == -1) {
+         /* some systems have memfd without sealing */
+-        mfd = memfd_create(name, MFD_CLOEXEC);
++        mfd = tmp_memfd_create(name, MFD_CLOEXEC);
+         seals = 0;
+     }
+ #endif

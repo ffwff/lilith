@@ -22,8 +22,7 @@ else
 	LLCFLAGS += -O1
 endif
 
-QEMU = qemu-system-x86_64
-# QEMU = /tmp/qemu/build/x86_64-softmmu/qemu-system-x86_64
+QEMU = $(shell which qemu-system-x86_64)
 
 QEMUFLAGS += \
 	-rtc base=localtime \
@@ -35,7 +34,7 @@ QEMUFLAGS += \
 
 GDB = /usr/bin/gdb
 
-.PHONY: kernel src/asm/bootstrap.s
+.PHONY: kernel src/asm/bootstrap.s qemu
 all: build/kernel
 
 build/main.o: $(KERNEL_SRC)
@@ -79,7 +78,6 @@ rungdb: build/kernel
 rungdb_img: build/kernel drive.img
 	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
 	sleep 0.1s && $(GDB) -quiet \
-		-ex 'set arch i386:x86-64:intel' \
 		-ex 'target remote localhost:9000' \
 		-ex 'hb kmain' \
 		-ex 'continue' \
@@ -89,9 +87,16 @@ rungdb_img: build/kernel drive.img
 		build/kernel64
 	-@pkill qemu
 
-rungdb_img_custom: build/kernel drive.img
+rungdb_img_user: build/kernel drive.img
 	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
-	$(GDB) -quiet -ex 'target remote localhost:9000' $(GDB_ARGS)
+	$(GDB) -quiet \
+		-ex 'target remote localhost:9000' \
+		-ex 'hb main' \
+		-ex 'continue' \
+		-ex 'disconnect' \
+		-ex 'set arch i386' \
+		-ex 'target remote localhost:9000' \
+		$(FILE)
 	-@pkill qemu
 
 runiso: os.iso
@@ -118,7 +123,7 @@ clean:
 	rm -f build/*
 	rm -f kernel
 
-# debug
+# crystal
 toolchain/crystal:
 	cd toolchain && git clone https://github.com/crystal-lang/crystal && \
 	cd crystal && git checkout 0.30.0 && \
@@ -126,3 +131,18 @@ toolchain/crystal:
 
 $(CR): toolchain/crystal
 	cd toolchain/crystal && make release=1
+
+# qemu
+qemu:
+	cd /tmp && \
+	git clone https://github.com/qemu/qemu/ && \
+	cd qemu && \
+	git checkout stable-2.8 && \
+	patch -p1 < $(PWD)/toolchain/qemu.patch && \
+	mkdir build && cd build && \
+	../configure \
+		--target-list=x86_64-softmmu \
+		--python=/usr/bin/python2 \
+		--disable-werror \
+		--disable-gnutls --disable-nettle --disable-tpm && \
+	make -j$(shell nproc) && sudo make install
