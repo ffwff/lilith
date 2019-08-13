@@ -20,7 +20,7 @@ fun strdup(str : LibC::String) : LibC::String
 end
 
 # cmp
-fun strcmp(s1 : LibC::UString, s2 : LibC::UString) : Int32
+fun strcmp(s1 : LibC::UString, s2 : LibC::UString) : LibC::Int
   while s1.value != 0 && (s1.value == s2.value)
     s1 += 1
     s2 += 1
@@ -28,7 +28,7 @@ fun strcmp(s1 : LibC::UString, s2 : LibC::UString) : Int32
   (s1.value - s2.value).to_i32
 end
 
-fun strncmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : Int32
+fun strncmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : LibC::Int
   while n > 0 && s1.value != 0 && (s1.value == s2.value)
     s1 += 1
     s2 += 1
@@ -137,7 +137,7 @@ fun strncat(dst : LibC::String, src : LibC::String, n : LibC::SizeT) : LibC::Str
 end
 
 # chr
-fun strchr(str : LibC::String, c : Int32) : LibC::String
+fun strchr(str : LibC::String, c : LibC::Int) : LibC::String
   until str.value == c
     str += 1
     return LibC::String.null if str.value == 0
@@ -158,7 +158,7 @@ fun strstr(s1 : LibC::UString, s2 : LibC::UString) : LibC::UString
 end
 
 # memory
-fun memset(dst : UInt8*, c : UInt32, n : LibC::SizeT) : Void*
+fun memset(dst : UInt8*, c : ULibC::Int, n : LibC::SizeT) : Void*
   asm(
     "cld\nrep stosb"
     :: "{al}"(c.to_u8), "{edi}"(dst), "{ecx}"(n)
@@ -192,7 +192,7 @@ fun memmove(dst : UInt8*, src : UInt8*, n : LibC::SizeT) : Void*
   dst.as(Void*)
 end
 
-fun memcmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : Int32
+fun memcmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : LibC::Int
   while n > 0 && (s1.value == s2.value)
     s1 += 1
     s2 += 1
@@ -202,7 +202,7 @@ fun memcmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : Int32
   (s1.value - s2.value).to_i32
 end
 
-fun memchr(str : LibC::String, c : Int32, n : LibC::SizeT) : LibC::String
+fun memchr(str : LibC::String, c : LibC::Int, n : LibC::SizeT) : LibC::String
   until n == 0
     str += 1
     if str.value == c
@@ -214,6 +214,6 @@ fun memchr(str : LibC::String, c : Int32, n : LibC::SizeT) : LibC::String
 end
 
 # errors
-fun strerror(errnum : Int32) : LibC::String
+fun strerror(errnum : LibC::Int) : LibC::String
   LibC::String.null
 end

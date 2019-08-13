@@ -1,4 +1,4 @@
-fun signal(sig : Int32, func : Void*) : Void*
+fun signal(sig : LibC::Int, func : Void*) : Void*
   # TODO
   Pointer(Void).null
 end

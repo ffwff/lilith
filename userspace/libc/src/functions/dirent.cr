@@ -1,5 +1,5 @@
 lib LibC
-  alias Ino_t = Int32
+  alias Ino_t = LibC::Int
 
   struct Dirent
     # Inode number
@@ -14,7 +14,7 @@ lib LibC
 
   struct DIR
     dirent : Dirent
-    fd : Int32
+    fd : LibC::Int
   end
 end
 
@@ -27,7 +27,7 @@ fun opendir(dirname : LibC::String) : LibC::DIR*
   dirp
 end
 
-fun closedir(dirp : LibC::DIR*) : Int32
+fun closedir(dirp : LibC::DIR*) : LibC::Int
   close dirp.value.fd
   dirp.free
   0

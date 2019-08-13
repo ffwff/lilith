@@ -2,12 +2,12 @@ TIOCGWINSZ = 0
 
 lib LibC
   struct SyscallIoctlArgument
-    request : Int32
+    request : LibC::Int
     data    : Void*
   end
 end
 
-fun ioctl(fd : Int32, request : Int32, data : Void*) : Int32
+fun ioctl(fd : LibC::Int, request : LibC::Int, data : Void*) : LibC::Int
   arg = uninitialized LibC::SyscallIoctlArgument
   arg.request = request
   arg.data = data

@@ -19,7 +19,7 @@ class FileBuffer
     end
   end
 
-  def fwrite(fd : Int32, obuf : UInt8*, osize : Int32, line_buffered? = false)
+  def fwrite(fd : LibC::Int, obuf : UInt8*, osize : LibC::Int, line_buffered? = false)
     lazy_init
     offset = 0
     i = 0
@@ -117,7 +117,7 @@ class File
   @rbuffer = FileBuffer.new
 
   # misc
-  def fflush : Int32
+  def fflush : LibC::Int
     @wbuffer.flush(@fd) if @status.includes?(Status::Write)
     @rbuffer.flush(@fd) if @status.includes?(Status::Read)
     0
@@ -283,7 +283,7 @@ fun fopen(file : LibC::String, mode : LibC::String) : Void*
   stream.as(Void*)
 end
 
-fun fclose(stream : Void*) : Int32
+fun fclose(stream : Void*) : LibC::Int
   stream = stream.as(File*)
   stream.value._finalize
   unless stream.value.fd <= STDERR
@@ -293,16 +293,16 @@ fun fclose(stream : Void*) : Int32
   0
 end
 
-fun fflush(stream : Void*) : Int32
+fun fflush(stream : Void*) : LibC::Int
   stream.as(File*).value.fflush
 end
 
-fun fseek(stream : Void*, offset : Int32, whence : Int32) : Int32
+fun fseek(stream : Void*, offset : LibC::Int, whence : LibC::Int) : LibC::Int
   abort
   0
 end
 
-fun ftell(stream : Void*) : Int32
+fun ftell(stream : Void*) : LibC::Int
   abort
   0
 end
@@ -315,53 +315,53 @@ fun fwrite(ptr : UInt8*, size : LibC::SizeT, nmemb : LibC::SizeT, stream : Void*
   stream.as(File*).value.fwrite ptr, size * nmemb
 end
 
-fun fgets(str : LibC::String, size : Int32, stream : Void*) : LibC::String
+fun fgets(str : LibC::String, size : LibC::Int, stream : Void*) : LibC::String
   stream.as(File*).value.fgets str, size
 end
 
-fun fgetc(stream : Void*) : Int32
+fun fgetc(stream : Void*) : LibC::Int
   stream.as(File*).value.fgetc
 end
 
-fun feof(stream : Void*) : Int32
+fun feof(stream : Void*) : LibC::Int
   stream.as(File*).value.feof ? 1 : 0
 end
 
-fun fputs(str : LibC::String, stream : Void*) : Int32
+fun fputs(str : LibC::String, stream : Void*) : LibC::Int
   stream.as(File*).value.fputs str
 end
 
-fun fnputs(data : LibC::String, len : LibC::SizeT,  stream : Void*) : Int32
+fun fnputs(data : LibC::String, len : LibC::SizeT,  stream : Void*) : LibC::Int
   stream.as(File*).value.fnputs data, len
 end
 
 # prints
-fun puts(data : LibC::String) : Int32
+fun puts(data : LibC::String) : LibC::Int
   ret = write(STDOUT, data, strlen(data).to_i32)
   ret += putchar '\n'.ord.to_i32
   ret
 end
 
-fun nputs(data : LibC::String, len : LibC::SizeT) : Int32
+fun nputs(data : LibC::String, len : LibC::SizeT) : LibC::Int
   write(STDOUT, data, len.to_i32)
 end
 
-fun putchar(c : Int32) : Int32
+fun putchar(c : LibC::Int) : LibC::Int
   buffer = uninitialized Int8[1]
   buffer.to_unsafe[0] = c.to_i8
   write(STDOUT, buffer.to_unsafe, 1)
 end
 
-fun putc(c : Int32, stream : Void*) : Int32
+fun putc(c : LibC::Int, stream : Void*) : LibC::Int
   stream.as(File*).value.fputc c
 end
 
-fun fputc(c : Int32, stream : Void*) : Int32
+fun fputc(c : LibC::Int, stream : Void*) : LibC::Int
   stream.as(File*).value.fputc c
 end
 
 # get
-fun getchar : Int32
+fun getchar : LibC::Int
   retval = 0
   read(STDIN, pointerof(retval).as(LibC::String), 1)
   retval

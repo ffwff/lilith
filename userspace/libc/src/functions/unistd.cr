@@ -1,9 +1,9 @@
-fun atexit(func : Void*) : Int32
+fun atexit(func : Void*) : LibC::Int
   # TODO
   0
 end
 
-fun isatty(fd : Int32) : Int32
+fun isatty(fd : LibC::Int) : LibC::Int
   # TODO
   1
 end

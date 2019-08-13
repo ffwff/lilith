@@ -1,21 +1,21 @@
 require "./functions/*"
 
 lib LibC
-  fun main(argc : Int32, argv : UInt8**) : Int32
+  fun main(argc : LibC::Int, argv : UInt8**) : LibC::Int
 end
 
 private def cleanup
   Stdio.flush
 end
 
-fun _start(argc : Int32, argv : UInt8**)
+fun _start(argc : LibC::Int, argv : UInt8**)
   Stdio.init
   LibC.main argc, argv
   cleanup
   _exit
 end
 
-fun exit(status : Int32)
+fun exit(status : LibC::Int)
   cleanup
   _exit
 end

@@ -1,26 +1,26 @@
-fun toupper(ch : Int32) : Int32
+fun toupper(ch : LibC::Int) : LibC::Int
   if ch >= 'a'.ord && ch <= 'z'.ord
     ch = ch - 'a'.ord + 'A'.ord
   end
   ch
 end
 
-fun tolower(ch : Int32) : Int32
+fun tolower(ch : LibC::Int) : LibC::Int
   if ch >= 'A'.ord && ch <= 'Z'.ord
     ch = ch - 'A'.ord + 'a'.ord
   end
   ch
 end
 
-fun isspace(ch : Int32) : Int32
+fun isspace(ch : LibC::Int) : LibC::Int
   ch = ch.unsafe_chr
   (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n') ? 1 : 0
 end
 
-fun isprint(ch : Int32) : Int32
+fun isprint(ch : LibC::Int) : LibC::Int
   (ch >= 0x20 && ch <= 0x7e) ? 1 : 0
 end
 
-fun isdigit(ch : Int32) : Int32
+fun isdigit(ch : LibC::Int) : LibC::Int
   (ch >= '0'.ord && ch <= '9'.ord) ? 1 : 0
 end

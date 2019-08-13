@@ -2,8 +2,11 @@ lib LibC
   alias String = Int8*
   alias UString = UInt8*
   alias Pid = Int32
+
   alias SizeT = UInt32
   alias SSizeT = Int32
+  alias Int = Int32
+  alias UInt = UInt32
 end
 
 # Ints
