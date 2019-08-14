@@ -59,8 +59,8 @@ kload_idt:
 kcpuex_stub:
     pusha64
     mov %rsp, %rdi
+    cld
     call kcpuex_handler
-    # TODO: return
     popa64
     iret
 

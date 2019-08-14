@@ -95,7 +95,7 @@ module Idt
 
     # cpu exception handlers
     {% for i in 0..31 %}
-      # init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
+      init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
     {% end %}
 
     # hw interrupts
@@ -180,26 +180,25 @@ end
 EX_PAGEFAULT = 14
 
 fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
-  panic "unhandled: ", frame.value.int_no, ",", frame.value.errcode
-  {% if false %}
-  case frame.int_no
+  errcode = frame.value.errcode
+  case frame.value.int_no
   when EX_PAGEFAULT
-    faulting_address = 0u32
+    faulting_address = 0u64
     asm("mov %cr2, $0" : "=r"(faulting_address) :: "volatile")
 
-    present = (frame.errcode & 0x1) == 0
-    rw = (frame.errcode & 0x2) != 0
-    user = (frame.errcode & 0x4) != 0
-    reserved = (frame.errcode & 0x8) != 0
-    id = (frame.errcode & 0x10) != 0
+    present  = (errcode & 0x1)  == 0
+    rw       = (errcode & 0x2)  != 0
+    user     = (errcode & 0x4)  != 0
+    reserved = (errcode & 0x8)  != 0
+    id       = (errcode & 0x10) != 0
 
-    Serial.puts Pointer(Void).new(faulting_address.to_u64), user, " ", Pointer(Void).new(frame.eip.to_u64), "\n"
+    Serial.puts Pointer(Void).new(faulting_address), user, " ", Pointer(Void).new(frame.value.rip), "\n"
     if user
       if faulting_address < Multiprocessing::USER_STACK_TOP &&
          faulting_address > Multiprocessing::USER_STACK_BOTTOM_MAX
         # stack page fault
         Idt.lock do
-          Paging.alloc_page_pg(faulting_address & 0xFFFF_F000, true, true)
+          Paging.alloc_page_pg(faulting_address & 0xFFFF_FFFF_FFFF_F000, true, true)
         end
         return
       else
@@ -209,7 +208,6 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
       panic "kernel space"
     end
   else
-    panic "fault: ", frame.int_no, ' ', frame.errcode, '\n'
+    panic "kernel fault: ", frame.value.int_no, ' ', errcode, '\n'
   end
-  {% end %}
 end

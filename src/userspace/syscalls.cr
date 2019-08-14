@@ -190,7 +190,9 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     if vfs_node.nil?
       fv.rax = SYSCALL_ERR
     else
-      fv.rax = pudata.install_fd(vfs_node.not_nil!)
+      Idt.lock do # may allocate
+        fv.rax = pudata.install_fd(vfs_node.not_nil!)
+      end
     end
   when SC_READ
     fdi = fv.rbx.to_i32
@@ -199,9 +201,12 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
     case result
     when VFS_READ_WAIT
-      fd.not_nil!.node.not_nil!.read_queue.not_nil!
-        .push(VFSReadMessage.new(str, process, fd.not_nil!.buffering))
+      Idt.lock do # may allocate
+        fd.not_nil!.node.not_nil!.read_queue.not_nil!
+          .push(VFSReadMessage.new(str, process, fd.not_nil!.buffering))
+      end
       process.status = Multiprocessing::Process::Status::WaitIo
+      # HERE?
       Multiprocessing.switch_process(frame)
     else
       fv.rax = result
@@ -210,7 +215,9 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     fdi = fv.rbx.to_i32
     fd = try(pudata.get_fd(fdi))
     str = try(checked_string_argument(fv.rdx))
-    fv.rax = fd.not_nil!.node.not_nil!.write(str)
+    Idt.lock do # may allocate
+      fv.rax = fd.not_nil!.node.not_nil!.write(str)
+    end
   when SC_SEEK
     fdi = fv.rbx.to_i32
     fd = try(pudata.get_fd(fdi))

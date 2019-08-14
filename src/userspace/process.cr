@@ -4,6 +4,8 @@ private lib Kernel
   fun ksyscall_switch(frame : IdtData::Registers*) : NoReturn
 end
 
+FXSAVE_SIZE = 512u64
+
 module Multiprocessing
   extend self
 
@@ -85,7 +87,11 @@ module Multiprocessing
     end
 
     @status = Status::Normal
-    property status
+    getter status
+    def status=(x)
+      Serial.puts "status: ", @status, " => ", x, "\n"
+      @status = x
+    end
 
     # user-mode process data
     class UserData
@@ -158,7 +164,10 @@ module Multiprocessing
     def initialize(@udata : UserData?, save_fx = true, &on_setup_paging : Process -> _)
       # user mode specific
       if save_fx
-        @fxsave_region = Pointer(UInt8).malloc(512)
+        # NOTE: somewhere the process got switched
+        # but somehow fxsave_region (and registers dont change)
+        @fxsave_region = Pointer(UInt8).malloc(FXSAVE_SIZE)
+        memset(@fxsave_region, 0x0, FXSAVE_SIZE)
       else
         @fxsave_region = Pointer(UInt8).null
       end
@@ -212,10 +221,8 @@ module Multiprocessing
 
     def initial_switch
       Multiprocessing.current_process = self
-      dir = @phys_pg_struct # this must be stack allocated
-      # because it's placed in the virtual kernel heap
-      panic "page dir is nil" if dir == 0
-      Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(dir.to_u64)
+      panic "page dir is nil" if @phys_pg_struct == 0
+      Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(@phys_pg_struct)
       Paging.flush
       new_frame
       asm("jmp kswitch_usermode32"
@@ -293,10 +300,10 @@ module Multiprocessing
 
     # debugging
     def to_s(io)
-      io.puts "Process {"
-      io.puts " pid: ", pid, ", "
-      io.puts " prev_process: ", prev_process.nil? ? "nil" : prev_process.not_nil!.pid, ", "
-      io.puts " next_process: ", next_process.nil? ? "nil" : next_process.not_nil!.pid, ", "
+      io.puts "Process {\n"
+      io.puts " pid: ", @pid, ", \n"
+      io.puts " status: ", @status, ", \n"
+      io.puts " initial_ip: ", Pointer(Void).new(@initial_ip), ", \n"
       io.puts "}"
     end
   end
@@ -366,8 +373,8 @@ module Multiprocessing
     unless remove
       # current_process.frame = frame?.not_nil!
       yield current_process
-      if !current_process.fxsave_region.null?
-        memcpy current_process.fxsave_region, Multiprocessing.fxsave_region, 512
+      unless current_process.fxsave_region.null?
+        memcpy current_process.fxsave_region, Multiprocessing.fxsave_region, FXSAVE_SIZE
       end
     end
 
@@ -376,15 +383,16 @@ module Multiprocessing
     end
 
     # switch page directory
-    if !next_process.kernel_process?
+    if next_process.kernel_process?
+      if remove
+        Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+          .new(first_process.not_nil!.phys_pg_struct)
+      end
+    else
       Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
         .new(next_process.phys_pg_struct)
-      Paging.flush
-      if remove
-        Paging.free_process_pdpt(current_process.phys_pg_struct)
-        current_process.phys_pg_struct = 0u64
-      end
     end
+    Paging.flush
 
     # wake up process
     if next_process.status == Multiprocessing::Process::Status::Unwait
@@ -396,8 +404,8 @@ module Multiprocessing
     end
 
     # restore fxsave
-    if !next_process.fxsave_region.null?
-      memcpy Multiprocessing.fxsave_region, next_process.fxsave_region, 512
+    unless next_process.fxsave_region.null?
+      memcpy Multiprocessing.fxsave_region, next_process.fxsave_region, FXSAVE_SIZE
     end
 
     next_process
@@ -415,15 +423,12 @@ module Multiprocessing
       process.new_frame_from_syscall frame
     end
     new_frame = current_process.frame.not_nil!
-    panic "new_frame.rip is 0" if new_frame.rip == 0
     Kernel.ksyscall_switch(pointerof(new_frame))
   end
   
   def switch_process_and_terminate
     current_process = switch_process_save_and_load(true) {}
     new_frame = current_process.frame.not_nil!
-    # TODO: why does this happen?
-    panic "new_frame.rip is 0" if new_frame.rip == 0
     Kernel.ksyscall_switch(pointerof(new_frame))
   end
 

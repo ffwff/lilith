@@ -47,8 +47,9 @@ ksyscall_stub:
 .global ksyscall_switch
 ksyscall_switch:
     mov %rdi, %rsp
-    popa64
     movabs $fxsave_region, %rax
     fxrstor (%rax)
+    popa64
+n:
     add $8, %rsp # skip int_no
     iretq
