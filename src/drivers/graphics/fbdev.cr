@@ -15,6 +15,9 @@ private struct FbdevInstance < OutputDriver
       FbdevState.putc(FbdevState.cx, FbdevState.cy, ' '.ord.to_u8)
       return
     end
+    if FbdevState.cy >= FbdevState.cheight
+      FbdevState.scroll
+    end
     FbdevState.putc(FbdevState.cx, FbdevState.cy, ch)
     FbdevState.advance
   end
@@ -174,6 +177,20 @@ module FbdevState
       end
     end
     breakpoint
+  end
+
+  def scroll
+    ((@@cheight - 1) * FB_ASCII_FONT_HEIGHT).times do |y|
+      (@@cwidth * FB_ASCII_FONT_WIDTH).times do |x|
+        @@buffer[offset x, y] = @@buffer[offset x, (y + FB_ASCII_FONT_HEIGHT)]
+      end
+    end
+    FB_ASCII_FONT_HEIGHT.times do |y|
+      @@width.times do |x|
+        @@buffer[offset x, ((@@cheight - 1) * FB_ASCII_FONT_HEIGHT + y)] = 0x0
+      end
+    end
+    wrapback
   end
 
 end

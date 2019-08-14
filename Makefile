@@ -18,7 +18,7 @@ KERNEL_SRC=$(wildcard src/*.cr src/*/*.cr)
 
 ifeq ($(RELEASE),1)
 	CRFLAGS += --release
-	LLCFLAGS += -O2
+	LLCFLAGS += -O1
 else
 	CRFLAGS += -d
 	LLCFLAGS += -O1

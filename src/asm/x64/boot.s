@@ -22,6 +22,7 @@ _start_higher:
     movabs $kmain, %rcx
     call *%rcx
 
+# misc functions
 .global no_opt
 no_opt: ret
 
