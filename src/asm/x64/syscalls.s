@@ -1,5 +1,3 @@
-USER_RFLAGS = 0x212
-
 .section .text
 .global ksyscall_setup
 ksyscall_setup:

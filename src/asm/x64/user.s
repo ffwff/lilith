@@ -1,3 +1,4 @@
+USER_RFLAGS = 0x212
 USER_DATA_SELECTOR = 0x23
 
 .section .text
@@ -8,4 +9,5 @@ kswitch_usermode32:
     mov %ax, %ds
     mov %ax, %fs
     mov %ax, %gs
+    mov $USER_RFLAGS, %r11
     sysret

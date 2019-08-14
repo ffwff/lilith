@@ -144,9 +144,12 @@ module FbdevState
   def init_device(@@width, @@height, @@buffer)
     @@cwidth = @@width.unsafe_div(FB_ASCII_FONT_WIDTH) - 1
     @@cheight = @@height.unsafe_div(FB_ASCII_FONT_HEIGHT) - 1
-    @@width.times do |i|
-      @@height.times do |j|
-        @@buffer[offset i, j] = 0x0000FF00
+    @@height.times do |y|
+      @@width.times do |x|
+        r = (x * 255).unsafe_div(@@width).to_u32
+        g = (y * 255).unsafe_div(@@height).to_u32
+        @@buffer[offset x, y] = r.unsafe_shl(16) | g.unsafe_shl(8)
+        # @@buffer[offset i, j] = 0x0000FF00
       end
     end
   end

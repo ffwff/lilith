@@ -10,7 +10,7 @@ class FileBuffer
   @buffer = Pointer(UInt8).null
   @pos = 0
 
-  def initialize(@is_write = false)
+  def initialize(@is_write : Bool)
   end
 
   def lazy_init
@@ -89,6 +89,9 @@ class File
   def initialize(@fd, @status, @buffering)
   end
 
+  def initialize(@fd, mode : LibC::String)
+  end
+
   def _finalize
     close @fd
     # @wbuffer.free
@@ -113,8 +116,8 @@ class File
   end
 
   # buffer
-  @wbuffer = FileBuffer.new
-  @rbuffer = FileBuffer.new
+  @wbuffer = FileBuffer.new true
+  @rbuffer = FileBuffer.new false
 
   # misc
   def fflush : LibC::Int
@@ -277,9 +280,7 @@ fun fopen(file : LibC::String, mode : LibC::String) : Void*
   if fd.to_u32 == SYSCALL_ERR
     return Pointer(Void).null
   end
-  stream = Pointer(File).malloc
-  stream.value.fd = fd
-  stream.value.parse_mode mode
+  stream = File.new fd, mode
   stream.as(Void*)
 end
 
@@ -308,15 +309,15 @@ fun ftell(stream : Void*) : LibC::Int
 end
 
 fun fread(ptr : UInt8*, size : LibC::SizeT, nmemb : LibC::SizeT, stream : Void*) : LibC::SizeT
-  stream.as(File*).value.fread ptr, size * nmemb
+  stream.as(File*).value.fread(ptr, size * nmemb)
 end
 
 fun fwrite(ptr : UInt8*, size : LibC::SizeT, nmemb : LibC::SizeT, stream : Void*) : LibC::SizeT
-  stream.as(File*).value.fwrite ptr, size * nmemb
+  stream.as(File*).value.fwrite(ptr, size * nmemb)
 end
 
 fun fgets(str : LibC::String, size : LibC::Int, stream : Void*) : LibC::String
-  stream.as(File*).value.fgets str, size
+  stream.as(File*).value.fgets(str, size)
 end
 
 fun fgetc(stream : Void*) : LibC::Int
