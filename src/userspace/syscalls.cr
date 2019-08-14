@@ -4,8 +4,8 @@ require "./argv_builder.cr"
 
 lib SyscallData
   struct Registers
-    ds,
-    rdi, rsi,
+    ds : UInt64
+    rbp, rdi, rsi,
     r15, r14, r13, r12, r11, r10, r9, r8,
     rdx, rcx, rbx, rax : UInt64
   end
@@ -289,25 +289,23 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
   when SC_SPAWN
     path = try(checked_string_argument(fv.rbx))
     argv = try(checked_pointer32(UInt32, fv.rdx))
-    Serial.puts argv, '\n'
     vfs_node = parse_path_into_vfs path, pudata.cwd_node
     if vfs_node.nil?
       fv.rax = SYSCALL_ERR
     else
-      # argv
-      pargv = GcArray(GcString).new 0
-      i = 0
-      while i < SC_SPAWN_MAX_ARGS
-        if argv[i] == 0
-          break
-        end
-        arg = NullTerminatedSlice.new(try(checked_pointer32(UInt8, argv[i].to_u64)))
-        pargv.push GcString.new(arg, arg.size)
-        i += 1
-      end
-
-      # spawn process
       Idt.lock do
+        # argv
+        pargv = GcArray(GcString).new 0
+        i = 0
+        while i < SC_SPAWN_MAX_ARGS
+          if argv[i] == 0
+            break
+          end
+          arg = NullTerminatedSlice.new(try(checked_pointer32(UInt8, argv[i].to_u64)))
+          pargv.push GcString.new(arg, arg.size)
+          i += 1
+        end
+
         udata = Multiprocessing::Process::UserData
           .new(pargv,
             pudata.cwd.clone,
@@ -325,6 +323,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
 
         # create the process
         new_process = Multiprocessing::Process.spawn_user(vfs_node.not_nil!, udata)
+        # page table doesn't switch back?
         if new_process.nil?
           fv.rax = SYSCALL_ERR
         else
@@ -334,10 +333,9 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     end
   when SC_WAITPID
     pid = fv.rbx.to_i32
-    # Serial.puts "waitpid ", pid, '\n'
-    if fv.rdx != 0
-      arg = try(checked_pointer32(SyscallData::WaitPidArgument32, fv.rdx))
-    end
+    # if fv.rdx != 0
+    #   arg = try(checked_pointer32(SyscallData::WaitPidArgument32, fv.rdx))
+    # end
     if pid <= 0
       # wait for any child process
       panic "unimplemented"

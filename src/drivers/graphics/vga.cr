@@ -22,14 +22,12 @@ enum VgaColor : UInt16
 end
 
 private struct VgaInstance < OutputDriver
-  @[AlwaysInline]
   def color_code(fg : VgaColor, bg : VgaColor, char : UInt8)
     UInt16
     attrib = (bg.value.unsafe_shl(4)) | fg.value
     attrib.unsafe_shl(8) | char.to_u8!
   end
 
-  @[AlwaysInline]
   private def offset(x : Int, y : Int)
     y * VGA_WIDTH + x
   end

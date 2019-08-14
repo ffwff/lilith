@@ -1,5 +1,9 @@
 require "./file_descriptor.cr"
 
+private lib Kernel
+  fun ksyscall_switch(frame : IdtData::Registers*) : NoReturn
+end
+
 module Multiprocessing
   extend self
 
@@ -243,17 +247,16 @@ module Multiprocessing
       @frame = IdtData::Registers.new
 
       {% for id in [
-          "rdi", "rsi",
+          "rbp", "rdi", "rsi",
           "r15", "r14", "r13", "r12", "r11", "r10", "r9", "r8",
           "rdx", "rcx", "rbx", "rax"
         ] %}
       @frame.not_nil!.{{ id.id }} = syscall_frame.value.{{ id.id }}
       {% end %}
-      # new_frame.ds = USER_SS_SEGMENT
+      @frame.not_nil!.rflags = USER_RFLAGS
       @frame.not_nil!.cs = USER_CS_SEGMENT
       @frame.not_nil!.ss = USER_SS_SEGMENT
       @frame.not_nil!.ds = USER_SS_SEGMENT
-      @frame.not_nil!.rflags = USER_RFLAGS
     end
 
     # initialize
@@ -412,13 +415,16 @@ module Multiprocessing
       process.new_frame_from_syscall frame
     end
     new_frame = current_process.frame.not_nil!
-    asm("jmp ksyscall_switch" :: "{rsp}"(pointerof(new_frame)) : "volatile")
+    panic "new_frame.rip is 0" if new_frame.rip == 0
+    Kernel.ksyscall_switch(pointerof(new_frame))
   end
-
+  
   def switch_process_and_terminate
     current_process = switch_process_save_and_load(true) {}
     new_frame = current_process.frame.not_nil!
-    asm("jmp ksyscall_switch" :: "{rsp}"(pointerof(new_frame)) : "volatile")
+    # TODO: why does this happen?
+    panic "new_frame.rip is 0" if new_frame.rip == 0
+    Kernel.ksyscall_switch(pointerof(new_frame))
   end
 
   # iteration

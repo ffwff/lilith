@@ -217,6 +217,21 @@ index d28ed3dc4..674aee402 100644
            @last = malloc struct_type
          else
            @last = malloc_atomic struct_type
+diff --git a/src/compiler/crystal/codegen/fun.cr b/src/compiler/crystal/codegen/fun.cr
+index 502b03a06..24140c48d 100644
+--- a/src/compiler/crystal/codegen/fun.cr
++++ b/src/compiler/crystal/codegen/fun.cr
+@@ -387,6 +387,10 @@ class Crystal::CodeGenVisitor
+     context.fun.add_attribute LLVM::Attribute::Naked if target_def.naked?
+     context.fun.add_attribute LLVM::Attribute::NoReturn if target_def.no_returns?
+ 
++    if ENV["NO_RED_ZONE"]?
++      context.fun.add_attribute LLVM::Attribute::NoRedZone
++    end
++
+     if target_def.no_inline?
+       context.fun.add_attribute LLVM::Attribute::NoInline
+       context.fun.linkage = LLVM::Linkage::External
 diff --git a/src/compiler/crystal/compiler.cr b/src/compiler/crystal/compiler.cr
 index 3853d8962..2720ea08b 100644
 --- a/src/compiler/crystal/compiler.cr

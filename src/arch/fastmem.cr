@@ -1,3 +1,4 @@
+@[NoInline]
 def zero_page(mem : UInt8*, npages : USize = 1)
   # TODO
   return if npages == 0
@@ -27,6 +28,6 @@ def zero_page(mem : UInt8*, npages : USize = 1)
     jne 1b
   "
     :: "{rcx}"(mem), "{rdx}"(count)
-    : "volatile", "memory", "{rax}"
+    : "volatile", "memory", "{rax}", "{xmm0}"
   )
 end

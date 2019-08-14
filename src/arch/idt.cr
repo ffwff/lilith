@@ -34,7 +34,7 @@ lib IdtData
   struct Registers
     # Pushed by pushad:
     ds,
-    rdi, rsi,
+    rbp, rdi, rsi,
     r15, r14, r13, r12, r11, r10, r9, r8,
     rdx, rcx, rbx, rax : UInt64
     # Interrupt number
@@ -46,7 +46,7 @@ lib IdtData
   struct ExceptionRegisters
     # Pushed by pushad:
     ds,
-    rdi, rsi,
+    rbp, rdi, rsi,
     r15, r14, r13, r12, r11, r10, r9, r8,
     rdx, rcx, rbx, rax : UInt64
     # Interrupt number

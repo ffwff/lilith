@@ -22,6 +22,9 @@ _start_higher:
     movabs $kmain, %rcx
     call *%rcx
 
+.global no_opt
+no_opt: ret
+
 # -- data
 .section .data
 .global fxsave_region_ptr

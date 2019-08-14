@@ -11,7 +11,6 @@ struct StaticArray(T, N)
     pointerof(@buffer)
   end
 
-  @[AlwaysInline]
   def []=(index : Int, value : T)
     panic "setting out of bounds!" if index > N
     to_unsafe[index] = value

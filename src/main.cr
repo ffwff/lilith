@@ -15,8 +15,7 @@ require "./userspace/elf.cr"
 require "./userspace/mmap_list.cr"
 
 lib Kernel
-  fun ksyscall_setup(ptr : Void*)
-  fun kidle_loop
+  fun ksyscall_setup
 
   $fxsave_region_ptr : UInt8*
   $kernel_end : Void*
@@ -105,7 +104,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   Gdt.stack = Kernel.stack_end
   Gdt.flush_tss
-  Kernel.ksyscall_setup(Kernel.stack_end)
+  Kernel.ksyscall_setup
 
   idle_process = Multiprocessing::Process.new(nil, false) do |process|
     process.initial_sp = Kernel.stack_end.address

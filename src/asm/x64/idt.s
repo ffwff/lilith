@@ -18,6 +18,8 @@
     # scan registers
     push %rsi
     push %rdi
+    # stack registers
+    push %rbp
     # segment registers
     mov %ds, %ax
     push %rax
@@ -27,6 +29,8 @@
     # segment registers
     pop %rax
     mov %ax, %ds
+    # stack registers
+    pop %rbp
     # scan registers
     pop %rdi
     pop %rsi

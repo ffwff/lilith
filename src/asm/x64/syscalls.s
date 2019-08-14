@@ -1,3 +1,5 @@
+USER_RFLAGS = 0x212
+
 .section .text
 .global ksyscall_setup
 ksyscall_setup:
@@ -7,9 +9,9 @@ ksyscall_setup:
     mov $0x174, %rcx
     wrmsr
     # MSR[SYSENTER_ESP] = %esp
-    mov %rdi, %rdx # higher part
+    movabs $stack_top, %rdx # higher part
+    mov %rdx, %rax # lower part
     shr $32, %rdx
-    mov %rdi, %rax # lower part
     mov $0x175, %rcx
     wrmsr
     # MSR[SYSENTER_EIP] = ksyscall_stub
@@ -39,12 +41,14 @@ ksyscall_stub:
     movabs $fxsave_region, %rax
     fxrstor (%rax)
     popa64
+    mov $USER_RFLAGS, %r11
     mov %rcx, %rsp
     mov (%rsp), %rcx
     sysret
 
 .global ksyscall_switch
 ksyscall_switch:
+    mov %rdi, %rsp
     popa64
     movabs $fxsave_region, %rax
     fxrstor (%rax)

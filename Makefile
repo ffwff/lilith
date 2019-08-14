@@ -18,7 +18,7 @@ KERNEL_SRC=$(wildcard src/*.cr src/*/*.cr)
 
 ifeq ($(RELEASE),1)
 	CRFLAGS += --release
-	LLCFLAGS += -O2
+	LLCFLAGS += -O1
 else
 	CRFLAGS += -d
 	LLCFLAGS += -O1
@@ -41,7 +41,7 @@ all: build/kernel
 
 build/main.o: $(KERNEL_SRC)
 	@echo "CR src/main.cr => build/main.ll"
-	@cd build && FREESTANDING=1 ../$(CR) build $(CRFLAGS) ../src/main.cr -o main
+	@cd build && NO_RED_ZONE=1 FREESTANDING=1 ../$(CR) build $(CRFLAGS) ../src/main.cr -o main
 	@echo "LLC build/main.ll => $@"
 	@$(LLC) $(LLCFLAGS) -o $@ build/main.ll
 

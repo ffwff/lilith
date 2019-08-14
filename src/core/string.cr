@@ -26,7 +26,6 @@ class String
     end
   end
 
-  @[AlwaysInline]
   def [](index : Int)
     bytes[index]
   end

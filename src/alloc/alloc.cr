@@ -113,7 +113,6 @@ module KernelArena
   end
 
   # free pool chaining
-  @[AlwaysInline]
   private def idx_for_pool_size(sz : USize)
     case sz
     when  32; 0
