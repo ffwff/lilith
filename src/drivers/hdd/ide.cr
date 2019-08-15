@@ -109,6 +109,12 @@ private module Ata
   DIR_READ  = 0x00
   DIR_WRITE = 0x01
 
+  def read_cyl(bus)
+    cl = X86.inb(bus + REG_LBA1)
+    ch = X86.inb(bus + REG_LBA2)
+    Tuple.new(cl, ch)
+  end
+
   # drive = 0 => primary
   # drive = 1 => secondary
   def select(bus, slave = 0u8)
@@ -117,6 +123,10 @@ private module Ata
 
   def identify(bus)
     X86.outb(bus + REG_COMMAND, CMD_IDENTIFY)
+  end
+
+  def identify_packet(bus)
+    X86.outb(bus + REG_COMMAND, CMD_IDENTIFY_PACKET)
   end
 
   def status(bus)
@@ -190,10 +200,15 @@ class AtaDevice
   @name : GcString? = nil
   getter name
 
+  enum Type
+    Ata
+    Atapi
+  end
+  @type = Type::Ata
+  getter type
+
   # NOTE: idx must be between 0..3
-  def initialize(idx = 0, @primary = true, @slave = 0)
-    @name = GcString.new "ata0"
-    @name.not_nil![3] = (idx + '0'.ord).to_u8
+  def initialize(@primary = true, @slave = 0)
   end
 
   #
@@ -207,19 +222,48 @@ class AtaDevice
     Ata.identify disk_port
     Ata.wait_io disk_port
 
-    status = Ata.status disk_port
-    debug "status: ", status, '\n'
-    return if status == 0
+    cl, ch = Ata.read_cyl(disk_port)
+    if cl == 0xFF && ch == 0xFF
+      return false
+    elsif (cl == 0x00 && ch == 0x00) || (cl == 0x3C && ch == 0xC3)
+      @type = Type::Ata
+    elsif (cl == 0x14 && ch == 0xEB) || (cl == 0x69 && ch == 0x96)
+      @type = Type::Atapi
+    end
+
+    case @type
+    when Type::Ata
+      name = GcString.new "hd"
+      name << (Ide.next_hd_idx + '0'.ord).to_u8
+    when Type::Atapi
+      name = GcString.new "cdrom"
+      name << (Ide.next_cdrom_idx + '0'.ord).to_u8
+    end
+    @name = name
 
     # read device identifier
-    # TODO: use this somewhere
-    X86.outb cmd_port, 0x02
     device = Pointer(Kernel::AtaIdentify).mmalloc
-    begin
-      buf = device.as(UInt16*)
-      256.times do |i|
-        buf[i] = X86.inw disk_port
-      end
+
+    case @type
+    when Type::Ata
+      Ata.identify disk_port
+      Ata.wait_io disk_port
+
+      status = Ata.status disk_port
+      debug "status: ", status, '\n'
+      return false if status == 0
+    when Type::Atapi
+      Ata.identify_packet disk_port
+      Ata.wait_io disk_port
+
+      status = Ata.status disk_port
+      debug "status: ", status, '\n'
+      return false if status == 0
+    end
+
+    buf = device.as(UInt16*)
+    256.times do |i|
+      buf[i] = X86.inw disk_port
     end
 
     # fix model name from endianness
@@ -232,9 +276,16 @@ class AtaDevice
         i += 2
       end
     {% end %}
+    Serial.puts "Type: ", @type, '\n'
+    Serial.puts "Detected: "
+    device.value.model.each do |ch|
+      Serial.puts ch.unsafe_chr
+    end
+    Serial.puts "\n"
 
     # cleanup
     device.mfree
+    true
   end
 
   @buffer = Pointer(UInt16).null
@@ -272,6 +323,21 @@ end
 module Ide
   extend self
 
+  @@hd_idx = 0
+  @@cdrom_idx = 0
+
+  def next_hd_idx
+    idx = @@hd_idx
+    @@hd_idx += 1
+    idx
+  end
+
+  def next_cdrom_idx
+    idx = @@cdrom_idx
+    @@cdrom_idx += 1
+    idx
+  end
+
   def device(idx)
     @@devices.not_nil![idx].not_nil!
   end
@@ -279,15 +345,17 @@ module Ide
   def init_controller
     @@devices = GcArray(AtaDevice).new 4
     devices = @@devices.not_nil!
-    devices[0] = AtaDevice.new(0, true, 0)
-    devices[1] = AtaDevice.new(1, true, 1)
-    devices[2] = AtaDevice.new(2, false, 0)
-    devices[3] = AtaDevice.new(3, false, 1)
+    devices[0] = AtaDevice.new(true, 0)
+    devices[1] = AtaDevice.new(true, 1)
+    devices[2] = AtaDevice.new(false, 0)
+    devices[3] = AtaDevice.new(false, 1)
 
     Idt.register_irq 14, ->ata_primary_irq_handler
     Idt.register_irq 15, ->ata_secondary_irq_handler
-    4.times do |idx|
-      device(idx).init_device
+    @@devices.not_nil!.size.times do |idx|
+      unless device(idx).init_device
+        devices[idx] = nil
+      end
     end
   end
 
