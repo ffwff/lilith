@@ -61,6 +61,11 @@ class GcArray(T)
     buffer[idx] = value
   end
 
+  def []=(idx : Int, value : Nil)
+    panic "GcArray: out of range" if idx < 0 && idx >= size
+    buffer.as(USize*)[idx] = 0
+  end
+
   # resizing
   private def new_buffer(new_size)
     m_size = malloc_size new_size

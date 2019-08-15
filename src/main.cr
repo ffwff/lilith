@@ -117,12 +117,17 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     end
   else
     Console.puts "executing MAIN.BIN...\n"
+    main_path = GcString.new("/")
+    main_path << fs.not_nil!.name
 
     argv = GcArray(GcString).new 0
-    argv.push GcString.new("/ata0/main.bin")
+    argv_0 = main_path.clone
+    argv_0 << "/main.bin"
+    argv.push argv_0
+
     udata = Multiprocessing::Process::UserData
               .new(argv,
-                GcString.new("/ata0"),
+                main_path,
                 fs.not_nil!.root)
     m_process = Multiprocessing::Process.spawn_user(main_bin.not_nil!, udata)
     if m_process.nil?

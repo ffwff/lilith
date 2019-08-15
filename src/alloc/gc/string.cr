@@ -80,20 +80,19 @@ class GcString
   def insert(idx : Int32, ch : UInt8)
     if idx == @size
       if @size == @capacity
-        Serial.puts "expands"
         expand
-      else
-        @size += 1
       end
+      @size += 1
     end
     @buffer[idx] = ch
   end
 
-  def append(ch : UInt8)
+  def <<(ch : UInt8)
     insert @size, ch
   end
 
-  def append(str)
+  @[NoInline]
+  def <<(str)
     str.each do |ch|
       insert @size, ch
     end
