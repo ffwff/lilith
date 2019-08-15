@@ -1,20 +1,24 @@
 # lilith
 
+<p align="center">
+<img src="./img/screenshot.png" alt="screenshot of lilith"/>
+</p>
+
 A POSIX-like x86-64 kernel with a 32-bit userspace written in Crystal.
 
 ## Building
 
-```
-make build/kernel
-```
-
-**NOTE:** lilith needs to be compiled with a patched crystal compiler, to build it, run the command:
+lilith needs to be compiled with a patched crystal compiler, to build it, run the command:
 
 ```
 make toolchain/crystal/.build/crystal
 ```
 
 You will also need an appropriate `x86_64-elf` binutils toolchain in order to link and assemble the kernel, as well as `i686-elf` binutils to build the bootstrap code.
+
+```
+make build/kernel
+```
 
 ### Building the userspace
 
