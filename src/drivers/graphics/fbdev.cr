@@ -144,15 +144,18 @@ module FbdevState
   def buffer=(@@buffer)
   end
 
+  private def color(x, y) : UInt32
+    r = (x * 255).unsafe_div(@@width).to_u32
+    g = (y * 255).unsafe_div(@@height).to_u32
+    r.unsafe_shl(16) | g.unsafe_shl(8)
+  end
+
   def init_device(@@width, @@height, @@buffer)
     @@cwidth = @@width.unsafe_div(FB_ASCII_FONT_WIDTH) - 1
     @@cheight = @@height.unsafe_div(FB_ASCII_FONT_HEIGHT) - 1
     @@height.times do |y|
       @@width.times do |x|
-        r = (x * 255).unsafe_div(@@width).to_u32
-        g = (y * 255).unsafe_div(@@height).to_u32
-        @@buffer[offset x, y] = r.unsafe_shl(16) | g.unsafe_shl(8)
-        # @@buffer[offset i, j] = 0x0000FF00
+        @@buffer[offset x, y] = color x, y
       end
     end
   end
@@ -172,7 +175,7 @@ module FbdevState
         if (bitmap[cy] & 1.unsafe_shl(cx)) != 0
           @@buffer[offset dx, dy] = 0x00FFFFFF
         else
-          @@buffer[offset dx, dy] = 0x0
+          @@buffer[offset dx, dy] = color(dx, dy)
         end
       end
     end
@@ -187,7 +190,8 @@ module FbdevState
     end
     FB_ASCII_FONT_HEIGHT.times do |y|
       @@width.times do |x|
-        @@buffer[offset x, ((@@cheight - 1) * FB_ASCII_FONT_HEIGHT + y)] = 0x0
+        dx, dy = x, ((@@cheight - 1) * FB_ASCII_FONT_HEIGHT + y)
+        @@buffer[offset dx, dy] = color(dx, dy)
       end
     end
     wrapback

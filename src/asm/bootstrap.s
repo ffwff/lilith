@@ -74,22 +74,41 @@ gdt_data:
     .byte 0xAF # flags/attrs
     .byte 0 # base 24..31
 
+PAGE_PRESENT = 1 << 0
+PAGE_WRITE   = 1 << 1
+
 # identity page the first 1GiB of physical memory
 # pml4
 .align 0x1000
 pml4:
-    .long pdpt + 0x7
+    .long pdpt + (PAGE_PRESENT | PAGE_WRITE)
     .long 0
-    .long pdpt + 0x7
+    .long pdpt + (PAGE_PRESENT | PAGE_WRITE)
     .long 0
 pml4_len = . - pml4
     .skip 0x1000 - pml4_len
 # pdpt
 .align 0x1000
 pdpt:
-    .quad 0x83 # identity mapped
+    .long pd + (PAGE_PRESENT | PAGE_WRITE)
+    .long 0
 pdpt_len = . - pdpt
     .skip 0x1000 - pdpt_len
+# pd
+.align 0x1000
+pd:
+    .long pt + (PAGE_PRESENT | PAGE_WRITE)
+    .long 0
+pd_len = . - pd
+    .skip 0x1000 - pd_len
+# pt
+.align 0x1000
+pt:
+.set i, 0
+.rept 512
+    .quad i + (PAGE_PRESENT | PAGE_WRITE)
+    .set i, i + 0x1000
+.endr
 
 .section .kernel64
 .incbin "build/kernel64.bin"

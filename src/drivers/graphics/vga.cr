@@ -200,7 +200,7 @@ module VgaState
     @@cy = VGA_HEIGHT - 1
   end
 
-  @@buffer = Pointer(UInt16).new(0xb800)
+  @@buffer = Pointer(UInt16).new(0xb8000)
   def buffer
     @@buffer
   end
