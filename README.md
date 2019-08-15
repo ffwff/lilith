@@ -1,10 +1,12 @@
-# lilith
+<h1 align="center">lilith</h1>
 
 <p align="center">
 <img src="./img/screenshot.png" alt="screenshot of lilith"/>
 </p>
 
+<p align="center">
 A POSIX-like x86-64 kernel with a 32-bit userspace written in Crystal.
+</p>
 
 ## Building
 
