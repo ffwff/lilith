@@ -71,7 +71,7 @@ module Multiprocessing
     property phys_pg_struct
 
     # interrupt frame for preemptive multitasking
-    @frame : IdtData::Registers? = nil
+    @frame = Pointer(IdtData::Registers).null
     property frame
 
     # sse state
@@ -87,11 +87,11 @@ module Multiprocessing
     end
 
     @status = Status::Normal
-    getter status
-    def status=(x)
-      Serial.puts "status: ", @status, " => ", x, "\n"
-      @status = x
-    end
+    property status
+    # def status=(x)
+    #   Serial.puts "status: ", @status, " => ", x, "\n"
+    #   @status = x
+    # end
 
     # user-mode process data
     class UserData
@@ -227,43 +227,49 @@ module Multiprocessing
       new_frame
       asm("jmp kswitch_usermode32"
           :: "{rcx}"(@initial_ip),
-             "{r11}"(@frame.not_nil!.rflags)
+             "{r11}"(@frame.value.rflags)
              "{rsp}"(@initial_sp)
           : "volatile", "memory")
     end
 
     # new register frame for multitasking
     def new_frame
-      @frame = IdtData::Registers.new
-      @frame.not_nil!.userrsp = @initial_sp
-      @frame.not_nil!.rip = @initial_ip
+      frame = IdtData::Registers.new
+      frame.userrsp = @initial_sp
+      frame.rip = @initial_ip
       if kernel_process?
-        @frame.not_nil!.rflags = KERNEL_RFLAGS
-        @frame.not_nil!.cs = KERNEL_CS_SEGMENT
-        @frame.not_nil!.ss = KERNEL_SS_SEGMENT
-        @frame.not_nil!.ds = KERNEL_SS_SEGMENT
+        frame.rflags = KERNEL_RFLAGS
+        frame.cs = KERNEL_CS_SEGMENT
+        frame.ss = KERNEL_SS_SEGMENT
+        frame.ds = KERNEL_SS_SEGMENT
       else
-        @frame.not_nil!.rflags = USER_RFLAGS
-        @frame.not_nil!.cs = USER_CS_SEGMENT
-        @frame.not_nil!.ds = USER_SS_SEGMENT
-        @frame.not_nil!.ss = USER_SS_SEGMENT
+        frame.rflags = USER_RFLAGS
+        frame.cs = USER_CS_SEGMENT
+        frame.ds = USER_SS_SEGMENT
+        frame.ss = USER_SS_SEGMENT
       end
+
+      @frame = Pointer(IdtData::Registers).malloc
+      @frame.value = frame
     end
 
     def new_frame_from_syscall(syscall_frame : SyscallData::Registers*)
-      @frame = IdtData::Registers.new
+      frame = IdtData::Registers.new
 
       {% for id in [
           "rbp", "rdi", "rsi",
           "r15", "r14", "r13", "r12", "r11", "r10", "r9", "r8",
           "rdx", "rcx", "rbx", "rax"
         ] %}
-      @frame.not_nil!.{{ id.id }} = syscall_frame.value.{{ id.id }}
+      frame.{{ id.id }} = syscall_frame.value.{{ id.id }}
       {% end %}
-      @frame.not_nil!.rflags = USER_RFLAGS
-      @frame.not_nil!.cs = USER_CS_SEGMENT
-      @frame.not_nil!.ss = USER_SS_SEGMENT
-      @frame.not_nil!.ds = USER_SS_SEGMENT
+      frame.rflags = USER_RFLAGS
+      frame.cs = USER_CS_SEGMENT
+      frame.ss = USER_SS_SEGMENT
+      frame.ds = USER_SS_SEGMENT
+
+      @frame = Pointer(IdtData::Registers).malloc
+      @frame.value = frame
     end
 
     # initialize
@@ -378,7 +384,7 @@ module Multiprocessing
       end
     end
 
-    if next_process.frame.nil?
+    if next_process.frame.null?
       next_process.new_frame
     end
 
@@ -397,9 +403,9 @@ module Multiprocessing
     # wake up process
     if next_process.status == Multiprocessing::Process::Status::Unwait
       # transition state from kernel syscall
-      next_process.frame.not_nil!.rip =
-        Pointer(UInt32).new(next_process.frame.not_nil!.rcx).value
-      next_process.frame.not_nil!.userrsp = next_process.frame.not_nil!.rcx
+      next_process.frame.value.rip =
+        Pointer(UInt32).new(next_process.frame.value.rcx).value
+      next_process.frame.value.userrsp = next_process.frame.value.rcx
       next_process.status = Multiprocessing::Process::Status::Normal
     end
 
@@ -413,23 +419,21 @@ module Multiprocessing
 
   def switch_process(frame : IdtData::Registers*)
     current_process = switch_process_save_and_load do |process|
-      process.frame = frame.value
+      process.frame.value = frame.value
     end
-    frame.value = current_process.frame.not_nil!
+    frame.value = current_process.frame.value
   end
 
   def switch_process(frame : SyscallData::Registers*)
     current_process = switch_process_save_and_load do |process|
       process.new_frame_from_syscall frame
     end
-    new_frame = current_process.frame.not_nil!
-    Kernel.ksyscall_switch(pointerof(new_frame))
+    Kernel.ksyscall_switch(current_process.frame)
   end
   
   def switch_process_and_terminate
     current_process = switch_process_save_and_load(true) {}
-    new_frame = current_process.frame.not_nil!
-    Kernel.ksyscall_switch(pointerof(new_frame))
+    Kernel.ksyscall_switch(current_process.frame)
   end
 
   # iteration

@@ -47,7 +47,7 @@ struct Pointer(T)
   end
 
   # pg malloc
-  def self.malloc(size)
+  def self.malloc(size = 1)
     Gc.unsafe_malloc(size.to_usize * sizeof(T), true).as(T*)
   end
 

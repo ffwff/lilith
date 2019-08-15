@@ -53,6 +53,7 @@ module Paging
   end
 
   # set linear address of the page directory pointer table
+  @[NoInline]
   def current_pdpt=(x)
     new_addr = x.address | PTR_IDENTITY_MASK
     @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new new_addr
@@ -171,6 +172,7 @@ module Paging
   end
 
   # state
+  @[NoInline]
   def flush
     asm("mov $0, %cr3" :: "r"(@@pml4_table) : "volatile", "memory")
   end
