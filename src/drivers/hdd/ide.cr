@@ -50,7 +50,7 @@ private module Ata
   ER_TK0NF = 0x02
   ER_AMNF  = 0x01
 
-  # ide commands
+  # ata commands
   CMD_READ_PIO        = 0x20u8
   CMD_READ_PIO_EXT    = 0x24u8
   CMD_READ_DMA        = 0xC8u8
@@ -64,6 +64,10 @@ private module Ata
   CMD_PACKET          = 0xA0u8
   CMD_IDENTIFY_PACKET = 0xA1u8
   CMD_IDENTIFY        = 0xECu8
+
+  # atapi commands
+  ATAPI_CMD_READ  = 0xA8u8
+  ATAPI_CMD_EJECT = 0x1Bu8
 
   # identifiers
   IDENT_DEVICETYPE   =   0
@@ -109,6 +113,8 @@ private module Ata
   DIR_READ  = 0x00
   DIR_WRITE = 0x01
 
+  SCSI_PACKET_SIZE = 12
+
   def read_cyl(bus)
     cl = X86.inb(bus + REG_LBA1)
     ch = X86.inb(bus + REG_LBA2)
@@ -144,12 +150,21 @@ private module Ata
     status
   end
 
+  # Wait for ATAPI command to be finished
+  # See: http://lateblt.tripod.com/atapi.htm
+  def wait_atapi(bus)
+    while ((status = X86.inb(bus + REG_STATUS)) & SR_BSY) != 0 &&
+          (status & SR_DRQ) != 0
+    end
+    status
+  end
+
   def wait(bus, advanced = false)
     wait_io bus
     status = wait_ready bus
     if advanced
       if (status & SR_ERR) != 0 ||
-         (status & SR_DF) != 0 ||
+         (status & SR_DF)  != 0 ||
          (status & SR_DRQ) == 0
         return false
       end
@@ -158,17 +173,56 @@ private module Ata
   end
 
   # read functions
-  def read_cmd(sector_28, bus, slave)
+  def read(sector, bus, slave)
     wait_ready bus
 
     X86.outb(bus + REG_HDDEVSEL, (0xe0 | slave.unsafe_shl(4) |
-                                  (sector_28 & 0x0f000000).unsafe_shr(24)).to_u8)
+                                  (sector & 0x0f000000).unsafe_shr(24)).to_u8)
     X86.outb(bus + REG_FEATURES, 0x00)
     X86.outb(bus + REG_SECCOUNT0, 1)
-    X86.outb(bus + REG_LBA0, (sector_28 & 0x000000ff).to_u8)
-    X86.outb(bus + REG_LBA1, (sector_28 & 0x0000ff00).unsafe_shr(8).to_u8)
-    X86.outb(bus + REG_LBA2, (sector_28 & 0x00ff0000).unsafe_shr(16).to_u8)
+    X86.outb(bus + REG_LBA0, (sector & 0x000000ff).to_u8)
+    X86.outb(bus + REG_LBA1, (sector & 0x0000ff00).unsafe_shr(8).to_u8)
+    X86.outb(bus + REG_LBA2, (sector & 0x00ff0000).unsafe_shr(16).to_u8)
     X86.outb(bus + REG_COMMAND, CMD_READ_PIO)
+  end
+
+  def read_atapi(sector, bus, slave)
+    # Almost all ATAPI devices have a sector size of 2048
+    sector_size = 2048
+
+    # SCSI packet
+    packet = uninitialized UInt8[SCSI_PACKET_SIZE]
+    packet[0] = ATAPI_CMD_READ
+    packet[1] = 0x0u8
+    packet[2] = (sector.unsafe_shr(24) & 0xFF).to_u8
+    packet[3] = (sector.unsafe_shr(16) & 0xFF).to_u8
+    packet[4] = (sector.unsafe_shr(8)  & 0xFF).to_u8
+    packet[5] = (sector.unsafe_shr(0)  & 0xFF).to_u8
+    packet[6] = 0x0u8
+    packet[7] = 0x0u8
+    packet[8] = 0x0u8
+    packet[9] = 0x1u8 # number of sectors
+    packet[10] = 0x0u8
+    packet[11] = 0x0u8
+
+    wait_ready bus
+
+    X86.outb(bus + REG_HDDEVSEL, slave.unsafe_shl(4).to_u8)
+    wait_io bus
+
+    X86.outb(bus + REG_FEATURES, 0x00)
+    X86.outb(bus + REG_LBA0, (sector_size & 0xFF).to_u8)
+    X86.outb(bus + REG_LBA1, sector_size.unsafe_shr(8).to_u8)
+    X86.outb(bus + REG_COMMAND, CMD_PACKET)
+
+    return unless wait(bus, true)
+
+    6.times do |i|
+      packet.to_unsafe.as(UInt16*)[i]
+    end
+
+    # read alternate status and ignore it
+    X86.inb(bus + REG_ALTSTATUS)
   end
 
   def flush_cache(bus)
@@ -290,8 +344,17 @@ class AtaDevice
 
   @buffer = Pointer(UInt16).null
   def read_sector(sector_28, &block)
-    Ata.read_cmd sector_28, disk_port, slave
+    case @type
+    when Type::Ata
+      Ata.read sector_28, disk_port, slave
+    when Type::Atapi
+      Ata.read_atapi sector_28, disk_port, slave
+    end
+
+    # poll
     return false if !Ata.wait(disk_port, true)
+
+    # read from sector
     if @buffer.null?
       @buffer = Pointer(UInt16).malloc(256)
     end
@@ -301,8 +364,7 @@ class AtaDevice
     256.times do |i|
       yield @buffer[i]
     end
-    Ata.flush_cache disk_port
-    Ata.wait disk_port
+
     true
   end
 
