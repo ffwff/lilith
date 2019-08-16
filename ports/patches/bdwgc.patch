@@ -1,0 +1,39 @@
+diff -u -r gc-8.0.4/config.sub gc-8.0.4.a/config.sub
+--- gc-8.0.4/config.sub	2019-03-02 15:55:47.000000000 +0700
++++ gc-8.0.4.a/config.sub	2019-08-16 15:16:24.700866418 +0700
+@@ -1368,7 +1368,7 @@
+ 	# The portable systems comes first.
+ 	# Each alternative MUST END IN A *, to match a version number.
+ 	# -sysv* is not here because it comes later, after sysvr4.
+-	-gnu* | -bsd* | -mach* | -minix* | -genix* | -ultrix* | -irix* \
++	-gnu* | -bsd* | -mach* | -minix* | -genix* | -ultrix* | -irix* | -lilith* \
+ 	      | -*vms* | -sco* | -esix* | -isc* | -aix* | -cnk* | -sunos | -sunos[34]*\
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+ 	      | -sym* | -kopensolaris* | -plan9* \
+diff -u -r gc-8.0.4/include/private/gcconfig.h gc-8.0.4.a/include/private/gcconfig.h
+--- gc-8.0.4/include/private/gcconfig.h	2019-03-02 15:54:41.000000000 +0700
++++ gc-8.0.4.a/include/private/gcconfig.h	2019-08-16 15:15:47.239906324 +0700
+@@ -87,6 +87,23 @@
+ 
+ /* Machine specific parts contributed by various people.  See README file. */
+ 
++#if defined(__lilith__)
++#define OS_TYPE "Lilith"
++#define NO_CLOCK
++#define NOSYS
++
++#if defined(i386)
++#define I386
++#define STACKBOTTOM 0xFFFFFFFF
++#define CPP_WORDSZ 32
++#define ALIGNMENT 4
++extern char _data[];
++#define DATASTART _data
++#endif
++
++#define mach_type_known
++#endif
++
+ #if defined(__ANDROID__) && !defined(HOST_ANDROID)
+   /* __ANDROID__ macro is defined by Android NDK gcc.   */
+ # define HOST_ANDROID 1

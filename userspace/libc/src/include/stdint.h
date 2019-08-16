@@ -9,10 +9,6 @@ typedef unsigned int       uint32_t;
 typedef long long           int64_t;
 typedef unsigned long long uint64_t;
 
-typedef uint32_t uintptr_t;
-typedef int32_t intptr_t;
-typedef int32_t ptrdiff_t;
-
 #define SIZET_MAX   UINT32_MAX
 #define SIZE_MAX    UINT32_MAX
 #define INTPTR_MAX  UINT32_MAX
