@@ -22,13 +22,11 @@ MBR_BOOTABLE_PARTITION = 0x80
 module MBR
   extend self
 
-  def read_ata(device)
-    mbr = uninitialized MBRStructs::MBR
-    device.read_sector_pointer(Pointer(UInt16).new(pointerof(mbr).address), 0)
+  def read(device)
+    mbr = Box(MBRStructs::MBR).new
+    device.read_sector_pointer(mbr.as(UInt16*), 0)
+    return nil unless mbr.object.header[0] == 0x55 && mbr.object.header[1] == 0xaa
     mbr
   end
 
-  def check_header(mbr : MBRStructs::MBR)
-    mbr.header[0] == 0x55 && mbr.header[1] == 0xaa
-  end
 end

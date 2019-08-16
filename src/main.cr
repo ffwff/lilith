@@ -90,17 +90,18 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   ROOTFS.append(KbdFS.new(kbd))
   ROOTFS.append(VGAFS.new)
 
-  mbr = MBR.read_ata(Ide.device(0))
   main_bin : VFSNode? = nil
-  if MBR.check_header(mbr)
+  if (mbr = MBR.read(Ide.device(0)))
     Console.puts "found MBR header...\n"
-    fs = Fat16FS.new Ide.device(0), mbr.partitions[0]
+    fs = Fat16FS.new Ide.device(0), mbr.object.partitions[0]
     fs.root.each_child do |node|
       if node.name == "main.bin"
         main_bin = node
       end
     end
     ROOTFS.append(fs)
+  else
+    panic "can't boot from this device"
   end
 
   Gdt.stack = Kernel.stack_end

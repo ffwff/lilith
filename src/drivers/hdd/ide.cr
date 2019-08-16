@@ -343,13 +343,10 @@ class AtaDevice
   end
 
   @buffer = Pointer(UInt16).null
-  def read_sector(sector_28, &block)
-    case @type
-    when Type::Ata
-      Ata.read sector_28, disk_port, slave
-    when Type::Atapi
-      Ata.read_atapi sector_28, disk_port, slave
-    end
+  def read_sector(sector, &block)
+    panic "can't access atapi" if @type == Type::Atapi
+
+    Ata.read sector, disk_port, slave
 
     # poll
     return false if !Ata.wait(disk_port, true)
@@ -368,9 +365,9 @@ class AtaDevice
     true
   end
 
-  def read_sector_pointer(ptr : UInt16*, sector_28)
+  def read_sector_pointer(ptr : UInt16*, sector)
     idx = 0
-    read_sector(sector_28) do |i|
+    read_sector(sector) do |i|
       ptr[idx] = i
       idx += 1
     end

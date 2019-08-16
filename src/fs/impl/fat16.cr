@@ -373,6 +373,9 @@ class Fat16FS < VFS
 
   def initialize(@device : AtaDevice, partition)
     Console.puts "initializing FAT16 filesystem\n"
+
+    panic "device must be ATA" if @device.type != AtaDevice::Type::Ata
+
     bs = Pointer(Fat16Structs::Fat16BootSector).mmalloc
 
     device.read_sector_pointer(bs.as(UInt16*), partition.first_sector)
@@ -405,10 +408,6 @@ class Fat16FS < VFS
     # cleanup
     entries.mfree
     bs.mfree
-  end
-
-  def debug(*args)
-    Serial.puts *args
   end
 
   #
