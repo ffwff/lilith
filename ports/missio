@@ -1,0 +1,110 @@
+#!/bin/bash
+
+usage() {
+    echo "$0: lilith's package manager"
+    echo "usage: $0 [options] action [packages]"
+    echo "actions:"
+    echo "  build: builds the package"
+    echo "  install: installs package into drive"
+    echo "options:"
+    echo "  -h: shows this help"
+    echo "  -d image: specify mount image [../drive.img]"
+    echo "  -m dir: specify mount directory [/mnt]"
+    echo "  -arch arch: specify target [i386-elf-lilith]"
+}
+
+opt_image="./drive.img"
+opt_mountdir="/mnt"
+opt_arch="i386-elf-lilith"
+
+fail() {
+    echo "$0: $1"
+    exit 1
+}
+
+drive_mount() {
+    echo "mounting $opt_image => $opt_mountdir..."
+    if [[ ! -b /dev/loop0p1 ]]; then
+        sudo losetup -P /dev/loop0 "$opt_image" || fail "failed to mount"
+    fi
+    sudo mount /dev/loop0p1 "$opt_mountdir" || ([[ $? -ne 32 ]] && fail "failed to mount")
+}
+
+drive_umount() {
+    echo "unmounting $opt_mountdir..."
+    sudo umount /mnt || fail "failed to unmount"
+}
+
+try_patch() {
+    patch -p1 -N --dry-run --silent < $1 >/dev/null 2>/dev/null
+    if [ $? -eq 0 ]; then
+        echo "patching directory with $1"
+        patch -p1 <$1 || fail "unable to patch using $1"
+    fi
+}
+
+while true; do
+    case "$1" in
+    -h)
+        usage
+        exit 0
+        ;;
+    -d)
+        opt_image="$2"
+        if [[ ! -f "$opt_image" ]]; then
+            fail "$opt_image doesn't exist"
+        fi
+        shift 2
+        ;;
+    -m)
+        opt_mountdir="$2"
+        if [[ ! -f "$opt_mountdir" ]]; then
+            fail "$opt_mountdir doesn't exist"
+        fi
+        shift 2
+        ;;
+    -arch)
+        opt_arch="$2"
+        if [[ ! -x $(which $opt_arch-gcc) ]]; then
+            fail "$opt_arch-gcc doesn't exist"
+        fi
+        if [[ ! -x $(which $opt_arch-ld) ]]; then
+            fail "$opt_arch-ld doesn't exist"
+        fi
+        shift 2
+        ;;
+    *)
+        case "$1" in
+        build|install)
+            action=$1
+
+            shift
+            drive_mount
+            
+            mkdir -p "./build"
+            build_dir="./build"
+            install_dir="$opt_mountdir"
+
+            for i in "$@"; do
+                if [[ ! -f "./$i/build.sh" ]]; then
+                    drive_umount
+                    fail "package $i doesn't exist"
+                fi
+                echo "Building $i..."
+                script_dir="$(pwd)/$i"
+                source ./$i/build.sh
+                build || fail "failed to build $i"
+                if [[ "$action" = "install" ]]; then
+                    install || fail "failed to install $i"
+                fi
+            done
+            drive_umount
+            exit 0
+            ;;
+        *)
+            usage
+            exit 1
+            ;;
+        esac
+    esac
+done
