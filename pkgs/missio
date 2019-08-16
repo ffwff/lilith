@@ -6,6 +6,7 @@ usage() {
     echo "actions:"
     echo "  build: builds the package"
     echo "  install: installs package into drive"
+    echo "  list: lists available packages"
     echo "options:"
     echo "  -h: shows this help"
     echo "  -d image: specify mount image [../drive.img]"
@@ -13,6 +14,7 @@ usage() {
     echo "  -arch arch: specify target [i386-elf-lilith]"
 }
 
+missio_dir=$(dirname $0)
 opt_image="./drive.img"
 opt_mountdir="/mnt"
 opt_arch="i386-elf-lilith"
@@ -79,26 +81,34 @@ while true; do
             action=$1
 
             shift
-            drive_mount
+            [[ "$action" = "install" ]] && drive_mount
             
             mkdir -p "./build"
             build_dir="./build"
             install_dir="$opt_mountdir"
 
             for i in "$@"; do
-                if [[ ! -f "./$i/build.sh" ]]; then
-                    drive_umount
+                if [[ ! -f "$missio_dir/$i/build.sh" ]]; then
+                    [[ "$action" = "install" ]] && drive_umount
                     fail "package $i doesn't exist"
                 fi
                 echo "Building $i..."
-                script_dir="$(pwd)/$i"
-                source ./$i/build.sh
+                script_dir="$missio_dir/$i"
+                source $script_dir/build.sh
                 build || fail "failed to build $i"
                 if [[ "$action" = "install" ]]; then
                     install || fail "failed to install $i"
                 fi
             done
-            drive_umount
+
+            [[ "$action" = "install" ]] && drive_umount
+            exit 0
+            ;;
+        list)
+            echo "Available packages:"
+            for i in $missio_dir/*; do
+                [[ -f "$i/build.sh" ]] && echo "  $(basename $i)"
+            done
             exit 0
             ;;
         *)
