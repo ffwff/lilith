@@ -32,8 +32,12 @@ module Paging
 
   # present, us, rw, global
   # PT_MASK_GLOBAL = 0x107
-  # global mask, ps
+  # global mask, ps, 1gb
   PT_MASK_GB_IDENTITY = 0x183
+  # global mask, ps
+  PT_MASK_MB_IDENTITY_DIR = 0x103
+  # global mask, ps, 2mb
+  PT_MASK_MB_IDENTITY_TABLE = 0x183
   # present, us, rw
   PT_MASK = 0x7
 
@@ -97,13 +101,34 @@ module Paging
     @@pml4_table.value.pdpt[1] = @@kernel_pdpt.address | PT_MASK
 
     # identity map the physical memory on the higher half
-    identity_map_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).pmalloc_a
-    dirs, _, _ = page_layer_indexes(@@usable_physical_memory)
-    (dirs + 1).times do |i|
-      pg = (i.to_u64 * 0x4000_0000u64) | PT_MASK_GB_IDENTITY
-      identity_map_pdpt.value.dirs[i] = pg
+    if Cpuid.has_feature?(Cpuid::FeaturesExtendedEdx::PDPE1GB)
+      # 1 GiB paging
+      identity_map_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).pmalloc_a
+      _, dirs, _, _ = page_layer_indexes(@@usable_physical_memory)
+      (dirs + 1).times do |i|
+        pg = (i.to_u64 * 0x4000_0000u64) | PT_MASK_GB_IDENTITY
+        identity_map_pdpt.value.dirs[i] = pg
+      end
+      @@pml4_table.value.pdpt[256] = identity_map_pdpt.address | PT_MASK
+    else
+      # 2 MiB paging
+      identity_map_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).pmalloc_a
+      _, dirs, tables, _ = page_layer_indexes(@@usable_physical_memory)
+      # add remaining tables to directory count
+      if tables > 0
+        dirs += 1
+      end
+      # directories
+      dirs.times do |i|
+        identity_dir = Pointer(PageStructs::PageDirectory).pmalloc_a
+        512.times do |j|
+          identity_dir_phys = i.to_u64 * 0x4000_0000u64 + j.to_u64 * 0x20_0000u64
+          identity_dir.value.tables[j] = identity_dir_phys | PT_MASK_MB_IDENTITY_TABLE
+        end
+        identity_map_pdpt.value.dirs[i] = identity_dir.address | PT_MASK_MB_IDENTITY_DIR
+      end
+      @@pml4_table.value.pdpt[256] = identity_map_pdpt.address | PT_MASK
     end
-    @@pml4_table.value.pdpt[256] = identity_map_pdpt.address | PT_MASK
 
     # claim initial memory
     i = text_start.address

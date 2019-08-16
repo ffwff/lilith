@@ -36,7 +36,7 @@ make build_libc
 
 ## Running
 
-A CPU with x64 support (with 1 GiB pages) is required to run the OS. The Makefile provides a script which will run QEMU on the kernel:
+A CPU with x64 support is required to run the OS. The Makefile provides a script which will run QEMU on the kernel:
 
 ```
 make run
@@ -52,7 +52,7 @@ make run_img
 
 * [x] Basic x86-64 support
 * [x] Hybrid conservative-precise incremental garbage collector
-* [x] IDE/ATA support (well, it can only read from primary master)
+* [x] IDE/ATA support (well, it can only load from primary master)
 * [x] FAT16 support
 * [x] Basic syscalls (open, read, write, spawn,...)
 * [x] Preemptive multitasking!

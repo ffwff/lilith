@@ -76,6 +76,7 @@ gdt_data:
 
 PAGE_PRESENT = 1 << 0
 PAGE_WRITE   = 1 << 1
+PAGE_2MB     = 1 << 7
 
 # identity page the first 1GiB of physical memory
 # pml4
@@ -97,18 +98,9 @@ pdpt_len = . - pdpt
 # pd
 .align 0x1000
 pd:
-    .long pt + (PAGE_PRESENT | PAGE_WRITE)
-    .long 0
+    .quad 0x0 + (PAGE_PRESENT | PAGE_WRITE | PAGE_2MB)
 pd_len = . - pd
     .skip 0x1000 - pd_len
-# pt
-.align 0x1000
-pt:
-.set i, 0
-.rept 512
-    .quad i + (PAGE_PRESENT | PAGE_WRITE)
-    .set i, i + 0x1000
-.endr
 
 .section .kernel64
 .incbin "build/kernel64.bin"

@@ -17,8 +17,8 @@ KERNEL_OBJ=build/main.o build/boot.o
 KERNEL_SRC=$(wildcard src/*.cr src/*/*.cr)
 
 ifeq ($(RELEASE),1)
-	CRFLAGS += --release
-	LLCFLAGS += -O1
+	CRFLAGS += --release -d
+	# LLCFLAGS += -O1
 else
 	CRFLAGS += -d
 	LLCFLAGS += -O1
@@ -33,6 +33,10 @@ QEMUFLAGS += \
 	-serial stdio \
 	-no-shutdown -no-reboot \
 	-vga std
+
+ifneq ($(shell cat /proc/cpuinfo | grep pdpe1gb | wc -l),0)
+QEMUFLAGS += -cpu SandyBridge,+pdpe1gb
+endif
 
 GDB = /usr/bin/gdb
 
