@@ -58,9 +58,6 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
                 Kernel.stack_start, Kernel.stack_end,
                 mboot_header)
 
-  # fix physical memory location in vga
-  VgaState.buffer = Pointer(UInt16).new(VgaState.buffer.address | PTR_IDENTITY_MASK)
-
   Console.puts "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
 
   # gc

@@ -10,6 +10,10 @@ class VFSReadMessage
   @buffering = VFSNode::Buffering::Unbuffered
   getter buffering
 
+  def slice_size
+    @slice.size
+  end
+
   def initialize(@slice : Slice(UInt8),
                  @process : Multiprocessing::Process,
                  @buffering)

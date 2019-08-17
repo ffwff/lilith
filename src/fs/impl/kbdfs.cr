@@ -154,19 +154,15 @@ class KbdFS < VFS
       ansi_buf_set StaticArray[0x1B, '['.ord, '3'.ord, '~'.ord]
     end
 
-    # TODO
-
-    {% if false %}
     root.read_queue.not_nil!.keep_if do |msg|
-      size = min(ansi_remaining, msg.slice.size)
+      size = min(ansi_remaining, msg.slice_size)
       size.times do |i|
-        msg.slice[i] = ansi_buf_pop
+        msg.respond ansi_buf_pop
       end
       msg.process.status = Multiprocessing::Process::Status::Unwait
       msg.process.frame.value.rax = size
       false
     end
-    {% end %}
   end
 
   # buffer to store ansi characters

@@ -22,10 +22,9 @@ enum VgaColor : UInt16
 end
 
 private struct VgaInstance < OutputDriver
-  def color_code(fg : VgaColor, bg : VgaColor, char : UInt8)
-    UInt16
+  def color_code(fg : VgaColor, bg : VgaColor, char : UInt8) : UInt16
     attrib = (bg.value.unsafe_shl(4)) | fg.value
-    attrib.unsafe_shl(8) | char.to_u8!
+    attrib.unsafe_shl(8) | char.to_u8
   end
 
   private def offset(x : Int, y : Int)
@@ -200,11 +199,9 @@ module VgaState
     @@cy = VGA_HEIGHT - 1
   end
 
-  @@buffer = Pointer(UInt16).new(0xb8000)
+  @@buffer = Pointer(UInt16).new(0xb8000u64 | PTR_IDENTITY_MASK)
   def buffer
     @@buffer
-  end
-  def buffer=(@@buffer)
   end
 end
 

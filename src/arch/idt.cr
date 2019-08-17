@@ -1,6 +1,6 @@
-IDT_SIZE                   =     256
-INTERRUPT_GATE             = 0x8Eu16
-KERNEL_CODE_SEGMENT_OFFSET = 0x08u16
+IDT_SIZE            =     256
+INTERRUPT_GATE      = 0x8Eu16
+KERNEL_CODE_SEGMENT = 0x08u16
 
 private lib Kernel
   {% for i in 0..31 %}
@@ -95,12 +95,12 @@ module Idt
 
     # cpu exception handlers
     {% for i in 0..31 %}
-      #init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
+      #init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
     {% end %}
 
     # hw interrupts
     {% for i in 0..15 %}
-      init_idt_entry {{ i + 32 }}, KERNEL_CODE_SEGMENT_OFFSET, (->Kernel.kirq{{ i.id }}).pointer.address, INTERRUPT_GATE
+      init_idt_entry {{ i + 32 }}, KERNEL_CODE_SEGMENT, (->Kernel.kirq{{ i.id }}).pointer.address, INTERRUPT_GATE
     {% end %}
 
     Kernel.kload_idt pointerof(@@idtr).address.to_u32
