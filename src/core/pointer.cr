@@ -15,8 +15,8 @@ module Pmalloc
   end
 
   def alloca(size : USize)
-    if (@@addr & 0xFFFF_F000) != 0
-      @@addr = (@@addr & 0xFFFF_F000) + 0x1000
+    if (@@addr & 0xFFFF_FFFF_FFFF_F000) != 0
+      @@addr = (@@addr & 0xFFFF_FFFF_FFFF_F000) + 0x1000
     end
     alloc(size)
   end

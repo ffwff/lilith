@@ -26,6 +26,7 @@ end
 
 PTR_IDENTITY_MASK = 0xFFFF_8000_0000_0000u64
 KERNEL_OFFSET     = 0x80_0000_0000u64
+PDPT_SIZE         = 0x80_0000_0000u64
 
 module Paging
   extend self
@@ -188,7 +189,7 @@ module Paging
     t_addr(x) + 0x1000
   end
 
-  private def page_layer_indexes(addr : UInt64)
+  def page_layer_indexes(addr : UInt64)
     pdpt_idx  = addr.unsafe_shr(39) & (0x200 - 1)
     dir_idx   = addr.unsafe_shr(30) & (0x200 - 1)
     table_idx = addr.unsafe_shr(21) & (0x200 - 1)
@@ -341,13 +342,13 @@ module Paging
   end
 
   # table address
-  private def t_addr(addr : UInt64)
+  def t_addr(addr : UInt64)
     addr & 0xFFFF_FFFF_FFFF_F000u64
   end
 
   # mapped table address
-  private def mt_addr(addr : UInt64)
-    (addr & 0xFFFF_FFFF_FFFF_F000u64) | PTR_IDENTITY_MASK
+  def mt_addr(addr : UInt64)
+    Paging.t_addr(addr) | PTR_IDENTITY_MASK
   end
 
   # identity map pages at init

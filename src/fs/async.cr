@@ -15,8 +15,6 @@ class VFSReadMessage
                  @buffering)
   end
 
-  getter slice
-
   def finished?
     offset == @slice.size
   end
@@ -25,7 +23,7 @@ class VFSReadMessage
     size = min(buf.size, @slice.size - @offset)
     if size > 0
       size.times do |i|
-        @slice[@offset] = buf[i]
+        @process.write_to_virtual(@slice.to_unsafe + @offset, buf[i])
         @offset += 1
       end
     end
@@ -33,7 +31,7 @@ class VFSReadMessage
 
   def respond(ch)
     unless finished?
-      @slice[@offset] = ch.to_u8
+      @process.write_to_virtual(@slice.to_unsafe + @offset, ch.to_u8)
       @offset += 1
     end
   end

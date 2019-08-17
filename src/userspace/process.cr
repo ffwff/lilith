@@ -298,6 +298,29 @@ module Multiprocessing
       @udata = nil
     end
 
+    # write address to page without switching tlb to the process' pdpt
+    def write_to_virtual(virt_ptr : UInt8*, byte : UInt8)
+      virt_addr = virt_ptr.address
+      return false if virt_addr > PDPT_SIZE
+
+      offset = virt_addr & 0xFFF
+      _, dir_idx, table_idx, page_idx = Paging.page_layer_indexes(virt_addr)
+
+      pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+        .new(Paging.mt_addr @phys_pg_struct)
+
+      pd = Pointer(PageStructs::PageDirectory).new(Paging.mt_addr pdpt.value.dirs[dir_idx])
+      return false if pd.null?
+
+      pt = Pointer(PageStructs::PageTable).new(Paging.mt_addr pd.value.tables[table_idx])
+      return false if pt.null?
+
+      bytes = Pointer(UInt8).new(Paging.mt_addr(pt.value.pages[page_idx]))
+      bytes[offset] = byte
+
+      true
+    end
+
     # debugging
     def to_s(io)
       io.puts "Process {\n"

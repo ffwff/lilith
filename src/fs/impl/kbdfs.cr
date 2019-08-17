@@ -113,39 +113,31 @@ class KbdFS < VFS
       end
     end
 
-    Idt.lock do
-      last_pg_struct = Paging.current_pdpt
-      root.read_queue.not_nil!.keep_if do |msg|
-        dir = msg.process.phys_pg_struct
-        Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(dir.to_u64)
-        Paging.flush
-        case msg.buffering
-        when VFSNode::Buffering::Unbuffered
-          msg.respond n
-          msg.process.status = Multiprocessing::Process::Status::Unwait
-          msg.process.frame.value.rax = 1
+    root.read_queue.not_nil!.keep_if do |msg|
+      case msg.buffering
+      when VFSNode::Buffering::Unbuffered
+        msg.respond n
+        msg.process.status = Multiprocessing::Process::Status::Unwait
+        msg.process.frame.value.rax = 1
+        false
+      else
+        if ch == '\b' && msg.offset > 0
+          msg.respond 0
           false
         else
-          if ch == '\b' && msg.offset > 0
-            msg.respond 0
+          msg.respond n
+          if (msg.buffering == VFSNode::Buffering::LineBuffered && ch == '\n') ||
+              msg.finished?
+            msg.process.status = Multiprocessing::Process::Status::Unwait
+            msg.process.frame.value.rax = msg.offset
             false
           else
-            msg.respond n
-            if (msg.buffering == VFSNode::Buffering::LineBuffered && ch == '\n') ||
-                msg.finished?
-              msg.process.status = Multiprocessing::Process::Status::Unwait
-              msg.process.frame.value.rax = msg.offset
-              false
-            else
-              true
-            end
+            true
           end
         end
       end
-
-      Paging.current_pdpt = last_pg_struct
-      Paging.flush
     end
+
   end
 
   def on_key(key : Keyboard::SpecialKeys)
@@ -162,23 +154,19 @@ class KbdFS < VFS
       ansi_buf_set StaticArray[0x1B, '['.ord, '3'.ord, '~'.ord]
     end
 
-    Idt.lock do
-      last_pg_struct = Paging.current_pdpt
-      root.read_queue.not_nil!.keep_if do |msg|
-        dir = msg.process.phys_pg_struct
-        Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(dir.to_u64)
-        Paging.flush
-        size = min ansi_remaining, msg.slice.size
-        size.times do |i|
-          msg.slice[i] = ansi_buf_pop
-        end
-        msg.process.status = Multiprocessing::Process::Status::Unwait
-        msg.process.frame.value.rax = size
-        false
+    # TODO
+
+    {% if false %}
+    root.read_queue.not_nil!.keep_if do |msg|
+      size = min(ansi_remaining, msg.slice.size)
+      size.times do |i|
+        msg.slice[i] = ansi_buf_pop
       end
-      Paging.current_pdpt = last_pg_struct
-      Paging.flush
+      msg.process.status = Multiprocessing::Process::Status::Unwait
+      msg.process.frame.value.rax = size
+      false
     end
+    {% end %}
   end
 
   # buffer to store ansi characters
