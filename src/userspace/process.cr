@@ -4,8 +4,6 @@ private lib Kernel
   fun ksyscall_switch(frame : IdtData::Registers*) : NoReturn
 end
 
-FXSAVE_SIZE = 512u64
-
 module Multiprocessing
   extend self
 
@@ -19,9 +17,11 @@ module Multiprocessing
   USER_SS_SEGMENT = 0x23
   USER_RFLAGS = 0x212
 
-  KERNEL_CS_SEGMENT = 0x08
-  KERNEL_SS_SEGMENT = 0x10
+  KERNEL_CS_SEGMENT = 0x29
+  KERNEL_SS_SEGMENT = 0x31
   KERNEL_RFLAGS = 0x202
+
+  FXSAVE_SIZE = 512u64
 
   @@current_process : Process? = nil
 
@@ -88,10 +88,6 @@ module Multiprocessing
 
     @status = Status::Normal
     property status
-    # def status=(x)
-    #   Serial.puts "status: ", @status, " => ", x, "\n"
-    #   @status = x
-    # end
 
     # user-mode process data
     class UserData
@@ -164,8 +160,6 @@ module Multiprocessing
     def initialize(@udata : UserData?, save_fx = true, &on_setup_paging : Process -> _)
       # user mode specific
       if save_fx
-        # NOTE: somewhere the process got switched
-        # but somehow fxsave_region (and registers dont change)
         @fxsave_region = Pointer(UInt8).malloc(FXSAVE_SIZE)
         memset(@fxsave_region, 0x0, FXSAVE_SIZE)
       else

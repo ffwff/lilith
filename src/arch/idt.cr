@@ -193,7 +193,9 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
     id       = (errcode & 0x10) != 0
 
     Serial.puts Pointer(Void).new(faulting_address), user, " ", Pointer(Void).new(frame.value.rip), "\n"
-    if user
+    if Multiprocessing.current_process.not_nil!.kernel_process?
+      panic "kernel space"
+    else
       if faulting_address < Multiprocessing::USER_STACK_TOP &&
          faulting_address > Multiprocessing::USER_STACK_BOTTOM_MAX
         # stack page fault
@@ -204,8 +206,6 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
       else
         Multiprocessing.switch_process_and_terminate
       end
-    else
-      panic "kernel space"
     end
   else
     panic "kernel fault: ", frame.value.int_no, ' ', errcode, '\n'

@@ -1,4 +1,4 @@
-GDT_SIZE = 5 # regular entries
+GDT_REGULARS = 7
 
 private lib Kernel
   @[Packed]
@@ -50,7 +50,7 @@ private lib Kernel
 
   @[Packed]
   struct Gdt
-    entries     : Kernel::GdtEntry[GDT_SIZE]
+    entries     : Kernel::GdtEntry[GDT_REGULARS]
     sys_entries : GdtSystemEntry[1] # tss
   end
 
@@ -74,8 +74,10 @@ module Gdt
     init_gdt_entry 0, 0x0, 0x0, 0x0, 0x0          # null
     init_gdt_entry 1, 0x0, 0xFFFFFFFF, 0x9A, 0xAF # kernel code (64-bit)
     init_gdt_entry 2, 0x0, 0xFFFFFFFF, 0x92, 0x0F # kernel data (64-bit)
-    init_gdt_entry 3, 0x0, 0xFFFFFFFF, 0xFA, 0xCF # user code
-    init_gdt_entry 4, 0x0, 0xFFFFFFFF, 0xF2, 0xCF # user data
+    init_gdt_entry 3, 0x0, 0xFFFFFFFF, 0xFA, 0xCF # user code (32-bit)
+    init_gdt_entry 4, 0x0, 0xFFFFFFFF, 0xF2, 0xCF # user data (32-bit)
+    init_gdt_entry 5, 0x0, 0xFFFFFFFF, 0xBA, 0xAF # device code (CPL=1)
+    init_gdt_entry 6, 0x0, 0xFFFFFFFF, 0xB2, 0xAF # device data (CPL=1)
     init_tss
 
     Kernel.kload_gdt pointerof(@@gdtr)

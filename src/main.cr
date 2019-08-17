@@ -29,6 +29,7 @@ ROOTFS = RootFS.new
 
 fun idle_loop
   while true
+    asm("invlpg(0)")
   end
 end
 

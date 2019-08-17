@@ -11,6 +11,6 @@ kload_gdt:
 
 .global kload_tss
 kload_tss:
-    mov $0x2b, %bx
+    mov $0x3A, %bx
     ltr %bx
     ret
