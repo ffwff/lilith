@@ -179,7 +179,6 @@ module FbdevState
         end
       end
     end
-    breakpoint
   end
 
   def scroll

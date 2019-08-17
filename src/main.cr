@@ -27,12 +27,6 @@ end
 
 ROOTFS = RootFS.new
 
-fun idle_loop
-  while true
-    asm("invlpg(0)")
-  end
-end
-
 fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   if mboot_magic != MULTIBOOT_BOOTLOADER_MAGIC
     panic "Kernel should be booted from a multiboot bootloader!"
@@ -111,7 +105,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   idle_process = Multiprocessing::Process.new(nil, false) do |process|
     process.initial_sp = Kernel.stack_end.address
-    process.initial_ip = (->idle_loop).pointer.address
+    process.initial_ip = 0u64
   end
 
   if main_bin.nil?

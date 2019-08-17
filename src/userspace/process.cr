@@ -370,29 +370,42 @@ module Multiprocessing
     current_process.remove if remove
 
     # save current process' state
-    unless remove
-      # current_process.frame = frame?.not_nil!
+    if current_process.pid != 0 && !remove
       yield current_process
       unless current_process.fxsave_region.null?
         memcpy current_process.fxsave_region, Multiprocessing.fxsave_region, FXSAVE_SIZE
       end
     end
 
-    if next_process.frame.null?
+    if next_process.pid == 0
+      # halt the processor in pid 0
+      rsp = Gdt.stack
+      asm("mov $0, %rsp
+           mov %rsp, %rbp
+           sti" :: "r"(rsp) : "volatile", "{rsp}", "{rbp}")
+      while true
+        asm("hlt")
+      end
+    elsif next_process.frame.null?
+      # create new frame if necessary
       next_process.new_frame
     end
 
     # switch page directory
     if next_process.kernel_process?
+      # no need to change paging when transitioning to kernel mode
+      # unless we're removing the current one
       if remove
         Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
           .new(first_process.not_nil!.phys_pg_struct)
+        Paging.flush
       end
     else
+      # switch to other user process' page
       Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
         .new(next_process.phys_pg_struct)
+      Paging.flush
     end
-    Paging.flush
 
     # wake up process
     if next_process.status == Multiprocessing::Process::Status::Unwait
