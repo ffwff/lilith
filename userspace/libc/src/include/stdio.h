@@ -11,6 +11,7 @@ extern FILE *stderr;
 
 FILE *fopen(const char *pathname, const char *mode);
 int fclose(FILE *stream);
+int fileno(FILE *stream);
 
 int fflush(FILE *);
 

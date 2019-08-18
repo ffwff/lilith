@@ -90,15 +90,6 @@ class File
   end
 
   def initialize(@fd, mode : LibC::String)
-  end
-
-  def _finalize
-    close @fd
-    # @wbuffer.free
-    # @rbuffer.free
-  end
-
-  def parse_mode(mode)
     @status = Status::None
     until mode.value == 0
       ch = mode.value.unsafe_chr
@@ -109,6 +100,12 @@ class File
       end
       mode += 1
     end
+  end
+
+  def _finalize
+    close @fd
+    # @wbuffer.free
+    # @rbuffer.free
   end
 
   private def line_buffered?
@@ -260,9 +257,9 @@ module Stdio
   def stderr; @@stderr; end
 
   def init
-    LibC.stdin  = pointerof(@@stdin).as(Void*)
-    LibC.stdout = pointerof(@@stdout).as(Void*)
-    LibC.stderr = pointerof(@@stderr).as(Void*)
+    LibC.stdin  = @@stdin.as(Void*)
+    LibC.stdout = @@stdout.as(Void*)
+    LibC.stderr = @@stderr.as(Void*)
   end
 
   def flush
@@ -280,22 +277,25 @@ fun fopen(file : LibC::String, mode : LibC::String) : Void*
   if fd.to_u32 == SYSCALL_ERR
     return Pointer(Void).null
   end
-  stream = File.new fd, mode
-  stream.as(Void*)
+  File.new(fd, mode).as(Void*)
 end
 
 fun fclose(stream : Void*) : LibC::Int
-  stream = stream.as(File*)
-  stream.value._finalize
-  unless stream.value.fd <= STDERR
-    # TODO
-    stream.free
-  end
+  # stream = stream.as(File*)
+  # stream.value._finalize
+  # unless stream.value.fd <= STDERR
+  #   # TODO
+  #   stream.free
+  # end
   0
 end
 
+fun fileno(stream : Void*) : LibC::Int
+  stream.as(File).fd
+end
+
 fun fflush(stream : Void*) : LibC::Int
-  stream.as(File*).value.fflush
+  stream.as(File).fflush
 end
 
 fun fseek(stream : Void*, offset : LibC::Int, whence : LibC::Int) : LibC::Int
@@ -309,31 +309,31 @@ fun ftell(stream : Void*) : LibC::Int
 end
 
 fun fread(ptr : UInt8*, size : LibC::SizeT, nmemb : LibC::SizeT, stream : Void*) : LibC::SizeT
-  stream.as(File*).value.fread(ptr, size * nmemb)
+  stream.as(File).fread(ptr, size * nmemb)
 end
 
 fun fwrite(ptr : UInt8*, size : LibC::SizeT, nmemb : LibC::SizeT, stream : Void*) : LibC::SizeT
-  stream.as(File*).value.fwrite(ptr, size * nmemb)
+  stream.as(File).fwrite(ptr, size * nmemb)
 end
 
 fun fgets(str : LibC::String, size : LibC::Int, stream : Void*) : LibC::String
-  stream.as(File*).value.fgets(str, size)
+  stream.as(File).fgets(str, size)
 end
 
 fun fgetc(stream : Void*) : LibC::Int
-  stream.as(File*).value.fgetc
+  stream.as(File).fgetc
 end
 
 fun feof(stream : Void*) : LibC::Int
-  stream.as(File*).value.feof ? 1 : 0
+  stream.as(File).feof ? 1 : 0
 end
 
 fun fputs(str : LibC::String, stream : Void*) : LibC::Int
-  stream.as(File*).value.fputs str
+  stream.as(File).fputs str
 end
 
 fun fnputs(data : LibC::String, len : LibC::SizeT,  stream : Void*) : LibC::Int
-  stream.as(File*).value.fnputs data, len
+  stream.as(File).fnputs data, len
 end
 
 # prints
@@ -354,11 +354,11 @@ fun putchar(c : LibC::Int) : LibC::Int
 end
 
 fun putc(c : LibC::Int, stream : Void*) : LibC::Int
-  stream.as(File*).value.fputc c
+  stream.as(File).fputc c
 end
 
 fun fputc(c : LibC::Int, stream : Void*) : LibC::Int
-  stream.as(File*).value.fputc c
+  stream.as(File).fputc c
 end
 
 # get
@@ -369,7 +369,7 @@ fun getchar : LibC::Int
 end
 
 fun getline(lineptr : LibC::String*, n : LibC::SizeT*, stream : Void*) : LibC::SSizeT
-  stream.as(File*).value.getline lineptr, n
+  stream.as(File).getline lineptr, n
 end
 
 # errors

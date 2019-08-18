@@ -216,8 +216,19 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     fdi = fv.rbx.to_i32
     fd = try(pudata.get_fd(fdi))
     str = try(checked_string_argument(fv.rdx))
-    Idt.lock do # may allocate
-      fv.rax = fd.not_nil!.node.not_nil!.write(str)
+    result = fd.not_nil!.node.not_nil!.write(str)
+    case result
+    when VFS_WAIT
+      Idt.lock do # may allocate
+        vfs_node = fd.not_nil!.node.not_nil!
+        vfs_node.fs.queue.not_nil!
+          .enqueue(VFSMessage.new(VFSMessage::Type::Write,
+            str, process, fd.not_nil!.buffering, vfs_node))
+      end
+      process.status = Multiprocessing::Process::Status::WaitIo
+      Multiprocessing.switch_process(frame)
+    else
+      fv.rax = result
     end
   when SC_SEEK
     fdi = fv.rbx.to_i32

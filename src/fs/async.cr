@@ -66,12 +66,11 @@ class VFSQueue
   end
 
   def dequeue
-    msg = @first_msg.get
-    if msg.nil?
-      nil
-    else
-      @first_msg.set(msg.not_nil!.next_msg)
+    unless (msg = @first_msg.get).nil?
+      @first_msg.set(msg.not_nil!.next_msg.get)
       msg
+    else
+      nil
     end
   end
 

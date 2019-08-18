@@ -30,6 +30,11 @@ class Object
     end
     {% end %}
   end
+
+  def unsafe_as(type : T.class) forall T
+    x = self
+    pointerof(x).as(T*).value
+  end
 end
 
 struct Nil
