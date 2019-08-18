@@ -1,6 +1,10 @@
 require "./static_array.cr"
 
 struct Int
+  alias Signed = Int8 | Int16 | Int32 | Int64 | Int128
+  alias Unsigned = UInt8 | UInt16 | UInt32 | UInt64 | UInt128
+  alias Primitive = Signed | Unsigned
+
   def times
     x = 0
     while x < self

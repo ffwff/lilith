@@ -19,7 +19,7 @@ module Multiprocessing
 
   KERNEL_CS_SEGMENT = 0x29
   KERNEL_SS_SEGMENT = 0x31
-  KERNEL_RFLAGS = 0x02
+  KERNEL_RFLAGS = 0x1202 # IOPL=1
 
   FXSAVE_SIZE = 512u64
 
@@ -285,7 +285,7 @@ module Multiprocessing
 
     def self.spawn_kernel(function, arg : Void*? = nil)
       Multiprocessing::Process.new do |process|
-        process.initial_sp = 0u64
+        stack = Paging.alloc_page_pg(Paging.t_addr(process.initial_sp), true, false)
         process.initial_ip = function.pointer.address
 
         unless arg.nil?

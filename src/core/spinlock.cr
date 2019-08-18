@@ -1,20 +1,12 @@
 struct Spinlock
 
-  @value = false
-
-  private def compare_and_set(cmp, new)
-    result = 0u64
-    asm("cmpxchg $2, ($1)"
-      : "={rax}"(result)
-      : "r"(pointerof(@value)), "r"(new), "{rax}"(cmp)
-      : "volatile", "memory")
-    result == cmp.to_unsafe
-  end
+  @value = Atomic(Int32).new 0
 
   def lock
     i = 0
     while i < 10000
-      return true if compare_and_set(false, true)
+      _, changed = @value.compare_and_set(0, 1)
+      return true if changed
       i += 1
     end
     Serial.puts "spinlock: unable to lock after 10000 iterations\n"
@@ -22,7 +14,7 @@ struct Spinlock
   end
 
   def unlock
-    compare_and_set(true, false)
+    @value.compare_and_set(1, 0)
   end
 
   def with(&block)

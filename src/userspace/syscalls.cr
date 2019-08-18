@@ -204,7 +204,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
       Idt.lock do # may allocate
         vfs_node = fd.not_nil!.node.not_nil!
         vfs_node.fs.queue.not_nil!
-          .push(VFSMessage.new(VFSMessage::Type::Read,
+          .enqueue(VFSMessage.new(VFSMessage::Type::Read,
             str, process, fd.not_nil!.buffering, vfs_node))
       end
       process.status = Multiprocessing::Process::Status::WaitIo

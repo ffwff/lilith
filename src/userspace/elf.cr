@@ -174,7 +174,7 @@ module ElfReader
     unless vfs.size > 0
       return ParserError::EmptyFile
     end
-    Paging.alloc_page_pg(process.initial_sp.to_usize - 0x1000 * 4, true, true, npages: 4)
+    Paging.alloc_page_pg(process.initial_sp - 0x1000 * 4, true, true, npages: 4)
     mmap_list : GcArray(MemMapNode)? = nil
     mmap_append_idx = 0
     mmap_idx = 0
@@ -191,11 +191,11 @@ module ElfReader
             data.p_vaddr, data.p_memsz)
           mmap_list.not_nil![mmap_append_idx] = ins_node
           mmap_append_idx += 1
-          if data.p_flags & ElfStructs::Elf32PFlags::PF_R
+          if data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_R)
             npages = data.p_memsz.to_usize.unsafe_shr(12) + 1
             # create page and zero-initialize it
             page_start = Paging.alloc_page_pg(data.p_vaddr.to_usize,
-              (data.p_flags & ElfStructs::Elf32PFlags::PF_W) == ElfStructs::Elf32PFlags::PF_W,
+              data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_W),
               true, npages)
             zero_page Pointer(UInt8).new(page_start), npages
           end

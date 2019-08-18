@@ -310,9 +310,6 @@ class Fat16Node < VFSNode
     VFS_ERR
   end
 
-  def queue
-  end
-
   # entry loading
   def load_entry(entry)
     return if !entry_exists? entry
@@ -401,19 +398,25 @@ class Fat16FS < VFS
       end
     end
 
-    #Multiprocessing::Process.spawn_kernel(->(ptr : Void*) { fat16_process(ptr) }, self.as(Void*))
+    @queue = VFSQueue.new
+    Multiprocessing::Process.spawn_kernel(->(ptr : Void*) {
+      fs = ptr.as(Fat16FS*).value
+      fs.process
+    }, self.as(Void*))
 
     # cleanup
     entries.mfree
     bs.mfree
   end
 
-  #
-  def root
-    @root.not_nil!
-  end
-end
+  # queue
+  getter queue
 
-fun fat16_process(ptr : Void*)
-  fs = ptr.as(Fat16FS*).value
+  # process
+  @process_msg : VFSMessage? = nil
+  def process
+    while true
+      # @process_msg = nil
+    end
+  end
 end

@@ -102,7 +102,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     Console.puts "found MBR header...\n"
     fs = Fat16FS.new Ide.device(0), mbr.object.partitions[0]
     fs.root.each_child do |node|
-      if node.name == "main.bin"
+      if node.name == "main"
         main_bin = node
       end
     end

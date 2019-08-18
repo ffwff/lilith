@@ -1,5 +1,5 @@
 class VFSMessage
-  @next_msg : VFSMessage? = nil
+  @next_msg = Atomic(VFSMessage?).new(nil)
   property next_msg
 
   getter process
@@ -51,38 +51,42 @@ class VFSMessage
 end
 
 class VFSQueue
-  @first_msg : VFSMessage? = nil
-  @last_msg  : VFSMessage? = nil
+  @first_msg = Atomic(VFSMessage?).new(nil)
+  @last_msg  = Atomic(VFSMessage?).new(nil)
 
-  def pop
-    msg = @first_msg
-    @first_msg = @first_msg.not_nil!.next_msg
-    msg
+  def enqueue(msg : VFSMessage)
+    if @first_msg.get.nil?
+      @first_msg.set(msg)
+      @last_msg.set(msg)
+      msg.next_msg.set(nil)
+    else
+      @last_msg.get.not_nil!.next_msg.set(msg)
+      @last_msg.set(msg)
+    end
   end
 
-  def push(msg : VFSMessage)
-    if @first_msg.nil?
-      @first_msg = msg
-      @last_msg = msg
-      msg.next_msg = nil
+  def dequeue
+    msg = @first_msg.get
+    if msg.nil?
+      nil
     else
-      @last_msg.not_nil!.next_msg = msg
-      @last_msg = msg
+      @first_msg.set(msg.not_nil!.next_msg)
+      msg
     end
   end
 
   def keep_if(&block : VFSMessage -> _)
     prev = nil
     cur = @first_msg
-    while !cur.nil?
-      c = cur.not_nil!
-      if yield(c)
-        prev = cur
+    until (c = cur.get).nil?
+      c = c.not_nil!
+      if yield c
+        prev = c
       else
         if prev.nil?
-          @first_msg = c.next_msg
+          @first_msg.set(c.next_msg.get)
         else
-          prev.next_msg = nil
+          prev.next_msg.set(nil)
         end
       end
       cur = c.next_msg
