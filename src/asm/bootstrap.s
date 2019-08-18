@@ -30,7 +30,7 @@ _bootstrap_start:
     # set the EFER flags
     mov $0xC0000080, %ecx
     rdmsr
-    # enable long mode, syscalls
+    # enable long mode, syscall/sysret
     or $0x101, %eax
     wrmsr
     # enable paging

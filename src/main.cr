@@ -67,6 +67,19 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
           Kernel.data_end.address,
           Kernel.stack_end.address
 
+  # processes
+  Gdt.stack = Kernel.stack_end
+  Gdt.flush_tss
+  Kernel.ksyscall_setup
+
+  idle_process = Multiprocessing::Process.new do |process|
+    process.initial_sp = Kernel.stack_end.address
+    process.initial_ip = 0u64
+    true
+  end
+
+  # hardware
+  # pci
   Console.puts "checking PCI buses...\n"
   PCI.check_all_buses do |bus, device, func, vendor_id|
     device_id = PCI.read_field bus, device, func, PCI::PCI_DEVICE_ID, 2
@@ -78,10 +91,12 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     end
   end
 
+  # kbd
   kbd = Keyboard.new
   ROOTFS.append(KbdFS.new(kbd))
   ROOTFS.append(VGAFS.new)
 
+  # file systems
   main_bin : VFSNode? = nil
   if (mbr = MBR.read(Ide.device(0)))
     Console.puts "found MBR header...\n"
@@ -96,15 +111,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     panic "can't boot from this device"
   end
 
-  Gdt.stack = Kernel.stack_end
-  Gdt.flush_tss
-  Kernel.ksyscall_setup
-
-  idle_process = Multiprocessing::Process.new(nil, false) do |process|
-    process.initial_sp = Kernel.stack_end.address
-    process.initial_ip = 0u64
-  end
-
+  # load main.bin
   if main_bin.nil?
     Console.puts "no main.bin detected.\n"
     while true

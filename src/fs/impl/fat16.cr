@@ -181,17 +181,7 @@ class Fat16Node < VFSNode
       return fat_sector
     end
 
-    # read fat table
-    idx = 0
-    fs.device.read_sector(fat_sector) do |word|
-      if idx < fs.fat_sector_size
-        fat_table[idx] = word
-        idx += 1
-      else
-        break
-      end
-    end
-
+    fs.device.read_sector(fat_table, fat_sector)
     fat_sector
   end
 
@@ -225,12 +215,17 @@ class Fat16Node < VFSNode
     end
     offset_bytes = offset.unsafe_mod(offset_factor)
 
+    file_buffer = Slice(UInt16).malloc(256)
+
     # read file
     while remaining_bytes > 0 && cluster < 0xFFF8
       sector = ((cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
       read_sector = 0
       while remaining_bytes > 0 && read_sector < fs.sectors_per_cluster
-        fs.device.read_sector(sector + read_sector) do |word|
+        unless fs.device.read_sector(file_buffer, sector + read_sector)
+          panic "unable to read!"
+        end
+        file_buffer.each do |word|
           u8 = word.unsafe_shr(8) & 0xFF
           u8_1 = word & 0xFF
           if remaining_bytes > 0
@@ -275,7 +270,7 @@ class Fat16Node < VFSNode
       sector = ((cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
       read_sector = 0
       while read_sector < fs.sectors_per_cluster
-        fs.device.read_sector_pointer(entries.to_unsafe.as(UInt16*), sector + read_sector)
+        fs.device.read_sector(entries.to_unsafe.as(UInt16*), sector + read_sector)
         entries.each do |entry|
           load_entry(entry)
         end
@@ -302,19 +297,20 @@ class Fat16Node < VFSNode
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
-    i = 0
-    read(slice.size, offset) do |ch|
-      slice[i] = ch
-      i += 1
-    end
-    i
+    # i = 0
+    # read(slice.size, offset) do |ch|
+    #   slice[i] = ch
+    #   i += 1
+    # end
+    # i
+    VFS_WAIT
   end
 
   def write(slice : Slice) : Int32
     VFS_ERR
   end
 
-  def read_queue
+  def queue
   end
 
   # entry loading
@@ -378,7 +374,7 @@ class Fat16FS < VFS
 
     bs = Pointer(Fat16Structs::Fat16BootSector).mmalloc
 
-    device.read_sector_pointer(bs.as(UInt16*), partition.first_sector)
+    device.read_sector(bs.as(UInt16*), partition.first_sector)
     idx = 0
     bs.value.fs_type.each do |ch|
       panic "only FAT16 is accepted" if ch != FS_TYPE[idx]
@@ -399,11 +395,13 @@ class Fat16FS < VFS
 
     bs.value.root_dir_entries.times do |i|
       break if sector + i > @data_sector
-      device.read_sector_pointer(entries.to_unsafe.as(UInt16*), sector + i)
+      device.read_sector(entries.to_unsafe.as(UInt16*), sector + i)
       entries.each do |entry|
         root.load_entry entry
       end
     end
+
+    #Multiprocessing::Process.spawn_kernel(->(ptr : Void*) { fat16_process(ptr) }, self.as(Void*))
 
     # cleanup
     entries.mfree
@@ -414,4 +412,8 @@ class Fat16FS < VFS
   def root
     @root.not_nil!
   end
+end
+
+fun fat16_process(ptr : Void*)
+  fs = ptr.as(Fat16FS*).value
 end

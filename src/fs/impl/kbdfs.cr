@@ -1,9 +1,7 @@
 class KbdFsNode < VFSNode
-  @read_queue : VFSReadQueue? = nil
-  getter read_queue
+  getter fs
 
   def initialize(@fs : KbdFS)
-    @read_queue = VFSReadQueue.new
   end
 
   def open(path : Slice) : VFSNode?
@@ -19,7 +17,7 @@ class KbdFsNode < VFSNode
       end
       return size
     end
-    VFS_READ_WAIT
+    VFS_WAIT
   end
 
   def write(slice : Slice) : Int32
@@ -56,10 +54,13 @@ class KbdFS < VFS
   @next_node : VFS? = nil
   property next_node
 
+  getter queue
+
   def initialize(@kbd : Keyboard)
     @name = GcString.new "kbd"
     @root = KbdFsNode.new self
     @kbd.kbdfs = self
+    @queue = VFSQueue.new
   end
 
   def root
@@ -113,7 +114,7 @@ class KbdFS < VFS
       end
     end
 
-    root.read_queue.not_nil!.keep_if do |msg|
+    @queue.not_nil!.keep_if do |msg|
       case msg.buffering
       when VFSNode::Buffering::Unbuffered
         msg.respond n
@@ -154,7 +155,7 @@ class KbdFS < VFS
       ansi_buf_set StaticArray[0x1B, '['.ord, '3'.ord, '~'.ord]
     end
 
-    root.read_queue.not_nil!.keep_if do |msg|
+    queue.not_nil!.keep_if do |msg|
       size = min(ansi_remaining, msg.slice_size)
       size.times do |i|
         msg.respond ansi_buf_pop

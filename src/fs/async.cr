@@ -1,5 +1,5 @@
-class VFSReadMessage
-  @next_msg : VFSReadMessage? = nil
+class VFSMessage
+  @next_msg : VFSMessage? = nil
   property next_msg
 
   getter process
@@ -10,13 +10,22 @@ class VFSReadMessage
   @buffering = VFSNode::Buffering::Unbuffered
   getter buffering
 
+  getter vfs_node
+
   def slice_size
     @slice.size
   end
 
-  def initialize(@slice : Slice(UInt8),
+  enum Type
+    Read
+    Write
+  end
+
+  def initialize(@type : Type,
+                 @slice : Slice(UInt8),
                  @process : Multiprocessing::Process,
-                 @buffering)
+                 @buffering,
+                 @vfs_node : VFSNode)
   end
 
   def finished?
@@ -41,9 +50,9 @@ class VFSReadMessage
   end
 end
 
-class VFSReadQueue
-  @first_msg : VFSReadMessage? = nil
-  @last_msg : VFSReadMessage? = nil
+class VFSQueue
+  @first_msg : VFSMessage? = nil
+  @last_msg  : VFSMessage? = nil
 
   def pop
     msg = @first_msg
@@ -51,7 +60,7 @@ class VFSReadQueue
     msg
   end
 
-  def push(msg : VFSReadMessage)
+  def push(msg : VFSMessage)
     if @first_msg.nil?
       @first_msg = msg
       @last_msg = msg
@@ -62,7 +71,7 @@ class VFSReadQueue
     end
   end
 
-  def keep_if(&block : VFSReadMessage -> _)
+  def keep_if(&block : VFSMessage -> _)
     prev = nil
     cur = @first_msg
     while !cur.nil?

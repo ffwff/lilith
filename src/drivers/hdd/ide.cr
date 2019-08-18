@@ -342,35 +342,25 @@ class AtaDevice
     true
   end
 
-  @buffer = Pointer(UInt16).null
-  def read_sector(sector, &block)
+  @lock = Spinlock.new
+  def read_sector(ptr, sector)
     panic "can't access atapi" if @type == Type::Atapi
 
-    Ata.read sector, disk_port, slave
-
-    # poll
-    return false if !Ata.wait(disk_port, true)
-
-    # read from sector
-    if @buffer.null?
-      @buffer = Pointer(UInt16).malloc(256)
-    end
-    256.times do |i|
-      @buffer[i] = X86.inw disk_port
-    end
-    256.times do |i|
-      yield @buffer[i]
+    retval = true
+    @lock.with do
+      Ata.read sector, disk_port, slave
+      # poll
+      if !Ata.wait(disk_port, true)
+        retval = false
+        break
+      end
+      # read from sector
+      256.times do |i|
+        ptr[i] = X86.inw disk_port
+      end
     end
 
-    true
-  end
-
-  def read_sector_pointer(ptr : UInt16*, sector)
-    idx = 0
-    read_sector(sector) do |i|
-      ptr[idx] = i
-      idx += 1
-    end
+    retval
   end
 
   #

@@ -1,4 +1,6 @@
 class VGAFsNode < VFSNode
+  getter fs
+
   def initialize(@fs : VGAFS)
   end
 

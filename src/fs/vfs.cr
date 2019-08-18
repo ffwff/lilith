@@ -15,6 +15,8 @@ abstract class VFSNode
   def name : GcString?
   end
 
+  abstract def fs : VFS
+
   def parent : VFSNode?
   end
   def next_node : VFSNode?
@@ -32,12 +34,12 @@ abstract class VFSNode
   def ioctl(request : Int32, data : Void*) : Int32
     -1
   end
-
-  abstract def read_queue : VFSReadQueue?
 end
 
 abstract class VFS
   abstract def name : GcString
+  def queue : VFSQueue?
+  end
 
   abstract def next_node : VFS?
   abstract def next_node=(x : VFS?)
@@ -71,4 +73,4 @@ class RootFS
 end
 
 VFS_ERR       = -1
-VFS_READ_WAIT = -2
+VFS_WAIT      = -2

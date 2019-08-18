@@ -19,7 +19,7 @@ module Multiprocessing
 
   KERNEL_CS_SEGMENT = 0x29
   KERNEL_SS_SEGMENT = 0x31
-  KERNEL_RFLAGS = 0x202
+  KERNEL_RFLAGS = 0x02
 
   FXSAVE_SIZE = 512u64
 
@@ -75,6 +75,7 @@ module Multiprocessing
     property frame
 
     # sse state
+    @fxsave_region = Pointer(UInt8).null
     getter fxsave_region
 
     # status
@@ -157,42 +158,39 @@ module Multiprocessing
       @udata.nil?
     end
 
-    def initialize(@udata : UserData?, save_fx = true, &on_setup_paging : Process -> _)
-      # user mode specific
-      if save_fx
-        @fxsave_region = Pointer(UInt8).malloc(FXSAVE_SIZE)
-        memset(@fxsave_region, 0x0, FXSAVE_SIZE)
-      else
-        @fxsave_region = Pointer(UInt8).null
-      end
-
+    def initialize(@udata : UserData? = nil, &on_setup_paging : Process -> _)
       Multiprocessing.n_process += 1
+      @pid = Multiprocessing.pids
+      Multiprocessing.pids += 1
 
       Idt.disable
 
-      @pid = Multiprocessing.pids
-      last_pg_struct = Pointer(PageStructs::PageDirectoryPointerTable).null
-      if !kernel_process?
-        if @pid != 0
-          last_pg_struct = Paging.current_pdpt
-          page_struct = Paging.alloc_process_pdpt
-          Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_struct
-          Paging.flush
-          @phys_pg_struct = page_struct
-        else
-          @phys_pg_struct = Paging.current_pdpt.address
-        end
+      if @pid != 0
+        @fxsave_region = Pointer(UInt8).malloc(FXSAVE_SIZE)
+        memset(@fxsave_region, 0x0, FXSAVE_SIZE)
       end
-      Multiprocessing.pids += 1
 
-      # setup pages
+      last_pg_struct = Pointer(PageStructs::PageDirectoryPointerTable).null
+      if @pid != 0
+        last_pg_struct = Paging.current_pdpt
+        page_struct = Paging.alloc_process_pdpt
+        Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_struct
+        Paging.flush
+        @phys_pg_struct = page_struct
+      else
+        @phys_pg_struct = 0u64
+      end
+
+      # setup process
       unless yield self
         # unable to setup, bailing
-        if !last_pg_struct.null? && !kernel_process?
+        unless last_pg_struct.null?
           Paging.current_pdpt = last_pg_struct
           Paging.flush
         end
         Idt.enable
+        Multiprocessing.n_process -= 1
+        Multiprocessing.pids -= 1
         return
       end
 
@@ -205,7 +203,7 @@ module Multiprocessing
         Multiprocessing.last_process = self
       end
 
-      if !last_pg_struct.null? && !kernel_process?
+      unless last_pg_struct.null?
         Paging.current_pdpt = last_pg_struct
         Paging.flush
       end
@@ -285,6 +283,19 @@ module Multiprocessing
       return p if built
     end
 
+    def self.spawn_kernel(function, arg : Void*? = nil)
+      Multiprocessing::Process.new do |process|
+        process.initial_sp = 0u64
+        process.initial_ip = function.pointer.address
+
+        unless arg.nil?
+          process.new_frame
+          process.frame.value.rdi = arg.not_nil!.address
+        end
+        true
+      end
+    end
+
     # deinitialize
     def remove
       Multiprocessing.n_process -= 1
@@ -326,6 +337,7 @@ module Multiprocessing
       io.puts "Process {\n"
       io.puts " pid: ", @pid, ", \n"
       io.puts " status: ", @status, ", \n"
+      io.puts " initial_sp: ", Pointer(Void).new(@initial_sp), ", \n"
       io.puts " initial_ip: ", Pointer(Void).new(@initial_ip), ", \n"
       io.puts "}"
     end
@@ -415,19 +427,11 @@ module Multiprocessing
     end
 
     # switch page directory
-    if next_process.kernel_process?
-      # no need to change paging when transitioning to kernel mode
-      # unless we're removing the current one
-      if remove
-        Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
-          .new(first_process.not_nil!.phys_pg_struct)
-        Paging.flush
-      end
-    else
-      # switch to other user process' page
-      Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
-        .new(next_process.phys_pg_struct)
-      Paging.flush
+    Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+      .new(next_process.phys_pg_struct)
+    Paging.flush
+    if remove
+      Paging.free_process_pdpt(current_process.phys_pg_struct)
     end
 
     # wake up process
@@ -444,6 +448,7 @@ module Multiprocessing
       memcpy Multiprocessing.fxsave_region, next_process.fxsave_region, FXSAVE_SIZE
     end
 
+    # Serial.puts next_process, '\n'
     next_process
   end
 

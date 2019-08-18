@@ -200,13 +200,14 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     str = try(checked_string_argument(fv.rdx))
     result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
     case result
-    when VFS_READ_WAIT
+    when VFS_WAIT
       Idt.lock do # may allocate
-        fd.not_nil!.node.not_nil!.read_queue.not_nil!
-          .push(VFSReadMessage.new(str, process, fd.not_nil!.buffering))
+        vfs_node = fd.not_nil!.node.not_nil!
+        vfs_node.fs.queue.not_nil!
+          .push(VFSMessage.new(VFSMessage::Type::Read,
+            str, process, fd.not_nil!.buffering, vfs_node))
       end
       process.status = Multiprocessing::Process::Status::WaitIo
-      # HERE?
       Multiprocessing.switch_process(frame)
     else
       fv.rax = result
