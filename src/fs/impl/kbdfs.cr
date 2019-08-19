@@ -118,8 +118,7 @@ class KbdFS < VFS
       case msg.buffering
       when VFSNode::Buffering::Unbuffered
         msg.respond n
-        msg.process.status = Multiprocessing::Process::Status::Unwait
-        msg.process.frame.value.rax = 1
+        msg.unawait
         false
       else
         if ch == '\b' && msg.offset > 0
@@ -129,8 +128,7 @@ class KbdFS < VFS
           msg.respond n
           if (msg.buffering == VFSNode::Buffering::LineBuffered && ch == '\n') ||
               msg.finished?
-            msg.process.status = Multiprocessing::Process::Status::Unwait
-            msg.process.frame.value.rax = msg.offset
+            msg.unawait
             false
           else
             true

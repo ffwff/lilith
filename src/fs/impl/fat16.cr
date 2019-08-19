@@ -185,6 +185,9 @@ class Fat16Node < VFSNode
     fat_sector
   end
 
+  @fat_table = Slice(UInt16).null
+  @file_buffer = Slice(UInt16).null
+
   def read(read_size = 0, offset = 0, &block)
     return if directory?
 
@@ -199,8 +202,10 @@ class Fat16Node < VFSNode
     end
 
     # setup
-    fat_table = Slice(UInt16).malloc fs.fat_sector_size
-    fat_sector = read_fat_table fat_table, starting_cluster
+    if @fat_table.null?
+      @fat_table = Slice(UInt16).mmalloc(fs.fat_sector_size)
+    end
+    fat_sector = read_fat_table @fat_table, starting_cluster
 
     cluster = starting_cluster
     remaining_bytes = read_size
@@ -209,23 +214,25 @@ class Fat16Node < VFSNode
     offset_factor = fs.sectors_per_cluster * 512
     offset_clusters = offset.unsafe_div(offset_factor)
     while offset_clusters > 0 && cluster < 0xFFF8
-      fat_sector = read_fat_table fat_table, cluster, fat_sector
-      cluster = fat_table[ent_for cluster]
+      fat_sector = read_fat_table @fat_table, cluster, fat_sector
+      cluster = @fat_table[ent_for cluster]
       offset_clusters -= 1
     end
     offset_bytes = offset.unsafe_mod(offset_factor)
 
-    file_buffer = Slice(UInt16).malloc(256)
+    if @file_buffer.null?
+      @file_buffer = Slice(UInt16).mmalloc(256)
+    end
 
     # read file
     while remaining_bytes > 0 && cluster < 0xFFF8
       sector = ((cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
       read_sector = 0
       while remaining_bytes > 0 && read_sector < fs.sectors_per_cluster
-        unless fs.device.read_sector(file_buffer, sector + read_sector)
+        unless fs.device.read_sector(@file_buffer, sector + read_sector)
           panic "unable to read!"
         end
-        file_buffer.each do |word|
+        @file_buffer.each do |word|
           u8 = word.unsafe_shr(8) & 0xFF
           u8_1 = word & 0xFF
           if remaining_bytes > 0
@@ -251,9 +258,16 @@ class Fat16Node < VFSNode
         end
         read_sector += 1
       end
-      fat_sector = read_fat_table fat_table, cluster, fat_sector
-      cluster = fat_table[ent_for cluster]
+      fat_sector = read_fat_table @fat_table, cluster, fat_sector
+      cluster = @fat_table[ent_for cluster]
     end
+
+    # clean up within function (if possible)
+    @fat_table.mfree
+    @file_buffer.mfree
+
+    @fat_table = Slice(UInt16).null
+    @file_buffer = Slice(UInt16).null
   end
 
   #
@@ -297,12 +311,9 @@ class Fat16Node < VFSNode
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
-    # i = 0
-    # read(slice.size, offset) do |ch|
-    #   slice[i] = ch
-    #   i += 1
-    # end
-    # i
+    # allocate
+    @fat_table = Slice(UInt16).mmalloc(fs.fat_sector_size)
+    @file_buffer = Slice(UInt16).mmalloc(256)
     VFS_WAIT
   end
 
@@ -400,8 +411,7 @@ class Fat16FS < VFS
 
     @queue = VFSQueue.new
     Multiprocessing::Process.spawn_kernel(->(ptr : Void*) {
-      fs = ptr.as(Fat16FS*).value
-      fs.process
+      ptr.as(Fat16FS).process
     }, self.as(Void*))
 
     # cleanup
@@ -414,9 +424,16 @@ class Fat16FS < VFS
 
   # process
   @process_msg : VFSMessage? = nil
-  def process
+  protected def process
     while true
-      # @process_msg = nil
+      @process_msg = @queue.not_nil!.dequeue
+      unless (msg = @process_msg).nil?
+        fat16_node = msg.vfs_node.unsafe_as(Fat16Node)
+        fat16_node.read(msg.slice_size) do |ch|
+          msg.respond(ch)
+        end
+        msg.unawait
+      end
     end
   end
 end

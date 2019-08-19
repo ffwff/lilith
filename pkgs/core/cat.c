@@ -11,6 +11,6 @@ int main(int argc, char **argv) {
         return 1;
     }
     char buf[1024];
-    fread(buf, 1, sizeof(buf), f);
-    fputs(buf, stdout);
+    int read = fread(buf, 1, sizeof(buf), f);
+    fwrite(buf, 1, read, stdout);
 }

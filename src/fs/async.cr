@@ -7,6 +7,8 @@ class VFSMessage
   @offset = 0
   getter offset
 
+  # TODO: file offset
+
   @buffering = VFSNode::Buffering::Unbuffered
   getter buffering
 
@@ -47,6 +49,11 @@ class VFSMessage
       @process.write_to_virtual(@slice.to_unsafe + @offset, ch.to_u8)
       @offset += 1
     end
+  end
+
+  def unawait
+    @process.status = Multiprocessing::Process::Status::Unwait
+    @process.frame.value.rax = @offset
   end
 end
 
