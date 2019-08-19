@@ -49,6 +49,10 @@ lib SyscallData
   end
 end
 
+lib Kernel
+  fun ksyscall_sc_ret_driver(reg : SyscallData::Registers*) : NoReturn
+end
+
 # path parser
 private def parse_path_into_segments(path, &block)
   i = 0
@@ -180,6 +184,15 @@ end
 
 fun ksyscall_handler(frame : SyscallData::Registers*)
   process = Multiprocessing.current_process.not_nil!
+  if process.kernel_process?
+    case fv.rax
+    when SC_INVLPG
+      virt_addr = fv.rbx
+      Serial.puts "invlpg ", Pointer(Void).new(virt_addr), '\n'
+      asm("invlpg ($0)" :: "r"(virt_addr) : "memory")
+    end
+    return Kernel.ksyscall_sc_ret_driver(frame)
+  end
   pudata = process.udata
   # Serial.puts "syscall ", fv.rax, " from ", process.pid, '\n'
   case fv.rax
@@ -341,12 +354,18 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
         end
 
         # create the process
-        new_process = Multiprocessing::Process.spawn_user(vfs_node.not_nil!, udata)
-        # page table doesn't switch back?
-        if new_process.nil?
-          fv.rax = SYSCALL_ERR
+        retval = vfs_node.not_nil!.spawn(udata)
+        case retval
+        when VFS_WAIT
+          Idt.lock do # may allocate
+            vfs_node = fd.not_nil!.node.not_nil!
+            vfs_node.fs.queue.not_nil!
+              .enqueue(VFSMessage.new(udata, vfs_node))
+          end
+          process.status = Multiprocessing::Process::Status::WaitIo
+          Multiprocessing.switch_process(frame)
         else
-          fv.rax = new_process.not_nil!.pid
+          fv.rax = retval
         end
       end
     end

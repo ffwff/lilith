@@ -15,30 +15,40 @@ class VFSMessage
   getter vfs_node
 
   def slice_size
-    @slice.size
+    @slice.not_nil!.size
   end
+
+  getter udata
+
+  getter type
 
   enum Type
     Read
     Write
+    Spawn
   end
 
   def initialize(@type : Type,
-                 @slice : Slice(UInt8),
-                 @process : Multiprocessing::Process,
+                 @slice : Slice(UInt8)?,
+                 @process : Multiprocessing::Process?,
                  @buffering,
                  @vfs_node : VFSNode)
   end
 
+  def initialize(@udata : Multiprocessing::Process::UserData?,
+                 @vfs_node : VFSNode)
+    @type = VFSMessage::Type::Spawn
+  end
+
   def finished?
-    offset == @slice.size
+    offset == slice_size
   end
 
   def respond(buf)
-    size = min(buf.size, @slice.size - @offset)
+    size = min(buf.size, @slice.size.not_nil! - @offset)
     if size > 0
       size.times do |i|
-        @process.write_to_virtual(@slice.to_unsafe + @offset, buf[i])
+        @process.not_nil!.write_to_virtual(@slice.not_nil!.to_unsafe + @offset, buf[i])
         @offset += 1
       end
     end
@@ -46,14 +56,14 @@ class VFSMessage
 
   def respond(ch)
     unless finished?
-      @process.write_to_virtual(@slice.to_unsafe + @offset, ch.to_u8)
+      @process.not_nil!.write_to_virtual(@slice.not_nil!.to_unsafe + @offset, ch.to_u8)
       @offset += 1
     end
   end
 
   def unawait
-    @process.status = Multiprocessing::Process::Status::Unwait
-    @process.frame.value.rax = @offset
+    @process.not_nil!.status = Multiprocessing::Process::Status::Unwait
+    @process.not_nil!.frame.value.rax = @offset
   end
 end
 

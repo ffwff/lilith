@@ -205,7 +205,9 @@ module Paging
 
   # allocate page when pg is enabled
   # returns page address
-  def alloc_page_pg(virt_addr_start : UInt64, rw : Bool, user : Bool, npages : USize = 1, phys_addr_start : UInt64 = 0) : UInt64
+  def alloc_page_pg(virt_addr_start : UInt64, rw : Bool, user : Bool,
+                    npages : USize = 1, phys_addr_start : UInt64 = 0,
+                    driver_flush = false) : UInt64
     Idt.disable
 
     virt_addr = t_addr(virt_addr_start)
@@ -251,7 +253,16 @@ module Paging
       page = page_create(rw, user, phys_addr)
       pt.value.pages[page_idx] = page
 
-      asm("invlpg ($0)" :: "r"(virt_addr) : "memory")
+      if driver_flush
+        # TODO: investigate this
+        retval = 0u64
+        asm("syscall"
+          : "={rax}"(retval)
+          : "{rax}"(SC_INVLPG), "{rbx}"(virt_addr)
+          : "{rcx}", "{r11}", "{rdi}", "{rsi}", "memory")
+      else
+        asm("invlpg ($0)" :: "r"(virt_addr) : "memory")
+      end
       virt_addr += 0x1000
     end
 
@@ -297,8 +308,7 @@ module Paging
   def free_process_pdpt(pdtpa : UInt64)
     pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(mt_addr pdtpa)
     # free directories
-    i = 0
-    while i < 4
+    512.times do |i|
       pd_addr = pdpt.value.dirs[i]
       # free tables
       if pd_addr != 0
@@ -321,7 +331,6 @@ module Paging
         end
         FrameAllocator.declaim_addr(pd_addr)
       end
-      i += 1
     end
 
     # free itself

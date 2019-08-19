@@ -1,3 +1,6 @@
+DRIVER_CODE_SELECTOR = 0x29
+DRIVER_DATA_SELECTOR = 0x31
+
 .section .text
 .global ksyscall_setup
 ksyscall_setup:
@@ -19,19 +22,31 @@ ksyscall_setup:
     mov $0x176, %rcx
     wrmsr
     # MSR[SYSCALL_STAR] =
-    mov $0x001B0000, %edx
+    mov $0x001B0008, %edx
     mov $0x00000000, %eax
     mov $0xC0000081, %rcx
+    wrmsr
+    # MSR[SYSCALL_SFMASK]
+    mov $0x00000200, %eax # disable interrupts
+    mov $0xC0000084, %rcx
+    wrmsr
+    # MSR[SYSCALL_LSTAR] = %rdi
+    movabs $ksyscall_stub_sc, %rdx # higher part
+    mov %rdx, %rax # lower part
+    shr $32, %rdx
+    mov $0xC0000082, %rcx
     wrmsr
     ret
 
 .global ksyscall_stub
+.global ksyscall_sc_ret_driver
 .extern ksyscall_handler
 ksyscall_stub:
     pusha64
     movabs $fxsave_region, %rax
     fxsave (%rax)
     # call the handler
+call_handler:
     cld
     mov %rsp, %rdi
     call ksyscall_handler
@@ -39,10 +54,35 @@ ksyscall_stub:
     movabs $fxsave_region, %rax
     fxrstor (%rax)
     popa64
-    mov $USER_RFLAGS, %r11
     mov %rcx, %rsp
     mov (%rsp), %rcx
     sysret
+
+ksyscall_stub_sc:
+    # syscall doesn't set the rsp pointer for us (why amd?)
+    # push rsp
+    push %rax
+    movabs $stack_top, %rax
+    mov %rsp, -8(%rax)
+    pop %rax
+    # rsp = stack_top
+    movabs $stack_top - 8, %rsp
+    jmp ksyscall_stub
+ksyscall_sc_ret_driver:
+    movabs $fxsave_region, %rax
+    fxrstor (%rax)
+    mov %rdi, %rsp
+    add $8, %rsp
+    popa64_no_ds
+    pop %rdi # userrsp
+    # return
+end:
+    push $DRIVER_DATA_SELECTOR # ss
+    push %rdi # userrsp
+    push %r11 # rflags
+    push $DRIVER_CODE_SELECTOR # cs
+    push %rcx # rip
+    iretq
 
 .global ksyscall_switch
 ksyscall_switch:

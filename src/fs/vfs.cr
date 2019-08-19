@@ -24,13 +24,19 @@ abstract class VFSNode
   def first_child : VFSNode?
   end
 
+  # used for internal file execution
+  def read(&block)
+  end
+
   abstract def open(path : Slice) : VFSNode?
   abstract def read(slice : Slice(UInt8), offset : UInt32,
                     process : Multiprocessing::Process? = nil) : Int32
-  def read(&block)
-    # for internal kernel reading
-  end
   abstract def write(slice : Slice) : Int32
+
+  def spawn(udata : Multiprocessing::Process::UserData) : Int32
+    VFS_ERR
+  end
+
   def ioctl(request : Int32, data : Void*) : Int32
     -1
   end

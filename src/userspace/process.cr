@@ -13,6 +13,11 @@ module Multiprocessing
   USER_STACK_BOTTOM_MAX = USER_STACK_TOP - USER_STACK_SIZE
   USER_STACK_BOTTOM     = 0x8000_0000u32
 
+  USER_STACK_INITIAL    = 0xFFFF_FFFFu64
+  KERNEL_STACK_INITIAL  = 0x7F_FFFF_FFFFu64
+
+  KERNEL_HEAP_INITIAL  = 0x10_0000_0000u64
+
   USER_CS_SEGMENT = 0x1b
   USER_SS_SEGMENT = 0x23
   USER_RFLAGS = 0x212
@@ -63,7 +68,7 @@ module Multiprocessing
     @initial_ip = 0x8000_0000u64
     property initial_ip
 
-    @initial_sp = 0xFFFF_FFFFu64
+    @initial_sp = 0u64
     property initial_sp
 
     # physical location of the process' page directory
@@ -163,6 +168,12 @@ module Multiprocessing
       @pid = Multiprocessing.pids
       Multiprocessing.pids += 1
 
+      if kernel_process?
+        @initial_sp = KERNEL_STACK_INITIAL
+      else
+        @initial_sp = USER_STACK_INITIAL
+      end
+
       Idt.disable
 
       if @pid != 0
@@ -216,12 +227,16 @@ module Multiprocessing
       panic "page dir is nil" if @phys_pg_struct == 0
       Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(@phys_pg_struct)
       Paging.flush
-      new_frame
-      asm("jmp kswitch_usermode32"
-          :: "{rcx}"(@initial_ip),
-             "{r11}"(@frame.value.rflags)
-             "{rsp}"(@initial_sp)
-          : "volatile", "memory")
+      if kernel_process?
+        Kernel.ksyscall_switch(@frame)
+      else
+        new_frame
+        asm("jmp kswitch_usermode32"
+            :: "{rcx}"(@initial_ip),
+              "{r11}"(@frame.value.rflags)
+              "{rsp}"(@initial_sp)
+            : "volatile", "memory")
+      end
     end
 
     # new register frame for multitasking
@@ -265,28 +280,31 @@ module Multiprocessing
     end
 
     # initialize
-    def self.spawn_user(file, udata)
-      built = false
-      p = Multiprocessing::Process.new(udata) do |process|
-        if (err = ElfReader.load(process, file.not_nil!)).nil?
-          argv_builder = ArgvBuilder.new process
-          udata.argv.each do |arg|
-            argv_builder.from_string arg.not_nil!
-          end
-          argv_builder.build
-          built = true
-          true
-        else
-          false
-        end
-      end
-      return p if built
-    end
+    # def self.spawn_user(file, udata)
+    #   built = false
+    #   p = Multiprocessing::Process.new(udata) do |process|
+    #     if (err = ElfReader.load(process, file.not_nil!)).nil?
+    #       argv_builder = ArgvBuilder.new process
+    #       udata.argv.each do |arg|
+    #         argv_builder.from_string arg.not_nil!
+    #       end
+    #       argv_builder.build
+    #       built = true
+    #       true
+    #     else
+    #       false
+    #     end
+    #   end
+    #   return p if built
+    # end
 
-    def self.spawn_kernel(function, arg : Void*? = nil)
+    def self.spawn_kernel(function, arg : Void*? = nil, stack_pages = 1, &block)
       Multiprocessing::Process.new do |process|
-        stack = Paging.alloc_page_pg(Paging.t_addr(process.initial_sp), true, false)
+        stack_start = Paging.t_addr(process.initial_sp) - (stack_pages - 1) * 0x1000
+        stack = Paging.alloc_page_pg(stack_start, true, false, npages: stack_pages.to_u64)
         process.initial_ip = function.pointer.address
+
+        yield process
 
         unless arg.nil?
           process.new_frame

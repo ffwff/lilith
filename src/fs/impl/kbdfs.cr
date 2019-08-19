@@ -158,8 +158,7 @@ class KbdFS < VFS
       size.times do |i|
         msg.respond ansi_buf_pop
       end
-      msg.process.status = Multiprocessing::Process::Status::Unwait
-      msg.process.frame.value.rax = size
+      msg.unawait
       false
     end
   end

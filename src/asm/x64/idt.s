@@ -25,10 +25,7 @@
     push %rax
 .endm
 
-.macro popa64
-    # segment registers
-    pop %rax
-    mov %ax, %ds
+.macro popa64_no_ds
     # stack registers
     pop %rbp
     # scan registers
@@ -47,6 +44,13 @@
     pop %rcx
     pop %rbx
     pop %rax
+.endm
+
+.macro popa64
+    # segment registers
+    pop %rax
+    mov %ax, %ds
+    popa64_no_ds
 .endm
 
 .global kload_idt

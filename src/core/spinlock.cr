@@ -13,6 +13,10 @@ struct Spinlock
     false
   end
 
+  def lockable?
+    @value.get == 0
+  end
+
   def unlock
     @value.compare_and_set(1, 0)
   end

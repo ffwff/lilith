@@ -8,8 +8,7 @@ require "./arch/idt.cr"
 require "./arch/paging.cr"
 require "./arch/multiboot.cr"
 require "./arch/cpuid.cr"
-require "./alloc/alloc.cr"
-require "./alloc/gc.cr"
+require "./alloc/*"
 require "./userspace/syscalls.cr"
 require "./userspace/process.cr"
 require "./userspace/elf.cr"
@@ -130,14 +129,18 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
               .new(argv,
                 main_path,
                 fs.not_nil!.root)
-    m_process = Multiprocessing::Process.spawn_user(main_bin.not_nil!, udata)
-    if m_process.nil?
-      panic "unable to load main.bin"
+    case main_bin.not_nil!.spawn(udata)
+    when VFS_ERR
+      panic "unable to load main!"
+    when VFS_WAIT
+      fs.not_nil!.queue.not_nil!
+        .enqueue(VFSMessage.new(udata, main_bin))
     end
 
     Idt.status_mask = false
-
-    m_process = m_process.not_nil!
-    m_process.initial_switch
+    # switch to pid 1
+    Multiprocessing.first_process.not_nil!
+                   .next_process.not_nil!
+                   .initial_switch
   end
 end

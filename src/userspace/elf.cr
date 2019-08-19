@@ -108,7 +108,7 @@ module ElfReader
     ExpectedProgramHdr
   end
 
-  def read(node : VFSNode, &block)
+  def read(node : VFSNode, allocator = nil, &block)
     state = ParserState::ElfHeader
     header = uninitialized ElfStructs::Elf32Header
     pheader = uninitialized ElfStructs::Elf32ProgramHeader
@@ -116,7 +116,7 @@ module ElfReader
     idx_h = 0u32
     n_pheader = 0u32
     total_bytes = 0u32
-    node.read do |byte|
+    node.read(allocator: allocator) do |byte|
       case state
       when ParserState::ElfHeader
         pointerof(header).as(UInt8*)[idx_h] = byte
@@ -169,44 +169,54 @@ module ElfReader
     nil
   end
 
-  # load
-  def load(process, vfs)
-    unless vfs.size > 0
+  struct Result
+    getter initial_ip, heap_start
+    def initialize(@initial_ip : USize, @heap_start : USize)
+    end
+  end
+
+  # load process code from kernel thread
+  def load_from_kernel_thread(node, allocator : StackAllocator)
+    unless node.size > 0
       return ParserError::EmptyFile
     end
-    Paging.alloc_page_pg(process.initial_sp - 0x1000 * 4, true, true, npages: 4)
-    mmap_list : GcArray(MemMapNode)? = nil
+    mmap_list = Slice(MemMapNode).null
     mmap_append_idx = 0
     mmap_idx = 0
-    result = ElfReader.read(vfs) do |data|
+
+    ret_initial_ip = 0u64
+    ret_heap_start = 0u64
+
+    result = ElfReader.read(node, allocator) do |data|
       case data
       when ElfStructs::Elf32Header
         data = data.as(ElfStructs::Elf32Header)
-        process.initial_ip = data.e_entry.to_usize
-        mmap_list = GcArray(MemMapNode).new data.e_phnum
+        ret_initial_ip = data.e_entry.to_usize
+        sz = data.e_phnum.to_i32
+        mmap_list = Slice(MemMapNode).new(allocator.malloc(sz * sizeof(MemMapNode)).as(MemMapNode*), sz)
       when ElfStructs::Elf32ProgramHeader
         data = data.as(ElfStructs::Elf32ProgramHeader)
         if data.p_memsz > 0
           ins_node = MemMapNode.new(data.p_offset, data.p_filesz,
             data.p_vaddr, data.p_memsz)
-          mmap_list.not_nil![mmap_append_idx] = ins_node
+          mmap_list[mmap_append_idx] = ins_node
           mmap_append_idx += 1
           if data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_R)
             npages = data.p_memsz.to_usize.unsafe_shr(12) + 1
             # create page and zero-initialize it
             page_start = Paging.alloc_page_pg(data.p_vaddr.to_usize,
               data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_W),
-              true, npages)
+              true, npages, driver_flush: true)
             zero_page Pointer(UInt8).new(page_start), npages
           end
           # heap should start right after the last segment
           heap_start = Paging.aligned(data.p_vaddr.to_usize + data.p_memsz.to_usize)
-          process.udata.heap_start = max process.udata.heap_start, heap_start
+          ret_heap_start = max ret_heap_start, heap_start
         end
       when Tuple(UInt32, UInt8)
         offset, byte = data.as(Tuple(UInt32, UInt8))
-        if !mmap_list.nil? && mmap_idx < mmap_append_idx
-          mmap_node = mmap_list.not_nil![mmap_idx].not_nil!
+        if !mmap_list.null? && mmap_idx < mmap_append_idx
+          mmap_node = mmap_list[mmap_idx]
           if offset == mmap_node.file_offset + mmap_node.filesz - 1
             mmap_idx += 1
           elsif offset >= mmap_node.file_offset && offset < mmap_node.file_offset + mmap_node.filesz
@@ -218,8 +228,10 @@ module ElfReader
     end
     if result.nil?
       # pad the heap so that we catch memory errors earlier
-      process.udata.heap_start += 0x1000
+      ret_heap_start += 0x1000
+      Result.new(ret_initial_ip, ret_heap_start)
+    else
+      result
     end
-    result
   end
 end
