@@ -11,12 +11,12 @@ module Multiprocessing
   USER_STACK_TOP        = 0xFFFF_F000u64
   USER_STACK_SIZE       =   0x80_0000u64 # 8 mb
   USER_STACK_BOTTOM_MAX = USER_STACK_TOP - USER_STACK_SIZE
-  USER_STACK_BOTTOM     = 0x8000_0000u32
+  USER_STACK_BOTTOM     = 0x8000_0000u64
 
   USER_STACK_INITIAL    = 0xFFFF_FFFFu64
-  KERNEL_STACK_INITIAL  = 0x7F_FFFF_FFFFu64
 
-  KERNEL_HEAP_INITIAL  = 0x10_0000_0000u64
+  KERNEL_STACK_INITIAL  = 0x7F_FFFF_FFFFu64
+  KERNEL_HEAP_INITIAL  = 0x7F_FFFF_D000u64
 
   USER_CS_SEGMENT = 0x1b
   USER_SS_SEGMENT = 0x23
@@ -279,25 +279,50 @@ module Multiprocessing
       @frame.value = frame
     end
 
-    # initialize
-    # def self.spawn_user(file, udata)
-    #   built = false
-    #   p = Multiprocessing::Process.new(udata) do |process|
-    #     if (err = ElfReader.load(process, file.not_nil!)).nil?
-    #       argv_builder = ArgvBuilder.new process
-    #       udata.argv.each do |arg|
-    #         argv_builder.from_string arg.not_nil!
-    #       end
-    #       argv_builder.build
-    #       built = true
-    #       true
-    #     else
-    #       false
-    #     end
-    #   end
-    #   return p if built
-    # end
+    # spawn user process and move the first 4gb of memory in current the address space
+    # to the newly created process' address space
+    # this is holy unportable
+    def self.spawn_user_4gb(initial_ip, heap_start, udata)
 
+      old_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+          .new(Paging.mt_addr(Paging.current_pdpt.address))
+
+      Multiprocessing::Process.new(udata) do |process|
+        process.initial_ip = initial_ip
+        process.udata.heap_start = heap_start
+
+        # copy the 512gb over
+        # TODO: move this
+        new_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+          .new(Paging.mt_addr(Paging.current_pdpt.address))
+        4.times do |i|
+          Serial.puts Pointer(Void).new(old_pdpt.value.dirs[i]), '\n'
+          new_pdpt.value.dirs[i] = old_pdpt.value.dirs[i]
+          old_pdpt.value.dirs[i] = 0u64
+        end
+        Paging.flush
+
+        argv_builder = ArgvBuilder.new process
+        udata.argv.each do |arg|
+          argv_builder.from_string arg.not_nil!
+        end
+        argv_builder.build
+        true
+      end
+    end
+
+    def self.spawn_user_4gb_drv(initial_ip, heap_start, udata)
+      retval = 0u64
+      asm("syscall"
+          : "={rax}"(retval)
+          : "{rax}"(SC_PROCESS_CREATE_DRV),
+            "{rbx}"(initial_ip),
+            "{rdx}"(heap_start),
+            "{r8}"(udata),
+          : "{rcx}", "{r11}", "{rdi}", "{rsi}", "memory")
+    end
+
+    # spawn kernel process with optional argument
     def self.spawn_kernel(function, arg : Void*? = nil, stack_pages = 1, &block)
       Multiprocessing::Process.new do |process|
         stack_start = Paging.t_addr(process.initial_sp) - (stack_pages - 1) * 0x1000

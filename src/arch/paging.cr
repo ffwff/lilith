@@ -206,8 +206,8 @@ module Paging
   # allocate page when pg is enabled
   # returns page address
   def alloc_page_pg(virt_addr_start : UInt64, rw : Bool, user : Bool,
-                    npages : USize = 1, phys_addr_start : UInt64 = 0,
-                    driver_flush = false) : UInt64
+                    npages : USize = 1, phys_addr_start : UInt64 = 0) : UInt64
+    # Serial.puts "allocate: ", Pointer(Void).new(virt_addr_start), ' ', npages, '\n'
     Idt.disable
 
     virt_addr = t_addr(virt_addr_start)
@@ -253,24 +253,28 @@ module Paging
       page = page_create(rw, user, phys_addr)
       pt.value.pages[page_idx] = page
 
-      if driver_flush
-        # TODO: investigate this
-        retval = 0u64
-        asm("syscall"
-          : "={rax}"(retval)
-          : "{rax}"(SC_INVLPG), "{rbx}"(virt_addr)
-          : "{rcx}", "{r11}", "{rdi}", "{rsi}", "memory")
-      else
-        asm("invlpg ($0)" :: "r"(virt_addr) : "memory")
-      end
+      asm("invlpg ($0)" :: "r"(virt_addr) : "memory")
       virt_addr += 0x1000
     end
 
     Idt.enable
-    #flush
 
     # return page
     virt_addr_start
+  end
+
+  def alloc_page_pg_drv(virt_addr_start : UInt64, rw : Bool, user : Bool,
+                        npages : USize = 1) : UInt64
+    retval = 0u64
+    asm("syscall"
+        : "={rax}"(retval)
+        : "{rax}"(SC_MMAP_DRV),
+          "{rbx}"(virt_addr_start),
+          "{rdx}"(rw),
+          "{r8}"(user),
+          "{r9}"(npages),
+        : "{rcx}", "{r11}", "{rdi}", "{rsi}", "memory")
+    retval
   end
 
   def free_page_pg(virt_addr_start : UInt64, npages : USize = 1)

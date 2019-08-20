@@ -186,15 +186,28 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
   process = Multiprocessing.current_process.not_nil!
   if process.kernel_process?
     case fv.rax
-    when SC_INVLPG
+    when SC_MMAP_DRV
       virt_addr = fv.rbx
-      Serial.puts "invlpg ", Pointer(Void).new(virt_addr), '\n'
-      asm("invlpg ($0)" :: "r"(virt_addr) : "memory")
+      Idt.lock do
+        fv.rax = Paging.alloc_page_pg(
+          fv.rbx, fv.rdx != 0, fv.r8 != 0,
+          fv.r9
+        )
+      end
+    when SC_PROCESS_CREATE_DRV
+      Idt.lock do
+        initial_ip = fv.rbx
+        heap_start = fv.rdx
+        udata = Pointer(Void).new(fv.r8).as(Multiprocessing::Process::UserData)
+        Multiprocessing::Process.spawn_user_4gb(initial_ip, heap_start, udata)
+      end
+    else
+      fv.rax = SYSCALL_ERR
     end
     return Kernel.ksyscall_sc_ret_driver(frame)
   end
   pudata = process.udata
-  # Serial.puts "syscall ", fv.rax, " from ", process.pid, '\n'
+  Serial.puts "syscall ", fv.rax, " from ", process.pid, '\n'
   case fv.rax
   # files
   when SC_OPEN
@@ -359,10 +372,12 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
         when VFS_WAIT
           Idt.lock do # may allocate
             vfs_node = fd.not_nil!.node.not_nil!
+            Serial.puts "1: ", vfs_node.fs.queue.nil?,'\n'
             vfs_node.fs.queue.not_nil!
               .enqueue(VFSMessage.new(udata, vfs_node))
+            Serial.puts "2"
           end
-          process.status = Multiprocessing::Process::Status::WaitIo
+          # process.status = Multiprocessing::Process::Status::WaitIo
           Multiprocessing.switch_process(frame)
         else
           fv.rax = retval

@@ -46,7 +46,6 @@ ksyscall_stub:
     movabs $fxsave_region, %rax
     fxsave (%rax)
     # call the handler
-call_handler:
     cld
     mov %rsp, %rdi
     call ksyscall_handler
@@ -64,10 +63,18 @@ ksyscall_stub_sc:
     push %rax
     movabs $stack_top, %rax
     mov %rsp, -8(%rax)
+    add $8, -8(%rax)
     pop %rax
     # rsp = stack_top
-    movabs $stack_top - 8, %rsp
-    jmp ksyscall_stub
+    movabs $stack_top - 8, %rsp # reserve space for %userrsp
+    # push registers
+    pusha64
+    movabs $fxsave_region, %rax
+    fxsave (%rax)
+    # call the handler
+    cld
+    mov %rsp, %rdi
+    call ksyscall_handler
 ksyscall_sc_ret_driver:
     movabs $fxsave_region, %rax
     fxrstor (%rax)

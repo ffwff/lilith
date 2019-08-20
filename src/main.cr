@@ -12,7 +12,6 @@ require "./alloc/*"
 require "./userspace/syscalls.cr"
 require "./userspace/process.cr"
 require "./userspace/elf.cr"
-require "./userspace/mmap_list.cr"
 
 lib Kernel
   fun ksyscall_setup

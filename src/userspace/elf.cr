@@ -175,6 +175,12 @@ module ElfReader
     end
   end
 
+  struct MemMapNode
+    getter file_offset, filesz, vaddr, memsz
+    def initialize(@file_offset : UInt64, @filesz : UInt64, @vaddr : UInt64, @memsz : UInt64)
+    end
+  end
+
   # load process code from kernel thread
   def load_from_kernel_thread(node, allocator : StackAllocator)
     unless node.size > 0
@@ -197,16 +203,17 @@ module ElfReader
       when ElfStructs::Elf32ProgramHeader
         data = data.as(ElfStructs::Elf32ProgramHeader)
         if data.p_memsz > 0
-          ins_node = MemMapNode.new(data.p_offset, data.p_filesz,
-            data.p_vaddr, data.p_memsz)
-          mmap_list[mmap_append_idx] = ins_node
+          # mmap list
+          mmap_list[mmap_append_idx] =
+            MemMapNode.new(data.p_offset.to_u64, data.p_filesz.to_u64,
+              data.p_vaddr.to_u64, data.p_memsz.to_u64)
           mmap_append_idx += 1
           if data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_R)
             npages = data.p_memsz.to_usize.unsafe_shr(12) + 1
             # create page and zero-initialize it
-            page_start = Paging.alloc_page_pg(data.p_vaddr.to_usize,
+            page_start = Paging.alloc_page_pg_drv(data.p_vaddr.to_usize,
               data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_W),
-              true, npages, driver_flush: true)
+              true, npages)
             zero_page Pointer(UInt8).new(page_start), npages
           end
           # heap should start right after the last segment
@@ -229,6 +236,8 @@ module ElfReader
     if result.nil?
       # pad the heap so that we catch memory errors earlier
       ret_heap_start += 0x1000
+      # allocate the stack
+      Paging.alloc_page_pg_drv(Multiprocessing::USER_STACK_INITIAL - 0x1000 * 4, true, true, 4)
       Result.new(ret_initial_ip, ret_heap_start)
     else
       result

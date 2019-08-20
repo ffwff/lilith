@@ -185,9 +185,6 @@ class Fat16Node < VFSNode
     fat_sector
   end
 
-  @fat_table = Slice(UInt16).null
-  @file_buffer = Slice(UInt16).null
-
   def read(read_size = 0, offset = 0, allocator = nil, &block)
     return if directory?
 
@@ -204,7 +201,7 @@ class Fat16Node < VFSNode
     # setup
     fat_table = if allocator
       sz = fs.fat_sector_size
-      Slice(UInt16).new(allocator.not_nil!.malloc(sz).as(UInt16*), sz)
+      Slice(UInt16).new(allocator.not_nil!.malloc(sz * sizeof(UInt16)).as(UInt16*), sz)
     else
       Slice(UInt16).mmalloc(fs.fat_sector_size)
     end
@@ -227,7 +224,8 @@ class Fat16Node < VFSNode
     file_buffer = if allocator.nil?
       Slice(UInt16).mmalloc(256)
     else
-      Slice(UInt16).new(allocator.not_nil!.malloc(256).as(UInt16*), 256)
+      sz = 256
+      Slice(UInt16).new(allocator.not_nil!.malloc(sz * sizeof(UInt16)).as(UInt16*), sz)
     end 
     while remaining_bytes > 0 && cluster < 0xFFF8
       sector = ((cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
@@ -314,21 +312,12 @@ class Fat16Node < VFSNode
     end
   end
 
-  private def process_allocate
-    panic "multiple allocation of fat_table" unless @fat_table.null?
-    panic "multiple allocation of file_buffer" unless @file_buffer.null?
-    @fat_table = Slice(UInt16).mmalloc(fs.fat_sector_size)
-    @file_buffer = Slice(UInt16).mmalloc(256)
-  end
-
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
-    process_allocate
     VFS_WAIT
   end
 
   def spawn(udata : Multiprocessing::Process::UserData) : Int32
-    process_allocate
     VFS_WAIT
   end
 
@@ -428,9 +417,11 @@ class Fat16FS < VFS
     entries.mfree
     bs.mfree
 
-    # setup process
     @queue = VFSQueue.new
-    @allocator = StackAllocator.new(Pointer(Void).new(Multiprocessing::KERNEL_HEAP_INITIAL))
+
+    # setup process-local variables
+    @process_allocator =
+      StackAllocator.new(Pointer(Void).new(Multiprocessing::KERNEL_HEAP_INITIAL))
     Multiprocessing::Process
       .spawn_kernel(->(ptr : Void*) { ptr.as(Fat16FS).process },
                     self.as(Void*),
@@ -451,7 +442,7 @@ class Fat16FS < VFS
         fat16_node = msg.vfs_node.unsafe_as(Fat16Node)
         case msg.type
         when VFSMessage::Type::Read
-          fat16_node.read(msg.slice_size, allocator: @allocator) do |ch|
+          fat16_node.read(msg.slice_size, allocator: @process_allocator) do |ch|
             msg.respond(ch)
           end
           msg.unawait
@@ -460,14 +451,19 @@ class Fat16FS < VFS
         when VFSMessage::Type::Spawn
           # TODO
           udata = msg.udata.not_nil!
-          case (retval = ElfReader.load_from_kernel_thread(fat16_node, @allocator.not_nil!))
+          case (retval = ElfReader.load_from_kernel_thread(fat16_node, @process_allocator.not_nil!))
           when ElfReader::Result
             # TODO
             retval = retval.as(ElfReader::Result)
+            Multiprocessing::Process
+              .spawn_user_4gb_drv(
+                retval.initial_ip,
+                retval.heap_start,
+                msg.udata.not_nil!)
           else
             panic "unable to execute ", retval, "\n"
           end
-          @allocator.not_nil!.clear
+          @process_allocator.not_nil!.clear
         end
       end
     end
