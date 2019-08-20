@@ -9,19 +9,16 @@ LD32=$(ARCH32)-ld
 CR=toolchain/crystal/.build/crystal
 LLC=llc
 
-CRFLAGS=--cross-compile --emit llvm-ir --target $(ARCH) --prelude ./prelude.cr --error-trace
-LLCFLAGS=-march=x86-64 -code-model=large -filetype=obj
+CRFLAGS=--cross-compile --target $(ARCH) --prelude ./prelude.cr --error-trace --mcmodel kernel
 ASFLAGS=-Isrc/asm/x64
 LDFLAGS=-T link64.ld
 KERNEL_OBJ=build/main.o build/boot.o
 KERNEL_SRC=$(wildcard src/*.cr src/*/*.cr)
 
 ifeq ($(RELEASE),1)
-	CRFLAGS += --release -d
-	# LLCFLAGS += -O1
+	CRFLAGS += --release
 else
 	CRFLAGS += -d
-	LLCFLAGS += -O1
 endif
 
 QEMU = $(shell which qemu-system-x86_64)
@@ -44,10 +41,8 @@ GDB = /usr/bin/gdb
 all: build/kernel
 
 build/main.o: $(KERNEL_SRC)
-	@echo "CR src/main.cr => build/main.ll"
-	@cd build && NO_RED_ZONE=1 FREESTANDING=1 ../$(CR) build $(CRFLAGS) ../src/main.cr -o main
-	@echo "LLC build/main.ll => $@"
-	@$(LLC) $(LLCFLAGS) -o $@ build/main.ll
+	@echo "CR src/main.cr"
+	$(CR) build $(CRFLAGS) src/main.cr -o build/main
 
 build/boot.o: src/asm/x64/boot.s build/fonts
 	@echo "AS $<"

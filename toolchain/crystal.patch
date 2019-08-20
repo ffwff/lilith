@@ -217,23 +217,59 @@ index d28ed3dc4..674aee402 100644
            @last = malloc struct_type
          else
            @last = malloc_atomic struct_type
-diff --git a/src/compiler/crystal/codegen/fun.cr b/src/compiler/crystal/codegen/fun.cr
-index 502b03a06..24140c48d 100644
---- a/src/compiler/crystal/codegen/fun.cr
-+++ b/src/compiler/crystal/codegen/fun.cr
-@@ -387,6 +387,10 @@ class Crystal::CodeGenVisitor
-     context.fun.add_attribute LLVM::Attribute::Naked if target_def.naked?
-     context.fun.add_attribute LLVM::Attribute::NoReturn if target_def.no_returns?
+diff --git a/src/compiler/crystal/codegen/target.cr b/src/compiler/crystal/codegen/target.cr
+index 07647c3ef..99e437fef 100644
+--- a/src/compiler/crystal/codegen/target.cr
++++ b/src/compiler/crystal/codegen/target.cr
+@@ -104,7 +104,8 @@ class Crystal::Codegen::Target
+     environment_parts.includes?("gnueabihf") || environment_parts.includes?("musleabihf")
+   end
  
-+    if ENV["NO_RED_ZONE"]?
-+      context.fun.add_attribute LLVM::Attribute::NoRedZone
-+    end
-+
-     if target_def.no_inline?
-       context.fun.add_attribute LLVM::Attribute::NoInline
-       context.fun.linkage = LLVM::Linkage::External
+-  def to_target_machine(cpu = "", features = "", release = false) : LLVM::TargetMachine
++  def to_target_machine(cpu = "", features = "", release = false,
++                        code_model = LLVM::CodeModel::Default) : LLVM::TargetMachine
+     case @architecture
+     when "i386", "x86_64"
+       LLVM.init_x86
+@@ -126,7 +127,7 @@ class Crystal::Codegen::Target
+     opt_level = release ? LLVM::CodeGenOptLevel::Aggressive : LLVM::CodeGenOptLevel::None
+ 
+     target = LLVM::Target.from_triple(self.to_s)
+-    target.create_target_machine(self.to_s, cpu: cpu, features: features, opt_level: opt_level).not_nil!
++    target.create_target_machine(self.to_s, cpu: cpu, features: features, opt_level: opt_level, code_model: code_model).not_nil!
+   end
+ 
+   def to_s(io : IO) : Nil
+diff --git a/src/compiler/crystal/command.cr b/src/compiler/crystal/command.cr
+index e0e71f927..1ed35111d 100644
+--- a/src/compiler/crystal/command.cr
++++ b/src/compiler/crystal/command.cr
+@@ -364,6 +364,23 @@ class Crystal::Command
+         opts.on("--mattr CPU", "Target specific features") do |features|
+           compiler.mattr = features
+         end
++        opts.on("--mcmodel CPU", "Target specific code model") do |mcmodel|
++          compiler.mcmodel = case mcmodel
++            when "default"
++              LLVM::CodeModel::Default
++            when "small"
++              LLVM::CodeModel::Small
++            when "kernel"
++              LLVM::CodeModel::Kernel
++            when "medium"
++              LLVM::CodeModel::Medium
++            when "large"
++              LLVM::CodeModel::Large
++            else
++              error "--mcmodel should be one of: default, kernel, small, medium, large"
++              raise "unreachable"
++            end
++        end
+         setup_compiler_warning_options(opts, compiler)
+       end
+ 
 diff --git a/src/compiler/crystal/compiler.cr b/src/compiler/crystal/compiler.cr
-index 3853d8962..2720ea08b 100644
+index 3853d8962..90125b269 100644
 --- a/src/compiler/crystal/compiler.cr
 +++ b/src/compiler/crystal/compiler.cr
 @@ -4,6 +4,10 @@ require "socket"
@@ -247,7 +283,26 @@ index 3853d8962..2720ea08b 100644
  module Crystal
    @[Flags]
    enum Debug
-@@ -306,13 +310,17 @@ module Crystal
+@@ -84,6 +88,9 @@ module Crystal
+     # If `true`, runs LLVM optimizations.
+     property? release = false
+ 
++    # Sets the code model. Check LLVM docs to learn about this.
++    property mcmodel = LLVM::CodeModel::Default
++
+     # If `true`, generates a single LLVM module. By default
+     # one LLVM module is created for each type in a program.
+     property? single_module = false
+@@ -249,7 +256,7 @@ module Crystal
+ 
+     private def bc_flags_changed?(output_dir)
+       bc_flags_changed = true
+-      current_bc_flags = "#{@codegen_target}|#{@mcpu}|#{@mattr}|#{@release}|#{@link_flags}"
++      current_bc_flags = "#{@codegen_target}|#{@mcpu}|#{@mattr}|#{@release}|#{@link_flags}|#{@mcmodel}"
+       bc_flags_filename = "#{output_dir}/bc_flags"
+       if File.file?(bc_flags_filename)
+         previous_bc_flags = File.read(bc_flags_filename).strip
+@@ -306,13 +313,17 @@ module Crystal
  
        optimize llvm_mod if @release
  
@@ -268,3 +323,12 @@ index 3853d8962..2720ea08b 100644
      end
  
      private def linker_command(program : Program, object_name, output_filename, output_dir)
+@@ -517,7 +528,7 @@ module Crystal
+     end
+ 
+     getter(target_machine : LLVM::TargetMachine) do
+-      @codegen_target.to_target_machine(@mcpu || "", @mattr || "", @release)
++      @codegen_target.to_target_machine(@mcpu || "", @mattr || "", @release, @mcmodel)
+     rescue ex : ArgumentError
+       stderr.print colorize("Error: ").red.bold
+       stderr.print "llc: "
