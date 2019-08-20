@@ -19,9 +19,6 @@ lib PageStructs
   struct PML4Table
     pdpt : UInt64[512]
   end
-
-  fun kenable_paging(addr : PageStructs::PML4Table*)
-  fun kdisable_paging
 end
 
 PTR_IDENTITY_MASK = 0xFFFF_8000_0000_0000u64
@@ -62,6 +59,9 @@ module Paging
   def current_pdpt=(x)
     new_addr = x.address | PTR_IDENTITY_MASK
     @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new new_addr
+
+    # HACK: page directories won't be flushed without this
+    no_opt(@@current_pdpt.address)
 
     # update pml4 table
     pml4_addr = @@pml4_table.address | PTR_IDENTITY_MASK
@@ -263,6 +263,7 @@ module Paging
     virt_addr_start
   end
 
+  @[NoInline]
   def alloc_page_pg_drv(virt_addr_start : UInt64, rw : Bool, user : Bool,
                         npages : USize = 1) : UInt64
     retval = 0u64
@@ -273,7 +274,7 @@ module Paging
           "{rdx}"(rw),
           "{r8}"(user),
           "{r9}"(npages),
-        : "{rcx}", "{r11}", "{rdi}", "{rsi}", "memory")
+        : "cc", "memory", "{rcx}", "{r11}", "{rdi}", "{rsi}")
     retval
   end
 

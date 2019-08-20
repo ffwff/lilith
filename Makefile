@@ -42,7 +42,7 @@ all: build/kernel
 
 build/main.o: $(KERNEL_SRC)
 	@echo "CR src/main.cr"
-	$(CR) build $(CRFLAGS) src/main.cr -o build/main
+	@NO_RED_ZONE=1 $(CR) build $(CRFLAGS) src/main.cr -o build/main
 
 build/boot.o: src/asm/x64/boot.s build/fonts
 	@echo "AS $<"

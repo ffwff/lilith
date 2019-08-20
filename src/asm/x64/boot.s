@@ -3,7 +3,6 @@
 .section .text
 .include "gdt.s"
 .include "idt.s"
-.include "paging.s"
 .include "syscalls.s"
 .include "user.s"
 

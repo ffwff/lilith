@@ -282,8 +282,8 @@ module Multiprocessing
     # spawn user process and move the first 4gb of memory in current the address space
     # to the newly created process' address space
     # this is holy unportable
+    @[NoInline]
     def self.spawn_user_4gb(initial_ip, heap_start, udata)
-
       old_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
           .new(Paging.mt_addr(Paging.current_pdpt.address))
 
@@ -294,9 +294,9 @@ module Multiprocessing
         # copy the 512gb over
         # TODO: move this
         new_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
-          .new(Paging.mt_addr(Paging.current_pdpt.address))
+          .new(Paging.mt_addr(process.phys_pg_struct))
+
         4.times do |i|
-          Serial.puts Pointer(Void).new(old_pdpt.value.dirs[i]), '\n'
           new_pdpt.value.dirs[i] = old_pdpt.value.dirs[i]
           old_pdpt.value.dirs[i] = 0u64
         end
@@ -311,7 +311,8 @@ module Multiprocessing
       end
     end
 
-    def self.spawn_user_4gb_drv(initial_ip, heap_start, udata)
+    @[NoInline]
+    def self.spawn_user_4gb_drv(initial_ip : UInt64, heap_start : UInt64, udata : UserData)
       retval = 0u64
       asm("syscall"
           : "={rax}"(retval)

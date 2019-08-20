@@ -83,7 +83,6 @@ ksyscall_sc_ret_driver:
     popa64_no_ds
     pop %rdi # userrsp
     # return
-end:
     push $DRIVER_DATA_SELECTOR # ss
     push %rdi # userrsp
     push %r11 # rflags
@@ -97,6 +96,5 @@ ksyscall_switch:
     movabs $fxsave_region, %rax
     fxrstor (%rax)
     popa64
-n:
     add $8, %rsp # skip int_no
     iretq
