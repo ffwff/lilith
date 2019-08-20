@@ -1,5 +1,5 @@
 build() {
-    git clone https://github.com/mruby/mruby $build_dir/mruby
+    [[ ! -d "$build_dir/mruby" ]] && git clone https://github.com/mruby/mruby $build_dir/mruby
     pushd .
         cd $build_dir/mruby
         try_patch $script_dir/mruby.patch
