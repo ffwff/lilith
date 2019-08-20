@@ -42,6 +42,7 @@ ksyscall_setup:
 .global ksyscall_sc_ret_driver
 .extern ksyscall_handler
 ksyscall_stub:
+    push $0 # rsp
     pusha64
     movabs $fxsave_region, %rax
     fxsave (%rax)

@@ -63,12 +63,12 @@ class VFSMessage
   end
 
   def unawait
-    @process.not_nil!.status = Multiprocessing::Process::Status::Unwait
+    @process.not_nil!.transition_unwait
     @process.not_nil!.frame.value.rax = @offset
   end
 
   def unawait(retval)
-    @process.not_nil!.status = Multiprocessing::Process::Status::Unwait
+    @process.not_nil!.transition_unwait
     @process.not_nil!.frame.value.rax = retval
   end
 end
@@ -76,6 +76,9 @@ end
 class VFSQueue
   @first_msg = Atomic(VFSMessage?).new(nil)
   @last_msg  = Atomic(VFSMessage?).new(nil)
+
+  def initialize(@wake_process : Multiprocessing::Process? = nil)
+  end
 
   def enqueue(msg : VFSMessage)
     if @first_msg.get.nil?
@@ -85,6 +88,9 @@ class VFSQueue
     else
       @last_msg.get.not_nil!.next_msg.set(msg)
       @last_msg.set(msg)
+    end
+    unless @wake_process.nil?
+      @wake_process.not_nil!.transition_unwait
     end
   end
 
