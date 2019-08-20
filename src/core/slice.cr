@@ -27,11 +27,13 @@ struct Slice(T)
     @buffer = Pointer(T).null
   end
 
+  @[NoInline]
   def [](idx : Int)
     panic "Slice: out of range" if idx >= @size || idx < 0
     @buffer[idx]
   end
 
+  @[NoInline]
   def []=(idx : Int, value : T)
     panic "Slice: out of range" if idx >= @size || idx < 0
     @buffer[idx] = value

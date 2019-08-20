@@ -36,7 +36,8 @@ class VFSMessage
   end
 
   def initialize(@udata : Multiprocessing::Process::UserData?,
-                 @vfs_node : VFSNode)
+                 @vfs_node : VFSNode,
+                 @process : Multiprocessing::Process? = nil)
     @type = VFSMessage::Type::Spawn
   end
 
@@ -64,6 +65,11 @@ class VFSMessage
   def unawait
     @process.not_nil!.status = Multiprocessing::Process::Status::Unwait
     @process.not_nil!.frame.value.rax = @offset
+  end
+
+  def unawait(retval)
+    @process.not_nil!.status = Multiprocessing::Process::Status::Unwait
+    @process.not_nil!.frame.value.rax = retval
   end
 end
 

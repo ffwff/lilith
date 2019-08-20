@@ -319,7 +319,8 @@ module Multiprocessing
             "{rbx}"(initial_ip),
             "{rdx}"(heap_start),
             "{r8}"(udata),
-          : "{rcx}", "{r11}", "{rdi}", "{rsi}", "memory")
+          : "cc", "memory","{rcx}", "{r11}", "{rdi}", "{rsi}")
+      retval
     end
 
     # spawn kernel process with optional argument

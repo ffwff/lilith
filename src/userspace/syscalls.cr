@@ -199,7 +199,8 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
         initial_ip = fv.rbx
         heap_start = fv.rdx
         udata = Pointer(Void).new(fv.r8).as(Multiprocessing::Process::UserData)
-        Multiprocessing::Process.spawn_user_4gb(initial_ip, heap_start, udata)
+        process = Multiprocessing::Process.spawn_user_4gb(initial_ip, heap_start, udata)
+        fv.rax = process.pid
       end
     else
       fv.rax = SYSCALL_ERR
@@ -338,7 +339,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     if vfs_node.nil?
       fv.rax = SYSCALL_ERR
     else
-      Idt.lock do
+      Idt.lock do # may allocate
         # argv
         pargv = GcArray(GcString).new 0
         i = 0
@@ -370,14 +371,9 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
         retval = vfs_node.not_nil!.spawn(udata)
         case retval
         when VFS_WAIT
-          Idt.lock do # may allocate
-            vfs_node = fd.not_nil!.node.not_nil!
-            Serial.puts "1: ", vfs_node.fs.queue.nil?,'\n'
-            vfs_node.fs.queue.not_nil!
-              .enqueue(VFSMessage.new(udata, vfs_node))
-            Serial.puts "2"
-          end
-          # process.status = Multiprocessing::Process::Status::WaitIo
+          vfs_node.fs.queue.not_nil!
+            .enqueue(VFSMessage.new(udata, vfs_node, process))
+          process.status = Multiprocessing::Process::Status::WaitIo
           Multiprocessing.switch_process(frame)
         else
           fv.rax = retval
