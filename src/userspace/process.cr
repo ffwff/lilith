@@ -121,8 +121,15 @@ module Multiprocessing
       # argv
       property argv
 
+      # environment variables
+      getter environ_keys
+      getter environ_values
+
       def initialize(@argv : GcArray(GcString),
-          @cwd : GcString, @cwd_node : VFSNode)
+                     @cwd : GcString, @cwd_node : VFSNode)
+        # TODO: storing environ keys/values within 1 class doesn't work
+        @environ_keys = GcArray(GcString).new 0
+        @environ_values = GcArray(GcString).new 0
         @fds = GcArray(FileDescriptor).new MAX_FD
       end
 
@@ -148,6 +155,21 @@ module Multiprocessing
       def close_fd(i : Int32) : Bool
         return false if i > MAX_FD || i < 0
         fds[i]
+        true
+      end
+
+      # environ
+      def getenv(find_key)
+        i = 0
+        @environ_keys.each do |key|
+          return @environ_values[i] if key == find_key
+          i += 1
+        end
+      end
+
+      def setenv(key, value, override = false)
+        @environ_keys.push(key)
+        @environ_values.push(value)
         true
       end
     end

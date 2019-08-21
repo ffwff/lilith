@@ -121,13 +121,15 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
     argv = GcArray(GcString).new 0
     argv_0 = main_path.clone
-    argv_0 << "/main.bin"
+    argv_0 << "/main"
     argv.push argv_0
 
     udata = Multiprocessing::Process::UserData
               .new(argv,
                 main_path,
                 fs.not_nil!.root)
+    udata.setenv(GcString.new("PATH"), GcString.new("/hd0/bin"))
+
     case main_bin.not_nil!.spawn(udata)
     when VFS_ERR
       panic "unable to load main!"
