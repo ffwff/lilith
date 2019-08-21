@@ -56,7 +56,7 @@ struct Int
   # format
   private BASE = "0123456789abcdefghijklmnopqrstuvwxyz"
 
-  private def internal_to_s(base = 10)
+  def each_digit(base = 10, &block)
     s = uninitialized UInt8[128]
     sign = self < 0
     n = self.abs
@@ -78,7 +78,7 @@ struct Int
   end
 
   def to_s(io, base = 10)
-    internal_to_s(base) do |ch|
+    each_digit(base) do |ch|
       io.putc ch
     end
   end
