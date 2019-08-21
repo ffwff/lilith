@@ -284,7 +284,9 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     fd = try(pudata.get_fd(fdi))
     arg = try(checked_pointer32(SyscallData::IoctlArgument32, fv.rdx))
     request, data = arg.value.request, try(checked_pointer32(Void, arg.value.data))
-    fv.rax = fd.node.not_nil!.ioctl(request, data)
+    Idt.lock do
+      fv.rax = fd.node.not_nil!.ioctl(request, data)
+    end
   when SC_CLOSE
     fdi = fv.rbx.to_i32
     if pudata.close_fd(fdi)

@@ -87,8 +87,6 @@ module Multiprocessing
     enum Status
       Removed
       Normal
-      Unwait
-      UnwaitSc # unwait from syscall insn
       WaitIo
       WaitProcess
     end
@@ -403,40 +401,26 @@ module Multiprocessing
       io.puts "}"
     end
 
-    # unwait
-    def transition_unwait
-      unless @status == Multiprocessing::Process::Status::WaitIo ||
-             @status == Multiprocessing::Process::Status::WaitProcess
-        return
-      end
-      if kernel_process?
-        @status = Multiprocessing::Process::Status::UnwaitSc
-      else
-        @status = Multiprocessing::Process::Status::Unwait
-      end
-    end
   end
 
   private def can_switch(process)
+    Serial.puts process.pid, ':', process.status, '\n'
     case process.status
     when Multiprocessing::Process::Status::Normal
       true
-    when Multiprocessing::Process::Status::Unwait
-      true
-    when Multiprocessing::Process::Status::UnwaitSc
-      true
+    when Multiprocessing::Process::Status::Removed
+      false
+    when Multiprocessing::Process::Status::WaitIo
+      false
     when Multiprocessing::Process::Status::WaitProcess
-      #Serial.puts process.udata.pwait.not_nil!.pid, ':', process.udata.pwait.not_nil!.status, '\n'
-      if process.udata.pwait.nil? ||
+      if !process.udata.pwait.nil? &&
          process.udata.pwait.not_nil!.status == Multiprocessing::Process::Status::Removed
-        process.transition_unwait
+        process.status = Multiprocessing::Process::Status::Normal
         process.udata.pwait = nil
         true
       else
         false
       end
-    else
-      false
     end
   end
 
@@ -461,7 +445,7 @@ module Multiprocessing
       end
       @@current_process = cur
     end
-    if @@current_process.nil?
+    if @@current_process.nil? || !can_switch(@@current_process.not_nil!)
       # no tasks left, use idle
       @@current_process = @@first_process
     else

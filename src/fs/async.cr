@@ -63,12 +63,12 @@ class VFSMessage
   end
 
   def unawait
-    @process.not_nil!.transition_unwait
+    @process.not_nil!.status = Multiprocessing::Process::Status::Normal
     @process.not_nil!.frame.value.rax = @offset
   end
-
+  
   def unawait(retval)
-    @process.not_nil!.transition_unwait
+    @process.not_nil!.status = Multiprocessing::Process::Status::Normal
     @process.not_nil!.frame.value.rax = retval
   end
 end
@@ -90,7 +90,7 @@ class VFSQueue
       @last_msg.set(msg)
     end
     unless @wake_process.nil?
-      @wake_process.not_nil!.transition_unwait
+      @wake_process.not_nil!.status = Multiprocessing::Process::Status::Normal
     end
   end
 
