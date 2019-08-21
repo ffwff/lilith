@@ -8,6 +8,7 @@ lib SyscallData
     rbp, rdi, rsi,
     r15, r14, r13, r12, r11, r10, r9, r8,
     rdx, rcx, rbx, rax : UInt64
+    rsp : UInt64
   end
 
   @[Packed]
@@ -202,6 +203,9 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
         process = Multiprocessing::Process.spawn_user_4gb(initial_ip, heap_start, udata)
         fv.rax = process.pid
       end
+    when SC_SLEEP
+      process.status = Multiprocessing::Process::Status::WaitIo
+      Multiprocessing.switch_process(frame)
     else
       fv.rax = SYSCALL_ERR
     end
@@ -280,7 +284,9 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     fd = try(pudata.get_fd(fdi))
     arg = try(checked_pointer32(SyscallData::IoctlArgument32, fv.rdx))
     request, data = arg.value.request, try(checked_pointer32(Void, arg.value.data))
-    fv.rax = fd.node.not_nil!.ioctl(request, data)
+    Idt.lock do
+      fv.rax = fd.node.not_nil!.ioctl(request, data)
+    end
   when SC_CLOSE
     fdi = fv.rbx.to_i32
     if pudata.close_fd(fdi)
@@ -405,6 +411,9 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
         Multiprocessing.switch_process(frame)
       end
     end
+  when SC_SLEEP
+    process.status = Multiprocessing::Process::Status::WaitIo
+    Multiprocessing.switch_process(frame)
   when SC_EXIT
     if process.pid == 1
       panic "init exited"
