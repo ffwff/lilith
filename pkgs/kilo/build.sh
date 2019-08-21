@@ -9,5 +9,5 @@ build() {
 }
 
 install() {
-    sudo cp $build_dir/kilo/kilo $install_dir/kilo
+    sudo cp $build_dir/kilo/kilo $install_dir/bin/kilo
 }
