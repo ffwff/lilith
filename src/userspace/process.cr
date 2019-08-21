@@ -404,7 +404,6 @@ module Multiprocessing
   end
 
   private def can_switch(process)
-    Serial.puts process.pid, ':', process.status, '\n'
     case process.status
     when Multiprocessing::Process::Status::Normal
       true
