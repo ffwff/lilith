@@ -144,7 +144,10 @@ class Fat16Node < VFSNode
   # children
   def each_child(&block)
     return unless directory?
-    populate_directory if !@dir_populated
+    unless @dir_populated
+      @dir_populated = true
+      populate_directory
+    end
     node = first_child
     while !node.nil?
       yield node.not_nil!

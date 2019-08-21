@@ -15,6 +15,8 @@ LDFLAGS=-T link64.ld
 KERNEL_OBJ=build/main.o build/boot.o
 KERNEL_SRC=$(wildcard src/*.cr src/*/*.cr)
 
+DRIVE_IMG = disk.img
+
 ifeq ($(RELEASE),1)
 	CRFLAGS += --release
 else
@@ -37,7 +39,7 @@ endif
 
 GDB = /usr/bin/gdb
 
-.PHONY: kernel src/asm/bootstrap.s qemu
+.PHONY: kernel src/asm/bootstrap.s qemu install_kernel_to_disk
 all: build/kernel
 
 build/main.o: $(KERNEL_SRC)
@@ -71,16 +73,16 @@ build/bootstrap.o: src/asm/bootstrap.s build/kernel64.bin
 run: build/kernel
 	-$(QEMU) -kernel $^ $(QEMUFLAGS)
 
-run_img: build/kernel drive.img
-	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda drive.img
+run_img: build/kernel $(DRIVE_IMG)
+	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda $(DRIVE_IMG)
 
 rungdb: build/kernel
 	$(QEMU) -S -kernel $^ $(QEMUFLAGS) -gdb tcp::9000 &
 	$(GDB) -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
 	-@pkill qemu
 
-rungdb_img: build/kernel drive.img
-	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
+rungdb_img: build/kernel install_kernel_to_disk
+	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda $(DRIVE_IMG) -S -gdb tcp::9000 &
 	sleep 0.1s && $(GDB) -quiet \
 		-ex 'target remote localhost:9000' \
 		-ex 'hb kmain' \
@@ -91,8 +93,8 @@ rungdb_img: build/kernel drive.img
 		build/kernel64
 	-@pkill qemu
 
-rungdb_img_user: build/kernel drive.img
-	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda drive.img -S -gdb tcp::9000 &
+rungdb_img_user: build/kernel install_kernel_to_disk
+	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda $(DRIVE_IMG) -S -gdb tcp::9000 &
 	$(GDB) -quiet \
 		-ex 'target remote localhost:9000' \
 		-ex 'hb main' \
@@ -104,7 +106,7 @@ rungdb_img_user: build/kernel drive.img
 	-@pkill qemu
 
 runiso: os.iso
-	$(QEMU) -S -boot d -cdrom os.iso -hda drive.img $(QEMUFLAGS) -gdb tcp::9000 &
+	$(QEMU) -S -boot d -cdrom os.iso -hda $(DRIVE_IMG) $(QEMUFLAGS) -gdb tcp::9000 &
 	sleep 0.1s && $(GDB) -quiet \
 		-ex 'set arch i386:x86-64:intel' \
 		-ex 'target remote localhost:9000' \
@@ -122,6 +124,36 @@ os.iso: build/kernel
 	cp grub.cfg /tmp/iso/boot/grub
 	cp build/kernel /tmp/iso/boot/
 	grub-mkrescue -o os.iso /tmp/iso
+
+$(DRIVE_IMG):
+	dd if=/dev/zero of=$(DRIVE_IMG) bs=512 count=102400
+	printf "\
+o\n\
+n\n\
+p\n\
+1\n\
+\n\n\
+\n\
+t\n\
+6\n\
+w\n\
+" | fdisk $(DRIVE_IMG)
+	sudo losetup /dev/loop0 $(DRIVE_IMG)
+	sudo losetup /dev/loop1 $(DRIVE_IMG) -o 1048576
+	sudo mkfs.fat -F16 /dev/loop1
+	sudo mount /dev/loop1 /mnt
+	sudo grub-install --root-directory=/mnt --no-floppy --modules="normal part_msdos fat multiboot" /dev/loop0
+	sudo cp grub.cfg /mnt/boot/grub/
+	sudo umount /mnt
+	sudo losetup -D /dev/loop0
+	sudo losetup -D /dev/loop1
+
+install_kernel_to_disk: build/kernel
+	sudo losetup -P /dev/loop0 $(DRIVE_IMG)
+	sudo mount /dev/loop0p1 /mnt
+	sudo cp $^ /mnt/boot/kernel
+	sudo umount /mnt
+	sudo losetup -D /dev/loop0
 
 clean:
 	rm -f build/*

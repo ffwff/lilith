@@ -15,7 +15,7 @@ usage() {
 }
 
 missio_dir=$(realpath "$(dirname $0)")
-opt_image="./drive.img"
+opt_image="./disk.img"
 opt_mountdir="/mnt"
 opt_arch="i386-elf-lilith"
 
