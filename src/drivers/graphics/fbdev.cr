@@ -167,7 +167,9 @@ module FbdevState
   def putc(x, y, ch : UInt8)
     return if x > @@cwidth || x < 0
     return if y > @@height || y < 0
-    bitmap = Kernel.fb_fonts[ch]
+    bitmap = Kernel.fb_fonts[ch]?
+    return if bitmap.nil?
+    bitmap = bitmap.not_nil!
     FB_ASCII_FONT_WIDTH.times do |cx|
       FB_ASCII_FONT_HEIGHT.times do |cy|
         dx = x * FB_ASCII_FONT_WIDTH + cx
