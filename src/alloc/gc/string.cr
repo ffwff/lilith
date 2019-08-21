@@ -41,6 +41,11 @@ class GcString
     @buffer[k]
   end
 
+  def [](range : Range(Int, Int))
+    panic "cstring: out of range" if range.begin > range.end
+    Slice(UInt8).new(@buffer + range.begin, range.size)
+  end
+
   def ==(other)
     return false if size != other.size
     @size.times do |i|

@@ -341,7 +341,15 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
   when SC_SPAWN
     path = try(checked_string_argument(fv.rbx))
     argv = try(checked_pointer32(UInt32, fv.rdx))
-    vfs_node = parse_path_into_vfs path, pudata.cwd_node
+    vfs_node = unless (path_env = pudata.getenv("PATH")).nil?
+      # TODO: parse multiple paths
+      unless (dir = parse_path_into_vfs(path_env)).nil?
+        parse_path_into_vfs path, dir
+      end
+    end
+    if vfs_node.nil?
+      vfs_node = parse_path_into_vfs path, pudata.cwd_node
+    end
     if vfs_node.nil?
       fv.rax = SYSCALL_ERR
     else
@@ -414,6 +422,8 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
   when SC_SLEEP
     process.status = Multiprocessing::Process::Status::WaitIo
     Multiprocessing.switch_process(frame)
+  when SC_GETENV
+  when SC_SETENV
   when SC_EXIT
     if process.pid == 1
       panic "init exited"
