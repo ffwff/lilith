@@ -87,7 +87,6 @@ module Multiprocessing
     enum Status
       Removed
       Normal
-      Unwait
       WaitIo
       WaitProcess
     end
@@ -270,10 +269,25 @@ module Multiprocessing
         ] %}
       frame.{{ id.id }} = syscall_frame.value.{{ id.id }}
       {% end %}
-      frame.rflags = USER_RFLAGS
-      frame.cs = USER_CS_SEGMENT
-      frame.ss = USER_SS_SEGMENT
-      frame.ds = USER_SS_SEGMENT
+
+      # setup frame for waking up
+      if kernel_process?
+        frame.rip = syscall_frame.value.rcx
+        frame.userrsp = syscall_frame.value.rsp
+
+        frame.rflags = frame.r11
+        frame.cs = KERNEL_CS_SEGMENT
+        frame.ss = KERNEL_SS_SEGMENT
+        frame.ds = KERNEL_SS_SEGMENT
+      else
+        frame.rip = Pointer(UInt32).new(syscall_frame.value.rcx).value
+        frame.userrsp = syscall_frame.value.rcx & 0xFFFF_FFFFu64
+
+        frame.rflags = USER_RFLAGS
+        frame.cs = USER_CS_SEGMENT
+        frame.ss = USER_SS_SEGMENT
+        frame.ds = USER_SS_SEGMENT
+      end
 
       @frame = Pointer(IdtData::Registers).malloc
       @frame.value = frame
@@ -386,26 +400,27 @@ module Multiprocessing
       io.puts " initial_ip: ", Pointer(Void).new(@initial_ip), ", \n"
       io.puts "}"
     end
+
   end
 
   private def can_switch(process)
+    Serial.puts process.pid, ':', process.status, '\n'
     case process.status
     when Multiprocessing::Process::Status::Normal
       true
-    when Multiprocessing::Process::Status::Unwait
-      true
+    when Multiprocessing::Process::Status::Removed
+      false
+    when Multiprocessing::Process::Status::WaitIo
+      false
     when Multiprocessing::Process::Status::WaitProcess
-      #Serial.puts process.udata.pwait.not_nil!.pid, ':', process.udata.pwait.not_nil!.status, '\n'
-      if process.udata.pwait.nil? ||
+      if !process.udata.pwait.nil? &&
          process.udata.pwait.not_nil!.status == Multiprocessing::Process::Status::Removed
-        process.status = Multiprocessing::Process::Status::Unwait
+        process.status = Multiprocessing::Process::Status::Normal
         process.udata.pwait = nil
         true
       else
         false
       end
-    else
-      false
     end
   end
 
@@ -430,12 +445,22 @@ module Multiprocessing
       end
       @@current_process = cur
     end
-    if @@current_process.nil?
+    if @@current_process.nil? || !can_switch(@@current_process.not_nil!)
       # no tasks left, use idle
       @@current_process = @@first_process
     else
       @@current_process
     end
+  end
+
+  # sleep from kernel thread
+  def sleep_drv
+    retval = 0u64
+    asm("syscall"
+        : "={rax}"(retval)
+        : "{rax}"(SC_SLEEP)
+        : "cc", "memory", "{rcx}", "{r11}", "{rdi}", "{rsi}")
+    retval
   end
 
   # context switch
@@ -477,15 +502,6 @@ module Multiprocessing
     Paging.flush
     if remove
       Paging.free_process_pdpt(current_process.phys_pg_struct)
-    end
-
-    # wake up process
-    if next_process.status == Multiprocessing::Process::Status::Unwait
-      # transition state from kernel syscall
-      next_process.frame.value.rip =
-        Pointer(UInt32).new(next_process.frame.value.rcx).value
-      next_process.frame.value.userrsp = next_process.frame.value.rcx
-      next_process.status = Multiprocessing::Process::Status::Normal
     end
 
     # restore fxsave

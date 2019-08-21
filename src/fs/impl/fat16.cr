@@ -417,17 +417,17 @@ class Fat16FS < VFS
     entries.mfree
     bs.mfree
 
-    @queue = VFSQueue.new
-
     # setup process-local variables
     @process_allocator =
       StackAllocator.new(Pointer(Void).new(Multiprocessing::KERNEL_HEAP_INITIAL))
-    Multiprocessing::Process
+    @process = Multiprocessing::Process
       .spawn_kernel(->(ptr : Void*) { ptr.as(Fat16FS).process },
                     self.as(Void*),
                     stack_pages: 4) do |process|
       Paging.alloc_page_pg(Multiprocessing::KERNEL_HEAP_INITIAL, true, false)
     end
+
+    @queue = VFSQueue.new(@process)
   end
 
   # queue
@@ -449,11 +449,9 @@ class Fat16FS < VFS
         when VFSMessage::Type::Write
           # TODO
         when VFSMessage::Type::Spawn
-          # TODO
           udata = msg.udata.not_nil!
           case (retval = ElfReader.load_from_kernel_thread(fat16_node, @process_allocator.not_nil!))
           when ElfReader::Result
-            # TODO
             retval = retval.as(ElfReader::Result)
             pid = Multiprocessing::Process
               .spawn_user_4gb_drv(
@@ -468,6 +466,8 @@ class Fat16FS < VFS
           end
           @process_allocator.not_nil!.clear
         end
+      else
+        Multiprocessing.sleep_drv
       end
     end
   end
