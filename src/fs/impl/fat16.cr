@@ -447,7 +447,9 @@ class Fat16FS < VFS
         fat16_node = msg.vfs_node.unsafe_as(Fat16Node)
         case msg.type
         when VFSMessage::Type::Read
-          fat16_node.read(msg.slice_size, allocator: @process_allocator) do |ch|
+          fat16_node.read(msg.slice_size,
+                          msg.file_offset,
+                          allocator: @process_allocator) do |ch|
             msg.respond(ch)
           end
           msg.unawait

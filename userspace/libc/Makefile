@@ -1,6 +1,6 @@
 OBJ = \
-	src/functions/arch/setjmp.o \
 	$(patsubst %.c, %.o, $(wildcard src/functions/arch/shim/*)) \
+	$(patsubst %.s, %.o, $(wildcard src/functions/arch/asm/*)) \
 	src/functions/arch/crt0.o \
 	libc.cr.o
 CRYSTAL_SRC = $(wildcard src/*.cr) $(wildcard src/functions/*.cr)
@@ -31,7 +31,7 @@ libm.a: $(MATH_SRC)
 libc.cr.o: $(CRYSTAL_SRC)
 	FREESTANDING=1 $(CR) build $(CRFLAGS) src/main.cr -o libc.cr
 
-src/functions/arch/setjmp.o: src/functions/arch/setjmp.s
+src/functions/arch/asm/%.o: src/functions/arch/asm/%.s
 	$(AS) -o $@ $^
 
 %.o: %.c
