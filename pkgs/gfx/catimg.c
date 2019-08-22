@@ -13,7 +13,7 @@ double ldexp(double x, int exp) {
     return 0.0;
 }
 
-const int channels = 3;
+const int channels = 4;
 
 int main(int argc, char **argv) {
     if (argc < 2) {
@@ -41,15 +41,22 @@ int main(int argc, char **argv) {
     for(int y = 0; y < h; y++) {
         for(int x = 0; x < w; x++) {
             int offset = (y * w + x) * channels;
+            // RGBA => 0RGB
             unsigned char r = data[offset + 0];
             unsigned char g = data[offset + 1];
             unsigned char b = data[offset + 2];
-            unsigned long color = r << 16 | g << 8 | b;
-
-            int fd_offset = y * ws.ws_col + x;
-            lseek(fd, fd_offset * 4, SEEK_SET);
-            write(fd, &color, 4);
+            data[offset + 0] = b;
+            data[offset + 1] = g;
+            data[offset + 2] = r;
+            data[offset + 3] = 0;
         }
+
+        int fd_offset = y * ws.ws_col * 4;
+        lseek(fd, fd_offset, SEEK_SET);
+
+        int copy_start = y * w * channels;
+        int copy_size = w * channels;
+        write(fd, data + copy_start, copy_size);
     }
 
     // cleanup
