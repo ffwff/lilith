@@ -324,7 +324,8 @@ class Fat16Node < VFSNode
     VFS_WAIT
   end
 
-  def write(slice : Slice) : Int32
+  def write(slice : Slice, offset : UInt32,
+            process : Multiprocessing::Process? = nil) : Int32
     VFS_ERR
   end
 

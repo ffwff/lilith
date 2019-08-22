@@ -9,7 +9,7 @@ int open(char *device, int flags, mode_t mode);
 int close(int fd);
 long write(int fd, void *str, size_t len);
 long read(int fd, char *str, unsigned long len);
-int ftruncate(int fildes, off_t length);
+int ftruncate(int fd, off_t length);
 
 typedef long pid_t;
 pid_t spawnv(char *file, char **argv);
@@ -20,6 +20,8 @@ pid_t getpid();
 
 int getcwd(char *buf, unsigned long length);
 int chdir(char *buf);
+
+off_t lseek(int fd, off_t offset, int whence);
 
 #define PATH_MAX 4096
 
