@@ -35,6 +35,7 @@ drive_mount() {
 drive_umount() {
     echo "unmounting $opt_mountdir..."
     sudo umount /mnt || fail "failed to unmount"
+    sudo losetup -D /dev/loop0
 }
 
 try_patch() {

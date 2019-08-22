@@ -347,7 +347,9 @@ class Fat16Node < VFSNode
   end
 
   private def load_dir_entry(entry)
-    node = Fat16Node.new(fs, name_from_entry(entry), true,
+    name = name_from_entry(entry)
+    return if name == "." || name == ".."
+    node = Fat16Node.new(fs, name, true,
       starting_cluster: entry.starting_cluster.to_u32,
       size: entry.file_size)
     add_child node

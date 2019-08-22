@@ -9,6 +9,6 @@ build() {
 }
 
 install() {
-    sudo cp $build_dir/mruby/build/lilith/bin/mruby $install_dir/mruby
-    sudo cp $build_dir/mruby/build/lilith/bin/mirb $install_dir/mirb
+    sudo cp $build_dir/mruby/build/lilith/bin/mruby $install_dir/bin/mruby
+    sudo cp $build_dir/mruby/build/lilith/bin/mirb $install_dir/bin/mirb
 }
