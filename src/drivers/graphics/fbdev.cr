@@ -137,7 +137,7 @@ module FbdevState
   end
 
   # physical framebuffer location
-  @@buffer = Pointer(UInt32).null
+  @@buffer = Slice(UInt32).null
   def buffer
     @@buffer
   end
@@ -150,9 +150,10 @@ module FbdevState
     r.unsafe_shl(16) | g.unsafe_shl(8)
   end
 
-  def init_device(@@width, @@height, @@buffer)
+  def init_device(@@width, @@height, ptr)
     @@cwidth = @@width.unsafe_div(FB_ASCII_FONT_WIDTH) - 1
     @@cheight = @@height.unsafe_div(FB_ASCII_FONT_HEIGHT) - 1
+    @@buffer = Slice(UInt32).new(ptr, @@width * @@height)
     @@height.times do |y|
       @@width.times do |x|
         @@buffer[offset x, y] = color x, y

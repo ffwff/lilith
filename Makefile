@@ -73,7 +73,7 @@ build/bootstrap.o: src/asm/bootstrap.s build/kernel64.bin
 run: build/kernel
 	-$(QEMU) -kernel $^ $(QEMUFLAGS)
 
-run_img: build/kernel $(DRIVE_IMG)
+run_img: build/kernel install_kernel_to_disk
 	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda $(DRIVE_IMG)
 
 rungdb: build/kernel

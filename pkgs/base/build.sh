@@ -3,5 +3,5 @@ build() {
 }
 
 install() {
-    sudo mkdir -p $install_dir/bin
+    sudo mkdir -p $install_dir/bin/
 }

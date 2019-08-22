@@ -240,14 +240,14 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
       process.status = Multiprocessing::Process::Status::WaitIo
       Multiprocessing.switch_process(frame)
     else
-      fd.offset += str.size
+      fd.offset += result
       fv.rax = result
     end
   when SC_WRITE
     fdi = fv.rbx.to_i32
     fd = try(pudata.get_fd(fdi))
     str = try(checked_string_argument(fv.rdx))
-    result = fd.not_nil!.node.not_nil!.write(str)
+    result = fd.not_nil!.node.not_nil!.write(str, fd.offset, process)
     case result
     when VFS_WAIT
       Idt.lock do # may allocate
@@ -259,6 +259,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
       process.status = Multiprocessing::Process::Status::WaitIo
       Multiprocessing.switch_process(frame)
     else
+      fd.offset += result
       fv.rax = result
     end
   when SC_SEEK

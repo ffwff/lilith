@@ -31,7 +31,8 @@ abstract class VFSNode
   abstract def open(path : Slice) : VFSNode?
   abstract def read(slice : Slice(UInt8), offset : UInt32,
                     process : Multiprocessing::Process? = nil) : Int32
-  abstract def write(slice : Slice) : Int32
+  abstract def write(slice : Slice(UInt8), offset : UInt32,
+                     process : Multiprocessing::Process? = nil) : Int32
 
   def spawn(udata : Multiprocessing::Process::UserData) : Int32
     VFS_ERR
