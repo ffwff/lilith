@@ -6,6 +6,11 @@ lib LibC
     len : LibC::UInt
   end
 
+  struct SyscallSeekArgument
+    offset : LibC::Int
+    whence : LibC::Int
+  end
+
   fun sysenter(eax : LibC::UInt, ebx : LibC::UInt, edx : LibC::UInt) : LibC::UInt
 end
 
@@ -51,6 +56,13 @@ end
 
 fun remove(str : LibC::String) : LibC::Int
   -1
+end
+
+fun lseek(fd : LibC::Int, offset : Int32, whence : LibC::Int) : Int32
+  arg = uninitialized LibC::SyscallSeekArgument
+  arg.offset = offset
+  arg.whence = whence
+  sysenter(SC_SEEK, fd, pointerof(arg).address.to_u32).to_i32
 end
 
 fun lseek64(fd : LibC::Int, offset : Int64, whence : LibC::Int) : Int64

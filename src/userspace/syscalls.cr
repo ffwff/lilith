@@ -20,7 +20,7 @@ lib SyscallData
   @[Packed]
   struct SeekArgument32
     offset : Int32
-    whence : UInt32
+    whence : Int32
   end
 
   alias Ino32 = Int32
@@ -235,11 +235,12 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
         vfs_node = fd.not_nil!.node.not_nil!
         vfs_node.fs.queue.not_nil!
           .enqueue(VFSMessage.new(VFSMessage::Type::Read,
-            str, process, fd.not_nil!.buffering, vfs_node))
+            str, process, fd, vfs_node))
       end
       process.status = Multiprocessing::Process::Status::WaitIo
       Multiprocessing.switch_process(frame)
     else
+      fd.offset += str.size
       fv.rax = result
     end
   when SC_WRITE
@@ -253,7 +254,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
         vfs_node = fd.not_nil!.node.not_nil!
         vfs_node.fs.queue.not_nil!
           .enqueue(VFSMessage.new(VFSMessage::Type::Write,
-            str, process, fd.not_nil!.buffering, vfs_node))
+            str, process, fd, vfs_node))
       end
       process.status = Multiprocessing::Process::Status::WaitIo
       Multiprocessing.switch_process(frame)

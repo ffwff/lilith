@@ -52,9 +52,9 @@ class FileBuffer
     i
   end
 
-  def flush(fd)
+  def flush(fd, submit_kernel = true)
     retval = EOF
-    if @is_write
+    if @is_write && submit_kernel
       retval = write(fd, @buffer.as(LibC::String), @pos)
     end
     @pos = 0
@@ -104,8 +104,8 @@ class File
 
   def _finalize
     close @fd
-    # @wbuffer.free
-    # @rbuffer.free
+    @wbuffer.as(Void*).free
+    @rbuffer.as(Void*).free
   end
 
   private def line_buffered?
@@ -237,6 +237,12 @@ class File
     end
   end
 
+  def fseek(offset, whence)
+    lseek(@fd, offset, whence)
+    @wbuffer.flush(@fd, false)
+    @rbuffer.flush(@fd, false)
+  end
+
 end
 
 lib LibC
@@ -299,8 +305,7 @@ fun fflush(stream : Void*) : LibC::Int
 end
 
 fun fseek(stream : Void*, offset : LibC::Int, whence : LibC::Int) : LibC::Int
-  abort
-  0
+  stream.as(File).fseek(offset, whence)
 end
 
 fun ftell(stream : Void*) : LibC::Int

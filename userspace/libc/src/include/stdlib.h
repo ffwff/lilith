@@ -8,6 +8,8 @@ void *calloc(size_t nmemb, size_t size);
 void *realloc(void *ptr, size_t size);
 
 unsigned long int strtoul(const char *nptr, char **endptr, int base);
+long int strtol(const char *nptr, char **endptr, int base);
+int abs(int j);
 
 void exit(int status);
 void abort(void);

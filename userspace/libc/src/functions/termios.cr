@@ -12,12 +12,10 @@ end
 
 fun tcgetattr(fd : LibC::Int, termios_p : LibC::Termios*) : LibC::Int
   ioctl fd, SC_IOCTL_TCSAGETS, termios_p.as(Void*)
-  0
 end
 
 fun tcsetattr(fd : LibC::Int,
               optional_actions : LibC::Int,
               termios_p : LibC::Termios*) : LibC::Int
   ioctl fd, optional_actions, termios_p.as(Void*)
-  0
 end

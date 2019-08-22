@@ -20,17 +20,3 @@ end
 fun pow(arg : Float64, exp : Float64) : Float64
   Intrinsics.pow_f64 arg, exp
 end
-
-@[Naked]
-fun fmod
-  asm("
-     fldl 12(%esp)
-     fldl 4(%esp)
-  1: fprem
-     fnstsw %ax
-     sahf
-     jp 1b
-     fstp %st(1)
-     ret
-  ")
-end

@@ -9,9 +9,6 @@ class VFSMessage
 
   # TODO: file offset
 
-  @buffering = VFSNode::Buffering::Unbuffered
-  getter buffering
-
   getter vfs_node
 
   def slice_size
@@ -31,7 +28,7 @@ class VFSMessage
   def initialize(@type : Type,
                  @slice : Slice(UInt8)?,
                  @process : Multiprocessing::Process?,
-                 @buffering,
+                 @fd : FileDescriptor?,
                  @vfs_node : VFSNode)
   end
 
@@ -39,6 +36,19 @@ class VFSMessage
                  @vfs_node : VFSNode,
                  @process : Multiprocessing::Process? = nil)
     @type = VFSMessage::Type::Spawn
+  end
+
+  def buffering
+    return VFSNode::Buffering::Unbuffered if @fd.nil?
+    @fd.not_nil!.buffering
+  end
+
+  def file_offset
+    if @fd.nil?
+      0
+    else
+      @fd.not_nil!.offset
+    end
   end
 
   def finished?
@@ -64,6 +74,9 @@ class VFSMessage
 
   def unawait
     @process.not_nil!.status = Multiprocessing::Process::Status::Normal
+    unless @fd.nil?
+      @fd.not_nil!.offset += @offset
+    end
     @process.not_nil!.frame.value.rax = @offset
   end
   
