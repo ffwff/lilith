@@ -1,7 +1,7 @@
-class VGAFsNode < VFSNode
+class ConsoleFsNode < VFSNode
   getter fs
 
-  def initialize(@fs : VGAFS)
+  def initialize(@fs : ConsoleFS)
   end
 
   def open(path : Slice) : VFSNode?
@@ -13,7 +13,8 @@ class VGAFsNode < VFSNode
     0
   end
 
-  def write(slice : Slice) : Int32
+  def write(slice : Slice, offset : UInt32,
+            process : Multiprocessing::Process? = nil) : Int32
     slice.each do |ch|
       Console.puts ch.unsafe_chr
     end
@@ -34,7 +35,7 @@ class VGAFsNode < VFSNode
   end
 end
 
-class VGAFS < VFS
+class ConsoleFS < VFS
   def name
     @name.not_nil!
   end
@@ -43,8 +44,8 @@ class VGAFS < VFS
   property next_node
 
   def initialize
-    @name = GcString.new "vga"
-    @root = VGAFsNode.new self
+    @name = GcString.new "con"
+    @root = ConsoleFsNode.new self
   end
 
   def root
