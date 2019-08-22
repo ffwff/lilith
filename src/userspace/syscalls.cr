@@ -128,7 +128,6 @@ private def append_paths(path, src_path, cw_node)
         while idx > 1
           idx -= 1
           if cpath[idx] == '/'.ord
-            idx -= 1
             break
           end
         end
