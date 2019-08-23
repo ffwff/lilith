@@ -168,11 +168,11 @@ fun memset(dst : UInt8*, c : LibC::UInt, n : LibC::SizeT) : Void*
 end
 
 fun memcpy(dst : UInt8*, src : UInt8*, n : LibC::SizeT) : Void*
-  i = 0
-  while i < n
-    dst[i] = src[i]
-    i += 1
-  end
+  asm(
+    "cld\nrep movsb"
+    :: "{edi}"(dst), "{esi}"(src), "{ecx}"(n)
+    : "volatile", "memory"
+  )
   dst.as(Void*)
 end
 

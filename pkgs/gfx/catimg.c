@@ -15,6 +15,13 @@ double ldexp(double x, int exp) {
 
 const int channels = 4;
 
+struct fbdev_bitblit {
+    unsigned long *source;
+    unsigned long x, y, width, height;
+};
+
+#define FB_BITBLIT 3
+
 int main(int argc, char **argv) {
     if (argc < 2) {
         printf("usage: %s filename\n", argv[0]);
@@ -38,26 +45,23 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    for(int y = 0; y < h; y++) {
-        for(int x = 0; x < w; x++) {
-            int offset = (y * w + x) * channels;
-            // RGBA => 0RGB
-            unsigned char r = data[offset + 0];
-            unsigned char g = data[offset + 1];
-            unsigned char b = data[offset + 2];
-            data[offset + 0] = b;
-            data[offset + 1] = g;
-            data[offset + 2] = r;
-            data[offset + 3] = 0;
-        }
-
-        int fd_offset = y * ws.ws_col * 4;
-        lseek(fd, fd_offset, SEEK_SET);
-
-        int copy_start = y * w * channels;
-        int copy_size = w * channels;
-        write(fd, data + copy_start, copy_size);
+    for (int i = 0; i < (w * h * 4); i += 4) {
+        unsigned char r = data[i + 0];
+        unsigned char g = data[i + 1];
+        unsigned char b = data[i + 2];
+        data[i + 0] = b;
+        data[i + 1] = g;
+        data[i + 2] = r;
+        data[i + 3] = 0;
     }
+    struct fbdev_bitblit bitblit = {
+        .source = (unsigned long*)data,
+        .x = 100,
+        .y = 100,
+        .width = w,
+        .height = h
+    };
+    ioctl(fd, FB_BITBLIT, &bitblit);
 
     // cleanup
     stbi_image_free(data);
