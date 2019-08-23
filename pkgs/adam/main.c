@@ -5,7 +5,6 @@
 
 void spawn_process(char *s, char **argv) {
     pid_t child = spawnv(s, argv);
-    printf("%d\n", child);
     if (child > 0)
         waitpid(child, 0, 0);
     else

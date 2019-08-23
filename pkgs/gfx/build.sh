@@ -9,7 +9,7 @@ build() {
     _download https://upload.wikimedia.org/wikipedia/en/7/7d/Lenna_%28test_image%29.png "$build_dir/test.png"
     
     for i in $script_dir/*.c; do
-        ${opt_arch}-gcc -g -o $build_dir/$(basename $i .c) $i -lm
+        ${opt_arch}-gcc -O2 -o $build_dir/$(basename $i .c) $i -lm
     done
 }
 

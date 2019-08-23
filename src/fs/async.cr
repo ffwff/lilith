@@ -56,12 +56,23 @@ class VFSMessage
   end
 
   def respond(buf)
-    size = min(buf.size, @slice.size.not_nil! - @offset)
-    if size > 0
-      size.times do |i|
-        @process.not_nil!.write_to_virtual(@slice.not_nil!.to_unsafe + @offset, buf[i])
+    remaining = min(buf.size, @slice.size.not_nil! - @offset)
+    # offset of byte to be written in page (0 -> 0x1000)
+    pg_offset = @slice.not_nil!.to_unsafe.address & 0xFFF
+    # virtual page range
+    virt_pg_addr = Paging.aligned(@slice.not_nil!.to_unsafe.address)
+    virt_pg_end = Paging.aligned(@slice.not_nil!.to_unsafe.address + remaining)
+    while virt_pg_addr < virt_pg_end
+      # physical address of the current page
+      phys_pg_addr = @process.not_nil!.physical_page_for_address(virt_pg_addr)
+      while remaining > 0 && pg_offset < 0x1000
+        phys_pg_addr[pg_offset] = buf[@offset]
         @offset += 1
+        remaining -= 1
+        pg_offset += 1
       end
+      pg_offset = 0
+      virt_pg_addr += 0x1000
     end
   end
 
