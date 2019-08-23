@@ -249,7 +249,8 @@ module Gc
         node = @@first_white_node
         while !node.null?
           panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
-          Serial.puts "free ", node, " ", (node.as(UInt8*)+sizeof(Kernel::GcNode)).as(USize*)[0], "\n"
+          # HACK: do this or data corrupts
+          no_opt(node.address)
           next_node = node.value.next_node
           KernelArena.free node.address
           node = next_node

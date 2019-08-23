@@ -122,9 +122,9 @@ class KbdFS < VFS
         msg.unawait
         false
       else
-        if ch == '\b' && msg.offset > 0
-          msg.respond 0
-          false
+        if ch == '\b'
+          msg.consume
+          true
         else
           msg.respond n
           if (msg.buffering == VFSNode::Buffering::LineBuffered && ch == '\n') ||

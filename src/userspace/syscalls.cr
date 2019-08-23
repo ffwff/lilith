@@ -472,7 +472,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
       # increase the end of the heap if incr > 0
       if pudata.heap_end == 0
         Idt.lock do
-          Serial.puts Pointer(Void).new(pudata.heap_start), '\n'
+          # Serial.puts Pointer(Void).new(pudata.heap_start), '\n'
           pudata.heap_end = Paging.alloc_page_pg(pudata.heap_start, true, true)
           zero_page Pointer(UInt8).new(pudata.heap_end)
         end

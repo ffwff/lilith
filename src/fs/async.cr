@@ -51,6 +51,11 @@ class VFSMessage
     end
   end
 
+  def consume
+    return unless @offset > 0
+    @offset -= 1
+  end
+
   def finished?
     offset == slice_size
   end

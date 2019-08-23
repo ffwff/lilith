@@ -59,11 +59,17 @@ class FbdevFsNode < VFSNode
 
       # blit
       byte_buffer = FbdevState.buffer.to_unsafe.as(UInt8*)
-      arg.height.times do |y|
-        fb_offset = y * FbdevState.width * 4
-        copy_offset = y * arg.width * 4
-        copy_size = arg.width * 4
-        memcpy(byte_buffer + fb_offset, source + copy_offset, copy_size.to_usize)
+      if  arg.x == 0 && arg.y == 0 &&
+          arg.width == FbdevState.width && arg.height == FbdevState.height
+        copy_size = FbdevState.width * FbdevState.height * 4
+        memcpy(byte_buffer, source, copy_size.to_usize)
+      else
+        arg.height.times do |y|
+          fb_offset = y * FbdevState.width * 4
+          copy_offset = y * arg.width * 4
+          copy_size = arg.width * 4
+          memcpy(byte_buffer + fb_offset, source + copy_offset, copy_size.to_usize)
+        end
       end
 
       0
