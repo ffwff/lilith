@@ -1,3 +1,11 @@
+lib FbdevFsData
+  @[Packed]
+  struct FbBitBlit
+    source : UInt32
+    x, y, width, height : UInt32
+  end
+end
+
 class FbdevFsNode < VFSNode
   getter fs
 
@@ -40,6 +48,25 @@ class FbdevFsNode < VFSNode
     case request
     when SC_IOCTL_TIOCGWINSZ
       IoctlHandler.winsize(data, FbdevState.width, FbdevState.height, 1, 1)
+    when SC_IOCTL_FB_BITBLIT
+      arg = data.as(FbdevFsData::FbBitBlit*).value
+
+      # source
+      source_sz = arg.width * arg.height * 4
+      source = checked_slice32(arg.source, source_sz)
+      return -1 if source.nil?
+      source = source.not_nil!.to_unsafe
+
+      # blit
+      byte_buffer = FbdevState.buffer.to_unsafe.as(UInt8*)
+      arg.height.times do |y|
+        fb_offset = y * FbdevState.width * 4
+        copy_offset = y * arg.width * 4
+        copy_size = arg.width * 4
+        memcpy(byte_buffer + fb_offset, source + copy_offset, copy_size.to_usize)
+      end
+
+      0
     else
       -1
     end
