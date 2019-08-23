@@ -118,6 +118,19 @@ runiso: os.iso
 		build/kernel64
 	-@pkill qemu
 
+rundisk:
+	$(QEMU) -S -hda $(DRIVE_IMG) $(QEMUFLAGS) -gdb tcp::9000 &
+	sleep 0.1s && $(GDB) -quiet \
+		-ex 'set arch i386:x86-64:intel' \
+		-ex 'target remote localhost:9000' \
+		-ex 'hb kmain' \
+		-ex 'continue' \
+		-ex 'disconnect' \
+		-ex 'set arch i386:x86-64:intel' \
+		-ex 'target remote localhost:9000' \
+		build/kernel64
+	-@pkill qemu
+
 os.iso: build/kernel
 	rm -rf /tmp/iso && mkdir -p /tmp/iso/boot/grub
 	cp $^ /tmp/iso
@@ -154,6 +167,9 @@ install_kernel_to_disk: build/kernel
 	sudo cp $^ /mnt/boot/kernel
 	sudo umount /mnt
 	sudo losetup -D /dev/loop0
+
+distro: $(DRIVE_IMG) install_kernel_to_disk
+	./pkgs/missio install base adam core gfx kilo
 
 clean:
 	rm -f build/*
