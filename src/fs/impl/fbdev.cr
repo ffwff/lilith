@@ -10,7 +10,16 @@ class FbdevFsNode < VFSNode
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
-    0
+    byte_size = FbdevState.buffer.size * sizeof(UInt32)
+    if offset > byte_size
+      VFS_ERR
+    else
+      size = min(slice.size, byte_size - offset)
+      byte_buffer = FbdevState.buffer.to_unsafe.as(UInt8*) + offset
+      # NOTE: use memcpy for faster memory copying
+      memcpy(slice.to_unsafe, byte_buffer, size.to_usize)
+      size
+    end
   end
 
   def write(slice : Slice, offset : UInt32,
@@ -20,10 +29,9 @@ class FbdevFsNode < VFSNode
       VFS_ERR
     else
       size = min(slice.size, byte_size - offset)
-      byte_buffer = FbdevState.buffer.to_unsafe.as(UInt8*)
-      size.times do |i|
-        byte_buffer[offset + i] = slice[i]
-      end
+      byte_buffer = FbdevState.buffer.to_unsafe.as(UInt8*) + offset
+      # NOTE: use memcpy for faster memory copying
+      memcpy(byte_buffer, slice.to_unsafe, size.to_usize)
       size
     end
   end

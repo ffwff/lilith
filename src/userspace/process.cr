@@ -413,6 +413,24 @@ module Multiprocessing
       true
     end
 
+    # get physical page where the address belongs to
+    def physical_page_for_address(virt_addr : UInt64)
+      return if virt_addr > PDPT_SIZE
+
+      _, dir_idx, table_idx, page_idx = Paging.page_layer_indexes(virt_addr)
+
+      pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+        .new(Paging.mt_addr @phys_pg_struct)
+
+      pd = Pointer(PageStructs::PageDirectory).new(Paging.mt_addr pdpt.value.dirs[dir_idx])
+      return if pd.null?
+
+      pt = Pointer(PageStructs::PageTable).new(Paging.mt_addr pd.value.tables[table_idx])
+      return if pt.null?
+
+      Pointer(UInt8).new(Paging.mt_addr(pt.value.pages[page_idx]))
+    end
+
     # debugging
     def to_s(io)
       io.puts "Process {\n"
