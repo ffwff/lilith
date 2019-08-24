@@ -98,6 +98,8 @@ static __inline unsigned long long __DOUBLE_BITS(double __f)
 #define INFINITY 1e5000f
 #endif
 
+#define HUGE_VAL INFINITY
+
 int __signbit(double);
 int __signbitf(float);
 int __signbitl(long double);

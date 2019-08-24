@@ -7,6 +7,8 @@ usage() {
     echo "  build: builds the package"
     echo "  install: installs package into drive"
     echo "  list: lists available packages"
+    echo "  mount: mounts the drive"
+    echo "  umount: unmounts the drive"
     echo "options:"
     echo "  -h: shows this help"
     echo "  -d image: specify mount image [../drive.img]"
@@ -110,6 +112,14 @@ while true; do
             for i in $missio_dir/*; do
                 [[ -f "$i/build.sh" ]] && echo "  $(basename $i)"
             done
+            exit 0
+            ;;
+        mount)
+            drive_mount
+            exit 0
+            ;;
+        umount)
+            drive_umount
             exit 0
             ;;
         *)
