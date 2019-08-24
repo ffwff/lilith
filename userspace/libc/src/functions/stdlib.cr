@@ -9,6 +9,11 @@ fun strtoul(nptr : LibC::String, endptr : LibC::String*, base : LibC::Int) : Lib
   0u32
 end
 
+fun strtod(nptr : LibC::String, endptr : LibC::String*) : Float64
+  abort
+  0.0f64
+end
+
 # environ
 fun getenv(name : LibC::String) : LibC::String
   LibC::String.null

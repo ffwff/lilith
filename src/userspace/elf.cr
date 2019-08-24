@@ -208,9 +208,12 @@ module ElfReader
             MemMapNode.new(data.p_offset.to_u64, data.p_filesz.to_u64,
               data.p_vaddr.to_u64, data.p_memsz.to_u64)
           mmap_append_idx += 1
-          if data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_R)
+          if data.p_type == ElfStructs::Elf32PType::TLS
+            # TODO
+          elsif data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_R)
             npages = data.p_memsz.to_usize.unsafe_shr(12) + 1
             # create page and zero-initialize it
+            # Serial.puts Pointer(Void).new(data.p_vaddr.to_u64), data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_W), '\n'
             page_start = Paging.alloc_page_pg_drv(data.p_vaddr.to_usize,
               data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_W),
               true, npages)
