@@ -23,11 +23,15 @@ SECTIONS
         text_end = .;   QUAD(_TEXT_END)
         data_start = .; QUAD(_DATA_START)
         data_end = .;   QUAD(_DATA_END)
+        bss_start = .; QUAD(_BSS_START)
+        bss_end = .;   QUAD(_BSS_END)
         kernel_end = .; QUAD(_KERNEL_END)
     }
     .bss BLOCK(4K) : ALIGN(4K)
     {
+        _BSS_START = .;
         *(.bss)
+        _BSS_END = .;
     }
     . = ALIGN(4K);
     _DATA_END = .;

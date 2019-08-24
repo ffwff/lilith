@@ -1,3 +1,5 @@
+STACK_SIZE = 16384
+
 # -- text
 
 .section .text
@@ -5,6 +7,9 @@
 .include "idt.s"
 .include "syscalls.s"
 .include "user.s"
+
+.extern _BSS_START
+.extern _BSS_END
 
 .section .bootstrap
 .global _start
@@ -15,6 +20,20 @@ _start:
     movabs $_start_higher, %rcx
     jmp *%rcx
 _start_higher:
+    # clear stack
+    mov %rax, %r8
+    cld
+    movabs $stack_bottom, %rdi
+    mov $STACK_SIZE, %rcx
+    xor %rax, %rax
+    rep stosb
+    # clear bss
+    movabs $_BSS_START, %rdi
+    movabs $_BSS_END, %rcx
+    sub %rdi, %rcx
+    rep stosb
+    mov %r8, %rax
+_start_main:
     # call the main function
     mov %rax, %rdi
     mov %rbx, %rsi
@@ -46,5 +65,5 @@ fxsave_region:
 .skip 4096
 .align 16
 stack_bottom:
-.skip 16384 # 16 KiB
+.skip STACK_SIZE
 stack_top:
