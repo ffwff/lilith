@@ -7,7 +7,6 @@ build() {
             cd $build_dir/
             tar xf cairo-$version.tar.xz
             cd cairo-$version
-            echo `pwd`
             try_patch $script_dir/cairo.patch
         popd
     fi
@@ -15,19 +14,17 @@ build() {
         cd $build_dir/cairo-$version
         ./configure \
             --prefix="$opt_toolsdir" \
-            --host=i386-elf-lilith \
+            --host=$opt_arch \
             --enable-ps=no --enable-pdf=no --enable-svg=no \
             --enable-script=no --enable-interpreter=no \
             --enable-xlib=no --enable-xcb=no \
             --enable-ft=no --enable-fc=no \
             --enable-gobject=no
-        make -j12
+        make -j12 # ignore test errors
+        make install
     popd
 }
 
 install() {
-    pushd .
-        cd $build_dir/cairo-$version
-        make install
-    popd
+    echo -ne
 }

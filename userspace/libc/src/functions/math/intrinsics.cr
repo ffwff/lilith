@@ -3,6 +3,9 @@ lib Intrinsics
   fun floor_f64 = "llvm.floor.f64"(value : Float64) : Float64
   fun pow_f64 = "llvm.pow.f64"(value : Float64, power : Float64) : Float64
   fun round_f64 = "llvm.round.f64"(value : Float64) : Float64
+  fun sqrt_f64 = "llvm.sqrt.f64"(value : Float64) : Float64
+  fun sin_f64 = "llvm.sin.f64"(value : Float64) : Float64
+  fun cos_f64 = "llvm.cos.f64"(value : Float64) : Float64
 end
 
 fun floor(arg : Float64) : Float64
@@ -19,4 +22,20 @@ end
 
 fun pow(arg : Float64, exp : Float64) : Float64
   Intrinsics.pow_f64 arg, exp
+end
+
+fun sqrt(arg : Float64) : Float64
+  Intrinsics.sqrt_f64 arg
+end
+
+fun hypot(x : Float64, y : Float64) : Float64
+  sqrt(x*x + y*y)
+end
+
+fun sin(arg : Float64) : Float64
+  Intrinsics.sin_f64 arg
+end
+
+fun cos(arg : Float64) : Float64
+  Intrinsics.cos_f64 arg
 end

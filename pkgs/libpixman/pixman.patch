@@ -1,0 +1,23 @@
+--- /tmp/pixman-0.38.4/config.sub	2019-04-11 00:19:26.000000000 +0700
++++ pixman-0.38.4/config.sub	2019-08-24 21:41:18.289198658 +0700
+@@ -1401,7 +1401,7 @@
+ 	# The portable systems comes first.
+ 	# Each alternative MUST END IN A *, to match a version number.
+ 	# -sysv* is not here because it comes later, after sysvr4.
+-	-gnu* | -bsd* | -mach* | -minix* | -genix* | -ultrix* | -irix* \
++	-gnu* | -bsd* | -mach* | -minix* | -genix* | -ultrix* | -irix* | -lilith* \
+ 	      | -*vms* | -sco* | -esix* | -isc* | -aix* | -cnk* | -sunos | -sunos[34]*\
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+ 	      | -sym* | -kopensolaris* | -plan9* \
+--- /tmp/pixman-0.38.4/pixman/pixman-implementation.c	2019-03-31 04:49:22.000000000 +0700
++++ pixman-0.38.4/pixman/pixman-implementation.c	2019-08-24 22:20:26.191145381 +0700
+@@ -396,9 +396,6 @@
+ 	imp = _pixman_implementation_create_fast_path (imp);
+ 
+     imp = _pixman_x86_get_implementations (imp);
+-    imp = _pixman_arm_get_implementations (imp);
+-    imp = _pixman_ppc_get_implementations (imp);
+-    imp = _pixman_mips_get_implementations (imp);
+ 
+     imp = _pixman_implementation_create_noop (imp);
+ 

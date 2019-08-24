@@ -17,3 +17,10 @@ end
 fun setenv(name : LibC::String, value : LibC::String, overwrite : LibC::Int) : LibC::Int
   0
 end
+
+# rand
+fun rand : LibC::Int
+  # TODO: chosen by an fair dice roll
+  # guaranteed to be random
+  4
+end
