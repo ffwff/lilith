@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 usage() {
     echo "$0: lilith's package manager"
@@ -11,15 +11,16 @@ usage() {
     echo "  umount: unmounts the drive"
     echo "options:"
     echo "  -h: shows this help"
-    echo "  -d image: specify mount image [../drive.img]"
-    echo "  -m dir: specify mount directory [/mnt]"
-    echo "  -arch arch: specify target [i386-elf-lilith]"
+    echo "  -d image: specify mount image [$opt_image]"
+    echo "  -m dir: specify mount directory [$opt_mountdir]"
+    echo "  -arch arch: specify target [$opt_arch]"
 }
 
 missio_dir=$(realpath "$(dirname $0)")
-opt_image="./disk.img"
+opt_image="$(pwd)/disk.img"
 opt_mountdir="/mnt"
 opt_arch="i386-elf-lilith"
+opt_toolsdir="$(pwd)/userspace/toolchain/tools"
 
 fail() {
     echo "$0: $1"

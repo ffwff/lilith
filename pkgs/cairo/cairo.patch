@@ -1,0 +1,24 @@
+diff -u a/config.h.in b/config.h.in
+--- a/config.h.in	2018-10-20 03:20:46.000000000 +0700
++++ b/config.h.in	2019-08-24 17:35:28.138615962 +0700
+@@ -441,3 +441,8 @@
+ 
+ /* Define to __typeof__ if your compiler spells it that way. */
+ #undef typeof
++
++/* Lilith */
++#ifdef __lilith__
++#define CAIRO_NO_MUTEX 1
++#endif
+diff -u a/build/config.sub b/build/config.sub
+--- a/build/config.sub	2018-08-17 08:11:52.000000000 +0700
++++ b/build/config.sub	2019-08-24 18:54:07.789484403 +0700
+@@ -1363,7 +1363,7 @@
+ 	# The portable systems comes first.
+ 	# Each alternative MUST end in a * to match a version number.
+ 	# -sysv* is not here because it comes later, after sysvr4.
+-	-gnu* | -bsd* | -mach* | -minix* | -genix* | -ultrix* | -irix* \
++	-gnu* | -bsd* | -mach* | -minix* | -genix* | -ultrix* | -irix* | -lilith* \
+ 	      | -*vms* | -sco* | -esix* | -isc* | -aix* | -cnk* | -sunos | -sunos[34]*\
+ 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
+ 	      | -sym* | -kopensolaris* | -plan9* \
