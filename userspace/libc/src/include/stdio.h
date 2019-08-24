@@ -11,7 +11,6 @@ extern FILE *stderr;
 
 FILE *fopen(const char *pathname, const char *mode);
 int fclose(FILE *stream);
-int fileno(FILE *stream);
 
 int fflush(FILE *);
 
@@ -28,6 +27,8 @@ int fseek(FILE *stream, long offset, int whence);
 long ftell(FILE *stream);
 
 int feof(FILE *stream);
+int ferror(FILE *stream);
+int fileno(FILE *stream);
 
 int printf(const char *format, ...);
 int fprintf(FILE *stream, const char *format, ...);

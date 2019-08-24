@@ -9,6 +9,8 @@ void *realloc(void *ptr, size_t size);
 
 unsigned long int strtoul(const char *nptr, char **endptr, int base);
 long int strtol(const char *nptr, char **endptr, int base);
+double strtod(const char *nptr, char **endptr);
+
 int abs(int j);
 
 void exit(int status);
@@ -19,3 +21,9 @@ int setenv(const char *name, const char *value, int overwrite);
 
 #define EXIT_SUCCESS 0
 #define EXIT_FAILURE 1
+
+#define offsetof(st, m) __builtin_offsetof(st, m)
+
+int rand(void);
+void qsort(void *base, size_t nmemb, size_t size,
+           int (*compar)(const void *, const void *));
