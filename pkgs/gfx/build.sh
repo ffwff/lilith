@@ -8,7 +8,7 @@ build() {
     _download https://raw.githubusercontent.com/nothings/stb/master/stb_image.h "$build_dir/stb_image.h"
 
     ${opt_arch}-gcc -O2 -o $build_dir/catimg $script_dir/catimg.c -lm
-    ${opt_arch}-gcc -O2 -o $build_dir/cairodem $script_dir/cairodem.c -I$opt_toolsdir/include -L$opt_toolsdir/lib -lcairo -lpixman -lm
+    ${opt_arch}-gcc -g -o $build_dir/cairodem $script_dir/cairodem.c -I$opt_toolsdir/include -L$opt_toolsdir/lib -lcairo -lpixman-1 -lm
 }
 
 install() {
