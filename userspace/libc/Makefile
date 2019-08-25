@@ -1,7 +1,7 @@
 OBJ = \
 	$(patsubst %.c, %.o, $(wildcard src/functions/arch/shim/*)) \
 	$(patsubst %.s, %.o, $(wildcard src/functions/arch/asm/*)) \
-	src/functions/arch/crt0.o \
+	src/functions/arch/crt0.o src/functions/arch/crti.o src/functions/arch/crtn.o \
 	libc.cr.o
 CRYSTAL_SRC = $(wildcard src/*.cr) $(wildcard src/functions/*.cr)
 MATH_SRC=$(wildcard src/functions/math/*.cr)
@@ -31,13 +31,13 @@ libm.a: $(MATH_SRC)
 libc.cr.o: $(CRYSTAL_SRC)
 	FREESTANDING=1 $(CR) build $(CRFLAGS) src/main.cr -o libc.cr
 
-src/functions/arch/asm/%.o: src/functions/arch/asm/%.s
+%.o: %.s
 	$(AS) -o $@ $^
 
 %.o: %.c
 	$(CC) $(CCFLAGS) -c -o $@ $^
 
-install: libc.a libm.a src/functions/arch/crt0.o
+install: libc.a libm.a src/functions/arch/crt0.o src/functions/arch/crti.o src/functions/arch/crtn.o
 	cp $^ $(LIBDIR)
 	cp -r src/include/* $(INCLUDEDIR)
 
