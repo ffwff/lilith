@@ -1,5 +1,4 @@
-#ifndef _LIBC_MATH_H
-#define _LIBC_MATH_H
+#pragma once
 
 double fabs(double arg);
 
@@ -109,4 +108,4 @@ int __signbitl(long double);
     sizeof(x) == sizeof(double) ? (int)(__DOUBLE_BITS(x)>>63) : \
     __signbitl(x) )
 
-#endif
+#define M_PI 3.141592654
