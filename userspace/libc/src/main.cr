@@ -9,6 +9,9 @@ end
 fun _start(argc : LibC::Int, argv : UInt8**)
   LibC._init
   Stdio.init
+
+  asm("fninit" ::: "volatile")
+
   LibC.main argc, argv
   exit 0
 end

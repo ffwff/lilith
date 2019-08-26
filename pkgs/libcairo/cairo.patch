@@ -22,32 +22,4 @@ diff -u a/build/config.sub b/build/config.sub
  	      | -*vms* | -sco* | -esix* | -isc* | -aix* | -cnk* | -sunos | -sunos[34]*\
  	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
  	      | -sym* | -kopensolaris* | -plan9* \
-diff -u a/src/cairo-fixed-private.h b/src/cairo-fixed-private.h
---- a/src/cairo-fixed-private.h	2018-08-17 08:10:53.000000000 +0700
-+++ b/src/cairo-fixed-private.h	2019-08-25 22:55:19.516552174 +0700
-@@ -103,6 +103,17 @@
- /* The 16.16 number must always be available */
- #define CAIRO_MAGIC_NUMBER_FIXED_16_16 (103079215104.0)
- 
-+#ifdef __lilith__
-+// NOTE: the floating-point bit-hack doesn't work on my toolchain+configuration
-+// so hopefully this should suffice
-+
-+/* For 32-bit fixed point numbers */
-+static inline cairo_fixed_t
-+_cairo_fixed_from_double (double d)
-+{
-+    return (cairo_fixed_t)d;
-+}
-+#else
- #if CAIRO_FIXED_BITS <= 32
- #define CAIRO_MAGIC_NUMBER_FIXED ((1LL << (52 - CAIRO_FIXED_FRAC_BITS)) * 1.5)
- 
-@@ -127,6 +138,7 @@
- # error Please define a magic number for your fixed point type!
- # error See cairo-fixed-private.h for details.
- #endif
-+#endif
- 
- static inline cairo_fixed_t
- _cairo_fixed_from_26_6 (uint32_t i)
+

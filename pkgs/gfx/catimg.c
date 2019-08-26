@@ -39,12 +39,6 @@ int main(int argc, char **argv) {
     // draw it!
     int fd = open("/fb0", 0, 0);
 
-    struct winsize ws;
-    if (ioctl(fd, TIOCGWINSZ, &ws) < 0) {
-        printf("%s: unable to get screen dimensions\n", argv[0]);
-        return 1;
-    }
-
     for (int i = 0; i < (w * h * 4); i += 4) {
         unsigned char r = data[i + 0];
         unsigned char g = data[i + 1];
@@ -56,8 +50,8 @@ int main(int argc, char **argv) {
     }
     struct fbdev_bitblit bitblit = {
         .source = (unsigned long*)data,
-        .x = 100,
-        .y = 100,
+        .x = 0,
+        .y = 0,
         .width = w,
         .height = h
     };
