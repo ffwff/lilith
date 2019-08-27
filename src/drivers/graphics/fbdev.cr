@@ -144,21 +144,12 @@ module FbdevState
   def buffer=(@@buffer)
   end
 
-  private def color(x, y) : UInt32
-    r = (x * 255).unsafe_div(@@width).to_u32
-    g = (y * 255).unsafe_div(@@height).to_u32
-    r.unsafe_shl(16) | g.unsafe_shl(8)
-  end
-
   def init_device(@@width, @@height, ptr)
     @@cwidth = @@width.unsafe_div(FB_ASCII_FONT_WIDTH) - 1
     @@cheight = @@height.unsafe_div(FB_ASCII_FONT_HEIGHT) - 1
     @@buffer = Slice(UInt32).new(ptr, @@width * @@height)
-    @@height.times do |y|
-      @@width.times do |x|
-        @@buffer[offset x, y] = color x, y
-      end
-    end
+    memset(@@buffer.to_unsafe.as(UInt8*), 0u64,
+      @@width.to_usize * @@height.to_usize * sizeof(UInt32).to_usize)
   end
 
   def offset(x, y)
@@ -178,7 +169,7 @@ module FbdevState
         if (bitmap[cy] & 1.unsafe_shl(cx)) != 0
           @@buffer[offset dx, dy] = 0x00FFFFFF
         else
-          @@buffer[offset dx, dy] = color(dx, dy)
+          @@buffer[offset dx, dy] = 0x0
         end
       end
     end
@@ -193,7 +184,7 @@ module FbdevState
     FB_ASCII_FONT_HEIGHT.times do |y|
       @@width.times do |x|
         dx, dy = x, ((@@cheight - 1) * FB_ASCII_FONT_HEIGHT + y)
-        @@buffer[offset dx, dy] = color(dx, dy)
+        @@buffer[offset dx, dy] = 0x0
       end
     end
     wrapback

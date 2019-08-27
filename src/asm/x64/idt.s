@@ -66,7 +66,8 @@ kcpuex_stub:
     cld
     call kcpuex_handler
     popa64
-    iret
+    add $16, %rsp # skip int_no, ex
+    iretq
 
 # irq
 .altmacro
