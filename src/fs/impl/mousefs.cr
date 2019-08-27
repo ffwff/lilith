@@ -48,9 +48,6 @@ end
 class MouseFS < VFS
   getter name
 
-  @next_node : VFS? = nil
-  property next_node
-
   getter mouse
 
   def initialize(@mouse : Mouse)

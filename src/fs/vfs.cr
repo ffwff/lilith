@@ -49,7 +49,8 @@ abstract class VFS
   end
 
   @next_node : VFS? = nil
-  property next_node
+  @prev_node : VFS? = nil
+  property next_node, prev_node
 
   abstract def root : VFSNode
 end
@@ -63,10 +64,23 @@ class RootFS
   def append(node : VFS)
     if @vfs_node.nil?
       node.next_node = nil
+      node.prev_node = nil
       @vfs_node = node
     else
       node.next_node = @vfs_node
+      @vfs_node.not_nil!.prev_node = node
       @vfs_node = node
+    end
+  end
+
+  def remove(node : VFS)
+    unless node.next_node.nil?
+      node.next_node.not_nil!.prev_node = node.prev_node
+    end
+    if node.prev_node.nil?
+      @vfs_node = node.next_node
+    else
+      node.prev_node.not_nil!.next_node = node.next_node
     end
   end
 
