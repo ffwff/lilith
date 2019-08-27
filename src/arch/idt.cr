@@ -95,7 +95,7 @@ module Idt
 
     # cpu exception handlers
     {% for i in 0..31 %}
-      #init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
+      init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
     {% end %}
 
     # hw interrupts
@@ -194,13 +194,16 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
 
     Serial.puts Pointer(Void).new(faulting_address), user, " ", Pointer(Void).new(frame.value.rip), "\n"
     if Multiprocessing.current_process.not_nil!.kernel_process?
-      panic "kernel space"
+      panic "segfault from kernel process"
+    elsif frame.value.rip > KERNEL_OFFSET
+      panic "segfault from kernel"
     else
       if faulting_address < Multiprocessing::USER_STACK_TOP &&
          faulting_address > Multiprocessing::USER_STACK_BOTTOM_MAX
         # stack page fault
         Idt.lock do
-          Paging.alloc_page_pg(faulting_address & 0xFFFF_FFFF_FFFF_F000, true, true)
+          addr = Paging.alloc_page_pg(faulting_address & 0xFFFF_FFFF_FFFF_F000, true, true)
+          zero_page Pointer(UInt8).new(addr)
         end
         return
       else
@@ -208,6 +211,6 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
       end
     end
   else
-    panic "kernel fault: ", frame.value.int_no, ' ', errcode, '\n'
+    panic "unhandled cpu exception: ", frame.value.int_no, ' ', errcode, '\n'
   end
 end
