@@ -52,9 +52,6 @@ end
 class KbdFS < VFS
   getter name
 
-  @next_node : VFS? = nil
-  property next_node
-
   getter queue
 
   def initialize(@kbd : Keyboard)
