@@ -23,8 +23,6 @@ lib Kernel
   $stack_start : Void*; $stack_end : Void*
 end
 
-ROOTFS = RootFS.new
-
 fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   if mboot_magic != MULTIBOOT_BOOTLOADER_MAGIC
     panic "Kernel should be booted from a multiboot bootloader!"
@@ -90,10 +88,10 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   end
 
   # initial rootfs
-  ROOTFS.append(KbdFS.new(Keyboard.new))
-  ROOTFS.append(MouseFS.new(Mouse.new))
-  ROOTFS.append(ConsoleFS.new)
-  ROOTFS.append(FbdevFS.new)
+  RootFS.append(KbdFS.new(Keyboard.new))
+  RootFS.append(MouseFS.new(Mouse.new))
+  RootFS.append(ConsoleFS.new)
+  RootFS.append(FbdevFS.new)
 
   # file systems
   main_bin : VFSNode? = nil
@@ -105,7 +103,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
         main_bin = node
       end
     end
-    ROOTFS.append(fs)
+    RootFS.append(fs)
   else
     panic "can't boot from this device"
   end

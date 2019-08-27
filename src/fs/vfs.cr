@@ -55,21 +55,20 @@ abstract class VFS
   abstract def root : VFSNode
 end
 
-class RootFS
-  @vfs_node : VFS? = nil
+module RootFS
+  extend self
 
-  def initialize
-  end
+  @@vfs_node : VFS? = nil
 
   def append(node : VFS)
-    if @vfs_node.nil?
+    if @@vfs_node.nil?
       node.next_node = nil
       node.prev_node = nil
-      @vfs_node = node
+      @@vfs_node = node
     else
-      node.next_node = @vfs_node
-      @vfs_node.not_nil!.prev_node = node
-      @vfs_node = node
+      node.next_node = @@vfs_node
+      @@vfs_node.not_nil!.prev_node = node
+      @@vfs_node = node
     end
   end
 
@@ -78,14 +77,14 @@ class RootFS
       node.next_node.not_nil!.prev_node = node.prev_node
     end
     if node.prev_node.nil?
-      @vfs_node = node.next_node
+      @@vfs_node = node.next_node
     else
       node.prev_node.not_nil!.next_node = node.next_node
     end
   end
 
   def each(&block)
-    node = @vfs_node
+    node = @@vfs_node
     while !node.nil?
       yield node
       node = node.next_node

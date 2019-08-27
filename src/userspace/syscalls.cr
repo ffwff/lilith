@@ -84,7 +84,7 @@ private def parse_path_into_vfs(path, cw_node = nil)
   end
   parse_path_into_segments(path) do |segment|
     if vfs_node.nil? # no path specifier
-      ROOTFS.each do |fs|
+      RootFS.each do |fs|
         if segment == fs.name
           if (vfs_node = fs.root).nil?
             return nil
@@ -141,7 +141,7 @@ private def append_paths(path, src_path, cw_node)
         idx += 1
       end
       if vfs_node.nil?
-        ROOTFS.each do |fs|
+        RootFS.each do |fs|
           if segment == fs.name
             # Serial.puts "goto ", fs.name, '\n'
             if (vfs_node = fs.root).nil?
