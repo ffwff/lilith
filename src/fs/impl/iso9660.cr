@@ -9,9 +9,6 @@ class Iso9660FS < VFS
     device.not_nil!.name.not_nil!
   end
 
-  @next_node : VFS? = nil
-  property next_node
-
   getter device
 
   def initialize(@device : AtaDevice)

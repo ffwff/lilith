@@ -19,8 +19,8 @@ int main(int argc, char const **argv)
     cairo_t *cr = cairo_create(surface);
 
     cairo_pattern_t *pat = cairo_pattern_create_linear(0, 0, 0, HEIGHT);
-    cairo_pattern_add_color_stop_rgb(pat, 0.0, 1.0, 1.0, 1.0);
-    cairo_pattern_add_color_stop_rgb(pat, 1.0, 0.0, 0.0, 0.0);
+    cairo_pattern_add_color_stop_rgb(pat, 0.0, 0.40, 0.17, 0.55);
+    cairo_pattern_add_color_stop_rgb(pat, 1.0, 0.92, 0.12, 0.47);
 
     cairo_rectangle(cr, 0.0, 0.0, WIDTH, HEIGHT);
     cairo_set_source(cr, pat);

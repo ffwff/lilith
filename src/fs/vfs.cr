@@ -48,8 +48,8 @@ abstract class VFS
   def queue : VFSQueue?
   end
 
-  abstract def next_node : VFS?
-  abstract def next_node=(x : VFS?)
+  @next_node : VFS? = nil
+  property next_node
 
   abstract def root : VFSNode
 end

@@ -88,9 +88,6 @@ class FbdevFS < VFS
     @name.not_nil!
   end
 
-  @next_node : VFS? = nil
-  property next_node
-
   def initialize
     @name = GcString.new "fb0" # TODO
     @root = FbdevFsNode.new self
