@@ -43,9 +43,28 @@ class MemMapList
         current = current.next_node.not_nil!
       end
       current = current.not_nil!
-      if current.end_addr == addr && current.attr == attr
-        # combine if 2 nodes represent a continuous region
+
+      combine_with_prev = current.attr == attr && current.end_addr == addr
+      combine_with_next = !current.next_node.nil? &&
+          current.next_node.not_nil!.attr == attr &&
+          end_addr == current.next_node.not_nil!.addr
+
+      # combine if 2 nodes represent a continuous region
+      if combine_with_prev && combine_with_next
+        # insertion node is between 2 continue nodes
+        next_node = current.next_node.not_nil!
+        next_next_node = next_node.next_node
+
+        current.next_node = next_next_node
+        current.size += size + next_node.size
+      elsif combine_with_prev
+        # current node is before insertion node
         current.size += size
+      elsif combine_with_next
+        # insertion node is before continued node
+        next_node = current.next_node.not_nil!
+        next_node.addr = addr
+        next_node.size += size
       else
         # create new node
         node = MemMapNode.new(addr, size, attr)
