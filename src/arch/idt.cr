@@ -193,7 +193,8 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
     id       = (errcode & 0x10) != 0
 
     Serial.puts Pointer(Void).new(faulting_address), user, " ", Pointer(Void).new(frame.value.rip), "\n"
-    if Multiprocessing.current_process.not_nil!.kernel_process?
+    process = Multiprocessing.current_process.not_nil!
+    if process.kernel_process?
       panic "segfault from kernel process"
     elsif frame.value.rip > KERNEL_OFFSET
       panic "segfault from kernel"
@@ -202,7 +203,11 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
          faulting_address > Multiprocessing::USER_STACK_BOTTOM_MAX
         # stack page fault
         Idt.lock do
-          addr = Paging.alloc_page_pg(faulting_address & 0xFFFF_FFFF_FFFF_F000, true, true)
+          stack_address = Paging.t_addr(faulting_address)
+          process.udata.not_nil!.mmap_list.add(stack_address, 0x1000,
+            MemMapNode::Attributes::Read | MemMapNode::Attributes::Write)
+
+          addr = Paging.alloc_page_pg(stack_address, true, true)
           zero_page Pointer(UInt8).new(addr)
         end
         return

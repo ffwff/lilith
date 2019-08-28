@@ -73,7 +73,7 @@ build/bootstrap.o: src/asm/bootstrap.s build/kernel64.bin
 run: build/kernel
 	-$(QEMU) -kernel $^ $(QEMUFLAGS)
 
-run_img: build/kernel install_kernel_to_disk
+run_img: build/kernel
 	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda $(DRIVE_IMG)
 
 rungdb: build/kernel
@@ -81,7 +81,7 @@ rungdb: build/kernel
 	$(GDB) -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
 	-@pkill qemu
 
-rungdb_img: build/kernel install_kernel_to_disk
+rungdb_img: build/kernel
 	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda $(DRIVE_IMG) -S -gdb tcp::9000 &
 	sleep 0.1s && $(GDB) -quiet \
 		-ex 'target remote localhost:9000' \
@@ -93,7 +93,7 @@ rungdb_img: build/kernel install_kernel_to_disk
 		build/kernel64
 	-@pkill qemu
 
-rungdb_img_user: build/kernel install_kernel_to_disk
+rungdb_img_user: build/kernel
 	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda $(DRIVE_IMG) -S -gdb tcp::9000 &
 	$(GDB) -quiet \
 		-ex 'target remote localhost:9000' \
