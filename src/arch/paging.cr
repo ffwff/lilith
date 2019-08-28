@@ -60,9 +60,6 @@ module Paging
     new_addr = x.address | PTR_IDENTITY_MASK
     @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new new_addr
 
-    # HACK: page directories won't be flushed without this
-    no_opt(@@current_pdpt.address)
-
     # update pml4 table
     pml4_addr = @@pml4_table.address | PTR_IDENTITY_MASK
     pml4_table = Pointer(PageStructs::PML4Table).new pml4_addr
