@@ -1,4 +1,5 @@
 require "./file_descriptor.cr"
+require "./mmap_list.cr"
 
 private lib Kernel
   fun ksyscall_switch(frame : IdtData::Registers*) : NoReturn
@@ -109,14 +110,15 @@ module Multiprocessing
       MAX_FD = 16
       property fds
 
+      # mmap
+      getter mmap_list
+
+      @mmap_heap : MemMapNode? = nil
+      property mmap_heap
+
       # working directory
       property cwd
       property cwd_node
-
-      # heap location
-      @heap_start = 0u64
-      @heap_end = 0u64
-      property heap_start, heap_end
 
       # argv
       property argv
@@ -130,7 +132,10 @@ module Multiprocessing
         # TODO: storing environ keys/values within 1 class doesn't work
         @environ_keys = GcArray(GcString).new 0
         @environ_values = GcArray(GcString).new 0
+
         @fds = GcArray(FileDescriptor).new MAX_FD
+
+        @mmap_list = MemMapList.new
       end
 
       # file descriptors
@@ -317,27 +322,61 @@ module Multiprocessing
 
     # spawn user process and move the first 4gb of memory in current the address space
     # to the newly created process' address space
-    # this is holy unportable
+    # TODO: holy hell this is unportable, need to port this
+    # when we get long mode user processes
     @[NoInline]
     def self.spawn_user_4gb(initial_ip, heap_start, udata)
       old_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
           .new(Paging.mt_addr(Paging.current_pdpt.address))
-
       Multiprocessing::Process.new(udata) do |process|
         process.initial_ip = initial_ip
-        process.udata.heap_start = heap_start
 
-        # copy the 512gb over
         # TODO: move this
         new_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
           .new(Paging.mt_addr(process.phys_pg_struct))
 
-        4.times do |i|
-          new_pdpt.value.dirs[i] = old_pdpt.value.dirs[i]
-          old_pdpt.value.dirs[i] = 0u64
+        4.times do |dir_idx|
+          # copy the 4gb over
+          new_pdpt.value.dirs[dir_idx] = old_pdpt.value.dirs[dir_idx]
+          old_pdpt.value.dirs[dir_idx] = 0u64
+
+          # setup memory map
+          # TODO: figure out a faster way to do this
+          # dirs
+          unless new_pdpt.value.dirs[dir_idx] == 0u64
+            page_dir = Pointer(PageStructs::PageDirectory)
+              .new(Paging.mt_addr(new_pdpt.value.dirs[dir_idx]))
+            # tables
+            512.times do |table_idx|
+              unless page_dir.value.tables[table_idx] == 0u64
+                page_table = Pointer(PageStructs::PageTable)
+                  .new(Paging.mt_addr(page_dir.value.tables[table_idx]))
+                # pages
+                512.times do |page_idx|
+                  page = page_table.value.pages[page_idx]
+                  attr = MemMapNode::Attributes::Read
+                  if (page & Paging::PG_WRITE_BIT) != 0u64
+                    attr |= MemMapNode::Attributes::Write
+                  end
+                  unless page == 0u64
+                    addr = Paging.indexes_to_address(dir_idx, table_idx, page_idx)
+                    udata.mmap_list.add(addr, 0x1000, attr)
+                  end
+                end
+              end
+            end
+          end
         end
+        Serial.puts new_pdpt, '\n'
+        Paging.current_pdpt = Pointer(Void).new(process.phys_pg_struct)
         Paging.flush
 
+        # heap memory map
+        udata.mmap_heap = udata.mmap_list.add(heap_start, 0,
+          MemMapNode::Attributes::Read | MemMapNode::Attributes::Write).not_nil!
+        Serial.puts udata.mmap_list
+
+        # argv
         argv_builder = ArgvBuilder.new process
         udata.argv.each do |arg|
           argv_builder.from_string arg.not_nil!

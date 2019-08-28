@@ -197,6 +197,12 @@ module Paging
     Tuple.new(pdpt_idx.to_i32, dir_idx.to_i32, table_idx.to_i32, page_idx.to_i32)
   end
 
+  def indexes_to_address(dir_idx, table_idx, page_idx)
+    dir_idx.to_u64 * 0x4000_0000u64 + 
+    table_idx.to_u64 * 0x20_0000u64 +
+    page_idx.to_u64 * 0x1000u64
+  end
+
   # state
   @[NoInline]
   def flush
@@ -343,13 +349,15 @@ module Paging
   end
 
   # page creation
+  PG_WRITE_BIT = 0x2u64
+  PG_USER_BIT = 0x4u64
   private def page_create(rw : Bool, user : Bool, phys : UInt64) : UInt64
     page = 0x1u64
-    if rw # second bit
-      page |= 0x2u64
+    if rw
+      page |= PG_WRITE_BIT
     end
-    if user # third bit
-      page |= 0x4u64
+    if user
+      page |= PG_USER_BIT
     end
     page |= t_addr(phys)
     page

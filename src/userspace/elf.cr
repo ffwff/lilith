@@ -241,8 +241,6 @@ module ElfReader
       end
     end
     if result.nil?
-      # pad the heap so that we catch memory errors earlier
-      ret_heap_start += 0x1000
       # allocate the stack
       Paging.alloc_page_pg_drv(Multiprocessing::USER_STACK_INITIAL - 0x1000 * 4, true, true, 4)
       Result.new(ret_initial_ip, ret_heap_start)
