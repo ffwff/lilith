@@ -458,40 +458,25 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     end
   # memory management
   when SC_SBRK
-    incr = fv.rbx.to_isize
-    if incr == 0
-      # return the end of the heap if incr = 0
-      if pudata.heap_end == 0
-        # there are no pages allocated for program heap
-        Idt.lock do
-          pudata.heap_end = Paging.alloc_page_pg(pudata.heap_start, true, true)
-          zero_page Pointer(UInt8).new(pudata.heap_end)
-        end
-      end
-    elsif incr > 0
-      # increase the end of the heap if incr > 0
-      if pudata.heap_end == 0
-        Idt.lock do
-          # Serial.puts Pointer(Void).new(pudata.heap_start), '\n'
-          pudata.heap_end = Paging.alloc_page_pg(pudata.heap_start, true, true)
-          zero_page Pointer(UInt8).new(pudata.heap_end)
-        end
-        npages = incr.unsafe_shr(12).to_usize + 1
-      else
-        heap_end_a = pudata.heap_end & 0xFFFF_FFFF_FFFF_F000u64
-        npages = ((pudata.heap_end + incr) - heap_end_a).unsafe_shr(12) + 1
-      end
-      if npages > 0
-        Idt.lock do
-          Paging.alloc_page_pg(pudata.heap_end, true, true, npages: npages)
-          zero_page Pointer(UInt8).new(pudata.heap_end), npages
-        end
-      end
-    else
+    incr = fv.rbx.to_i64
+    # must be page aligned
+    if (incr & 0xfff != 0) || pudata.mmap_heap.nil?
+      fv.rax = SYSCALL_ERR
+      return
+    end
+    mmap_heap = pudata.mmap_heap.not_nil!
+    if incr > 0
+      npages = incr.unsafe_shr(12) + 1
+      Paging.alloc_page_pg(mmap_heap.end_addr, true, true, npages: npages.to_u64)
+      mmap_heap.size += incr
+    elsif incr == 0 && mmap_heap.size == 0u64
+      Paging.alloc_page_pg(mmap_heap.addr, true, true)
+      mmap_heap.size += 0x1000
+    elsif incr < 0
+      # TODO
       panic "decreasing heap not implemented"
     end
-    fv.rax = pudata.heap_end
-    pudata.heap_end += incr
+    fv.rax = mmap_heap.addr
   else
     fv.rax = SYSCALL_ERR
   end

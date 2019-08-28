@@ -52,8 +52,10 @@ class VFSMessage
   end
 
   def consume
-    return unless @offset > 0
-    @offset -= 1
+    if @offset > 0
+      @process.not_nil!.write_to_virtual(@slice.not_nil!.to_unsafe + @offset, 0u8)
+      @offset -= 1
+    end
   end
 
   def finished?
