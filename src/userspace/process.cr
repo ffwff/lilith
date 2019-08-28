@@ -367,14 +367,12 @@ module Multiprocessing
             end
           end
         end
-        Serial.puts new_pdpt, '\n'
         Paging.current_pdpt = Pointer(Void).new(process.phys_pg_struct)
         Paging.flush
 
         # heap memory map
         udata.mmap_heap = udata.mmap_list.add(heap_start, 0,
           MemMapNode::Attributes::Read | MemMapNode::Attributes::Write).not_nil!
-        Serial.puts udata.mmap_list
 
         # argv
         argv_builder = ArgvBuilder.new process
