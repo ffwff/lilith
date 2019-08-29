@@ -29,6 +29,7 @@ abstract class VFSNode
   end
 
   abstract def open(path : Slice) : VFSNode?
+  abstract def create(name : Slice) : VFSNode?
   abstract def read(slice : Slice(UInt8), offset : UInt32,
                     process : Multiprocessing::Process? = nil) : Int32
   abstract def write(slice : Slice(UInt8), offset : UInt32,

@@ -1,3 +1,5 @@
+require "./shmem_map.cr"
+
 class MemMapNode
 
   @[Flags]
@@ -5,7 +7,16 @@ class MemMapNode
     Read
     Write
     Execute
+    SharedMemory
   end
+
+  @next_node : MemMapNode? = nil
+  property next_node
+
+  property addr, attr, size
+
+  @shm_mapping : ShmemMapping? = nil
+  property shm_mapping
 
   def initialize(@addr : UInt64, @size : UInt64, @attr : Attributes = Attributes::None)
   end
@@ -13,11 +24,6 @@ class MemMapNode
   def end_addr
     @addr + @size
   end
-
-  @next_node : MemMapNode? = nil
-  property next_node
-
-  property addr, attr, size
 
   def to_s(io)
     io.puts Pointer(Void).new(@addr), ' '

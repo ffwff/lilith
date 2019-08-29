@@ -2,27 +2,24 @@ struct Spinlock
 
   @value = Atomic(Int32).new 0
 
-  def lock
+  private def lock
     i = 0
-    while i < 10000
+    while true
       _, changed = @value.compare_and_set(0, 1)
-      return true if changed
+      return if changed
+      if i == 10000
+        Serial.puts "spinlock: unable to lock after 10000 iterations\n"
+      end
       i += 1
     end
-    Serial.puts "spinlock: unable to lock after 10000 iterations\n"
-    false
   end
 
-  def lockable?
-    @value.get == 0
-  end
-
-  def unlock
+  private def unlock
     @value.compare_and_set(1, 0)
   end
 
   def with(&block)
-    return unless lock
+    lock
     yield
     unlock
   end

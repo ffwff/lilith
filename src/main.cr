@@ -92,6 +92,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   RootFS.append(MouseFS.new(Mouse.new))
   RootFS.append(ConsoleFS.new)
   RootFS.append(FbdevFS.new)
+  RootFS.append(PipeFS.new)
 
   # file systems
   main_bin : VFSNode? = nil
