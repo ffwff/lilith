@@ -15,6 +15,7 @@ module Multiprocessing
   USER_STACK_BOTTOM     = 0x8000_0000u64
 
   USER_STACK_INITIAL    = 0xFFFF_FFFFu64
+  USER_MMAP_INITIAL     = USER_STACK_BOTTOM_MAX
 
   KERNEL_STACK_INITIAL  = 0x7F_FFFF_FFFFu64
   KERNEL_HEAP_INITIAL  = 0x7F_FFFF_D000u64
@@ -115,6 +116,9 @@ module Multiprocessing
 
       @mmap_heap : MemMapNode? = nil
       property mmap_heap
+
+      @mmap_mapping : MemMapNode? = nil
+      property mmap_mapping
 
       # working directory
       property cwd
@@ -370,9 +374,12 @@ module Multiprocessing
         Paging.current_pdpt = Pointer(Void).new(process.phys_pg_struct)
         Paging.flush
 
-        # heap memory map
+        # memory map
         udata.mmap_heap = udata.mmap_list.add(heap_start, 0,
           MemMapNode::Attributes::Read | MemMapNode::Attributes::Write).not_nil!
+
+        udata.mmap_mapping = udata.mmap_list.add(USER_MMAP_INITIAL, 0,
+          MemMapNode::Attributes::SharedMemory).not_nil!
 
         # argv
         argv_builder = ArgvBuilder.new process

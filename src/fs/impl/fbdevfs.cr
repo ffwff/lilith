@@ -16,6 +16,10 @@ class FbdevFsNode < VFSNode
     nil
   end
 
+  def create(name : Slice) : VFSNode?
+    nil
+  end
+
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
     byte_size = FbdevState.buffer.size * sizeof(UInt32)

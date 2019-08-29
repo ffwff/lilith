@@ -8,6 +8,10 @@ class KbdFsNode < VFSNode
     nil
   end
 
+  def create(name : Slice) : VFSNode?
+    nil
+  end
+
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
     if @fs.ansi_remaining > 0

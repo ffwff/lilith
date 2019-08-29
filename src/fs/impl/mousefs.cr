@@ -8,6 +8,10 @@ class MouseFsNode < VFSNode
     nil
   end
 
+  def create(name : Slice) : VFSNode?
+    nil
+  end
+
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
     remaining = slice.size
