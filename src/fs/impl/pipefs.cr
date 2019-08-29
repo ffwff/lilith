@@ -29,6 +29,8 @@ class PipeFSRoot < VFSNode
   end
 
   @first_child : PipeFSNode? = nil
+  getter first_child
+
   def each_child(&block)
     node = @first_child
     while !node.nil?
@@ -67,9 +69,7 @@ class PipeFSNode < VFSNode
 end
 
 class PipeFS < VFS
-  getter name
-
-  getter queue
+  getter name, queue
 
   def initialize
     @name = GcString.new "pipes"

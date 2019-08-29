@@ -32,6 +32,13 @@ fun open(device : LibC::String, flags : LibC::Int, mode : LibC::UInt) : LibC::In
   sysenter(SC_OPEN, pointerof(buf).address.to_u32, flags).to_i32
 end
 
+fun create(device : LibC::String) : LibC::Int
+  buf = uninitialized LibC::SyscallStringArgument
+  buf.str = device
+  buf.len = strlen(device)
+  sysenter(SC_CREATE, pointerof(buf).address.to_u32, 0).to_i32
+end
+
 fun close(fd : LibC::Int) : LibC::Int
   sysenter(SC_CLOSE, fd.to_u32).to_i32
 end

@@ -76,7 +76,7 @@ private def parse_path_into_segments(path, &block)
   end
 end
 
-private def parse_path_into_vfs(path, cw_node = nil)
+private def parse_path_into_vfs(path, cw_node = nil, create = false)
   vfs_node : VFSNode? = nil
   return nil if path.size < 1
   if path[0] != '/'.ord
@@ -98,7 +98,12 @@ private def parse_path_into_vfs(path, cw_node = nil)
     elsif segment == ".."
       vfs_node = vfs_node.parent
     else
-      vfs_node = vfs_node.open(segment)
+      cur_node = vfs_node.open(segment)
+      if cur_node.nil? && create
+        cur_node = vfs_node.create(segment)
+      end
+      return if cur_node.nil?
+      vfs_node = cur_node
     end
   end
   vfs_node
@@ -217,6 +222,16 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
   when SC_OPEN
     path = try(checked_string_argument(fv.rbx))
     vfs_node = parse_path_into_vfs path, pudata.cwd_node
+    if vfs_node.nil?
+      fv.rax = SYSCALL_ERR
+    else
+      Idt.lock do # may allocate
+        fv.rax = pudata.install_fd(vfs_node.not_nil!)
+      end
+    end
+  when SC_CREATE
+    path = try(checked_string_argument(fv.rbx))
+    vfs_node = parse_path_into_vfs path, pudata.cwd_node, true
     if vfs_node.nil?
       fv.rax = SYSCALL_ERR
     else
@@ -424,7 +439,9 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     process.status = Multiprocessing::Process::Status::WaitIo
     Multiprocessing.switch_process(frame)
   when SC_GETENV
+    # TODO
   when SC_SETENV
+    # TODO
   when SC_EXIT
     if process.pid == 1
       panic "init exited"
