@@ -1,5 +1,5 @@
---- /tmp/pixman-0.38.4/config.sub	2019-04-11 00:19:26.000000000 +0700
-+++ pixman-0.38.4/config.sub	2019-08-24 21:41:18.289198658 +0700
+--- a/config.sub	2019-04-11 00:19:26.000000000 +0700
++++ b/config.sub	2019-08-24 21:41:18.289198658 +0700
 @@ -1401,7 +1401,7 @@
  	# The portable systems comes first.
  	# Each alternative MUST END IN A *, to match a version number.
@@ -9,3 +9,12 @@
  	      | -*vms* | -sco* | -esix* | -isc* | -aix* | -cnk* | -sunos | -sunos[34]*\
  	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
  	      | -sym* | -kopensolaris* | -plan9* \
+--- a/config.h.in	2019-04-11 00:19:26.000000000 +0700
++++ b/config.h.in	2019-08-27 13:11:03.916122622 +0700
+@@ -185,3 +185,5 @@
+ 
+ /* Define to sqrt if you do not have the `sqrtf' function. */
+ #undef sqrtf
++
++#define PIXMAN_NO_TLS
+\ No newline at end of file

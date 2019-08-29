@@ -169,7 +169,7 @@ install_kernel_to_disk: build/kernel
 	sudo losetup -D /dev/loop0
 
 distro: $(DRIVE_IMG) install_kernel_to_disk
-	./pkgs/missio install base adam core gfx kilo
+	./pkgs/missio install base adam core gfx kilo mruby
 
 clean:
 	rm -f build/*
