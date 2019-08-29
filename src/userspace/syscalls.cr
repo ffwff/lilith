@@ -466,10 +466,24 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     end
     mmap_heap = pudata.mmap_heap.not_nil!
     if incr > 0
+      if !mmap_heap.next_node.nil?
+        if mmap_heap.end_addr + incr >= mmap_heap.next_node.not_nil!.addr
+          # out of virtual memory
+          fv.rax = SYSCALL_ERR
+          return
+        end
+      end
       npages = incr.unsafe_shr(12) + 1
       Paging.alloc_page_pg(mmap_heap.end_addr, true, true, npages: npages.to_u64)
       mmap_heap.size += incr
     elsif incr == 0 && mmap_heap.size == 0u64
+      if !mmap_heap.next_node.nil?
+        if mmap_heap.end_addr + 0x1000 >= mmap_heap.next_node.not_nil!.addr
+          # out of virtual memory
+          fv.rax = SYSCALL_ERR
+          return
+        end
+      end
       Paging.alloc_page_pg(mmap_heap.addr, true, true)
       mmap_heap.size += 0x1000
     elsif incr < 0

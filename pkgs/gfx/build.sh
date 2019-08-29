@@ -6,6 +6,7 @@ _download() {
 
 build() {
     _download https://raw.githubusercontent.com/nothings/stb/master/stb_image.h "$build_dir/stb_image.h"
+    _download https://upload.wikimedia.org/wikipedia/en/7/7d/Lenna_%28test_image%29.png "$build_dir/test.png"
 
     ${opt_arch}-gcc -O2 -o $build_dir/catimg $script_dir/catimg.c -lm
     ${opt_arch}-gcc -g -o $build_dir/cairodem $script_dir/cairodem.c -I$opt_toolsdir/include -L$opt_toolsdir/lib -lcairo -lpixman-1 -lm
