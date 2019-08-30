@@ -25,7 +25,7 @@ def sysenter(eax, ebx)
 end
 
 # IO
-fun open(device : LibC::String, flags : LibC::Int, mode : LibC::UInt) : LibC::Int
+fun open(device : LibC::String, flags : LibC::Int) : LibC::Int
   buf = uninitialized LibC::SyscallStringArgument
   buf.str = device
   buf.len = strlen(device)
