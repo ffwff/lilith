@@ -43,7 +43,7 @@ abstract class VFSNode
     -1
   end
 
-  def ioctl(request : Int32, data : Void*) : Int32
+  def ioctl(request : Int32, data : UInt32) : Int32
     -1
   end
 end

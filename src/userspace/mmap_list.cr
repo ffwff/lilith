@@ -1,5 +1,3 @@
-require "./shmem_map.cr"
-
 class MemMapNode
 
   @[Flags]
@@ -7,16 +5,15 @@ class MemMapNode
     Read
     Write
     Execute
-    SharedMemory
   end
 
   @next_node : MemMapNode? = nil
   property next_node
 
-  property addr, attr, size
+  @prev_node : MemMapNode? = nil
+  property prev_node
 
-  @shm_mapping : ShmemMapping? = nil
-  property shm_mapping
+  property addr, attr, size
 
   def initialize(@addr : UInt64, @size : UInt64, @attr : Attributes = Attributes::None)
   end
@@ -34,12 +31,16 @@ end
 
 class MemMapList
   @first_node : MemMapNode? = nil
+  @last_node : MemMapNode? = nil
 
   def add(addr : UInt64, size : UInt64, attr) : MemMapNode?
     end_addr = addr + size
-    if @first_node.nil?
+    if @first_node.nil? || end_addr < @first_node.not_nil!.addr
       node = MemMapNode.new(addr, size, attr)
       node.next_node = @first_node
+      if node.next_node.nil?
+        @last_node = node
+      end
       @first_node = node
       return node
     else
@@ -74,8 +75,12 @@ class MemMapList
       else
         # create new node
         node = MemMapNode.new(addr, size, attr)
+        node.prev_node = current
         node.next_node = current.next_node
         current.next_node = node
+        if node.next_node.nil?
+          @last_node = node.next_node
+        end
         return node
       end
     end
