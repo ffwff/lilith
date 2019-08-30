@@ -78,7 +78,7 @@ class PipeFSNode < VFSNode
     else
       # pop message from buffer
       size = min(slice.size, @buffer_pos)
-      memcpy(slice.to_unsafe, @buffer, size.to_usize)
+      memcpy(slice.to_unsafe, @buffer + @buffer_pos - size, size.to_usize)
       @buffer_pos -= size
       size
     end
