@@ -436,6 +436,8 @@ module Multiprocessing
 
     # write address to page without switching tlb to the process' pdpt
     def write_to_virtual(virt_ptr : UInt8*, byte : UInt8)
+      return false if @phys_pg_struct == 0
+
       virt_addr = virt_ptr.address
       return false if virt_addr > PDPT_SIZE
 
@@ -459,6 +461,7 @@ module Multiprocessing
 
     # get physical page where the address belongs to
     def physical_page_for_address(virt_addr : UInt64)
+      return if @phys_pg_struct == 0
       return if virt_addr > PDPT_SIZE
 
       _, dir_idx, table_idx, page_idx = Paging.page_layer_indexes(virt_addr)

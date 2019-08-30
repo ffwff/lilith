@@ -93,5 +93,6 @@ module RootFS
   end
 end
 
-VFS_ERR       = -1
-VFS_WAIT      = -2
+VFS_ERR             = -1
+VFS_WAIT            = -2
+VFS_WAIT_NODE_QUEUE = -3
