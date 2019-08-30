@@ -57,24 +57,53 @@ class PipeFSNode < VFSNode
     nil
   end
 
+  @buffer = Pointer(UInt8).null
+  @buffer_pos = 0
+  BUFFER_CAPACITY = 0x1000
+
+  private def init_buffer
+    if @buffer.null?
+      @buffer = Pointer(UInt8).new(FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK)
+    end
+  end
+
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
-    VFS_ERR
+    init_buffer
+    if @buffer_pos == BUFFER_CAPACITY
+      # TODO
+      VFS_ERR
+    else
+      # pop message from buffer
+      size = min(slice.size, @buffer_pos)
+      memcpy(slice.to_unsafe, @buffer, size.to_usize)
+      @buffer_pos -= size
+      size
+    end
   end
 
   def write(slice : Slice, offset : UInt32,
             process : Multiprocessing::Process? = nil) : Int32
-    VFS_ERR
+    init_buffer
+    if @buffer_pos == BUFFER_CAPACITY
+      # TODO
+      VFS_ERR
+    else
+      # push the message on to the buffer stack
+      size = min(slice.size, BUFFER_CAPACITY - @buffer_pos)
+      memcpy(@buffer, slice.to_unsafe, size.to_usize)
+      @buffer_pos += size
+      size
+    end
   end
 end
 
 class PipeFS < VFS
-  getter name, queue
+  getter name
 
   def initialize
     @name = GcString.new "pipes"
     @root = PipeFSRoot.new self
-    @queue = VFSQueue.new
   end
 
   def root

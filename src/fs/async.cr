@@ -58,8 +58,12 @@ class VFSMessage
     end
   end
 
+  private def finish
+    @offset = slice_size
+  end
+
   def finished?
-    offset == slice_size
+    offset >= slice_size
   end
 
   def respond(buf)
@@ -72,6 +76,10 @@ class VFSMessage
     while virt_pg_addr < virt_pg_end
       # physical address of the current page
       phys_pg_addr = @process.not_nil!.physical_page_for_address(virt_pg_addr)
+      if phys_pg_addr.null?
+        finish
+        return
+      end
       while remaining > 0 && pg_offset < 0x1000
         phys_pg_addr[pg_offset] = buf[@offset]
         @offset += 1
@@ -85,7 +93,10 @@ class VFSMessage
 
   def respond(ch)
     unless finished?
-      @process.not_nil!.write_to_virtual(@slice.not_nil!.to_unsafe + @offset, ch.to_u8)
+      unless @process.not_nil!.write_to_virtual(@slice.not_nil!.to_unsafe + @offset, ch.to_u8)
+        finish
+        return
+      end
       @offset += 1
     end
   end
