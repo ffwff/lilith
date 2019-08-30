@@ -13,7 +13,7 @@ typedef int (*nputs_fn_t)(const char *data, size_t length, void *userptr);
 
 #define ITOA_BUFFER_LEN 128
 
-char __printf_itoa_buf[] = "0123456789abcdefghijklmnopqrstuvwxyz";
+static const char __printf_itoa_buf[] = "0123456789abcdefghijklmnopqrstuvwxyz";
 
 static void __printf_reverse(char *str, int length) {
     for (int i = 0, j = length - 1; i < j; i++, j--) {
@@ -28,7 +28,7 @@ static int __printf_itoa(int num, int base, char *str) {
     if(num < 0)
         num *= -1;
     int i = 0;
-    for(; i < ITOA_BUFFER_LEN; i++) {
+    for(; i < ITOA_BUFFER_LEN - 2; i++) {
         str[i] = __printf_itoa_buf[num % base];
         num /= base;
         if(!num) break;
