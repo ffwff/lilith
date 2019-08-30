@@ -285,6 +285,11 @@ module Syscall
         fd.offset += result
         fv.rax = result
       end
+    when SC_TRUNCATE
+      fdi = fv.rbx.to_i32
+      fd = try(pudata.get_fd(fdi))
+      size = fv.rdx.to_i32
+      fv.rax = fd.node.not_nil!.truncate(size)
     when SC_SEEK
       fdi = fv.rbx.to_i32
       fd = try(pudata.get_fd(fdi))
