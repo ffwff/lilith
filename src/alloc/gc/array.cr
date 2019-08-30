@@ -35,8 +35,21 @@ class GcArray(T)
     recalculate_capacity
   end
 
+  def clone
+    new_array = GcArray(T).new(size)
+    new_buffer = new_array.buffer.as(USize*)
+    old_buffer = buffer.as(USize*)
+    # copy array data over
+    i = 0
+    while i < size
+      new_buffer[i] = old_buffer[i]
+      i += 1
+    end
+    new_array
+  end
+
   # helper
-  private def buffer
+  protected def buffer
     (@ptr + 2).as(T*)
   end
 

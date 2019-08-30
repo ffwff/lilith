@@ -5,14 +5,16 @@ class PipeFSRoot < VFSNode
   end
 
   def open(path : Slice) : VFSNode?
-    nil
+    each_child do |node|
+      return node if node.name == path
+    end
   end
 
   def create(name : Slice) : VFSNode?
     each_child do |node|
       return if node.name == name
     end
-    node = PipeFSNode.new(GcString.new(name), fs)
+    node = PipeFSNode.new(GcString.new(name), self, fs)
     node.next_node = @first_child
     @first_child = node
     node
@@ -46,7 +48,7 @@ class PipeFSNode < VFSNode
   @next_node : PipeFSNode? = nil
   property next_node
 
-  def initialize(@name : GcString, @fs : PipeFS)
+  def initialize(@name : GcString, @parent : PipeFSRoot, @fs : PipeFS)
   end
 
   def open(path : Slice) : VFSNode?
@@ -70,7 +72,7 @@ class PipeFSNode < VFSNode
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
     init_buffer
-    if @buffer_pos == BUFFER_CAPACITY
+    if @buffer_pos == 0
       # TODO
       VFS_ERR
     else
