@@ -89,6 +89,7 @@ module Multiprocessing
     enum Status
       Removed
       Normal
+      Running
       WaitIo
       WaitProcess
     end
@@ -552,9 +553,12 @@ module Multiprocessing
     # get next process
     current_process = Multiprocessing.current_process.not_nil!
     if remove
-      current_process.status = Multiprocessing::Process::Status::Removed
+      current_process.status = Process::Status::Removed
+    elsif current_process.status == Process::Status::Running
+      current_process.status = Process::Status::Normal
     end
     next_process = Multiprocessing.next_process.not_nil!
+    next_process.status = Process::Status::Running
     Multiprocessing.current_process = next_process
     current_process.remove if remove
 
@@ -593,7 +597,7 @@ module Multiprocessing
       memcpy Multiprocessing.fxsave_region, next_process.fxsave_region, FXSAVE_SIZE
     end
 
-    # Serial.puts next_process, '\n'
+    # Serial.puts next_process.status, '\n'
     next_process
   end
 
