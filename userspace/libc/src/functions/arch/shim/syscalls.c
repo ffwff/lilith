@@ -10,3 +10,8 @@ unsigned long sysenter(unsigned long eax, unsigned long ebx, unsigned long edx) 
         : "cc", "ecx", "edi", "esi", "memory");
     return ret;
 }
+
+extern int _open(char *device, int flags);
+int open(char *device, int flags, ...) {
+    return _open(device, flags);
+}

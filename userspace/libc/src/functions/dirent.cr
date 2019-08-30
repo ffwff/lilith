@@ -20,7 +20,7 @@ end
 
 fun opendir(dirname : LibC::String) : LibC::DIR*
   dirp = Pointer(LibC::DIR).malloc
-  if (dirp.value.fd = open(dirname, 0)) == SYSCALL_ERR
+  if (dirp.value.fd = _open(dirname, 0)) == SYSCALL_ERR
     dirp.free
     return Pointer(LibC::DIR).null
   end
