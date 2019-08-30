@@ -132,13 +132,11 @@ module Multiprocessing
       getter environ_values
 
       def initialize(@argv : GcArray(GcString),
-                     @cwd : GcString, @cwd_node : VFSNode)
+                     @cwd : GcString, @cwd_node : VFSNode,
+                     @environ_keys = GcArray(GcString).new(0),
+                     @environ_values = GcArray(GcString).new(0))
         # TODO: storing environ keys/values within 1 class doesn't work
-        @environ_keys = GcArray(GcString).new 0
-        @environ_values = GcArray(GcString).new 0
-
         @fds = GcArray(FileDescriptor).new MAX_FD
-
         @mmap_list = MemMapList.new
       end
 
@@ -610,13 +608,13 @@ module Multiprocessing
     current_process = switch_process_save_and_load do |process|
       process.new_frame_from_syscall frame
     end
-    syscall_unlock
+    Syscall.unlock
     Kernel.ksyscall_switch(current_process.frame)
   end
   
   def switch_process_and_terminate
     current_process = switch_process_save_and_load(true) {}
-    syscall_unlock
+    Syscall.unlock
     Kernel.ksyscall_switch(current_process.frame)
   end
 
