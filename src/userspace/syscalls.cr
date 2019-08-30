@@ -187,32 +187,38 @@ private def checked_string_argument(addr)
   checked_slice32(ptr.value.str, ptr.value.len)
 end
 
-fun ksyscall_handler(frame : SyscallData::Registers*)
+def syscall_lock
+  Idt.status_mask = true
+end
+
+def syscall_unlock
+  Idt.status_mask = false
+end
+
+@[AlwaysInline]
+private def syscall_handler_unlocked(frame : SyscallData::Registers*)
   process = Multiprocessing.current_process.not_nil!
   if process.kernel_process?
     case fv.rax
     when SC_MMAP_DRV
       virt_addr = fv.rbx
-      Idt.lock do
-        fv.rax = Paging.alloc_page_pg(
-          fv.rbx, fv.rdx != 0, fv.r8 != 0,
-          fv.r9
-        )
-      end
+      fv.rax = Paging.alloc_page_pg(
+        fv.rbx, fv.rdx != 0, fv.r8 != 0,
+        fv.r9
+      )
     when SC_PROCESS_CREATE_DRV
-      Idt.lock do
-        initial_ip = fv.rbx
-        heap_start = fv.rdx
-        udata = Pointer(Void).new(fv.r8).as(Multiprocessing::Process::UserData)
-        process = Multiprocessing::Process.spawn_user_4gb(initial_ip, heap_start, udata)
-        fv.rax = process.pid
-      end
+      initial_ip = fv.rbx
+      heap_start = fv.rdx
+      udata = Pointer(Void).new(fv.r8).as(Multiprocessing::Process::UserData)
+      process = Multiprocessing::Process.spawn_user_4gb(initial_ip, heap_start, udata)
+      fv.rax = process.pid
     when SC_SLEEP
       process.status = Multiprocessing::Process::Status::WaitIo
       Multiprocessing.switch_process(frame)
     else
       fv.rax = SYSCALL_ERR
     end
+    syscall_unlock
     return Kernel.ksyscall_sc_ret_driver(frame)
   end
   pudata = process.udata
@@ -225,9 +231,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     if vfs_node.nil?
       fv.rax = SYSCALL_ERR
     else
-      Idt.lock do # may allocate
-        fv.rax = pudata.install_fd(vfs_node.not_nil!)
-      end
+      fv.rax = pudata.install_fd(vfs_node.not_nil!)
     end
   when SC_CREATE
     path = try(checked_string_argument(fv.rbx))
@@ -235,9 +239,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     if vfs_node.nil?
       fv.rax = SYSCALL_ERR
     else
-      Idt.lock do # may allocate
-        fv.rax = pudata.install_fd(vfs_node.not_nil!)
-      end
+      fv.rax = pudata.install_fd(vfs_node.not_nil!)
     end
   when SC_READ
     fdi = fv.rbx.to_i32
@@ -246,12 +248,10 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
     case result
     when VFS_WAIT
-      Idt.lock do # may allocate
-        vfs_node = fd.not_nil!.node.not_nil!
-        vfs_node.fs.queue.not_nil!
-          .enqueue(VFSMessage.new(VFSMessage::Type::Read,
-            str, process, fd, vfs_node))
-      end
+      vfs_node = fd.not_nil!.node.not_nil!
+      vfs_node.fs.queue.not_nil!
+        .enqueue(VFSMessage.new(VFSMessage::Type::Read,
+          str, process, fd, vfs_node))
       process.status = Multiprocessing::Process::Status::WaitIo
       Multiprocessing.switch_process(frame)
     else
@@ -265,14 +265,12 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     result = fd.not_nil!.node.not_nil!.write(str, fd.offset, process)
     case result
     when VFS_WAIT
-      Idt.lock do # may allocate
-        vfs_node = fd.not_nil!.node.not_nil!
-        vfs_node.fs.queue.not_nil!
-          .enqueue(VFSMessage.new(VFSMessage::Type::Write,
-            str, process, fd, vfs_node))
-      end
+      vfs_node = fd.not_nil!.node.not_nil!
+      vfs_node.fs.queue.not_nil!
+        .enqueue(VFSMessage.new(VFSMessage::Type::Write,
+          str, process, fd, vfs_node))
       process.status = Multiprocessing::Process::Status::WaitIo
-      Multiprocessing.switch_process(frame)
+      return Multiprocessing.switch_process(frame)
     else
       fd.offset += result
       fv.rax = result
@@ -300,9 +298,7 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     fd = try(pudata.get_fd(fdi))
     arg = try(checked_pointer32(SyscallData::IoctlArgument32, fv.rdx))
     request, data = arg.value.request, try(checked_pointer32(Void, arg.value.data))
-    Idt.lock do
-      fv.rax = fd.node.not_nil!.ioctl(request, data)
-    end
+    fv.rax = fd.node.not_nil!.ioctl(request, data)
   when SC_CLOSE
     fdi = fv.rbx.to_i32
     if pudata.close_fd(fdi)
@@ -369,45 +365,43 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
     if vfs_node.nil?
       fv.rax = SYSCALL_ERR
     else
-      Idt.lock do # may allocate
-        # argv
-        pargv = GcArray(GcString).new 0
-        i = 0
-        while i < SC_SPAWN_MAX_ARGS
-          if argv[i] == 0
-            break
-          end
-          arg = NullTerminatedSlice.new(try(checked_pointer32(UInt8, argv[i].to_u64)))
-          pargv.push GcString.new(arg, arg.size)
-          i += 1
+      # argv
+      pargv = GcArray(GcString).new 0
+      i = 0
+      while i < SC_SPAWN_MAX_ARGS
+        if argv[i] == 0
+          break
         end
+        arg = NullTerminatedSlice.new(try(checked_pointer32(UInt8, argv[i].to_u64)))
+        pargv.push GcString.new(arg, arg.size)
+        i += 1
+      end
 
-        udata = Multiprocessing::Process::UserData
-          .new(pargv,
-            pudata.cwd.clone,
-            pudata.cwd_node)
-        udata.pgid = pudata.pgid
+      udata = Multiprocessing::Process::UserData
+        .new(pargv,
+          pudata.cwd.clone,
+          pudata.cwd_node)
+      udata.pgid = pudata.pgid
 
-        # copy file descriptors 0, 1, 2
-        i = 0
-        while i < 3
-          if !(fd = process.udata.fds[i]).nil?
-            udata.fds[i] = fd
-          end
-          i += 1
+      # copy file descriptors 0, 1, 2
+      i = 0
+      while i < 3
+        if !(fd = process.udata.fds[i]).nil?
+          udata.fds[i] = fd
         end
+        i += 1
+      end
 
-        # create the process
-        retval = vfs_node.not_nil!.spawn(udata)
-        case retval
-        when VFS_WAIT
-          vfs_node.fs.queue.not_nil!
-            .enqueue(VFSMessage.new(udata, vfs_node, process))
-          process.status = Multiprocessing::Process::Status::WaitIo
-          Multiprocessing.switch_process(frame)
-        else
-          fv.rax = retval
-        end
+      # create the process
+      retval = vfs_node.not_nil!.spawn(udata)
+      case retval
+      when VFS_WAIT
+        vfs_node.fs.queue.not_nil!
+          .enqueue(VFSMessage.new(udata, vfs_node, process))
+        process.status = Multiprocessing::Process::Status::WaitIo
+        Multiprocessing.switch_process(frame)
+      else
+        fv.rax = retval
       end
     end
   when SC_WAITPID
@@ -511,4 +505,10 @@ fun ksyscall_handler(frame : SyscallData::Registers*)
   else
     fv.rax = SYSCALL_ERR
   end
+end
+
+fun ksyscall_handler(frame : SyscallData::Registers*)
+  syscall_lock
+  syscall_handler_unlocked(frame)
+  syscall_unlock
 end

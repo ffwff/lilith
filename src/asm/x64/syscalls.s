@@ -38,9 +38,10 @@ ksyscall_setup:
     wrmsr
     ret
 
-.global ksyscall_stub
-.global ksyscall_sc_ret_driver
 .extern ksyscall_handler
+
+# sysenter instruction path
+.global ksyscall_stub
 ksyscall_stub:
     push $0 # rsp
     pusha64
@@ -58,6 +59,8 @@ ksyscall_stub:
     mov (%rsp), %rcx
     sysret
 
+# syscall instruction path
+.global ksyscall_sc_ret_driver
 ksyscall_stub_sc:
     # syscall doesn't set the rsp pointer for us (why amd?)
     # push rsp
