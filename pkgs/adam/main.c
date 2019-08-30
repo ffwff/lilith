@@ -13,9 +13,9 @@ void spawn_process(char *s, char **argv) {
 
 int main(int argc, char **argv) {
     // tty
-    open("/kbd", 0, 0);
-    open("/con", 0, 0);
-    open("/con", 0, 0);
+    open("/kbd", 0);
+    open("/con", 0);
+    open("/con", 0);
 
     // shell
     char *path = calloc(PATH_MAX + 1, 1);

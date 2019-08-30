@@ -279,7 +279,7 @@ end
 # file operations
 fun fopen(file : LibC::String, mode : LibC::String) : Void*
   # TODO: mode
-  fd = open(file, 0, 0)
+  fd = open(file, 0)
   if fd.to_u32 == SYSCALL_ERR
     return Pointer(Void).null
   end
