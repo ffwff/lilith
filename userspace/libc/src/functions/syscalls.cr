@@ -25,7 +25,7 @@ def sysenter(eax, ebx)
 end
 
 # IO
-fun open(device : LibC::String, flags : LibC::Int) : LibC::Int
+fun _open(device : LibC::String, flags : LibC::Int) : LibC::Int
   buf = uninitialized LibC::SyscallStringArgument
   buf.str = device
   buf.len = strlen(device)
@@ -57,7 +57,7 @@ fun read(fd : LibC::Int, str : LibC::String, len : LibC::Int) : LibC::Int
   sysenter(SC_READ, fd, pointerof(buf).address.to_u32).to_i32
 end
 
-fun truncate(fd : LibC::Int, length : LibC::UInt) : LibC::Int
+fun ftruncate(fd : LibC::Int, length : LibC::UInt) : LibC::Int
   sysenter(SC_TRUNCATE, fd, length).to_i32
 end
 
