@@ -39,6 +39,10 @@ abstract class VFSNode
     VFS_ERR
   end
 
+  def truncate(size : Int32) : Int32
+    -1
+  end
+
   def ioctl(request : Int32, data : Void*) : Int32
     -1
   end

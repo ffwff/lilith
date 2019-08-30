@@ -10,7 +10,7 @@ int create(char *device);
 int close(int fd);
 long write(int fd, void *str, size_t len);
 long read(int fd, char *str, unsigned long len);
-int ftruncate(int fd, off_t length);
+int truncate(int fd, off_t length);
 
 typedef long pid_t;
 pid_t spawnv(char *file, char **argv);

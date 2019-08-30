@@ -57,8 +57,8 @@ fun read(fd : LibC::Int, str : LibC::String, len : LibC::Int) : LibC::Int
   sysenter(SC_READ, fd, pointerof(buf).address.to_u32).to_i32
 end
 
-fun ftruncate(fd : LibC::Int, length : LibC::UInt) : LibC::Int
-  -1
+fun truncate(fd : LibC::Int, length : LibC::UInt) : LibC::Int
+  sysenter(SC_TRUNCATE, fd, length).to_i32
 end
 
 fun remove(str : LibC::String) : LibC::Int

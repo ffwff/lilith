@@ -98,6 +98,13 @@ class PipeFSNode < VFSNode
       size
     end
   end
+
+  def truncate(size : Int32) : Int32
+    if size < @buffer_pos
+      @buffer_pos = size
+    end
+    @buffer_pos
+  end
 end
 
 class PipeFS < VFS
