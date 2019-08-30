@@ -48,12 +48,21 @@ class FbdevFsNode < VFSNode
     end
   end
 
-  def ioctl(request : Int32, data : Void*) : Int32
+  def ioctl(request : Int32, data : UInt32) : Int32
     case request
     when SC_IOCTL_TIOCGWINSZ
-      IoctlHandler.winsize(data, FbdevState.width, FbdevState.height, 1, 1)
-    when SC_IOCTL_FB_BITBLIT
-      arg = data.as(FbdevFsData::FbBitBlit*).value
+      unless (ptr = checked_pointer32(IoctlData::Winsize, data)).nil?
+        IoctlHandler.winsize(ptr.not_nil!, FbdevState.width, FbdevState.height, 1, 1)
+      else
+        -1
+      end
+    when SC_IOCTL_GFX_BITBLIT
+      arg = checked_pointer32(FbdevFsData::FbBitBlit, data)
+      arg = if arg.nil?
+        return -1
+      else
+        arg.not_nil!.value
+      end
 
       # source
       source_sz = arg.width * arg.height * 4
@@ -68,10 +77,20 @@ class FbdevFsNode < VFSNode
         copy_size = FbdevState.width * FbdevState.height * 4
         memcpy(byte_buffer, source, copy_size.to_usize)
       else
-        arg.height.times do |y|
-          fb_offset = y * FbdevState.width * 4
+        height = arg.height
+        if arg.y + arg.height > FbdevState.height
+          height = FbdevState.height - arg.y
+        end
+        
+        width = arg.width
+        if arg.x + arg.width > FbdevState.width
+          width = FbdevState.width - arg.x
+        end
+
+        height.times do |y|
+          fb_offset = (arg.y + y) * FbdevState.width * 4 + arg.x * 4
           copy_offset = y * arg.width * 4
-          copy_size = arg.width * 4
+          copy_size = width * 4
           memcpy(byte_buffer + fb_offset, source + copy_offset, copy_size.to_usize)
         end
       end

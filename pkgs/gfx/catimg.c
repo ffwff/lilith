@@ -20,7 +20,7 @@ struct fbdev_bitblit {
     unsigned long x, y, width, height;
 };
 
-#define FB_BITBLIT 3
+#define GFX_BITBLIT 3
 
 int main(int argc, char **argv) {
     if (argc < 2) {
@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
     }
 
     // draw it!
-    int fd = open("/fb0", 0, 0);
+    int fd = open("/fb0", 0);
 
     for (int i = 0; i < (w * h * 4); i += 4) {
         unsigned char r = data[i + 0];
@@ -55,7 +55,7 @@ int main(int argc, char **argv) {
         .width = w,
         .height = h
     };
-    ioctl(fd, FB_BITBLIT, &bitblit);
+    ioctl(fd, GFX_BITBLIT, &bitblit);
 
     // cleanup
     stbi_image_free(data);

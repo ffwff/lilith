@@ -8,7 +8,7 @@ struct fbdev_bitblit {
     unsigned long x, y, width, height;
 };
 
-#define FB_BITBLIT 3
+#define GFX_BITBLIT 3
 
 #define WIDTH 512
 #define HEIGHT 512
@@ -33,8 +33,8 @@ int main(int argc, char const **argv)
         .width = WIDTH,
         .height = HEIGHT
     };
-    int fd = open("/fb0", 0, 0);
-    ioctl(fd, FB_BITBLIT, &bitblit);
+    int fd = open("/fb0", 0);
+    ioctl(fd, GFX_BITBLIT, &bitblit);
 
     return 0;
 }

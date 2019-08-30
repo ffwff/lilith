@@ -118,9 +118,6 @@ module Multiprocessing
       @mmap_heap : MemMapNode? = nil
       property mmap_heap
 
-      @mmap_mapping : MemMapNode? = nil
-      property mmap_mapping
-
       # working directory
       property cwd
       property cwd_node
@@ -376,9 +373,6 @@ module Multiprocessing
         # memory map
         udata.mmap_heap = udata.mmap_list.add(heap_start, 0,
           MemMapNode::Attributes::Read | MemMapNode::Attributes::Write).not_nil!
-
-        udata.mmap_mapping = udata.mmap_list.add(USER_MMAP_INITIAL, 0,
-          MemMapNode::Attributes::SharedMemory).not_nil!
 
         # argv
         argv_builder = ArgvBuilder.new process
