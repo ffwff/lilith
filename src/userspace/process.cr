@@ -610,11 +610,13 @@ module Multiprocessing
     current_process = switch_process_save_and_load do |process|
       process.new_frame_from_syscall frame
     end
+    syscall_unlock
     Kernel.ksyscall_switch(current_process.frame)
   end
   
   def switch_process_and_terminate
     current_process = switch_process_save_and_load(true) {}
+    syscall_unlock
     Kernel.ksyscall_switch(current_process.frame)
   end
 
