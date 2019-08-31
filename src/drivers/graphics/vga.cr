@@ -22,7 +22,7 @@ enum VgaColor : UInt16
 end
 
 private struct VgaInstance < OutputDriver
-  def color_code(fg : VgaColor, bg : VgaColor, char : UInt8) : UInt16
+  private def color_code(fg : VgaColor, bg : VgaColor, char : UInt8) : UInt16
     attrib = (bg.value.unsafe_shl(4)) | fg.value
     attrib.unsafe_shl(8) | char.to_u8
   end
@@ -35,67 +35,68 @@ private struct VgaInstance < OutputDriver
     enable_cursor 0, 1
     # fill with blank
     blank = color_code VgaColor::White, VgaColor::Black, ' '.ord.to_u8
-    VGA_HEIGHT.times do |y|
-      VGA_WIDTH.times do |x|
-        VgaState.buffer[offset x, y] = blank
+    VgaState.lock do |state|
+      VGA_HEIGHT.times do |y|
+        VGA_WIDTH.times do |x|
+          state.buffer[offset x, y] = blank
+        end
       end
     end
   end
 
-  def putc(x : Int32, y : Int32, fg : VgaColor, bg : VgaColor, a : UInt8)
+  # must be called from putc(ch)
+  private def putc(state, x : Int32, y : Int32, fg : VgaColor, bg : VgaColor, a : UInt8)
     panic "drawing out of bounds (80x25)!" if x > VGA_WIDTH || y > VGA_HEIGHT
-    VgaState.buffer[offset x, y] = color_code(fg, bg, a)
+    state.buffer[offset x, y] = color_code(fg, bg, a)
   end
 
-
-  private def putchar(ch : UInt8)
+  # must be called from putc(ch)
+  private def putchar(state, ch : UInt8)
     if ch == '\r'.ord.to_u8
       return
     elsif ch == '\n'.ord.to_u8
-      VgaState.newline
+      state.newline
       return
     elsif ch == 8u8
-      VgaState.backspace
-      putc(VgaState.cx, VgaState.cy, VgaState.fg, VgaState.bg, ' '.ord.to_u8)
+      state.backspace
+      putc(state, state.cx, state.cy, state.fg, state.bg, ' '.ord.to_u8)
       return
     end
-    if VgaState.cy >= VGA_HEIGHT
-      scroll
+    if state.cy >= VGA_HEIGHT
+      scroll state
     end
-    putc(VgaState.cx, VgaState.cy, VgaState.fg, VgaState.bg, ch)
-    VgaState.advance
-  end
-
-  def newline
-    VgaState.newline
-    move_cursor VgaState.cx, VgaState.cy
+    putc(state, state.cx, state.cy, state.fg, state.bg, ch)
+    state.advance
   end
 
   def putc(ch : UInt8)
-    ansi_handler = VgaState.ansi_handler
-    if ansi_handler.nil?
-      return putchar(ch)
-    end
-    seq = ansi_handler.parse ch
-    case seq
-    when AnsiHandler::CsiSequence
-      case seq.type
-      when AnsiHandler::CsiSequenceType::EraseInLine
-        blank = color_code VgaState.fg, VgaState.bg, ' '.ord.to_u8
-        if seq.arg_n == 0 && VgaState.cy < VGA_HEIGHT - 1
-          x = VgaState.cx
-          while x < VGA_WIDTH
-            VgaState.buffer[offset x, VgaState.cy] = blank
-            x += 1
+    VgaState.lock do |state|
+      ansi_handler = state.ansi_handler
+      if ansi_handler.nil?
+        putchar(state, ch)
+      else
+        seq = ansi_handler.parse ch
+        case seq
+        when AnsiHandler::CsiSequence
+          case seq.type
+          when AnsiHandler::CsiSequenceType::EraseInLine
+            blank = color_code state.fg, state.bg, ' '.ord.to_u8
+            if seq.arg_n == 0 && state.cy < VGA_HEIGHT - 1
+              x = state.cx
+              while x < VGA_WIDTH
+                state.buffer[offset x, state.cy] = blank
+                x += 1
+              end
+            end
+          when AnsiHandler::CsiSequenceType::MoveCursor
+            state.cx = clamp(seq.arg_m.not_nil!.to_i32 - 1, 0, VGA_WIDTH)
+            state.cy = clamp(seq.arg_n.not_nil!.to_i32 - 1, 0, VGA_HEIGHT)
+            move_cursor state.cx, state.cy
           end
+        when UInt8
+          putchar(state, seq)
         end
-      when AnsiHandler::CsiSequenceType::MoveCursor
-        VgaState.cx = clamp(seq.arg_m.not_nil!.to_i32 - 1, 0, VGA_WIDTH)
-        VgaState.cy = clamp(seq.arg_n.not_nil!.to_i32 - 1, 0, VGA_HEIGHT)
-        move_cursor VgaState.cx, VgaState.cy
       end
-    when UInt8
-      putchar seq
     end
   end
 
@@ -103,21 +104,23 @@ private struct VgaInstance < OutputDriver
     args.each do |arg|
       arg.to_s self
     end
-    move_cursor VgaState.cx, VgaState.cy + 1
+    VgaState.lock do |state|
+      move_cursor state.cx, state.cy + 1
+    end
   end
 
   # Scrolls the terminal
-  private def scroll
-    blank = color_code VgaState.fg, VgaState.bg, ' '.ord.to_u8
+  private def scroll(state)
+    blank = color_code state.fg, state.bg, ' '.ord.to_u8
     (VGA_HEIGHT - 1).times do |y|
       VGA_WIDTH.times do |x|
-        VgaState.buffer[offset x, y] = VgaState.buffer[offset x, (y + 1)]
+        state.buffer[offset x, y] = state.buffer[offset x, (y + 1)]
       end
     end
     VGA_WIDTH.times do |x|
-      VgaState.buffer[VGA_SIZE - VGA_WIDTH + x] = blank
+      state.buffer[VGA_SIZE - VGA_WIDTH + x] = blank
     end
-    VgaState.wrapback
+    state.wrapback
   end
 
   # Cursor
@@ -142,7 +145,7 @@ private struct VgaInstance < OutputDriver
   end
 end
 
-module VgaState
+private module VgaStatePrivate
   extend self
 
   @@cx = 0
@@ -202,6 +205,17 @@ module VgaState
   @@buffer = Pointer(UInt16).new(0xb8000u64 | PTR_IDENTITY_MASK)
   def buffer
     @@buffer
+  end
+end
+
+module VgaState
+  extend self
+
+  @@lock = Spinlock.new
+  def lock(&block)
+    @@lock.with do
+      yield VgaStatePrivate
+    end
   end
 end
 

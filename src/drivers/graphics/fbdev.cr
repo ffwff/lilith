@@ -4,52 +4,51 @@ end
 
 private struct FbdevInstance < OutputDriver
 
-  def putchar(ch : UInt8)
+  private def putchar(state, ch : UInt8)
     if ch == '\r'.ord.to_u8
       return
     elsif ch == '\n'.ord.to_u8
-      FbdevState.newline
+      state.newline
       return
     elsif ch == 8u8
-      FbdevState.backspace
-      FbdevState.putc(FbdevState.cx, FbdevState.cy, ' '.ord.to_u8)
+      state.backspace
+      state.putc(state.cx, state.cy, ' '.ord.to_u8)
       return
     end
-    if FbdevState.cy >= FbdevState.cheight
-      FbdevState.scroll
+    if state.cy >= state.cheight
+      state.scroll
     end
-    FbdevState.putc(FbdevState.cx, FbdevState.cy, ch)
-    FbdevState.advance
+    state.putc(state.cx, state.cy, ch)
+    state.advance
   end
 
   def putc(ch : UInt8)
-    ansi_handler = FbdevState.ansi_handler
-    if ansi_handler.nil?
-      return putchar(ch)
-    end
-    seq = ansi_handler.parse ch
-    case seq
-    when AnsiHandler::CsiSequence
-      case seq.type
-      when AnsiHandler::CsiSequenceType::EraseInLine
-        if seq.arg_n == 0 && FbdevState.cy < FbdevState.cwidth - 1
-          x = FbdevState.cx
-          while x < VGA_WIDTH
-            FbdevState.putc(x, FbdevState.cy, ' '.ord.to_u8)
-            x += 1
+    FbdevState.lock do |state|
+      ansi_handler = state.ansi_handler
+      if ansi_handler.nil?
+        putchar(state, ch)
+      else
+        seq = ansi_handler.parse ch
+        case seq
+        when AnsiHandler::CsiSequence
+          case seq.type
+          when AnsiHandler::CsiSequenceType::EraseInLine
+            if seq.arg_n == 0 && state.cy < state.cwidth - 1
+              x = state.cx
+              while x < VGA_WIDTH
+                state.putc(x, state.cy, ' '.ord.to_u8)
+                x += 1
+              end
+            end
+          when AnsiHandler::CsiSequenceType::MoveCursor
+            state.cx = clamp(seq.arg_m.not_nil!.to_i32 - 1, 0, state.cwidth)
+            state.cy = clamp(seq.arg_n.not_nil!.to_i32 - 1, 0, state.cheight)
           end
+        when UInt8
+          putchar(state, seq)
         end
-      when AnsiHandler::CsiSequenceType::MoveCursor
-        FbdevState.cx = clamp(seq.arg_m.not_nil!.to_i32 - 1, 0, FbdevState.cwidth)
-        FbdevState.cy = clamp(seq.arg_n.not_nil!.to_i32 - 1, 0, FbdevState.cheight)
       end
-    when UInt8
-      putchar seq
     end
-  end
-
-  def newline
-    FbdevState.newline
   end
 
 end
@@ -59,7 +58,7 @@ Fbdev = FbdevInstance.new
 FB_ASCII_FONT_WIDTH = 8
 FB_ASCII_FONT_HEIGHT = 8
 
-module FbdevState
+private module FbdevStatePrivate
   extend self
 
   @@cx = 0
@@ -190,4 +189,15 @@ module FbdevState
     wrapback
   end
 
+end
+
+module FbdevState
+  extend self
+
+  @@lock = Spinlock.new
+  def lock(&block)
+    @@lock.with do
+      yield FbdevStatePrivate
+    end
+  end
 end

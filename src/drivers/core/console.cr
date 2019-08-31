@@ -33,7 +33,11 @@ private struct ConsoleInstance < OutputDriver
     if @text_mode
       VGA_WIDTH
     else
-      FbdevState.cwidth
+      width = 0
+      FbdevState.lock do |state|
+        width = state.cwidth
+      end
+      width
     end
   end
 
@@ -41,7 +45,11 @@ private struct ConsoleInstance < OutputDriver
     if @text_mode
       VGA_HEIGHT
     else
-      FbdevState.cheight
+      height = 0
+      FbdevState.lock do |state|
+        width = state.cheight
+      end
+      height
     end
   end
 
