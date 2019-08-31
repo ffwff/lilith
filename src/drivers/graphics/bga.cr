@@ -28,7 +28,9 @@ module BGA
     phys = Pointer(UInt32).new(PCI.read_field(bus, device, func, PCI::PCI_BAR0, 4).to_u64)
     virt = Pointer(UInt32).new(phys.address | PTR_IDENTITY_MASK)
     Paging.alloc_page_pg(virt.address, true, false, size.div_ceil(0x1000).to_usize, phys.address)
-    FbdevState.init_device(width, height, virt)
+    FbdevState.lock do |state|
+      state.init_device(width, height, virt)
+    end
   end
 
   def pci_device?(vendor_id, device_id)
