@@ -35,7 +35,7 @@ private struct FbdevInstance < OutputDriver
           when AnsiHandler::CsiSequenceType::EraseInLine
             if seq.arg_n == 0 && state.cy < state.cwidth - 1
               x = state.cx
-              while x < VGA_WIDTH
+              while x < state.cwidth
                 state.putc(x, state.cy, ' '.ord.to_u8)
                 x += 1
               end
@@ -78,7 +78,7 @@ private module FbdevStatePrivate
 
   @@ansi_handler : AnsiHandler? = nil
   def ansi_handler
-    if !Multiprocessing.current_process.nil? && @@ansi_handler.nil?
+    if @@ansi_handler.nil? && !Multiprocessing.current_process.nil?
       # TODO better way of initializing this
       @@ansi_handler = AnsiHandler.new
     end
@@ -195,9 +195,14 @@ module FbdevState
   extend self
 
   @@lock = Spinlock.new
+
   def lock(&block)
     @@lock.with do
       yield FbdevStatePrivate
     end
+  end
+
+  def locked?
+    @@lock.locked?
   end
 end

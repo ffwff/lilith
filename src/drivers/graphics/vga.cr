@@ -109,7 +109,6 @@ private struct VgaInstance < OutputDriver
     end
   end
 
-  # Scrolls the terminal
   private def scroll(state)
     blank = color_code state.fg, state.bg, ' '.ord.to_u8
     (VGA_HEIGHT - 1).times do |y|
@@ -165,7 +164,7 @@ private module VgaStatePrivate
 
   @@ansi_handler : AnsiHandler? = nil
   def ansi_handler
-    if !Multiprocessing.current_process.nil? && @@ansi_handler.nil?
+    if @@ansi_handler.nil? && !Multiprocessing.current_process.nil?
       # TODO better way of initializing this
       @@ansi_handler = AnsiHandler.new
     end
@@ -212,10 +211,15 @@ module VgaState
   extend self
 
   @@lock = Spinlock.new
+
   def lock(&block)
     @@lock.with do
       yield VgaStatePrivate
     end
+  end
+
+  def locked?
+    @@lock.locked?
   end
 end
 

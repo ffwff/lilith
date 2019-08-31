@@ -18,6 +18,10 @@ struct Spinlock
     @value.compare_and_set(1, 0)
   end
 
+  def locked?
+    @value.get != 0
+  end
+
   def with(&block)
     lock
     yield
