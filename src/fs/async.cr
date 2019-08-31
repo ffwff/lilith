@@ -66,20 +66,51 @@ class VFSMessage
     offset >= slice_size
   end
 
-  def respond(buf)
-    remaining = min(buf.size, @slice.size.not_nil! - @offset)
+  def read(&block)
+    remaining = slice_size
+    # Serial.puts "rem:" , remaining, '\n'
     # offset of byte to be written in page (0 -> 0x1000)
     pg_offset = @slice.not_nil!.to_unsafe.address & 0xFFF
     # virtual page range
-    virt_pg_addr = Paging.aligned(@slice.not_nil!.to_unsafe.address)
+    virt_pg_addr = Paging.t_addr(@slice.not_nil!.to_unsafe.address)
+    virt_pg_end = Paging.aligned(@slice.not_nil!.to_unsafe.address + remaining)
+    # Serial.puts "paddr:" , Pointer(Void).new(virt_pg_addr), " ", Pointer(Void).new(virt_pg_end), '\n'
+    while virt_pg_addr < virt_pg_end
+      # physical address of the current page
+      phys_pg_addr = @process.not_nil!.physical_page_for_address(virt_pg_addr)
+      # Serial.puts phys_pg_addr, '\n'
+      if phys_pg_addr.nil?
+        # Serial.puts "unable to read\n"
+        finish
+        return
+      end
+      phys_pg_addr = phys_pg_addr.not_nil!
+      while remaining > 0 && pg_offset < 0x1000
+        # Serial.puts phys_pg_addr + pg_offset, '\n'
+        yield phys_pg_addr[pg_offset]
+        remaining -= 1
+        pg_offset += 1
+      end
+      pg_offset = 0
+      virt_pg_addr += 0x1000
+    end
+  end
+
+  def respond(buf)
+    remaining = min(buf.size, slice_size - @offset)
+    # offset of byte to be written in page (0 -> 0x1000)
+    pg_offset = @slice.not_nil!.to_unsafe.address & 0xFFF
+    # virtual page range
+    virt_pg_addr = Paging.t_addr(@slice.not_nil!.to_unsafe.address)
     virt_pg_end = Paging.aligned(@slice.not_nil!.to_unsafe.address + remaining)
     while virt_pg_addr < virt_pg_end
       # physical address of the current page
       phys_pg_addr = @process.not_nil!.physical_page_for_address(virt_pg_addr)
-      if phys_pg_addr.null?
+      if phys_pg_addr.nil?
         finish
         return
       end
+      phys_pg_addr = phys_pg_addr.not_nil!
       while remaining > 0 && pg_offset < 0x1000
         phys_pg_addr[pg_offset] = buf[@offset]
         @offset += 1
