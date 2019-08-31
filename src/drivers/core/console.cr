@@ -47,9 +47,17 @@ private struct ConsoleInstance < OutputDriver
     else
       height = 0
       FbdevState.lock do |state|
-        width = state.cheight
+        height = state.cheight
       end
       height
+    end
+  end
+
+  def locked?
+    if @text_mode
+      VgaState.locked?
+    else
+      FbdevState.locked?
     end
   end
 

@@ -108,7 +108,7 @@ class KbdFS < VFS
       else
         return
       end).to_u8
-    else
+    elsif !Console.locked?
       if ch == '\n' && !@canonical
         Console.newline
       elsif should_print ch
