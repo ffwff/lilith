@@ -19,16 +19,17 @@ class ConsoleFsNode < VFSNode
 
   def write(slice : Slice, offset : UInt32,
             process : Multiprocessing::Process? = nil) : Int32
-    slice.each do |ch|
-      Console.puts ch.unsafe_chr
-    end
-    slice.size
+    VFS_WAIT
   end
 
-  def ioctl(request : Int32, data : Void*) : Int32
+  def ioctl(request : Int32, data : UInt32) : Int32
     case request
     when SC_IOCTL_TIOCGWINSZ
-      IoctlHandler.winsize(data, Console.width, Console.height, 0, 0)
+      unless (ptr = checked_pointer32(IoctlData::Winsize, data)).nil?
+        IoctlHandler.winsize(ptr.not_nil!, Console.width, Console.height, 1, 1)
+      else
+        -1
+      end
     else
       -1
     end
@@ -40,16 +41,45 @@ class ConsoleFsNode < VFSNode
 end
 
 class ConsoleFS < VFS
-  def name
-    @name.not_nil!
+  getter name
+
+  def root
+    @root.not_nil!
   end
 
   def initialize
     @name = GcString.new "con"
     @root = ConsoleFsNode.new self
+
+    # setup process-local variables
+    @process = Multiprocessing::Process
+      .spawn_kernel(->(ptr : Void*) { ptr.as(ConsoleFS).process },
+                    self.as(Void*),
+                    stack_pages: 4) do |process|
+    end
+    @queue = VFSQueue.new(@process)
+    @process_msg = nil
   end
 
-  def root
-    @root.not_nil!
+  # queue
+  getter queue
+
+  # process
+  @process_msg : VFSMessage? = nil
+  protected def process
+    while true
+      @process_msg = @queue.not_nil!.dequeue
+      unless (msg = @process_msg).nil?
+        case msg.type
+        when VFSMessage::Type::Write
+          msg.read do |ch|
+            Console.puts ch.unsafe_chr
+          end
+          msg.unawait(msg.slice_size)
+        end
+      else
+        Multiprocessing.sleep_drv
+      end
+    end
   end
 end

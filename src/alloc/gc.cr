@@ -222,7 +222,7 @@ module Gc
         node = next_node
       end
       @@first_gray_node = Pointer(Kernel::GcNode).null
-      # # some nodes in @@first_white_node are now gray
+      # some nodes in @@first_white_node are now gray
       if fix_white
         debug "fix white nodes\n"
         node = @@first_white_node
@@ -249,6 +249,10 @@ module Gc
         node = @@first_white_node
         while !node.null?
           panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
+
+          # HACK: do this or data corrupts
+          no_opt(node.address)
+
           next_node = node.value.next_node
           KernelArena.free node.address
           node = next_node
