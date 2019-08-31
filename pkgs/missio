@@ -87,8 +87,8 @@ while true; do
             shift
             [[ "$action" = "install" ]] && drive_mount
             
-            mkdir -p "$missio_dir/build"
-            build_dir="$missio_dir/build"
+            build_dir="$missio_dir/.build"
+            mkdir -p "$build_dir"
             install_dir="$opt_mountdir"
 
             for i in "$@"; do
