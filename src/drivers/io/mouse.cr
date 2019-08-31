@@ -1,8 +1,4 @@
 class Mouse
-  @x = 0
-  @y = 0
-  getter x, y
-
   @mousefs : MouseFS? = nil
   property mousefs
 
@@ -70,8 +66,15 @@ class Mouse
 
   @cycle = 0
   @attr_byte = AttributeByte::None
-  @x_byte = 0
-  @y_byte = 0
+  @x = 0
+  @y = 0
+
+  def flush
+    tuple = Tuple.new(@x, @y)
+    @x = 0
+    @y = 0
+    tuple
+  end
 
   def callback
     packet_finished = false
@@ -82,10 +85,10 @@ class Mouse
       @attr_byte = AttributeByte.new(X86.inb(0x60).to_i32)
       @cycle += 1
     when 1
-      @x_byte = X86.inb(0x60)
+      @x = X86.inb(0x60)
       @cycle += 1
     when 2
-      @y_byte = X86.inb(0x60)
+      @y = X86.inb(0x60)
       @cycle = 0
       packet_finished = true
     end
@@ -94,10 +97,10 @@ class Mouse
     if packet_finished
       # complete the packet
       if @attr_byte.includes?(AttributeByte::XSign)
-        @x_byte = (@x_byte.to_u32 | 0xFFFFFF00).to_i32
+        @x = (@x.to_u32 | 0xFFFFFF00).to_i32
       end
       if @attr_byte.includes?(AttributeByte::YSign)
-        @y_byte = (@y_byte.to_u32 | 0xFFFFFF00).to_i32
+        @y = (@y.to_u32 | 0xFFFFFF00).to_i32
       end
     end
   end

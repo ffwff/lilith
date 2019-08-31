@@ -17,7 +17,9 @@ class MouseFsNode < VFSNode
     remaining = slice.size
     idx = 0
 
-    fs.mouse.x.each_digit(10) do |ch|
+    x, y = fs.mouse.flush
+
+    x.each_digit(10) do |ch|
       slice[idx] = ch
       idx += 1
       remaining -= 1
@@ -29,11 +31,17 @@ class MouseFsNode < VFSNode
     remaining -= 1
     return idx unless remaining > 0
 
-    fs.mouse.y.each_digit(10) do |ch|
+    y.each_digit(10) do |ch|
       slice[idx] = ch
       idx += 1
       remaining -= 1
       return idx unless remaining > 0
+    end
+
+    if remaining > 0
+      slice[idx] = '\n'.ord.to_u8
+      idx += 1
+      remaining -= 1
     end
 
     idx
