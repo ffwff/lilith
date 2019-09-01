@@ -55,11 +55,12 @@ end
 
 Fbdev = FbdevInstance.new
 
-FB_ASCII_FONT_WIDTH = 8
-FB_ASCII_FONT_HEIGHT = 8
-
 private module FbdevStatePrivate
-  extend self
+extend self
+
+  FB_ASCII_FONT_WIDTH = 8
+  FB_ASCII_FONT_HEIGHT = 8
+  FB_BACK_BUFFER_POINTER = 0xFFFF_8700_0000_0000u64
 
   @@cx = 0
   @@cy = 0
@@ -140,7 +141,10 @@ private module FbdevStatePrivate
   def buffer
     @@buffer
   end
-  def buffer=(@@buffer)
+
+  @@back_buffer = Slice(UInt32).null
+  def back_buffer
+    @@back_buffer
   end
 
   def init_device(@@width, @@height, ptr)
@@ -148,6 +152,12 @@ private module FbdevStatePrivate
     @@cheight = @@height.unsafe_div(FB_ASCII_FONT_HEIGHT) - 1
     @@buffer = Slice(UInt32).new(ptr, @@width * @@height)
     memset(@@buffer.to_unsafe.as(UInt8*), 0u64,
+      @@width.to_usize * @@height.to_usize * sizeof(UInt32).to_usize)
+
+    npages = (@@width.to_usize * @@height.to_usize * sizeof(UInt32).to_usize).unsafe_div 0x1000
+    back_ptr = Paging.alloc_page_pg(FB_BACK_BUFFER_POINTER, true, false, npages)
+    @@back_buffer = Slice(UInt32).new(Pointer(UInt32).new(back_ptr), @@width * @@height)
+    memset(@@back_buffer.to_unsafe.as(UInt8*), 0u64,
       @@width.to_usize * @@height.to_usize * sizeof(UInt32).to_usize)
   end
 

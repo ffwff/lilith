@@ -32,3 +32,6 @@ int tcsetattr(int fd, int optional_actions,
 #define ICANON  (1 << 1)
 #define IEXTEN  (1 << 2)
 #define ISIG    (1 << 3)
+
+#define TCSAFLUSH   0
+#define TCSAGETS    1

@@ -3,13 +3,6 @@
 #include <syscalls.h>
 #include <cairo/cairo.h>
 
-struct fbdev_bitblit {
-    unsigned long *source;
-    unsigned long x, y, width, height;
-};
-
-#define GFX_BITBLIT 3
-
 #define WIDTH 512
 #define HEIGHT 512
 
@@ -27,6 +20,7 @@ int main(int argc, char const **argv)
     cairo_fill(cr);
 
     struct fbdev_bitblit bitblit = {
+        .target_buffer = GFX_FRONT_BUFFER,
         .source = (unsigned long*)cairo_image_surface_get_data(surface),
         .x = 0,
         .y = 0,

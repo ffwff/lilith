@@ -1,6 +1,7 @@
 lib FbdevFsData
   @[Packed]
   struct FbBitBlit
+    target_buffer : Int32 # 1 = back buffer, 0 = front buffer
     source : UInt32
     x, y, width, height : UInt32
   end
@@ -80,10 +81,14 @@ class FbdevFsNode < VFSNode
 
       # blit
       FbdevState.lock do |state|
-        byte_buffer = state.buffer.to_unsafe.as(UInt8*)
+        if arg.target_buffer == 1
+          byte_buffer = state.back_buffer.to_unsafe.as(UInt8*)
+        else
+          byte_buffer = state.buffer.to_unsafe.as(UInt8*)
+        end
         if  arg.x == 0 && arg.y == 0 &&
             arg.width == state.width && arg.height == state.height
-          copy_size = state.width * state.height * 4
+          copy_size = state.width * state.height * sizeof(UInt32)
           memcpy(byte_buffer, source, copy_size.to_usize)
         else
           height = arg.height
@@ -98,15 +103,23 @@ class FbdevFsNode < VFSNode
 
           unless arg.x > state.width || arg.y > state.height
             height.times do |y|
-              fb_offset = (arg.y + y) * state.width * 4 + arg.x * 4
-              copy_offset = y * arg.width * 4
-              copy_size = width * 4
+              fb_offset = (arg.y + y) * state.width * sizeof(UInt32) + arg.x * sizeof(UInt32)
+              copy_offset = y * arg.width * sizeof(UInt32)
+              copy_size = width * sizeof(UInt32)
               memcpy(byte_buffer + fb_offset, source + copy_offset, copy_size.to_usize)
             end
           end
         end
       end
 
+      0
+    when SC_IOCTL_GFX_SWAPBUF
+      # blit
+      FbdevState.lock do |state|
+        back_buffer = state.back_buffer.to_unsafe.as(UInt8*)
+        buffer = state.buffer.to_unsafe.as(UInt8*)
+        memcpy(buffer, back_buffer, state.buffer.size.to_usize * sizeof(UInt32))
+      end
       0
     else
       -1
