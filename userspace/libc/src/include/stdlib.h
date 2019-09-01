@@ -27,3 +27,7 @@ int setenv(const char *name, const char *value, int overwrite);
 int rand(void);
 void qsort(void *base, size_t nmemb, size_t size,
            int (*compar)(const void *, const void *));
+
+int atoi(const char *nptr);
+long atol(const char *nptr);
+double atof(const char *nptr);

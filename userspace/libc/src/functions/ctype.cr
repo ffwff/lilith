@@ -24,3 +24,9 @@ end
 fun isdigit(ch : LibC::Int) : LibC::Int
   (ch >= '0'.ord && ch <= '9'.ord) ? 1 : 0
 end
+
+fun isgraph(ch : LibC::Int) : LibC::Int
+  # TODO
+  abort
+  0
+end

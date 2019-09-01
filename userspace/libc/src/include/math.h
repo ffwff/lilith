@@ -109,3 +109,5 @@ int __signbitl(long double);
     __signbitl(x) )
 
 #define M_PI 3.141592654
+
+double modf(double x, double *iptr);

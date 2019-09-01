@@ -11,3 +11,16 @@ struct timeval {
     suseconds_t tv_usec;
 };
 int gettimeofday(struct timeval *restrict tp, void *restrict tzp);
+
+struct tm {
+    int tm_sec;
+    int tm_min;
+    int tm_hour;
+    int tm_mday;
+    int tm_mon;
+    int tm_year;
+    int tm_wday;
+    int tm_yday;
+    int tm_isdst;
+};
+struct tm *gmtime(const time_t *timep);
