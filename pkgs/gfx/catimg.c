@@ -47,7 +47,8 @@ int main(int argc, char **argv) {
         .x = 0,
         .y = 0,
         .width = w,
-        .height = h
+        .height = h,
+        .type = GFX_BITBLIT_SURFACE
     };
     ioctl(fd, GFX_BITBLIT, &bitblit);
 

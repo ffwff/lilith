@@ -46,19 +46,32 @@ int main(int argc, char **argv) {
     ioctl(fb_fd, TIOCGWINSZ, &ws);
 
     // wallpaper
+    #if 0
     struct fbdev_bitblit pape_spr = {
         .target_buffer = GFX_BACK_BUFFER,
         .source = NULL,
         .x = 0,
         .y = 0,
         .width = 0,
-        .height = 0
+        .height = 0,
+        .type = GFX_BITBLIT_SURFACE
     };
+    printf("loading wallpaper...\n");
     pape_spr.source = (unsigned long*)stbi_load(WALLPAPER_FILE, &w, &h, &n, channels);
     pape_spr.width = w;
     pape_spr.height = h;
     if(!pape_spr.source) panic("can't load pape_spr");
     filter_data(&pape_spr);
+    #endif
+    struct fbdev_bitblit pape_spr = {
+        .target_buffer = GFX_BACK_BUFFER,
+        .source = (unsigned long*)0x000066cc,
+        .x = 0,
+        .y = 0,
+        .width = ws.ws_col,
+        .height = ws.ws_row,
+        .type = GFX_BITBLIT_COLOR
+    };
 
     // mouse
     int mouse_fd = open("/mouse", 0);
@@ -68,8 +81,10 @@ int main(int argc, char **argv) {
         .x = 100,
         .y = 100,
         .width = 0,
-        .height = 0
+        .height = 0,
+        .type = GFX_BITBLIT_SURFACE
     };
+    printf("loading cursor...\n");
     mouse_spr.source = (unsigned long *)stbi_load(CURSOR_FILE, &w, &h, &n, channels);
     mouse_spr.width = w;
     mouse_spr.height = h;
@@ -81,7 +96,7 @@ int main(int argc, char **argv) {
         ioctl(fb_fd, GFX_BITBLIT, &pape_spr);
 
         // mouse
-        int mouse_dx, mouse_dy = 0;
+        volatile int mouse_dx, mouse_dy = 0;
         char mouse_buf[64] = {0};
         read(mouse_fd, mouse_buf, sizeof(mouse_buf) - 1);
         sscanf(mouse_buf, "%d,%d", &mouse_dx, &mouse_dy);
@@ -91,7 +106,8 @@ int main(int argc, char **argv) {
             // left = negative
             mouse_spr.x += mouse_dx * speed;
         }
-        if(mouse_dy != 0) {
+        if (mouse_dy != 0) {
+            // bottom = negative
             mouse_spr.y -= mouse_dy * speed;
         }
         mouse_spr.x = min(mouse_spr.x, ws.ws_col);
@@ -99,6 +115,9 @@ int main(int argc, char **argv) {
         ioctl(fb_fd, GFX_BITBLIT, &mouse_spr);
 
         ioctl(fb_fd, GFX_SWAPBUF, 0);
+
+        // HACK: screen won't refresh without this?
+        printf("\n");
     }
 
     // cleanup

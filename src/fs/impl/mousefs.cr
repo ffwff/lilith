@@ -4,14 +4,6 @@ class MouseFsNode < VFSNode
   def initialize(@fs : MouseFS)
   end
 
-  def open(path : Slice) : VFSNode?
-    nil
-  end
-
-  def create(name : Slice) : VFSNode?
-    nil
-  end
-
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
     remaining = slice.size
@@ -47,14 +39,6 @@ class MouseFsNode < VFSNode
     idx
   end
 
-  def write(slice : Slice, offset : UInt32,
-            process : Multiprocessing::Process? = nil) : Int32
-    VFS_ERR
-  end
-
-  def ioctl(request : Int32, data : Void*) : Int32
-    -1
-  end
 end
 
 class MouseFS < VFS

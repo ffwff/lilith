@@ -4,14 +4,6 @@ class KbdFsNode < VFSNode
   def initialize(@fs : KbdFS)
   end
 
-  def open(path : Slice) : VFSNode?
-    nil
-  end
-
-  def create(name : Slice) : VFSNode?
-    nil
-  end
-
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
     if @fs.ansi_remaining > 0
@@ -22,11 +14,6 @@ class KbdFsNode < VFSNode
       return size
     end
     VFS_WAIT
-  end
-
-  def write(slice : Slice, offset : UInt32,
-            process : Multiprocessing::Process? = nil) : Int32
-    VFS_ERR
   end
 
   def ioctl(request : Int32, data : Void*) : Int32

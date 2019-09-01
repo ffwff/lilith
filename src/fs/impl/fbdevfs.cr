@@ -4,6 +4,12 @@ lib FbdevFsData
     target_buffer : Int32 # 1 = back buffer, 0 = front buffer
     source : UInt32
     x, y, width, height : UInt32
+    type : FbType
+  end
+
+  enum FbType : Int32
+    Surface = 0
+    Color = 1
   end
 end
 
@@ -11,14 +17,6 @@ class FbdevFsNode < VFSNode
   getter fs
 
   def initialize(@fs : FbdevFS)
-  end
-
-  def open(path : Slice) : VFSNode?
-    nil
-  end
-
-  def create(name : Slice) : VFSNode?
-    nil
   end
 
   def read(slice : Slice, offset : UInt32,
@@ -71,6 +69,27 @@ class FbdevFsNode < VFSNode
         return -1
       else
         arg.not_nil!.value
+      end
+
+      if arg.type == FbdevFsData::FbType::Color
+        FbdevState.lock do |state|
+          if arg.target_buffer == 1
+            byte_buffer = state.back_buffer.to_unsafe.as(UInt8*)
+          else
+            byte_buffer = state.buffer.to_unsafe.as(UInt8*)
+          end
+          if  arg.x == 0 && arg.y == 0 &&
+              arg.width == state.width && arg.height == state.height
+            copy_size = state.width * state.height
+            eax = arg.source
+            asm("rep stosl"
+              :: "{eax}"(eax), "{rdi}"(byte_buffer), "{rcx}"(copy_size)
+              : "volatile", "memory")
+          else
+            # TODO
+          end
+        end
+        return 0
       end
 
       # source
@@ -126,9 +145,6 @@ class FbdevFsNode < VFSNode
     end
   end
 
-  def read_queue
-    nil
-  end
 end
 
 class FbdevFS < VFS
