@@ -35,7 +35,3 @@ off_t lseek(int fd, off_t offset, int whence);
 #define O_CREAT  (1 << 2)
 #define O_TRUNC  (1 << 3)
 #define O_APPEND (1 << 4)
-
-#define TCSAFLUSH   0
-#define TCSAGETS    1
-#define TIOCGWINSZ  2

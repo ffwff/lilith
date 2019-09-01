@@ -6,7 +6,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ASSERT(x)
-#include "../build/stb_image.h"
+#include "../.build/stb_image.h"
 
 double ldexp(double x, int exp) {
     abort();
