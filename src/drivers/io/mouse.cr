@@ -58,6 +58,7 @@ class Mouse
     LeftBtn = 1 << 0
     RightBtn = 1 << 1
     MiddleBtn = 1 << 2
+    AlwaysOne = 1 << 3
     XSign = 1 << 4
     YSign = 1 << 5
     XOverflow = 1 << 6
@@ -83,6 +84,10 @@ class Mouse
     case @cycle
     when 0
       @attr_byte = AttributeByte.new(X86.inb(0x60).to_i32)
+      unless @attr_byte.includes?(AttributeByte::AlwaysOne)
+        @cycle = 0
+        return
+      end
       @cycle += 1
     when 1
       @x = X86.inb(0x60)
@@ -101,6 +106,11 @@ class Mouse
       end
       if @attr_byte.includes?(AttributeByte::YSign)
         @y = (@y.to_u32 | 0xFFFFFF00).to_i32
+      end
+      if @attr_byte.includes?(AttributeByte::XOverflow) ||
+         @attr_byte.includes?(AttributeByte::YOverflow)
+        @x = 0
+        @y = 0
       end
     end
   end

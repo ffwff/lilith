@@ -96,11 +96,13 @@ class FbdevFsNode < VFSNode
             width = state.width - arg.x
           end
 
-          height.times do |y|
-            fb_offset = (arg.y + y) * state.width * 4 + arg.x * 4
-            copy_offset = y * arg.width * 4
-            copy_size = width * 4
-            memcpy(byte_buffer + fb_offset, source + copy_offset, copy_size.to_usize)
+          unless arg.x > state.width || arg.y > state.height
+            height.times do |y|
+              fb_offset = (arg.y + y) * state.width * 4 + arg.x * 4
+              copy_offset = y * arg.width * 4
+              copy_size = width * 4
+              memcpy(byte_buffer + fb_offset, source + copy_offset, copy_size.to_usize)
+            end
           end
         end
       end
