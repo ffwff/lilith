@@ -64,3 +64,9 @@ fun atan2(arg : Float64) : Float64
   LibC.abort
   0.0f64
 end
+
+fun modf(arg : Float64, iptr : Float64) : Float64
+  # TODO
+  LibC.abort
+  0.0f64
+end

@@ -127,6 +127,10 @@ class File
     @status.includes?(Status::EOF)
   end
 
+  def ferror
+    false
+  end
+
   # reading
   def fputs(str)
     return -1 unless @status.includes?(Status::Write)
@@ -286,13 +290,18 @@ fun fopen(file : LibC::String, mode : LibC::String) : Void*
   File.new(fd, mode).as(Void*)
 end
 
+fun tmpfile : Void*
+  abort
+  Pointer(Void).null
+end
+
 fun fclose(stream : Void*) : LibC::Int
-  # stream = stream.as(File*)
-  # stream.value._finalize
-  # unless stream.value.fd <= STDERR
-  #   # TODO
-  #   stream.free
-  # end
+  stream = stream.as(File)
+  unless stream.fd <= STDERR
+    # TODO
+    stream._finalize
+    stream.as(Void*).free
+  end
   0
 end
 
@@ -308,7 +317,24 @@ fun fseek(stream : Void*, offset : LibC::Int, whence : LibC::Int) : LibC::Int
   stream.as(File).fseek(offset, whence)
 end
 
+fun rewind(stream : Void*, offset : LibC::Int, whence : LibC::Int) : LibC::Int
+  stream.as(File).fseek(SC_SEEK_SET, 0)
+end
+
 fun ftell(stream : Void*) : LibC::Int
+  # TODO
+  abort
+  0
+end
+
+fun fgetpos(stream : Void*, pos : Void*) : LibC::Int
+  # TODO
+  abort
+  0
+end
+
+fun fsetpos(stream : Void*, pos : Void*) : LibC::Int
+  # TODO
   abort
   0
 end
@@ -331,6 +357,10 @@ end
 
 fun feof(stream : Void*) : LibC::Int
   stream.as(File).feof ? 1 : 0
+end
+
+fun ferror(stream : Void*) : LibC::Int
+  stream.as(File).ferror ? 1 : 0
 end
 
 fun fputs(str : LibC::String, stream : Void*) : LibC::Int

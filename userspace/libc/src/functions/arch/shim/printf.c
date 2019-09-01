@@ -139,6 +139,10 @@ int fprintf(FILE *stream, const char *restrict format, ...) {
     return ret;
 }
 
+int vfprintf(FILE *stream, const char *format, va_list ap) {
+    return __printf(fprintf_nputs, stream, format, ap);
+}
+
 // string
 struct sprintf_slice {
     char *str;

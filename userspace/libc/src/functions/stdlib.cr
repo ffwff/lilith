@@ -14,6 +14,21 @@ fun strtod(nptr : LibC::String, endptr : LibC::String*) : Float64
   0.0f64
 end
 
+fun atoi(nptr : LibC::String) : LibC::Int
+  abort
+  0
+end
+
+fun atol(nptr : LibC::String) : LibC::Long
+  abort
+  0
+end
+
+fun atof(nptr : LibC::String) : Float32
+  abort
+  0.0f32
+end
+
 # environ
 fun getenv(name : LibC::String) : LibC::String
   LibC::String.null

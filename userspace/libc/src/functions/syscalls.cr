@@ -124,5 +124,27 @@ end
 
 # time
 fun time(tloc : Void*) : LibC::UInt
+  # TODO
   0u32
+end
+
+# stat
+fun stat(path : LibC::String, statbuf : Void*) : LibC::Int
+  # TODO
+  -1
+end
+
+fun access(path : LibC::String, mode : LibC::Int) : LibC::Int
+  # TODO
+  -1
+end
+
+fun unlink(path : LibC::String) : LibC::Int
+  # TODO
+  -1
+end
+
+fun rename(oldpath : LibC::String, newpath : LibC::String) : LibC::Int
+  # TODO
+  -1
 end

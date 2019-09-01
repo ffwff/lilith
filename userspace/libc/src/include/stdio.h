@@ -4,18 +4,21 @@
 #include <stdarg.h>
 
 typedef void FILE;
+typedef void *fpos_t;
 
 extern FILE *stdin;
 extern FILE *stdout;
 extern FILE *stderr;
 
 FILE *fopen(const char *pathname, const char *mode);
+FILE *tmpfile(void);
 int fclose(FILE *stream);
 
 int fflush(FILE *);
 
 char *fgets(char *, int, FILE *);
 int fgetc(FILE *stream);
+#define getc(x) fgetc(x)
 int fputs(const char *s, FILE *stream);
 int fnputs(const char *s, unsigned long len, FILE *stream);
 
@@ -25,6 +28,9 @@ size_t fwrite(const void *ptr, size_t size, size_t nmemb,
 
 int fseek(FILE *stream, long offset, int whence);
 long ftell(FILE *stream);
+int fgetpos(FILE *stream, fpos_t *pos);
+int fsetpos(FILE *stream, const fpos_t *pos);
+void rewind(FILE *stream);
 
 int feof(FILE *stream);
 int ferror(FILE *stream);
@@ -36,6 +42,7 @@ int dprintf(int fd, const char *format, ...);
 int sprintf(char *str, const char *format, ...);
 int snprintf(char *str, size_t size, const char *format, ...);
 
+int vfprintf(FILE *stream, const char *format, va_list ap);
 int vsnprintf(char *str, size_t size, const char *format, va_list ap);
 
 int sscanf(const char *str, const char *format, ...);
