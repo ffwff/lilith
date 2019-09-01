@@ -1,6 +1,5 @@
 @[NoInline]
 def zero_page(mem : UInt8*, npages : USize = 1)
-  # TODO
   return if npages == 0
   count = npages * 0x1000
   asm("
