@@ -11,6 +11,7 @@ struct fbdev_bitblit {
     int target_buffer;
     unsigned long *source;
     unsigned long x, y, width, height;
+    int type;
 };
 
 int ioctl(int fd, int request, void *arg);
@@ -21,4 +22,7 @@ int ioctl(int fd, int request, void *arg);
 #define GFX_SWAPBUF 4
 
 #define GFX_FRONT_BUFFER 0
-#define GFX_BACK_BUFFER 1
+#define GFX_BACK_BUFFER  1
+
+#define GFX_BITBLIT_SURFACE 0
+#define GFX_BITBLIT_COLOR   1

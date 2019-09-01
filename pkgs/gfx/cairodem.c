@@ -25,7 +25,8 @@ int main(int argc, char const **argv)
         .x = 0,
         .y = 0,
         .width = WIDTH,
-        .height = HEIGHT
+        .height = HEIGHT,
+        .type = GFX_BITBLIT_SURFACE
     };
     int fd = open("/fb0", 0);
     ioctl(fd, GFX_BITBLIT, &bitblit);
