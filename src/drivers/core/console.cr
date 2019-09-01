@@ -21,7 +21,7 @@ private struct ConsoleInstance < OutputDriver
     device.putc ch
   end
   
-  def putc(*args)
+  def puts(args)
     return unless @enabled
     device.puts args
   end

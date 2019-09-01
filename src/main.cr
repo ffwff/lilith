@@ -36,7 +36,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Gdt.init_table
 
   # drivers
-  Pit.init
+  Pit.init_device
 
   # interrupt tables
   Console.puts "initializing idt...\n"

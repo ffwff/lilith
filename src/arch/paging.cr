@@ -222,9 +222,16 @@ module Paging
     while virt_addr < virt_addr_end
       # allocate page frame
       pdpt_idx, dir_idx, table_idx, page_idx = page_layer_indexes(virt_addr)
-
-      pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
-        .new(mt_addr pml4_table.value.pdpt[pdpt_idx])
+      
+      if pml4_table.value.pdpt[pdpt_idx] == 0
+        paddr = FrameAllocator.claim_with_addr | PT_MASK
+        pml4_table.value.pdpt[pdpt_idx] = paddr
+        pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(mt_addr paddr)
+        zero_page pdpt.as(UInt8*)
+      else
+        pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+          .new(mt_addr pml4_table.value.pdpt[pdpt_idx])
+      end
 
       # directory
       if pdpt.value.dirs[dir_idx] == 0
