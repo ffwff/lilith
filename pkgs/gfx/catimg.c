@@ -15,13 +15,6 @@ double ldexp(double x, int exp) {
 
 const int channels = 4;
 
-struct fbdev_bitblit {
-    unsigned long *source;
-    unsigned long x, y, width, height;
-};
-
-#define GFX_BITBLIT 3
-
 int main(int argc, char **argv) {
     if (argc < 2) {
         printf("usage: %s filename\n", argv[0]);
@@ -49,6 +42,7 @@ int main(int argc, char **argv) {
         data[i + 3] = 0;
     }
     struct fbdev_bitblit bitblit = {
+        .target_buffer = GFX_FRONT_BUFFER,
         .source = (unsigned long*)data,
         .x = 0,
         .y = 0,

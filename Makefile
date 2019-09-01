@@ -26,12 +26,11 @@ endif
 QEMU = $(shell which qemu-system-x86_64)
 
 QEMUFLAGS += \
-	-rtc base=localtime \
 	-monitor telnet:127.0.0.1:7777,server,nowait \
 	-m 512M \
 	-serial stdio \
 	-no-shutdown -no-reboot \
-	-vga std
+	-vga std -enable-kvm -d int
 
 ifneq ($(shell cat /proc/cpuinfo | grep pdpe1gb | wc -l),0)
 QEMUFLAGS += -cpu SandyBridge,+pdpe1gb

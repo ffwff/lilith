@@ -50,6 +50,7 @@
     # segment registers
     pop %rax
     mov %ax, %ds
+    mov %ax, %es
     popa64_no_ds
 .endm
 

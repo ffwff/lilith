@@ -8,13 +8,17 @@ struct winsize {
 };
 
 struct fbdev_bitblit {
+    int target_buffer;
     unsigned long *source;
     unsigned long x, y, width, height;
 };
 
 int ioctl(int fd, int request, void *arg);
 
-#define TCSAFLUSH   0
-#define TCSAGETS    1
+// TCSA*            0, 1
 #define TIOCGWINSZ  2
 #define GFX_BITBLIT 3
+#define GFX_SWAPBUF 4
+
+#define GFX_FRONT_BUFFER 0
+#define GFX_BACK_BUFFER 1

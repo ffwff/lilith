@@ -22,8 +22,7 @@ module BGA
     X86.outw(DATA_PORT, 0xB0C4)
     i = X86.inw(DATA_PORT)
 
-    # TODO: move physical mapping somewhere
-    width, height = set_resolution(1024, 768)
+    width, height = set_resolution(1280, 720)
     size = width * height * 4
     phys = Pointer(UInt32).new(PCI.read_field(bus, device, func, PCI::PCI_BAR0, 4).to_u64)
     virt = Pointer(UInt32).new(phys.address | PTR_IDENTITY_MASK)
