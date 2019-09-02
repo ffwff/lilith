@@ -106,6 +106,10 @@ fun waitpid(pid : LibC::Pid, status : LibC::Int*, options : LibC::Int) : LibC::P
   sysenter(SC_WAITPID, pid, 0).to_i32
 end
 
+fun usleep(timeout : LibC::ULong) : LibC::Int
+  sysenter(SC_SLEEP, timeout).to_i32
+end
+
 # working directory
 fun getcwd(str : LibC::String, len : LibC::Int) : LibC::Int
   buf = uninitialized LibC::SyscallStringArgument

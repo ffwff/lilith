@@ -4,6 +4,12 @@
 #include <syscalls.h>
 
 void spawn_process(char *s, char **argv) {
+    if (!argv[0]) {
+        return;
+    } else if (!argv[0][0]) {
+        return;
+    }
+
     pid_t child = spawnv(s, argv);
     if (child > 0)
         waitpid(child, 0, 0);
