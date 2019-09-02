@@ -1,4 +1,4 @@
-lib FbdevFsData
+private lib FbdevFSData
   @[Packed]
   struct FbBitBlit
     target_buffer : Int32 # 1 = back buffer, 0 = front buffer
@@ -13,7 +13,7 @@ lib FbdevFsData
   end
 end
 
-class FbdevFsNode < VFSNode
+private class FbdevFSNode < VFSNode
   getter fs
 
   def initialize(@fs : FbdevFS)
@@ -64,14 +64,14 @@ class FbdevFsNode < VFSNode
         -1
       end
     when SC_IOCTL_GFX_BITBLIT
-      arg = checked_pointer32(FbdevFsData::FbBitBlit, data)
+      arg = checked_pointer32(FbdevFSData::FbBitBlit, data)
       arg = if arg.nil?
         return -1
       else
         arg.not_nil!.value
       end
 
-      if arg.type == FbdevFsData::FbType::Color
+      if arg.type == FbdevFSData::FbType::Color
         FbdevState.lock do |state|
           if arg.target_buffer == 1
             byte_buffer = state.back_buffer.to_unsafe.as(UInt8*)
@@ -151,7 +151,7 @@ class FbdevFS < VFS
 
   def initialize
     @name = GcString.new "fb0" # TODO
-    @root = FbdevFsNode.new self
+    @root = FbdevFSNode.new self
   end
 
   def root

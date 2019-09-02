@@ -1,6 +1,6 @@
 build() {
     for i in $script_dir/*.c; do
-        ${opt_arch}-gcc -g -o $build_dir/$(basename $i .c) $i
+        ${opt_arch}-gcc -O2 -o $build_dir/$(basename $i .c) $i
     done
 }
 

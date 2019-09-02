@@ -1,4 +1,4 @@
-class ConsoleFsNode < VFSNode
+private class ConsoleFSNode < VFSNode
   getter fs
 
   def initialize(@fs : ConsoleFS)
@@ -44,7 +44,7 @@ class ConsoleFS < VFS
 
   def initialize
     @name = GcString.new "con"
-    @root = ConsoleFsNode.new self
+    @root = ConsoleFSNode.new self
 
     # setup process-local variables
     @process = Multiprocessing::Process

@@ -1,4 +1,4 @@
-class PipeFSRoot < VFSNode
+private class PipeFSRoot < VFSNode
   getter fs
 
   def initialize(@fs : PipeFS)
@@ -20,16 +20,6 @@ class PipeFSRoot < VFSNode
     node
   end
 
-  def read(slice : Slice, offset : UInt32,
-           process : Multiprocessing::Process? = nil) : Int32
-    VFS_ERR
-  end
-
-  def write(slice : Slice, offset : UInt32,
-            process : Multiprocessing::Process? = nil) : Int32
-    VFS_ERR
-  end
-
   @first_child : PipeFSNode? = nil
   getter first_child
 
@@ -42,21 +32,13 @@ class PipeFSRoot < VFSNode
   end
 end
 
-class PipeFSNode < VFSNode
+private class PipeFSNode < VFSNode
   getter name, fs
 
   @next_node : PipeFSNode? = nil
   property next_node
 
   def initialize(@name : GcString, @parent : PipeFSRoot, @fs : PipeFS)
-  end
-
-  def open(path : Slice) : VFSNode?
-    nil
-  end
-
-  def create(name : Slice) : VFSNode?
-    nil
   end
 
   @buffer = Pointer(UInt8).null

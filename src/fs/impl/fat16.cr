@@ -104,7 +104,7 @@ private def name_from_entry(entry)
   fname
 end
 
-class Fat16Node < VFSNode
+private class Fat16Node < VFSNode
   @parent : Fat16Node? = nil
   property parent
 
