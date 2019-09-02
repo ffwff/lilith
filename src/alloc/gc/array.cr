@@ -8,10 +8,12 @@ class GcArray(T)
   
   # array data is stored in buffer, and so is size
   def size
+    return 0 if @capacity == 0
     @ptr[1].to_isize
   end
 
   private def size=(new_size)
+    return if @capacity == 0
     @ptr[1] = new_size.to_usize
   end
 
@@ -21,6 +23,10 @@ class GcArray(T)
 
   # init
   def initialize(new_size : Int)
+    if new_size == 0
+      @ptr = Pointer(USize).null
+      return
+    end
     m_size = malloc_size new_size
     @ptr = Gc.unsafe_malloc(m_size).as(USize*)
     @ptr[0] = GC_ARRAY_HEADER_TYPE
@@ -87,10 +93,12 @@ class GcArray(T)
     ptr[1] = new_size.to_usize
     new_buffer = Pointer(USize).new((ptr.address + GC_ARRAY_HEADER_SIZE).to_u64)
     # copy over
-    i = 0
-    while i < new_size
-      new_buffer[i] = buffer.as(USize*)[i]
-      i += 1
+    unless @ptr.null?
+      i = 0
+      while i < new_size
+        new_buffer[i] = buffer.as(USize*)[i]
+        i += 1
+      end
     end
     @ptr = ptr
     # capacity
@@ -102,9 +110,9 @@ class GcArray(T)
       buffer[size] = value
       self.size += 1
     else
+      idx = size
       new_buffer(size + 1)
-      buffer[size] = value
-      self.size += 1
+      buffer[idx] = value
     end
   end
 

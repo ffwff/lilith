@@ -316,6 +316,7 @@ module Syscall
     when SC_WAITFD
       fdi = fv.rbx.to_i32
       fd = try(pudata.get_fd(fdi))
+      timeout = fv.rdx.to_u32
 
       if fd.node.not_nil!.available?
         fv.rax = SYSCALL_SUCCESS
@@ -324,6 +325,7 @@ module Syscall
         fv.rax = SYSCALL_SUCCESS
         process.status = Multiprocessing::Process::Status::WaitFd
         pudata.wait_object = fd.node.not_nil!
+        pudata.wait_usecs = timeout
         Multiprocessing.switch_process(frame)
       end
     when SC_CLOSE
@@ -463,7 +465,15 @@ module Syscall
         end
       end
     when SC_SLEEP
-      process.status = Multiprocessing::Process::Status::WaitIo
+      timeout = fv.rbx.to_u32
+      if timeout == 0
+        return
+      elsif timeout == 0xFFFF_FFFFu32
+        process.status = Multiprocessing::Process::Status::WaitIo
+      else
+        process.status = Multiprocessing::Process::Status::Sleep
+        pudata.wait_usecs = timeout
+      end
       Multiprocessing.switch_process(frame)
     when SC_GETENV
       # TODO

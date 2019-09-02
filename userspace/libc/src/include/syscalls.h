@@ -4,6 +4,7 @@
 
 typedef unsigned long mode_t;
 typedef unsigned long off_t;
+typedef unsigned long useconds_t;
 
 int open(char *device, int flags, ...);
 int create(char *device);
@@ -11,12 +12,14 @@ int close(int fd);
 long write(int fd, void *str, size_t len);
 long read(int fd, char *str, unsigned long len);
 int ftruncate(int fd, off_t length);
-int waitfd(int fd, unsigned long timeout);
+int waitfd(int fd, useconds_t timeout);
 int remove(char *device);
 
 typedef long pid_t;
 pid_t spawnv(char *file, char **argv);
 void _exit();
+
+int usleep(useconds_t usec);
 
 pid_t waitpid(pid_t pid, int *status, int options);
 pid_t getpid();

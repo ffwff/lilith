@@ -93,6 +93,7 @@ module Multiprocessing
       WaitIo
       WaitProcess
       WaitFd
+      Sleep
     end
 
     @status = Status::Normal
@@ -104,6 +105,10 @@ module Multiprocessing
       # TODO: this should be a weak pointer once it's implemented
       @wait_object : (Process | VFSNode)? = nil
       property wait_object
+
+      # wait useconds
+      @wait_usecs = 0u32
+      property wait_usecs
 
       # group id
       @pgid = 0u64
@@ -482,6 +487,11 @@ module Multiprocessing
       io.puts "}"
     end
 
+    protected def unawait
+      @status = Multiprocessing::Process::Status::Normal
+      @udata.not_nil!.wait_object = nil
+      @udata.not_nil!.wait_usecs = 0u32
+    end
   end
 
   private def can_switch(process)
@@ -497,30 +507,42 @@ module Multiprocessing
       case wait_object
       when Process
         if wait_object.as(Process).status == Multiprocessing::Process::Status::Removed
-          process.status = Multiprocessing::Process::Status::Normal
-          process.udata.wait_object = nil
+          process.unawait
           true
         end
         false
       when Nil
-        process.status = Multiprocessing::Process::Status::Normal
-        process.udata.wait_object = nil
+        process.unawait
         true
       end
     when Multiprocessing::Process::Status::WaitFd
       wait_object = process.udata.wait_object
       case wait_object
       when VFSNode
+        if process.udata.wait_usecs != 0xFFFF_FFFFu32
+          if process.udata.wait_usecs <= Pit::USECS_PER_TICK
+            process.unawait
+            return true
+          else
+            process.udata.wait_usecs -= Pit::USECS_PER_TICK
+          end
+        end
         if wait_object.as(VFSNode).available?
-          process.status = Multiprocessing::Process::Status::Normal
-          process.udata.wait_object = nil
+          process.unawait
           true
         end
         false
       when Nil
-        process.status = Multiprocessing::Process::Status::Normal
-        process.udata.wait_object = nil
+        process.unawait
         true
+      end
+    when Multiprocessing::Process::Status::Sleep
+      if process.udata.wait_usecs <= Pit::USECS_PER_TICK
+        process.unawait
+        true
+      else
+        process.udata.wait_usecs -= Pit::USECS_PER_TICK
+        false
       end
     end
   end
