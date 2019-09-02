@@ -1,10 +1,15 @@
 private lib FbdevFSData
   @[Packed]
   struct FbBitBlit
-    target_buffer : Int32 # 1 = back buffer, 0 = front buffer
+    target_buffer : TargetBuffer
     source : UInt32
     x, y, width, height : UInt32
     type : FbType
+  end
+
+  enum TargetBuffer : Int32
+    Back = 1
+    Front = 0
   end
 
   enum FbType : Int32
@@ -73,7 +78,7 @@ private class FbdevFSNode < VFSNode
 
       if arg.type == FbdevFSData::FbType::Color
         FbdevState.lock do |state|
-          if arg.target_buffer == 1
+          if arg.target_buffer == FbdevFSData::TargetBuffer::Back
             byte_buffer = state.back_buffer.to_unsafe.as(UInt8*)
           else
             byte_buffer = state.buffer.to_unsafe.as(UInt8*)
@@ -97,7 +102,7 @@ private class FbdevFSNode < VFSNode
 
       # blit
       FbdevState.lock do |state|
-        if arg.target_buffer == 1
+        if arg.target_buffer == FbdevFSData::TargetBuffer::Back
           byte_buffer = state.back_buffer.to_unsafe.as(UInt8*)
         else
           byte_buffer = state.buffer.to_unsafe.as(UInt8*)
