@@ -80,11 +80,8 @@ class FbdevFsNode < VFSNode
           end
           if  arg.x == 0 && arg.y == 0 &&
               arg.width == state.width && arg.height == state.height
-            copy_size = state.width * state.height
-            eax = arg.source
-            asm("rep stosl"
-              :: "{eax}"(eax), "{rdi}"(byte_buffer), "{rcx}"(copy_size)
-              : "volatile", "memory")
+            copy_size = state.width.to_usize * state.height.to_usize
+            memset_long(byte_buffer.as(UInt32*), arg.source, copy_size)
           else
             # TODO
           end

@@ -8,11 +8,7 @@ class Box(T)
   end
 
   def to_unsafe
-    self.as(T*)
-  end
-
-  def object
-    self.as(T*).value
+    pointerof(@object)
   end
 
   def object=(@object)

@@ -24,8 +24,9 @@ module MBR
 
   def read(device)
     mbr = Box(MBRStructs::MBR).new
-    device.read_sector(mbr.as(UInt16*), 0)
-    return nil unless mbr.object.header[0] == 0x55 && mbr.object.header[1] == 0xaa
+    device.read_sector(mbr.to_unsafe.as(UInt16*), 0)
+    return nil unless mbr.to_unsafe.value.header[0] == 0x55 &&
+                      mbr.to_unsafe.value.header[1] == 0xaa
     mbr
   end
 

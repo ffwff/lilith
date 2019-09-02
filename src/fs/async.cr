@@ -137,12 +137,12 @@ class VFSMessage
     unless @fd.nil?
       @fd.not_nil!.offset += @offset
     end
-    @process.not_nil!.frame.value.rax = @offset
+    @process.not_nil!.frame.not_nil!.to_unsafe.value.rax = @offset
   end
   
   def unawait(retval)
     @process.not_nil!.status = Multiprocessing::Process::Status::Normal
-    @process.not_nil!.frame.value.rax = retval
+    @process.not_nil!.frame.not_nil!.to_unsafe.value.rax = retval
   end
 end
 
