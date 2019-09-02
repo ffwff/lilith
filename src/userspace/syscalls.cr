@@ -319,10 +319,9 @@ module Syscall
       timeout = fv.rdx.to_u32
 
       if fd.node.not_nil!.available?
-        fv.rax = SYSCALL_SUCCESS
+        fv.rax = 1
         return
       else
-        fv.rax = SYSCALL_SUCCESS
         process.status = Multiprocessing::Process::Status::WaitFd
         pudata.wait_object = fd.node.not_nil!
         pudata.wait_usecs = timeout
