@@ -521,6 +521,7 @@ module Multiprocessing
       when VFSNode
         if process.udata.wait_usecs != 0xFFFF_FFFFu32
           if process.udata.wait_usecs <= Pit::USECS_PER_TICK
+            process.frame.value.rax = 0
             process.unawait
             return true
           else
@@ -528,6 +529,7 @@ module Multiprocessing
           end
         end
         if wait_object.as(VFSNode).available?
+          process.frame.value.rax = 1
           process.unawait
           true
         end
