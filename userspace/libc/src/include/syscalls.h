@@ -11,6 +11,8 @@ int close(int fd);
 long write(int fd, void *str, size_t len);
 long read(int fd, char *str, unsigned long len);
 int ftruncate(int fd, off_t length);
+int waitfd(int fd, unsigned long timeout);
+int remove(char *device);
 
 typedef long pid_t;
 pid_t spawnv(char *file, char **argv);

@@ -313,6 +313,19 @@ module Syscall
       fd = try(pudata.get_fd(fdi))
       arg = try(checked_pointer32(SyscallData::IoctlArgument32, fv.rdx))
       fv.rax = fd.node.not_nil!.ioctl(arg.value.request, arg.value.data)
+    when SC_WAITFD
+      fdi = fv.rbx.to_i32
+      fd = try(pudata.get_fd(fdi))
+
+      if fd.node.not_nil!.available?
+        fv.rax = SYSCALL_SUCCESS
+        return
+      else
+        fv.rax = SYSCALL_SUCCESS
+        process.status = Multiprocessing::Process::Status::WaitFd
+        pudata.wait_object = fd.node.not_nil!
+        Multiprocessing.switch_process(frame)
+      end
     when SC_CLOSE
       fdi = fv.rbx.to_i32
       if pudata.close_fd(fdi)
@@ -445,7 +458,7 @@ module Syscall
         else
           fv.rax = pid
           process.status = Multiprocessing::Process::Status::WaitProcess
-          pudata.pwait = cprocess
+          pudata.wait_object = cprocess
           Multiprocessing.switch_process(frame)
         end
       end

@@ -92,6 +92,7 @@ module Multiprocessing
       Running
       WaitIo
       WaitProcess
+      WaitFd
     end
 
     @status = Status::Normal
@@ -99,10 +100,10 @@ module Multiprocessing
 
     # user-mode process data
     class UserData
-      # wait process
+      # wait process / file
       # TODO: this should be a weak pointer once it's implemented
-      @pwait : Process? = nil
-      property pwait
+      @wait_object : (Process | VFSNode)? = nil
+      property wait_object
 
       # group id
       @pgid = 0u64
@@ -492,13 +493,34 @@ module Multiprocessing
     when Multiprocessing::Process::Status::WaitIo
       false
     when Multiprocessing::Process::Status::WaitProcess
-      if !process.udata.pwait.nil? &&
-         process.udata.pwait.not_nil!.status == Multiprocessing::Process::Status::Removed
-        process.status = Multiprocessing::Process::Status::Normal
-        process.udata.pwait = nil
-        true
-      else
+      wait_object = process.udata.wait_object
+      case wait_object
+      when Process
+        if wait_object.as(Process).status == Multiprocessing::Process::Status::Removed
+          process.status = Multiprocessing::Process::Status::Normal
+          process.udata.wait_object = nil
+          true
+        end
         false
+      when Nil
+        process.status = Multiprocessing::Process::Status::Normal
+        process.udata.wait_object = nil
+        true
+      end
+    when Multiprocessing::Process::Status::WaitFd
+      wait_object = process.udata.wait_object
+      case wait_object
+      when VFSNode
+        if wait_object.as(VFSNode).available?
+          process.status = Multiprocessing::Process::Status::Normal
+          process.udata.wait_object = nil
+          true
+        end
+        false
+      when Nil
+        process.status = Multiprocessing::Process::Status::Normal
+        process.udata.wait_object = nil
+        true
       end
     end
   end

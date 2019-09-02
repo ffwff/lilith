@@ -105,6 +105,10 @@ class PipeFSNode < VFSNode
     end
     @buffer_pos
   end
+
+  def available?
+    @buffer_pos > 0
+  end
 end
 
 class PipeFS < VFS
