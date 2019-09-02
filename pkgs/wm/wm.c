@@ -62,7 +62,7 @@ int main(int argc, char **argv) {
     pape_spr.height = h;
     if(!pape_spr.source) panic("can't load pape_spr");
     filter_data(&pape_spr);
-    #endif
+    #else
     struct fbdev_bitblit pape_spr = {
         .target_buffer = GFX_BACK_BUFFER,
         .source = (unsigned long*)0x000066cc,
@@ -72,6 +72,7 @@ int main(int argc, char **argv) {
         .height = ws.ws_row,
         .type = GFX_BITBLIT_COLOR
     };
+    #endif
 
     // mouse
     int mouse_fd = open("/mouse", 0);
@@ -90,6 +91,9 @@ int main(int argc, char **argv) {
     mouse_spr.height = h;
     if (!mouse_spr.source) panic("can't load mouse_spr");
     filter_data(&mouse_spr);
+
+    // disable console
+    ioctl(STDOUT_FILENO, TIOCGSTATE, 0);
 
     while (1) {
         // wallpaper
