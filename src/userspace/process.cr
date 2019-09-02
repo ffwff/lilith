@@ -78,7 +78,7 @@ module Multiprocessing
     property phys_pg_struct
 
     # interrupt frame for preemptive multitasking
-    @frame = Pointer(IdtData::Registers).null
+    @frame : Box(IdtData::Registers)? = nil
     property frame
 
     # sse state
@@ -260,12 +260,12 @@ module Multiprocessing
       Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(@phys_pg_struct)
       Paging.flush
       if kernel_process?
-        Kernel.ksyscall_switch(@frame)
+        Kernel.ksyscall_switch(@frame.not_nil!.to_unsafe)
       else
         new_frame
         asm("jmp kswitch_usermode32"
             :: "{rcx}"(@initial_ip),
-              "{r11}"(@frame.value.rflags)
+              "{r11}"(@frame.not_nil!.to_unsafe.value.rflags)
               "{rsp}"(@initial_sp)
             : "volatile", "memory")
       end
@@ -288,8 +288,11 @@ module Multiprocessing
         frame.ss = USER_SS_SEGMENT
       end
 
-      @frame = Pointer(IdtData::Registers).malloc
-      @frame.value = frame
+      if @frame.nil?
+        @frame = Box.new(frame)
+      else
+        @frame.not_nil!.to_unsafe.value = frame
+      end
     end
 
     def new_frame_from_syscall(syscall_frame : SyscallData::Registers*)
@@ -322,8 +325,11 @@ module Multiprocessing
         frame.ds = USER_SS_SEGMENT
       end
 
-      @frame = Pointer(IdtData::Registers).malloc
-      @frame.value = frame
+      if @frame.nil?
+        @frame = Box.new(frame)
+      else
+        @frame.not_nil!.to_unsafe.value = frame
+      end
     end
 
     # spawn user process and move the first 4gb of memory in current the address space
@@ -414,7 +420,7 @@ module Multiprocessing
 
         unless arg.nil?
           process.new_frame
-          process.frame.value.rdi = arg.not_nil!.address
+          process.frame.not_nil!.to_unsafe.value.rdi = arg.not_nil!.address
         end
         true
       end
@@ -521,7 +527,7 @@ module Multiprocessing
       when VFSNode
         if process.udata.wait_usecs != 0xFFFF_FFFFu32
           if process.udata.wait_usecs <= Pit::USECS_PER_TICK
-            process.frame.value.rax = 0
+            process.frame.not_nil!.to_unsafe.value.rax = 0
             process.unawait
             return true
           else
@@ -529,7 +535,7 @@ module Multiprocessing
           end
         end
         if wait_object.as(VFSNode).available?
-          process.frame.value.rax = 1
+          process.frame.not_nil!.to_unsafe.value.rax = 1
           process.unawait
           true
         end
@@ -619,7 +625,7 @@ module Multiprocessing
       while true
         asm("hlt")
       end
-    elsif next_process.frame.null?
+    elsif next_process.frame.nil?
       # create new frame if necessary
       next_process.new_frame
     end
@@ -643,9 +649,9 @@ module Multiprocessing
 
   def switch_process(frame : IdtData::Registers*)
     current_process = switch_process_save_and_load do |process|
-      process.frame.value = frame.value
+      process.frame.not_nil!.to_unsafe.value = frame.value
     end
-    frame.value = current_process.frame.value
+    frame.value = current_process.frame.not_nil!.to_unsafe.value
   end
 
   def switch_process(frame : SyscallData::Registers*)
@@ -653,13 +659,13 @@ module Multiprocessing
       process.new_frame_from_syscall frame
     end
     Syscall.unlock
-    Kernel.ksyscall_switch(current_process.frame)
+    Kernel.ksyscall_switch(current_process.frame.not_nil!.to_unsafe)
   end
   
   def switch_process_and_terminate
     current_process = switch_process_save_and_load(true) {}
     Syscall.unlock
-    Kernel.ksyscall_switch(current_process.frame)
+    Kernel.ksyscall_switch(current_process.frame.not_nil!.to_unsafe)
   end
 
   # iteration

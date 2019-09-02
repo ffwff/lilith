@@ -3,7 +3,7 @@ module Pit
   extend self
 
   private PIT_CONST = 1193180
-  FREQUENCY = 60 # 60 Hz
+  FREQUENCY = 100 # Hz
   USECS_PER_TICK = 1_000_000.unsafe_div(FREQUENCY)
   
   def init_device

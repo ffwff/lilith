@@ -98,7 +98,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   main_bin : VFSNode? = nil
   if (mbr = MBR.read(Ide.device(0)))
     Console.puts "found MBR header...\n"
-    fs = Fat16FS.new Ide.device(0), mbr.object.partitions[0]
+    fs = Fat16FS.new Ide.device(0), mbr.to_unsafe.value.partitions[0]
     fs.root.each_child do |node|
       if node.name == "main"
         main_bin = node
