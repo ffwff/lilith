@@ -1,7 +1,8 @@
+#include <cairo/cairo.h>
 #include <stdio.h>
+#include <sys/gfx.h>
 #include <sys/ioctl.h>
 #include <syscalls.h>
-#include <cairo/cairo.h>
 
 #define WIDTH 512
 #define HEIGHT 512

@@ -1,7 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/gfx.h>
 #include <sys/ioctl.h>
+#include <sys/mouse.h>
 #include <syscalls.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -75,7 +77,7 @@ int main(int argc, char **argv) {
     #endif
 
     // mouse
-    int mouse_fd = open("/mouse", 0);
+    int mouse_fd = open("/mouse/raw", 0);
     struct fbdev_bitblit mouse_spr = {
         .target_buffer = GFX_BACK_BUFFER,
         .source = NULL,
@@ -100,19 +102,17 @@ int main(int argc, char **argv) {
         ioctl(fb_fd, GFX_BITBLIT, &pape_spr);
 
         // mouse
-        volatile int mouse_dx, mouse_dy = 0;
-        char mouse_buf[64] = {0};
-        read(mouse_fd, mouse_buf, sizeof(mouse_buf) - 1);
-        sscanf(mouse_buf, "%d,%d", &mouse_dx, &mouse_dy);
+        struct mouse_packet mouse_packet;
+        read(mouse_fd, (char *)&mouse_packet, sizeof(mouse_packet));
 
-        unsigned int speed = __builtin_ffs(mouse_dx + mouse_dy);
-        if(mouse_dx != 0) {
+        unsigned int speed = __builtin_ffs(mouse_packet.x + mouse_packet.y);
+        if(mouse_packet.x != 0) {
             // left = negative
-            mouse_spr.x += mouse_dx * speed;
+            mouse_spr.x += mouse_packet.x * speed;
         }
-        if (mouse_dy != 0) {
+        if (mouse_packet.y != 0) {
             // bottom = negative
-            mouse_spr.y -= mouse_dy * speed;
+            mouse_spr.y -= mouse_packet.y * speed;
         }
         mouse_spr.x = min(mouse_spr.x, ws.ws_col);
         mouse_spr.y = min(mouse_spr.y, ws.ws_row);

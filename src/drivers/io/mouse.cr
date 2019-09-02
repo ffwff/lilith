@@ -71,7 +71,8 @@ class Mouse
   @y = 0
 
   def flush
-    tuple = Tuple.new(@x, @y)
+    tuple = Tuple.new(@x, @y, @attr_byte)
+    @attr_byte = AttributeByte::None
     @x = 0
     @y = 0
     tuple
