@@ -1,3 +1,4 @@
+{% if flag?(:smp) %}
 struct Spinlock
 
   @value = Atomic(Int32).new 0
@@ -29,3 +30,16 @@ struct Spinlock
   end
 
 end
+{% else %}
+struct Spinlock
+
+  def locked?
+    false
+  end
+
+  def with(&block)
+    yield
+  end
+
+end
+{% end %}

@@ -6,6 +6,8 @@
 #include <sys/mouse.h>
 #include <syscalls.h>
 
+#include "wm.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ASSERT(x)
 #include "../.build/stb_image.h"
@@ -38,6 +40,9 @@ static void panic(const char *s) {
 }
 
 #define min(x, y) ((x)<(y)?(x):(y))
+
+#define PACKET_TIMEOUT 1000000
+#define FRAME_TICK  1000000/30
 
 int main(int argc, char **argv) {
     int w, h, n;
@@ -95,11 +100,32 @@ int main(int argc, char **argv) {
     filter_data(&mouse_spr);
 
     // disable console
-    ioctl(STDOUT_FILENO, TIOCGSTATE, 0);
+    // ioctl(STDOUT_FILENO, TIOCGSTATE, 0);
+
+    // sample win
+    int sample_win_fd_m = create("/pipes/wm:sample:m");
+    int sample_win_fd_s = create("/pipes/wm:sample:s");
+    char *spawn_argv[3] = { "samplwin", "/hd0/test.png", NULL };
+    spawnv("samplwin", (char**)spawn_argv);
 
     while (1) {
         // wallpaper
         ioctl(fb_fd, GFX_BITBLIT, &pape_spr);
+
+        // windows
+        {
+            ftruncate(sample_win_fd_m, 0);
+            ftruncate(sample_win_fd_s, 0);
+
+            struct wm_atom atom = {
+                .type = ATOM_REDRAW_TYPE
+            };
+            write(sample_win_fd_m, (char *)&atom, sizeof(atom));
+            waitfd(sample_win_fd_s, PACKET_TIMEOUT);
+
+            struct wm_atom respond_atom;
+            read(sample_win_fd_s, (char *)&respond_atom, sizeof(respond_atom));
+        }
 
         // mouse
         struct mouse_packet mouse_packet;
@@ -109,19 +135,35 @@ int main(int argc, char **argv) {
         if(mouse_packet.x != 0) {
             // left = negative
             mouse_spr.x += mouse_packet.x * speed;
+            mouse_spr.x = min(mouse_spr.x, ws.ws_col);
         }
         if (mouse_packet.y != 0) {
             // bottom = negative
             mouse_spr.y -= mouse_packet.y * speed;
+            mouse_spr.y = min(mouse_spr.y, ws.ws_row);
         }
-        mouse_spr.x = min(mouse_spr.x, ws.ws_col);
-        mouse_spr.y = min(mouse_spr.y, ws.ws_row);
+        if ((mouse_packet.attr_byte & MOUSE_ATTR_LEFT_BTN) != 0) {
+            struct wm_atom atom = {
+                .type = ATOM_MOVE_TYPE,
+                .move = (struct wm_atom_move){
+                    .x = mouse_spr.x,
+                    .y = mouse_spr.y,
+                }
+            };
+            write(sample_win_fd_m, (char *)&atom, sizeof(atom));
+            waitfd(sample_win_fd_s, PACKET_TIMEOUT);
+
+            struct wm_atom respond_atom;
+            read(sample_win_fd_s, (char *)&respond_atom, sizeof(respond_atom));
+        }
         ioctl(fb_fd, GFX_BITBLIT, &mouse_spr);
 
         ioctl(fb_fd, GFX_SWAPBUF, 0);
 
         // HACK: screen won't refresh without this?
         printf("\n");
+
+        // usleep(FRAME_TICK);
     }
 
     // cleanup
