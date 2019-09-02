@@ -20,6 +20,7 @@ int ioctl(int fd, int request, void *arg);
 #define TIOCGWINSZ  2
 #define GFX_BITBLIT 3
 #define GFX_SWAPBUF 4
+#define TIOCGSTATE  5
 
 #define GFX_FRONT_BUFFER 0
 #define GFX_BACK_BUFFER  1

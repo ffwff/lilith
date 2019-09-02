@@ -13,7 +13,7 @@ CRFLAGS=--cross-compile --target $(ARCH) --prelude ./prelude.cr --error-trace --
 ASFLAGS=-Isrc/asm/x64
 LDFLAGS=-T link64.ld
 KERNEL_OBJ=build/main.o build/boot.o
-KERNEL_SRC=$(wildcard src/*.cr src/*/*.cr)
+KERNEL_SRC=build $(wildcard src/*.cr src/*/*.cr)
 
 DRIVE_IMG = disk.img
 
@@ -40,6 +40,9 @@ GDB = /usr/bin/gdb
 
 .PHONY: kernel src/asm/bootstrap.s qemu install_kernel_to_disk
 all: build/kernel
+
+build:
+	mkdir -p build
 
 build/main.o: $(KERNEL_SRC)
 	@echo "CR src/main.cr"
