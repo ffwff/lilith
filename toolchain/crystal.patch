@@ -12,7 +12,7 @@ index c901d9b37..a8766b586 100755
    exec "$CRYSTAL_DIR/crystal" "$@"
  elif ! command -v crystal > /dev/null; then
 diff --git a/src/compiler/crystal/codegen/codegen.cr b/src/compiler/crystal/codegen/codegen.cr
-index d28ed3dc4..674aee402 100644
+index d28ed3dc4..0350f6a45 100644
 --- a/src/compiler/crystal/codegen/codegen.cr
 +++ b/src/compiler/crystal/codegen/codegen.cr
 @@ -13,6 +13,8 @@ module Crystal
@@ -208,11 +208,10 @@ index d28ed3dc4..674aee402 100644
        end
  
        @last = llvm_nil
-@@ -1864,6 +1976,8 @@ module Crystal
+@@ -1864,6 +1976,7 @@ module Crystal
        else
          if type.is_a?(InstanceVarContainer) && !type.struct? &&
             type.all_instance_vars.each_value.any? &.type.has_inner_pointers?
-+          # TODO: me
 +          @malloc_types << type
            @last = malloc struct_type
          else

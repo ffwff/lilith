@@ -30,7 +30,7 @@ QEMUFLAGS += \
 	-m 512M \
 	-serial stdio \
 	-no-shutdown -no-reboot \
-	-vga std -enable-kvm -d int
+	-vga std -enable-kvm
 
 ifneq ($(shell cat /proc/cpuinfo | grep pdpe1gb | wc -l),0)
 QEMUFLAGS += -cpu SandyBridge,+pdpe1gb

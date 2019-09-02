@@ -52,6 +52,10 @@ abstract class VFSNode
   def ioctl(request : Int32, data : UInt32) : Int32
     -1
   end
+
+  def available? : Bool
+    true
+  end
 end
 
 abstract class VFS

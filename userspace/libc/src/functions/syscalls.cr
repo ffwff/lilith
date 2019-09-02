@@ -61,6 +61,10 @@ fun ftruncate(fd : LibC::Int, length : LibC::UInt) : LibC::Int
   sysenter(SC_TRUNCATE, fd, length).to_i32
 end
 
+fun waitfd(fd : LibC::Int, timeout : LibC::ULong) : LibC::Int
+  sysenter(SC_WAITFD, fd, timeout).to_i32
+end
+
 fun remove(str : LibC::String) : LibC::Int
   -1
 end
