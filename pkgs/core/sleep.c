@@ -8,6 +8,6 @@ int main(int argc, char **argv) {
     }
     int secs = 0;
     sscanf(argv[1], "%d", &secs);
-    usleep(secs * 1000000);
+    sleep(secs);
     return 0;
 }
