@@ -42,7 +42,7 @@ endif
 
 GDB = /usr/bin/gdb
 
-.PHONY: kernel src/asm/bootstrap.s qemu install_kernel_to_disk
+.PHONY: src/asm/bootstrap.s qemu install_kernel_to_disk
 all: build/kernel
 
 build:
@@ -87,11 +87,10 @@ rungdb: build/kernel
 	$(GDB) -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
 	-@pkill qemu
 
-rungdb_img: build/kernel
+rungdb_img:
 	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda $(DRIVE_IMG) -S -gdb tcp::9000 &
 	sleep 0.1s && $(GDB) -quiet \
 		-ex 'target remote localhost:9000' \
-		-ex 'hb kmain' \
 		-ex 'continue' \
 		-ex 'disconnect' \
 		-ex 'set arch i386:x86-64:intel' \

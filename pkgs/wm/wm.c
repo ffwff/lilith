@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <sys/gfx.h>
 #include <sys/ioctl.h>
 #include <sys/mouse.h>
@@ -22,11 +23,11 @@ const int channels = 4;
 #define WALLPAPER_FILE "/hd0/share/papes/yuki.jpg"
 
 static void filter_data(struct fbdev_bitblit *sprite) {
-    unsigned char *data = (unsigned char *)sprite->source;
-    for (unsigned long i = 0; i < (sprite->width * sprite->height * 4); i += 4) {
-        unsigned char r = data[i + 0];
-        unsigned char g = data[i + 1];
-        unsigned char b = data[i + 2];
+    uint8_t *data = (uint8_t *)sprite->source;
+    for (uint32_t i = 0; i < (sprite->width * sprite->height * 4); i += 4) {
+        uint8_t r = data[i + 0];
+        uint8_t g = data[i + 1];
+        uint8_t b = data[i + 2];
         data[i + 0] = b;
         data[i + 1] = g;
         data[i + 2] = r;
@@ -35,12 +36,12 @@ static void filter_data(struct fbdev_bitblit *sprite) {
 }
 
 static void filter_data_with_alpha(struct fbdev_bitblit *sprite) {
-    unsigned char *data = (unsigned char *)sprite->source;
-    for (unsigned long i = 0; i < (sprite->width * sprite->height * 4); i += 4) {
-        unsigned char r = data[i + 0];
-        unsigned char g = data[i + 1];
-        unsigned char b = data[i + 2];
-        unsigned char a = data[i + 3];
+    uint8_t *data = (uint8_t *)sprite->source;
+    for (uint32_t i = 0; i < (sprite->width * sprite->height * 4); i += 4) {
+        uint8_t r = data[i + 0];
+        uint8_t g = data[i + 1];
+        uint8_t b = data[i + 2];
+        uint8_t a = data[i + 3];
         // premultiply by alpha / 0xff
         data[i + 0] = (b * a) >> 8;
         data[i + 1] = (g * a) >> 8;
@@ -78,7 +79,7 @@ int main(int argc, char **argv) {
         .type = GFX_BITBLIT_SURFACE
     };
     printf("loading wallpaper...\n");
-    pape_spr.source = (unsigned long*)stbi_load(WALLPAPER_FILE, &w, &h, &n, channels);
+    pape_spr.source = (uint32_t*)stbi_load(WALLPAPER_FILE, &w, &h, &n, channels);
     pape_spr.width = w;
     pape_spr.height = h;
     if(!pape_spr.source) panic("can't load pape_spr");
@@ -86,7 +87,7 @@ int main(int argc, char **argv) {
     #else
     struct fbdev_bitblit pape_spr = {
         .target_buffer = GFX_BACK_BUFFER,
-        .source = (unsigned long*)0x000066cc,
+        .source = (uint32_t*)0x000066cc,
         .x = 0,
         .y = 0,
         .width = ws.ws_col,
@@ -107,7 +108,7 @@ int main(int argc, char **argv) {
         .type = GFX_BITBLIT_SURFACE_ALPHA
     };
     printf("loading cursor...\n");
-    mouse_spr.source = (unsigned long *)stbi_load(CURSOR_FILE, &w, &h, &n, channels);
+    mouse_spr.source = (uint32_t *)stbi_load(CURSOR_FILE, &w, &h, &n, channels);
     mouse_spr.width = w;
     mouse_spr.height = h;
     if (!mouse_spr.source) panic("can't load mouse_spr");

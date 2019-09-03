@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,7 +27,7 @@ int main(int argc, char **argv) {
 
     // open image
     int w, h, n;
-    unsigned char *data = stbi_load(argv[1], &w, &h, &n, channels);
+    uint8_t *data = stbi_load(argv[1], &w, &h, &n, channels);
     if (data == 0) {
         printf("%s: unable to open file %s\n", argv[0], argv[1]);
         return 1;
@@ -34,9 +35,9 @@ int main(int argc, char **argv) {
 
     // preprocess data
     for (int i = 0; i < (w * h * 4); i += 4) {
-        unsigned char r = data[i + 0];
-        unsigned char g = data[i + 1];
-        unsigned char b = data[i + 2];
+        uint8_t r = data[i + 0];
+        uint8_t g = data[i + 1];
+        uint8_t b = data[i + 2];
         data[i + 0] = b;
         data[i + 1] = g;
         data[i + 2] = r;
@@ -50,7 +51,7 @@ int main(int argc, char **argv) {
 
     struct fbdev_bitblit sprite = {
         .target_buffer = GFX_BACK_BUFFER,
-        .source = (unsigned long *)data,
+        .source = (uint32_t *)data,
         .x = 0,
         .y = 0,
         .width = w,
