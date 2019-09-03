@@ -1,4 +1,5 @@
 #include <cairo/cairo.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <sys/gfx.h>
 #include <sys/ioctl.h>
@@ -22,7 +23,7 @@ int main(int argc, char const **argv)
 
     struct fbdev_bitblit bitblit = {
         .target_buffer = GFX_FRONT_BUFFER,
-        .source = (unsigned long*)cairo_image_surface_get_data(surface),
+        .source = (uint32_t *)cairo_image_surface_get_data(surface),
         .x = 0,
         .y = 0,
         .width = WIDTH,

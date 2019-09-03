@@ -1,10 +1,12 @@
 #pragma once
 
+#include <stdint.h>
+
 struct fbdev_bitblit {
-    int target_buffer;
-    unsigned long *source;
-    unsigned long x, y, width, height;
-    int type;
+    int32_t target_buffer;
+    uint32_t *source;
+    uint32_t x, y, width, height;
+    int32_t type;
 };
 
 // ioctl values
