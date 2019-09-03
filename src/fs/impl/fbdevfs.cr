@@ -15,7 +15,12 @@ private lib FbdevFSData
   enum FbType : Int32
     Surface = 0
     Color = 1
+    SurfaceAlpha = 2
   end
+end
+
+private lib Kernel
+  fun kalpha_blend(dst : UInt8*, src : UInt8*, yotsu : USize)
 end
 
 private class FbdevFSNode < VFSNode
@@ -109,8 +114,13 @@ private class FbdevFSNode < VFSNode
         end
         if  arg.x == 0 && arg.y == 0 &&
             arg.width == state.width && arg.height == state.height
-          copy_size = state.width * state.height * sizeof(UInt32)
-          memcpy(byte_buffer, source, copy_size.to_usize)
+          if arg.type == FbdevFSData::FbType::SurfaceAlpha
+            copy_size = state.width * state.height
+            Kernel.kalpha_blend(byte_buffer, source, copy_size.to_usize)
+          else
+            copy_size = state.width * state.height * sizeof(UInt32)
+            memcpy(byte_buffer, source, copy_size.to_usize)
+          end
         else
           height = arg.height
           if arg.y + arg.height > state.height
@@ -123,11 +133,20 @@ private class FbdevFSNode < VFSNode
           end
 
           unless arg.x > state.width || arg.y > state.height
-            height.times do |y|
-              fb_offset = (arg.y + y) * state.width * sizeof(UInt32) + arg.x * sizeof(UInt32)
-              copy_offset = y * arg.width * sizeof(UInt32)
-              copy_size = width * sizeof(UInt32)
-              memcpy(byte_buffer + fb_offset, source + copy_offset, copy_size.to_usize)
+            if arg.type == FbdevFSData::FbType::SurfaceAlpha
+              height.times do |y|
+                fb_offset = (arg.y + y) * state.width * sizeof(UInt32) + arg.x * sizeof(UInt32)
+                copy_offset = y * arg.width * sizeof(UInt32)
+                copy_size = width.unsafe_div 4
+                Kernel.kalpha_blend(byte_buffer + fb_offset, source + copy_offset, copy_size.to_usize)
+              end
+            else
+              height.times do |y|
+                fb_offset = (arg.y + y) * state.width * sizeof(UInt32) + arg.x * sizeof(UInt32)
+                copy_offset = y * arg.width * sizeof(UInt32)
+                copy_size = width * sizeof(UInt32)
+                memcpy(byte_buffer + fb_offset, source + copy_offset, copy_size.to_usize)
+              end
             end
           end
         end
