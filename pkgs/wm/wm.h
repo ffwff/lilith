@@ -1,14 +1,12 @@
 #pragma once
 
-#include <stdint.h>
+struct wm_atom_move {
+    unsigned long x;
+    unsigned long y;
+};
 
 struct wm_atom_redraw {
     int needs_redraw;
-};
-
-struct wm_atom_move {
-    uint32_t x;
-    uint32_t y;
 };
 
 struct wm_atom {
