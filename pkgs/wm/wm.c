@@ -34,6 +34,20 @@ static void filter_data(struct fbdev_bitblit *sprite) {
     }
 }
 
+static void filter_data_with_alpha(struct fbdev_bitblit *sprite) {
+    unsigned char *data = (unsigned char *)sprite->source;
+    for (unsigned long i = 0; i < (sprite->width * sprite->height * 4); i += 4) {
+        unsigned char r = data[i + 0];
+        unsigned char g = data[i + 1];
+        unsigned char b = data[i + 2];
+        unsigned char a = data[i + 3];
+        // premultiply by alpha / 0xff
+        data[i + 0] = (b * a) >> 8;
+        data[i + 1] = (g * a) >> 8;
+        data[i + 2] = (r * a) >> 8;
+    }
+}
+
 static void panic(const char *s) {
     puts(s);
     exit(1);
@@ -90,17 +104,17 @@ int main(int argc, char **argv) {
         .y = 100,
         .width = 0,
         .height = 0,
-        .type = GFX_BITBLIT_SURFACE
+        .type = GFX_BITBLIT_SURFACE_ALPHA
     };
     printf("loading cursor...\n");
     mouse_spr.source = (unsigned long *)stbi_load(CURSOR_FILE, &w, &h, &n, channels);
     mouse_spr.width = w;
     mouse_spr.height = h;
     if (!mouse_spr.source) panic("can't load mouse_spr");
-    filter_data(&mouse_spr);
+    filter_data_with_alpha(&mouse_spr);
 
     // disable console
-    // ioctl(STDOUT_FILENO, TIOCGSTATE, 0);
+    ioctl(STDOUT_FILENO, TIOCGSTATE, 0);
 
     // sample win
     int sample_win_fd_m = create("/pipes/wm:sample:m");
@@ -143,6 +157,9 @@ int main(int argc, char **argv) {
             mouse_spr.y = min(mouse_spr.y, ws.ws_row);
         }
         if ((mouse_packet.attr_byte & MOUSE_ATTR_LEFT_BTN) != 0) {
+            ftruncate(sample_win_fd_m, 0);
+            ftruncate(sample_win_fd_s, 0);
+
             struct wm_atom atom = {
                 .type = ATOM_MOVE_TYPE,
                 .move = (struct wm_atom_move){

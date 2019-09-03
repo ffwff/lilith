@@ -16,5 +16,6 @@ struct fbdev_bitblit {
 #define GFX_BACK_BUFFER  1
 
 // type arg
-#define GFX_BITBLIT_SURFACE 0
-#define GFX_BITBLIT_COLOR   1
+#define GFX_BITBLIT_SURFACE       0
+#define GFX_BITBLIT_COLOR         1
+#define GFX_BITBLIT_SURFACE_ALPHA 2
