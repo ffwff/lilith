@@ -119,8 +119,8 @@ int main(int argc, char **argv) {
     // sample win
     int sample_win_fd_m = create("/pipes/wm:sample:m");
     int sample_win_fd_s = create("/pipes/wm:sample:s");
-    char *spawn_argv[3] = { "samplwin", "/hd0/test.png", NULL };
-    spawnv("samplwin", (char**)spawn_argv);
+    char *spawn_argv[] = { "cairowin", NULL };
+    spawnv("cairowin", (char**)spawn_argv);
 
     int needs_redraw = 1;
 
