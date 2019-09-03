@@ -95,7 +95,7 @@ module Idt
 
     # cpu exception handlers
     {% for i in 0..31 %}
-      # init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
+      init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
     {% end %}
 
     # hw interrupts
@@ -179,6 +179,21 @@ end
 
 EX_PAGEFAULT = 14
 
+def dump_frame(frame : IdtData::ExceptionRegisters*)
+  {% for id in [
+          "ds",
+          "rbp", "rdi", "rsi",
+          "r15", "r14", "r13", "r12", "r11", "r10", "r9", "r8",
+          "rdx", "rcx", "rbx", "rax",
+          "int_no", "errcode",
+          "rip", "cs", "rflags", "userrsp", "ss",
+        ] %}
+  Serial.puts {{ id }}, "="
+  frame.value.{{ id.id }}.to_s Serial, 16
+  Serial.puts "\n"
+  {% end %}
+end
+
 fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
   errcode = frame.value.errcode
   case frame.value.int_no
@@ -216,6 +231,9 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
       end
     end
   else
-    panic "unhandled cpu exception: ", frame.value.int_no, ' ', errcode, '\n'
+    dump_frame(frame)
+    while true
+    end
+    # panic "unhandled cpu exception: ", frame.value.int_no, ' ', errcode, '\n'
   end
 end

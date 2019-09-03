@@ -7,8 +7,7 @@
 #define WIDTH 512
 #define HEIGHT 512
 
-int main(int argc, char const **argv)
-{
+int main(int argc, char **argv) {
     cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_RGB24, WIDTH, HEIGHT);
     cairo_t *cr = cairo_create(surface);
 
