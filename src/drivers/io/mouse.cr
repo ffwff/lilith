@@ -26,6 +26,14 @@ class Mouse
     # enable mouse
     write 0xF4
     read # ACK
+
+    # reset ps2 keyboard scancode
+    wait true
+    X86.outb(0x60, 0xF0)
+    wait true
+    X86.outb(0x60, 0x02)
+    wait true
+    read # ACK
   end
 
   private def wait(signal?)
