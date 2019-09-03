@@ -1,8 +1,9 @@
+#include <stddef.h>
+#include <stdint.h>
 #include <x86intrin.h>
 
 #ifndef ASSEMBLY
 #include <assert.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <time.h>
 #define STB_IMAGE_IMPLEMENTATION
@@ -20,7 +21,7 @@ cc -msse2 -g -o /tmp/alpha alpha.c  && yes | gdb /tmp/alpha -ex 'b breakpoint' -
 */
 
 static __m128i blend(__m128i dst, __m128i src);
-void alpha_blend(unsigned char *dst, unsigned char *src, size_t size);
+void kalpha_blend(unsigned char *dst, const unsigned char *src, size_t size);
 
 void preprocess(unsigned char *data, int w, int h) {
     for (int i = 0; i < (w * h * 4); i += 4) {
@@ -64,7 +65,7 @@ void print128(__m128i var) {
     printf("%08lx %08lx %08lx %08lx", data[0], data[1], data[2], data[3]);
 }
 
-#if 1
+#if 0
 int main(int argc, char const *argv[]) {
     int sx, sy, _;
     printf("loading src\n");
@@ -85,7 +86,7 @@ int main(int argc, char const *argv[]) {
 
     // TODO: indivisible by 4?
     size_t size = (dx * dy) / 4;  // in 128
-    alpha_blend(dst, src, size);
+    kalpha_blend(dst, src, size);
 
     clock_gettime(CLOCK_MONOTONIC_RAW, &end);
     uint64_t delta_us = (end.tv_sec - start.tv_sec) * 1000000 + (end.tv_nsec - start.tv_nsec) / 1000;
@@ -97,10 +98,24 @@ int main(int argc, char const *argv[]) {
 #else
 
 int main(int argc, char const *argv[]) {
-    const __m128i src = _mm_setr_epi32(0x84167529, 0xab7848cd, 0xccd29459, 0xde498442);
-    const __m128i dst = _mm_setr_epi32(0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF);
-    __m128i x = blend(dst, src);
-    print128(x);
+    unsigned char dst[] = {
+        0x0, 0x0, 0x0, 0x0,
+        0x0, 0x0, 0x0, 0x0,
+        0x0, 0x0, 0x0, 0x0,
+        0x0, 0x0, 0x0, 0x0,
+    };
+    const unsigned char src[] = {
+        0x0,
+        0x0, 0xff, 0xff, 0xff,
+        0x0, 0xff, 0xff, 0xff,
+        0x0, 0xff, 0xff, 0xff,
+        0x0, 0xff, 0xff, 0xff,
+    };
+    // const __m128i src = _mm_setr_epi32(0x84167529, 0xab7848cd, 0xccd29459, 0xde498442);
+    // const __m128i dst = _mm_setr_epi32(0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x00FFFFFF);
+    // __m128i x = blend(*(__m128i *)(dst + 1), *(__m128i *)src);
+    kalpha_blend(dst, src + 1, 4);
+    // print128(x);
 }
 
 #endif
@@ -168,10 +183,10 @@ static __m128i blend(__m128i dst, __m128i src) {
     return _mm_or_si128(rb, g);
 }
 
-void alpha_blend(unsigned char *dst, unsigned char *src, size_t size) {
+void kalpha_blend(unsigned char *dst, const unsigned char *src, size_t size) {
     __m128i *dst128 = (__m128i *)dst;
     __m128i *src128 = (__m128i *)src;
     for (size_t i = 0; i < size; i++) {
-        dst128[i] = blend(dst128[i], src128[i]);
+        _mm_storeu_si128(dst128 + i, blend(_mm_loadu_si128(dst128 + i), _mm_loadu_si128(src128 + i)));
     }
 }

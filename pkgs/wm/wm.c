@@ -56,7 +56,7 @@ static void panic(const char *s) {
 #define min(x, y) ((x)<(y)?(x):(y))
 
 #define PACKET_TIMEOUT 1000000
-#define FRAME_TICK  1000000/30
+#define FRAME_TICK  1000000/60
 
 int main(int argc, char **argv) {
     int w, h, n;
@@ -122,12 +122,14 @@ int main(int argc, char **argv) {
     char *spawn_argv[3] = { "samplwin", "/hd0/test.png", NULL };
     spawnv("samplwin", (char**)spawn_argv);
 
+    int needs_redraw = 1;
+
     while (1) {
         // wallpaper
         ioctl(fb_fd, GFX_BITBLIT, &pape_spr);
 
         // windows
-        {
+        if (needs_redraw) {
             ftruncate(sample_win_fd_m, 0);
             ftruncate(sample_win_fd_s, 0);
 
@@ -139,6 +141,8 @@ int main(int argc, char **argv) {
 
             struct wm_atom respond_atom;
             read(sample_win_fd_s, (char *)&respond_atom, sizeof(respond_atom));
+            if (respond_atom.redraw.needs_redraw)
+                needs_redraw = 1;
         }
 
         // mouse
@@ -150,11 +154,13 @@ int main(int argc, char **argv) {
             // left = negative
             mouse_spr.x += mouse_packet.x * speed;
             mouse_spr.x = min(mouse_spr.x, ws.ws_col);
+            needs_redraw = 1;
         }
         if (mouse_packet.y != 0) {
             // bottom = negative
             mouse_spr.y -= mouse_packet.y * speed;
             mouse_spr.y = min(mouse_spr.y, ws.ws_row);
+            needs_redraw = 1;
         }
         if ((mouse_packet.attr_byte & MOUSE_ATTR_LEFT_BTN) != 0) {
             ftruncate(sample_win_fd_m, 0);
@@ -172,15 +178,18 @@ int main(int argc, char **argv) {
 
             struct wm_atom respond_atom;
             read(sample_win_fd_s, (char *)&respond_atom, sizeof(respond_atom));
+            if (respond_atom.redraw.needs_redraw) {
+                needs_redraw = 1;
+            }
         }
-        ioctl(fb_fd, GFX_BITBLIT, &mouse_spr);
+        if(needs_redraw)
+            ioctl(fb_fd, GFX_BITBLIT, &mouse_spr);
 
-        ioctl(fb_fd, GFX_SWAPBUF, 0);
-
-        // HACK: screen won't refresh without this?
-        printf("\n");
-
-        // usleep(FRAME_TICK);
+        if (needs_redraw) {
+            ioctl(fb_fd, GFX_SWAPBUF, 0);
+        }
+        // TODO: consistent frame rate
+        usleep(FRAME_TICK);
     }
 
     // cleanup

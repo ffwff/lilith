@@ -64,7 +64,8 @@ int main(int argc, char **argv) {
         if(retval == 0)
             goto wait;
         struct wm_atom respond_atom = {
-            .type = ATOM_RESPOND_TYPE
+            .type = ATOM_RESPOND_TYPE,
+            .redraw.needs_redraw = 0,
         };
         switch (atom.type) {
             case ATOM_REDRAW_TYPE: {
@@ -75,6 +76,7 @@ int main(int argc, char **argv) {
             case ATOM_MOVE_TYPE: {
                 sprite.x = atom.move.x;
                 sprite.y = atom.move.y;
+                respond_atom.redraw.needs_redraw = 1;
                 write(sample_win_fd_s, (char *)&respond_atom, sizeof(respond_atom));
                 break;
             }
