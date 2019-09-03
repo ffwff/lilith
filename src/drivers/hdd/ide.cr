@@ -305,14 +305,22 @@ class AtaDevice
 
       status = Ata.status disk_port
       debug "status: ", status, '\n'
-      return false if status == 0
+      if status == 0
+        # cleanup
+        device.mfree
+        return false
+      end
     when Type::Atapi
       Ata.identify_packet disk_port
       Ata.wait_io disk_port
 
       status = Ata.status disk_port
       debug "status: ", status, '\n'
-      return false if status == 0
+      if status == 0
+        # cleanup
+        device.mfree
+        return false
+      end
     end
 
     buf = device.as(UInt16*)
