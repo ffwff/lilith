@@ -1,9 +1,7 @@
 #pragma once
 
-#include <stdint.h>
-
 struct mouse_packet {
-    uint32_t x, y, attr_byte;
+    unsigned long x, y, attr_byte;
 };
 
 #define MOUSE_ATTR_LEFT_BTN   (1 << 0)

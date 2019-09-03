@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,7 +44,7 @@ int main(int argc, char **argv) {
     }
     struct fbdev_bitblit bitblit = {
         .target_buffer = GFX_FRONT_BUFFER,
-        .source = (uint32_t *)data,
+        .source = (unsigned long*)data,
         .x = 0,
         .y = 0,
         .width = w,
