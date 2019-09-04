@@ -55,7 +55,7 @@ static void panic(const char *s) {
 
 #define min(x, y) ((x)<(y)?(x):(y))
 
-#define PACKET_TIMEOUT 1000000
+#define PACKET_TIMEOUT 1000000/30
 #define FRAME_TICK  1000000/60
 
 int main(int argc, char **argv) {

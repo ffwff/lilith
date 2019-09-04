@@ -108,6 +108,6 @@ int __signbitl(long double);
     sizeof(x) == sizeof(double) ? (int)(__DOUBLE_BITS(x)>>63) : \
     __signbitl(x) )
 
-#define M_PI 3.141592654
+#define M_PI 3.14159265358979323846264338327950288
 
 double modf(double x, double *iptr);

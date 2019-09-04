@@ -1,15 +1,20 @@
 OBJ = \
 	$(patsubst %.c, %.o, $(wildcard src/functions/arch/shim/*)) \
-	$(patsubst %.s, %.o, $(wildcard src/functions/arch/asm/*)) \
+	$(patsubst %.s, %.o, $(wildcard src/functions/arch/asm/i386/*.s)) \
 	src/functions/arch/crt0.o src/functions/arch/crti.o src/functions/arch/crtn.o \
 	libc.cr.o
+MATH_OBJ = \
+	$(patsubst %.s, %.o, $(wildcard src/functions/arch/asm/i386/math/*))
+
 CRYSTAL_SRC = $(wildcard src/*.cr) $(wildcard src/functions/*.cr)
 MATH_SRC=$(wildcard src/functions/math/*.cr)
+
 ARCH=i386-elf-lilith
 AR = $(ARCH)-ar
 CC = $(ARCH)-gcc
 AS = $(ARCH)-as
 CR=$(shell pwd)/../../toolchain/crystal/.build/crystal
+
 CRFLAGS=--cross-compile --target i686-elf --prelude ./prelude.cr
 CCFLAGS = -Isrc/include -nostdlib -Wall
 
@@ -24,9 +29,9 @@ endif
 libc.a: $(OBJ)
 	$(AR) rcs $@ $^
 
-libm.a: $(MATH_SRC)
+libm.a: $(MATH_SRC) $(MATH_OBJ)
 	FREESTANDING=1 $(CR) build $(CRFLAGS) src/math.cr -o math.cr
-	$(AR) rcs $@ math.cr.o
+	$(AR) rcs $@ math.cr.o $(MATH_OBJ)
 
 libc.cr.o: $(CRYSTAL_SRC)
 	FREESTANDING=1 $(CR) build $(CRFLAGS) src/main.cr -o libc.cr
@@ -46,3 +51,4 @@ clean:
 	rm -f src/**/*.o
 	rm -f src/**/**/*.o
 	rm -f src/**/**/**/*.o
+	rm -f src/**/**/**/**/*.o

@@ -39,34 +39,3 @@ end
 fun hypot(x : Float64, y : Float64) : Float64
   sqrt(x*x + y*y)
 end
-
-fun sin(arg : Float64) : Float64
-  Intrinsics.sin_f64 arg
-end
-
-fun cos(arg : Float64) : Float64
-  Intrinsics.cos_f64 arg
-end
-fun acos(arg : Float64) : Float64
-  # TODO
-  LibC.abort
-  0.0f64
-end
-
-fun tan(arg : Float64) : Float64
-  # TODO
-  LibC.abort
-  0.0f64
-end
-
-fun atan2(arg : Float64) : Float64
-  # TODO
-  LibC.abort
-  0.0f64
-end
-
-fun modf(arg : Float64, iptr : Float64) : Float64
-  # TODO
-  LibC.abort
-  0.0f64
-end
