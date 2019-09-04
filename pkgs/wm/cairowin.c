@@ -13,21 +13,24 @@
 #define HEIGHT 512
 
 int main(int argc, char **argv) {
-    cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, WIDTH, HEIGHT);
+    cairo_surface_t *surface = cairo_image_surface_create(CAIRO_FORMAT_RGB24, WIDTH, HEIGHT);
     cairo_t *cr = cairo_create(surface);
 
+    printf("initializing surface\n");
     cairo_pattern_t *pat = cairo_pattern_create_linear(0, 0, 0, HEIGHT);
     cairo_pattern_add_color_stop_rgb(pat, 0.0, 0.40, 0.17, 0.55);
     cairo_pattern_add_color_stop_rgb(pat, 1.0, 0.92, 0.12, 0.47);
 
-    cairo_rectangle(cr, 0.0, 0.0, 256, 256);
+    cairo_rectangle(cr, 0.0, 0.0, WIDTH, HEIGHT);
     cairo_set_source(cr, pat);
     cairo_fill(cr);
 
-    cairo_rectangle(cr, 256.0, 256.0, 256, 256);
-    cairo_set_source(cr, pat);
-    cairo_fill(cr);
+    cairo_select_font_face(cr, "cairo:sans-serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+    cairo_set_font_size(cr, 90.0);
+    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+    cairo_show_text(cr, "Hello World");
 
+    printf("initializing connection\n");
     int fb_fd = open("/fb0", 0);
     int sample_win_fd_m = open("/pipes/wm:sample:m", 0);
     int sample_win_fd_s = open("/pipes/wm:sample:s", 0);
@@ -39,7 +42,7 @@ int main(int argc, char **argv) {
         .y = 0,
         .width = WIDTH,
         .height = HEIGHT,
-        .type = GFX_BITBLIT_SURFACE_ALPHA
+        .type = GFX_BITBLIT_SURFACE
     };
 
     struct wm_atom atom;

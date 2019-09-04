@@ -3,6 +3,7 @@
 #include <sys/gfx.h>
 #include <sys/ioctl.h>
 #include <syscalls.h>
+#include <math.h>
 
 #define WIDTH 512
 #define HEIGHT 512
@@ -18,6 +19,12 @@ int main(int argc, char **argv) {
     cairo_rectangle(cr, 0.0, 0.0, WIDTH, HEIGHT);
     cairo_set_source(cr, pat);
     cairo_fill(cr);
+
+    cairo_select_font_face(cr, "monospace", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+    cairo_set_font_size(cr, 90.0);
+    cairo_move_to(cr, 10.0, 135.0);
+    cairo_set_source_rgb(cr, 1.0, 1.0, 1.0);
+    cairo_show_text(cr, "Testing testing");
 
     struct fbdev_bitblit bitblit = {
         .target_buffer = GFX_FRONT_BUFFER,

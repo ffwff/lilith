@@ -19,3 +19,9 @@ fun frexp(x : Float64, e : Int32*) : Float64
   y |= 0x3fe0000000000000u64
   y.unsafe_as(Float64)
 end
+
+fun modf(arg : Float64, iptr : Float64) : Float64
+  # TODO
+  LibC.abort
+  0.0f64
+end
