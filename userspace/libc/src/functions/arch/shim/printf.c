@@ -42,6 +42,19 @@ static int __printf_itoa(int num, int base, char *str) {
     return i;
 }
 
+static int __printf_uitoa(unsigned int num, int base, char *str) {
+    int i = 0;
+    for(; i < ITOA_BUFFER_LEN - 2; i++) {
+        str[i] = __printf_itoa_buf[num % base];
+        num /= base;
+        if(!num) break;
+    }
+    i++;
+    __printf_reverse(str, i);
+    str[i] = 0;
+    return i;
+}
+
 static int __printf(nputs_fn_t nputs_fn, void *userptr,
                     const char *restrict format, va_list args) {
     int written = 0;
@@ -84,9 +97,43 @@ static int __printf(nputs_fn_t nputs_fn, void *userptr,
         written += retval;                                     \
         break;                                                 \
     }
-                    HANDLE_INT_FORMAT('d', 10)
-                    HANDLE_INT_FORMAT('x', 16)
-                    HANDLE_INT_FORMAT('o', 8)
+                HANDLE_INT_FORMAT('d', 10)
+                HANDLE_INT_FORMAT('x', 16)
+                HANDLE_INT_FORMAT('o', 8)
+                case 'f': {
+                    // FIXME: naive implementation, please replace me
+                    format++;
+                    int length;
+
+                    double fp = va_arg(args, double);
+                    int integer_part = (int)fp;
+
+                    unsigned int decimal_part;
+                    if (fp >= 0) {
+                        decimal_part = (unsigned int) \
+                            ((fp - (double)integer_part) * 1000000000.0);
+                    } else {
+                        decimal_part = (unsigned int) \
+                            (((double)integer_part - fp) * 1000000000.0);
+                    }
+                    
+                    length = __printf_itoa(integer_part, 10, __itoa_buf);
+                    if (!(retval = nputs_fn(__itoa_buf, length, userptr)))
+                        return written;
+                    written += retval;
+
+                    char ch = '.';
+                    if (!(retval = nputs_fn(&ch, 1, userptr)))
+                        return written;
+                    written += retval;
+
+                    length = __printf_uitoa(decimal_part, 10, __itoa_buf);
+                    if (!(retval = nputs_fn(__itoa_buf, length, userptr)))
+                        return written;
+                    written += retval;
+
+                    break;
+                }
                 default: {
                     format--;
                     break;

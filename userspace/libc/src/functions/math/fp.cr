@@ -1,4 +1,4 @@
-fun frexp(x : Float64, e : Int32*) : Float64
+fun frexp(x : Float64, e : LibC::Int*) : Float64
   ee = x.unsafe_as(UInt64).unsafe_shr(52) & 0x7ff
   if ee == 0x7ff
     return x
