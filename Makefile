@@ -87,7 +87,7 @@ rungdb: build/kernel
 	$(GDB) -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
 	-@pkill qemu
 
-rungdb_img: build/kernel
+rungdb_img:
 	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda $(DRIVE_IMG) -S -gdb tcp::9000 &
 	sleep 0.1s && $(GDB) -quiet \
 		-ex 'target remote localhost:9000' \

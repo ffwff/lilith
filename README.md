@@ -65,3 +65,5 @@ This program is licensed under GPLv3.
 
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see https://www.gnu.org/licenses/.
+
+*Assembly code under userspace/libc/src/functions/math are taken from musl-libc and are licensed under MIT.*
