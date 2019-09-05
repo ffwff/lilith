@@ -66,7 +66,10 @@ fun waitfd(fd : LibC::Int, timeout : LibC::ULong) : LibC::Int
 end
 
 fun remove(str : LibC::String) : LibC::Int
-  -1
+  buf = uninitialized LibC::SyscallStringArgument
+  buf.str = str
+  buf.len = strlen(str)
+  sysenter(SC_REMOVE, pointerof(buf).address).to_i32
 end
 
 fun lseek(fd : LibC::Int, offset : Int32, whence : LibC::Int) : Int32

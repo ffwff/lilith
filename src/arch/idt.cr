@@ -173,7 +173,9 @@ fun kirq_handler(frame : IdtData::Registers*)
       Serial.puts "no handler for ", frame.value.int_no, "\n"
     end
   else
-    Idt.irq_handlers[frame.value.int_no].call
+    Idt.lock do
+      Idt.irq_handlers[frame.value.int_no].call
+    end
   end
 end
 
