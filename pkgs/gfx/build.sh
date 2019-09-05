@@ -6,6 +6,7 @@ _download() {
 
 build() {
     _download https://raw.githubusercontent.com/nothings/stb/master/stb_image.h "$build_dir/stb_image.h"
+    _download https://raw.githubusercontent.com/dhepper/font8x8/master/font8x8_basic.h "$build_dir/font8x8_basic.h"
     _download https://upload.wikimedia.org/wikipedia/en/7/7d/Lenna_%28test_image%29.png "$build_dir/test.png"
 
     ${opt_arch}-gcc -O2 -o $build_dir/catimg $script_dir/catimg.c -lm

@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
     ioctl(fb_fd, TIOCGWINSZ, &ws);
 
     // wallpaper
-    #if 0
+    #if 1
     struct fbdev_bitblit pape_spr = {
         .target_buffer = GFX_BACK_BUFFER,
         .source = NULL,
@@ -119,8 +119,8 @@ int main(int argc, char **argv) {
     // sample win
     int sample_win_fd_m = create("/pipes/wm:sample:m");
     int sample_win_fd_s = create("/pipes/wm:sample:s");
-    char *spawn_argv[] = { "cairowin", NULL };
-    spawnv("cairowin", (char**)spawn_argv);
+    char *spawn_argv[] = { "canvwin", NULL };
+    spawnv("canvwin", (char**)spawn_argv);
 
     int needs_redraw = 1;
 
