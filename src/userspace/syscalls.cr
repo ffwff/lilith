@@ -243,6 +243,14 @@ module Syscall
       else
         fv.rax = pudata.install_fd(vfs_node.not_nil!)
       end
+    when SC_REMOVE
+      path = try(checked_string_argument(fv.rbx))
+      vfs_node = parse_path_into_vfs path, pudata.cwd_node
+      if vfs_node.nil?
+        fv.rax = SYSCALL_ERR
+      else
+        fv.rax = vfs_node.remove
+      end
     when SC_CREATE
       path = try(checked_string_argument(fv.rbx))
       vfs_node = parse_path_into_vfs path, pudata.cwd_node, true

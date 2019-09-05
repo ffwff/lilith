@@ -32,6 +32,9 @@ abstract class VFSNode
   end
   def create(name : Slice) : VFSNode?
   end
+  def remove : Int32
+    VFS_ERR
+  end
   def read(slice : Slice(UInt8), offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
     VFS_ERR
@@ -107,6 +110,7 @@ module RootFS
   end
 end
 
+VFS_OK              = 0
 VFS_ERR             = -1
 VFS_WAIT            = -2
 VFS_WAIT_NODE_QUEUE = -3

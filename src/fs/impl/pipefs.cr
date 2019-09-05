@@ -16,8 +16,23 @@ private class PipeFSRoot < VFSNode
     end
     node = PipeFSNode.new(GcString.new(name), self, fs)
     node.next_node = @first_child
+    unless @first_child.nil?
+      @first_child.not_nil!.prev_node = node
+    end
     @first_child = node
     node
+  end
+
+  def remove(node : PipeFSNode)
+    if node == @first_child
+      @first_child = node.next_node
+    end
+    unless node.prev_node.nil?
+      node.prev_node.not_nil!.next_node = node.next_node
+    end
+    unless node.next_node.nil?
+      node.next_node.not_nil!.prev_node = node.prev_node
+    end
   end
 
   @first_child : PipeFSNode? = nil
@@ -38,12 +53,22 @@ private class PipeFSNode < VFSNode
   @next_node : PipeFSNode? = nil
   property next_node
 
+  @prev_node : PipeFSNode? = nil
+  property prev_node
+
   def initialize(@name : GcString, @parent : PipeFSRoot, @fs : PipeFS)
   end
 
   @buffer = Pointer(UInt8).null
   @buffer_pos = 0
   BUFFER_CAPACITY = 0x1000
+
+  def remove : Int32
+    FrameAllocator.declaim_addr(@buffer.address & ~PTR_IDENTITY_MASK)
+    @buffer = Pointer(UInt8).null
+    @parent.remove self
+    VFS_OK
+  end
 
   private def init_buffer
     if @buffer.null?
