@@ -7,7 +7,8 @@ fun memset(dst : UInt8*, c : USize, n : USize) : Void*
   dst.as(Void*)
 end
 
-fun memset_long(dst : UInt32*, c : UInt32, n : USize)
+@[AlwaysInline]
+def memset_long(dst : UInt32*, c : UInt32, n : USize)
   asm(
     "cld\nrep stosl"
     :: "{eax}"(c), "{rdi}"(dst), "{rcx}"(n)
