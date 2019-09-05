@@ -1,7 +1,7 @@
 <h1 align="center">lilith</h1>
 
 <p align="center">
-<img src="./img/screenshot.png" alt="screenshot of lilith"/>
+<img src="./img/screenshot-wm.png" alt="screenshot of lilith"/>
 </p>
 
 <p align="center">
