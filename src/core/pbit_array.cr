@@ -22,15 +22,15 @@ struct PBitArray
   def []=(k : Int, value : Bool)
     panic "pbitarray: out of range" if k > size || k < 0
     if value
-      @pointer[index_position k] |= 1.unsafe_shl(bit_position k)
+      @pointer[index_position k] |= 1 << bit_position k
     else
-      @pointer[index_position k] &= ~1.unsafe_shl(bit_position k)
+      @pointer[index_position k] &= ~(1 << bit_position k)
     end
   end
 
   def [](k : Int) : Bool
     panic "pbitarray: out of range" if k > size || k < 0
-    if (@pointer[index_position k] & 1.unsafe_shl(bit_position k)) != 0
+    if (@pointer[index_position k] & (1 << bit_position k)) != 0
       true
     else
       false
@@ -96,10 +96,10 @@ struct PBitArray
 
   # position
   private def index_position(k : Int)
-    k.unsafe_div 32
+    k / 32
   end
 
   private def bit_position(k : Int)
-    k.unsafe_mod 32
+    k % 32
   end
 end

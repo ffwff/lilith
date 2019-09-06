@@ -67,7 +67,7 @@ int main(int argc, char **argv) {
     ioctl(fb_fd, TIOCGWINSZ, &ws);
 
     // wallpaper
-    #if 1
+    #if 0
     struct fbdev_bitblit pape_spr = {
         .target_buffer = GFX_BACK_BUFFER,
         .source = NULL,

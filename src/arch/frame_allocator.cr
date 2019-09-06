@@ -17,7 +17,7 @@ module FrameAllocator
     property next_region
 
     def _initialize(@base_addr : UInt64, @length : UInt64)
-      nframes = @length.unsafe_div(0x1000).to_i32
+      nframes = (@length / 0x1000).to_i32
       @frames = PBitArray.new nframes
     end
 
@@ -28,7 +28,7 @@ module FrameAllocator
     end
 
     private def index_for_address(addr : UInt64)
-      (addr - @base_addr).unsafe_div(0x1000).to_i32
+      ((addr - @base_addr) / 0x1000).to_i32
     end
 
     def initial_claim(addr : UInt64)

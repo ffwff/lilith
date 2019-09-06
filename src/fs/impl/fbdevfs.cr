@@ -137,7 +137,7 @@ private class FbdevFSNode < VFSNode
               height.times do |y|
                 fb_offset = (arg.y + y) * state.width * sizeof(UInt32) + arg.x * sizeof(UInt32)
                 copy_offset = y * arg.width * sizeof(UInt32)
-                copy_size = width.unsafe_div 4
+                copy_size = width / sizeof(UInt32)
                 Kernel.kalpha_blend(byte_buffer + fb_offset, source + copy_offset, copy_size.to_usize)
               end
             else

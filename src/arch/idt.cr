@@ -112,8 +112,8 @@ module Idt
     idt.ist = 0
     idt.selector = selector
     idt.type_attr = type
-    idt.offset_2 = offset.unsafe_shr(16) & 0xFFFF
-    idt.offset_3 = offset.unsafe_shr(32)
+    idt.offset_2 = (offset >> 16) & 0xFFFF
+    idt.offset_3 = (offset >> 32)
     idt.zero = 0
     @@idt[num] = idt
   end

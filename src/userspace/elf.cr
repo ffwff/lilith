@@ -211,7 +211,7 @@ module ElfReader
           if data.p_type == ElfStructs::Elf32PType::TLS
             # TODO
           elsif data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_R)
-            npages = data.p_memsz.to_usize.unsafe_shr(12) + 1
+            npages = (data.p_memsz.to_usize >> 12) + 1
             # create page and zero-initialize it
             # Serial.puts Pointer(Void).new(data.p_vaddr.to_u64), data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_W), '\n'
             page_start = Paging.alloc_page_pg_drv(data.p_vaddr.to_usize,

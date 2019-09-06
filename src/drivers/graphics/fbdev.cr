@@ -148,13 +148,13 @@ extend self
   end
 
   def init_device(@@width, @@height, ptr)
-    @@cwidth = @@width.unsafe_div(FB_ASCII_FONT_WIDTH) - 1
-    @@cheight = @@height.unsafe_div(FB_ASCII_FONT_HEIGHT) - 1
+    @@cwidth = (@@width / FB_ASCII_FONT_WIDTH) - 1
+    @@cheight = (@@height / FB_ASCII_FONT_HEIGHT) - 1
     @@buffer = Slice(UInt32).new(ptr, @@width * @@height)
     memset(@@buffer.to_unsafe.as(UInt8*), 0u64,
       @@width.to_usize * @@height.to_usize * sizeof(UInt32).to_usize)
 
-    npages = (@@width.to_usize * @@height.to_usize * sizeof(UInt32).to_usize).unsafe_div 0x1000
+    npages = (@@width.to_usize * @@height.to_usize * sizeof(UInt32).to_usize) / 0x1000
     back_ptr = Paging.alloc_page_pg(FB_BACK_BUFFER_POINTER, true, false, npages)
     @@back_buffer = Slice(UInt32).new(Pointer(UInt32).new(back_ptr), @@width * @@height)
     memset(@@back_buffer.to_unsafe.as(UInt8*), 0u64,
@@ -175,7 +175,7 @@ extend self
       FB_ASCII_FONT_HEIGHT.times do |cy|
         dx = x * FB_ASCII_FONT_WIDTH + cx
         dy = y * FB_ASCII_FONT_HEIGHT + cy
-        if (bitmap[cy] & 1.unsafe_shl(cx)) != 0
+        if (bitmap[cy] & (1 << cx)) != 0
           @@buffer[offset dx, dy] = 0x00FFFFFF
         else
           @@buffer[offset dx, dy] = 0x0

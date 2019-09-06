@@ -173,11 +173,11 @@ private class Fat16Node < VFSNode
 
   # read
   private def sector_for(cluster)
-    fs.fat_sector + cluster.unsafe_div(fs.fat_sector_size)
+    fs.fat_sector + cluster / fs.fat_sector_size
   end
 
   private def ent_for(cluster)
-    cluster.unsafe_mod(fs.fat_sector_size)
+    cluster % fs.fat_sector_size
   end
 
   private def read_fat_table(fat_table, cluster, last_sector? = -1)
@@ -217,13 +217,13 @@ private class Fat16Node < VFSNode
 
     # skip clusters
     offset_factor = fs.sectors_per_cluster * 512
-    offset_clusters = offset.unsafe_div(offset_factor)
+    offset_clusters = offset / offset_factor
     while offset_clusters > 0 && cluster < 0xFFF8
       fat_sector = read_fat_table fat_table, cluster, fat_sector
       cluster = fat_table[ent_for cluster]
       offset_clusters -= 1
     end
-    offset_bytes = offset.unsafe_mod(offset_factor)
+    offset_bytes = offset % offset_factor
 
     # read file
     file_buffer = if allocator.nil?
@@ -240,7 +240,7 @@ private class Fat16Node < VFSNode
           panic "unable to read!"
         end
         file_buffer.each do |word|
-          u8 = word.unsafe_shr(8) & 0xFF
+          u8 = (word >> 8) & 0xFF
           u8_1 = word & 0xFF
           if remaining_bytes > 0
             if offset_bytes > 0
@@ -403,9 +403,9 @@ class Fat16FS < VFS
     end
 
     @fat_sector = partition.first_sector + bs.value.reserved_sectors
-    @fat_sector_size = bs.value.sector_size.to_i32.unsafe_div sizeof(UInt16)
+    @fat_sector_size = bs.value.sector_size.to_i32 / sizeof(UInt16)
 
-    root_dir_sectors = ((bs.value.root_dir_entries * 32) + (bs.value.sector_size - 1)).unsafe_div bs.value.sector_size
+    root_dir_sectors = ((bs.value.root_dir_entries * 32) + (bs.value.sector_size - 1)) / bs.value.sector_size
 
     sector = fat_sector + bs.value.fat_size_sectors.to_i32 * bs.value.number_of_fats.to_i32
     @data_sector = sector + root_dir_sectors
