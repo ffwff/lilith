@@ -23,7 +23,7 @@ private class ConsoleFSNode < VFSNode
         -1
       end
     when SC_IOCTL_TIOCGSTATE
-      Console.enabled = data == 0
+      Console.enabled = data == 1
       Console.enabled ? 1 : 0
     else
       -1

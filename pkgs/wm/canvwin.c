@@ -39,10 +39,18 @@ void canvas_ctx_draw_text(struct canvas_ctx *ctx, int xs, int ys, const char *s)
     }
 }
 
+void window_redraw(struct canvas_ctx *ctx, int is_pressed) {
+    if(is_pressed) {
+        canvas_ctx_fill_rect(ctx, 0, 0, WIDTH, HEIGHT, canvas_color_rgb(0xff, 0xff, 0xff));
+    } else {
+        canvas_ctx_fill_rect(ctx, 0, 0, WIDTH, HEIGHT, canvas_color_rgb(0x32, 0x36, 0x39));
+    }
+    canvas_ctx_stroke_rect(ctx, 0, 0, WIDTH - 1, HEIGHT - 1, canvas_color_rgb(0x20, 0x21, 0x24));
+}
+
 int main(int argc, char **argv) {
     struct canvas_ctx *ctx = canvas_ctx_create(WIDTH, HEIGHT, LIBCANVAS_FORMAT_RGB24);
-    canvas_ctx_fill_rect(ctx, 0, 0, WIDTH, HEIGHT, canvas_color_rgb(0x32, 0x36, 0x39));
-    canvas_ctx_stroke_rect(ctx, 0, 0, WIDTH - 1, HEIGHT - 1, canvas_color_rgb(0x20, 0x21, 0x24));
+    window_redraw(ctx, 0);
 
     {
         const char *title = "Hello World";
@@ -79,7 +87,14 @@ int main(int argc, char **argv) {
         .type = GFX_BITBLIT_SURFACE
     };
 
+    struct wm_atom configure_atom = {
+        .type = ATOM_CONFIGURE_MASK,
+        .configure.event_mask = 0,
+    };
+    write(sample_win_fd_s, (char *)&configure_atom, sizeof(configure_atom));
+
     struct wm_atom atom;
+    int needs_redraw = 0;
     int retval = 0;
     while ((retval = read(sample_win_fd_m, (char *)&atom, sizeof(struct wm_atom))) >= 0) {
         if(retval == 0)
@@ -90,14 +105,28 @@ int main(int argc, char **argv) {
         };
         switch (atom.type) {
             case ATOM_REDRAW_TYPE: {
-                ioctl(fb_fd, GFX_BITBLIT, &sprite);
+                if (needs_redraw || atom.redraw.force_redraw) {
+                    needs_redraw = 0;
+                    ioctl(fb_fd, GFX_BITBLIT, &sprite);
+                    respond_atom.respond.retval = 1;
+                }
                 write(sample_win_fd_s, (char *)&respond_atom, sizeof(respond_atom));
                 break;
             }
             case ATOM_MOVE_TYPE: {
                 sprite.x = atom.move.x;
                 sprite.y = atom.move.y;
-                respond_atom.respond.retval = 1;
+                needs_redraw = 1;
+                write(sample_win_fd_s, (char *)&respond_atom, sizeof(respond_atom));
+                break;
+            }
+            case ATOM_MOUSE_EVENT_TYPE: {
+                if(atom.mouse_event.type == WM_MOUSE_PRESS) {
+                    window_redraw(ctx, 1);
+                } else {
+                    window_redraw(ctx, 0);
+                }
+                needs_redraw = 1;
                 write(sample_win_fd_s, (char *)&respond_atom, sizeof(respond_atom));
                 break;
             }
