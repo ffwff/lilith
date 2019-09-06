@@ -173,7 +173,8 @@ private module Ata
   end
 
   # read functions
-  def read(sector, bus, slave)
+  def read(sector : UInt64, bus, slave)
+    # PIO 24-bit
     wait_ready bus
 
     X86.outb(bus + REG_HDDEVSEL, (0xe0 | (slave << 4) |
@@ -351,7 +352,7 @@ class AtaDevice
   end
 
   @lock = Spinlock.new
-  def read_sector(ptr, sector)
+  def read_sector(ptr, sector : UInt64)
     panic "can't access atapi" if @type == Type::Atapi
 
     retval = true

@@ -186,7 +186,7 @@ private class Fat16Node < VFSNode
       return fat_sector
     end
 
-    fs.device.read_sector(fat_table, fat_sector)
+    fs.device.read_sector(fat_table, fat_sector.to_u64)
     fat_sector
   end
 
@@ -233,7 +233,7 @@ private class Fat16Node < VFSNode
       Slice(UInt16).new(allocator.not_nil!.malloc(sz * sizeof(UInt16)).as(UInt16*), sz)
     end 
     while remaining_bytes > 0 && cluster < 0xFFF8
-      sector = ((cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
+      sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
       read_sector = 0
       while remaining_bytes > 0 && read_sector < fs.sectors_per_cluster
         unless fs.device.read_sector(file_buffer, sector + read_sector)
@@ -289,7 +289,7 @@ private class Fat16Node < VFSNode
     entries = Slice(Fat16Structs::Fat16Entry).mmalloc 16
 
     while cluster < 0xFFF8
-      sector = ((cluster - 2) * fs.sectors_per_cluster) + fs.data_sector
+      sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
       read_sector = 0
       while read_sector < fs.sectors_per_cluster
         fs.device.read_sector(entries.to_unsafe.as(UInt16*), sector + read_sector)
@@ -375,10 +375,10 @@ class Fat16FS < VFS
   @fat_sector_size = 0
   getter fat_sector_size
 
-  @data_sector = 0u32
+  @data_sector = 0u64
   getter data_sector
 
-  @sectors_per_cluster = 0u32
+  @sectors_per_cluster = 0u64
   getter sectors_per_cluster
 
   # impl
@@ -395,7 +395,7 @@ class Fat16FS < VFS
 
     bs = Pointer(Fat16Structs::Fat16BootSector).mmalloc
 
-    device.read_sector(bs.as(UInt16*), partition.first_sector)
+    device.read_sector(bs.as(UInt16*), partition.first_sector.to_u64)
     idx = 0
     bs.value.fs_type.each do |ch|
       panic "only FAT16 is accepted" if ch != FS_TYPE[idx]
@@ -407,9 +407,9 @@ class Fat16FS < VFS
 
     root_dir_sectors = ((bs.value.root_dir_entries * 32) + (bs.value.sector_size - 1)) / bs.value.sector_size
 
-    sector = fat_sector + bs.value.fat_size_sectors.to_i32 * bs.value.number_of_fats.to_i32
+    sector = fat_sector.to_u64 + bs.value.fat_size_sectors.to_u64 * bs.value.number_of_fats.to_u64
     @data_sector = sector + root_dir_sectors
-    @sectors_per_cluster = bs.value.sectors_per_cluster.to_u32
+    @sectors_per_cluster = bs.value.sectors_per_cluster.to_u64
 
     @root = Fat16Node.new self, nil, true
     entries = Slice(Fat16Structs::Fat16Entry).mmalloc 16
