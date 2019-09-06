@@ -20,7 +20,7 @@ void canvas_ctx_draw_character(struct canvas_ctx *ctx, int xs, int ys, const cha
     char *bitmap = font8x8_basic[ch];
     if(canvas_ctx_get_format(ctx) != LIBCANVAS_FORMAT_RGB24)
         return;
-    uint32_t *data = canvas_ctx_get_surface(ctx);
+    unsigned long *data = (unsigned long *)canvas_ctx_get_surface(ctx);
     for (int x = 0; x < FONT_WIDTH; x++) {
         for (int y = 0; y < FONT_HEIGHT; y++) {
             if (bitmap[y] & 1 << x) {
@@ -81,12 +81,12 @@ int main(int argc, char **argv) {
 
     struct wm_atom atom;
     int retval = 0;
-    while ((retval = read(sample_win_fd_m, (char *)&atom, sizeof(atom))) >= 0) {
+    while ((retval = read(sample_win_fd_m, (char *)&atom, sizeof(struct wm_atom))) >= 0) {
         if(retval == 0)
             goto wait;
         struct wm_atom respond_atom = {
             .type = ATOM_RESPOND_TYPE,
-            .redraw.needs_redraw = 0,
+            .respond.retval = 0,
         };
         switch (atom.type) {
             case ATOM_REDRAW_TYPE: {
@@ -97,7 +97,7 @@ int main(int argc, char **argv) {
             case ATOM_MOVE_TYPE: {
                 sprite.x = atom.move.x;
                 sprite.y = atom.move.y;
-                respond_atom.redraw.needs_redraw = 1;
+                respond_atom.respond.retval = 1;
                 write(sample_win_fd_s, (char *)&respond_atom, sizeof(respond_atom));
                 break;
             }

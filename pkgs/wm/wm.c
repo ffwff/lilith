@@ -50,7 +50,7 @@ static void panic(const char *s) {
 
 #define min(x, y) ((x)<(y)?(x):(y))
 
-#define PACKET_TIMEOUT 1000000/30
+#define PACKET_TIMEOUT 1000000
 #define FRAME_TICK  1000000/60
 
 /* WM State */
@@ -85,13 +85,14 @@ struct wm_window {
         struct wm_window_prog prog;
         struct wm_window_sprite sprite;
     } as;
+    size_t z_index;
 };
 
 /* IPC */
 
 int win_write_and_wait(struct wm_window_prog *prog,
-                      struct wm_atom *write_atom,
-                      struct wm_atom *respond_atom) {
+                       struct wm_atom *write_atom,
+                       struct wm_atom *respond_atom) {
     write(prog->mfd, (char *)write_atom, sizeof(struct wm_atom));
     if (waitfd(prog->sfd, PACKET_TIMEOUT) < 0) {
         ftruncate(prog->mfd, 0);
@@ -99,7 +100,7 @@ int win_write_and_wait(struct wm_window_prog *prog,
         return 0;
     }
     // respond received
-    return read(prog->sfd, (char *)respond_atom, sizeof(respond_atom));
+    return read(prog->sfd, (char *)respond_atom, sizeof(struct wm_atom));
 }
 
 /* IMPL */
@@ -111,6 +112,7 @@ struct wm_window *wm_add_window(struct wm_state *state) {
 
 struct wm_window *wm_add_win_prog(struct wm_state *state) {
     struct wm_window *win = wm_add_window(state);
+    win->z_index = 1;
     win->type = WM_WINDOW_PROG;
 
     win->as.prog.mfd = create("/pipes/wm:sample:m");
@@ -127,9 +129,21 @@ cleanup:
 
 struct wm_window *wm_add_sprite(struct wm_state *state, struct wm_window_sprite *sprite) {
     struct wm_window *win = wm_add_window(state);
+    win->z_index = 1;
     win->type = WM_WINDOW_SPRITE;
     win->as.sprite = *sprite;
     return win;
+}
+
+int wm_sort_windows_by_z_compar(const void *av, const void *bv) {
+    const struct wm_window *a = av, *b = bv;
+    if (a->z_index < b->z_index) return -1;
+    else if(a->z_index == b->z_index) return 0;
+    return 1;
+}
+
+void wm_sort_windows_by_z(struct wm_state *state) {
+    qsort(state->windows, state->nwindows, sizeof(struct wm_window), wm_sort_windows_by_z_compar);
 }
 
 int main(int argc, char **argv) {
@@ -154,7 +168,8 @@ int main(int argc, char **argv) {
                 .type = GFX_BITBLIT_COLOR
             }
         };
-        wm_add_sprite(&wm, &pape_spr);
+        struct wm_window *win = wm_add_sprite(&wm, &pape_spr);
+        win->z_index = 0;
     }
 
     // mouse
@@ -179,18 +194,23 @@ int main(int argc, char **argv) {
         mouse_spr.sprite.width = w;
         mouse_spr.sprite.height = h;
         filter_data_with_alpha(&mouse_spr.sprite);
-        wm_add_sprite(&wm, &mouse_spr);
+
+        wm.mouse_win = wm_add_sprite(&wm, &mouse_spr);
+        wm.mouse_win->z_index = (size_t)-1;
     }
+
+    // sample win
+    char *spawn_argv[] = {"canvwin", NULL};
+    spawnv("canvwin", (char **)spawn_argv);
+    wm_add_win_prog(&wm);
+
+    wm_sort_windows_by_z(&wm);
 
     // disable console
     ioctl(STDOUT_FILENO, TIOCGSTATE, 0);
 
     // control pipe
     // int control_fd = create("/pipes/wm");
-
-    // sample win
-    char *spawn_argv[] = { "canvwin", NULL };
-    spawnv("canvwin", (char**)spawn_argv);
 
     wm.needs_redraw = 1;
 
@@ -226,7 +246,7 @@ int main(int argc, char **argv) {
                     int retval = win_write_and_wait(&win->as.prog, &redraw_atom, &respond_atom);
 
                     if (retval > 0) {
-                        if (respond_atom.redraw.needs_redraw)
+                        if (respond_atom.respond.retval)
                             wm.needs_redraw = 1;
                     }
                     break;
@@ -237,80 +257,13 @@ int main(int argc, char **argv) {
                 }
             }
         }
-        if (wm.needs_redraw) {
-            ioctl(fb_fd, GFX_SWAPBUF, 0);
-            wm.needs_redraw = 0;
-        }
+        ioctl(fb_fd, GFX_SWAPBUF, 0);
+        //if (wm.needs_redraw || 1) {
+        //    wm.needs_redraw = 0;
+        //}
         // TODO: consistent frame rate
         usleep(FRAME_TICK);
     }
-
-#if 0
-    int needs_redraw = 1;
-    int retval;
-
-    while (1) {
-        // wallpaper
-        ioctl(fb_fd, GFX_BITBLIT, &pape_spr);
-
-        // windows
-        if (needs_redraw) {
-            struct wm_atom redraw_atom = {
-                .type = ATOM_REDRAW_TYPE
-            };
-            struct wm_atom respond_atom;
-            retval = wm_write_and_wait(sample_win_fd_m, sample_win_fd_s, &redraw_atom, &respond_atom);
-
-            if(retval > 0) {
-                if (respond_atom.redraw.needs_redraw)
-                    needs_redraw = 1;
-            }
-        }
-
-        // mouse
-        struct mouse_packet mouse_packet;
-        read(mouse_fd, (char *)&mouse_packet, sizeof(mouse_packet));
-
-        unsigned int speed = __builtin_ffs(mouse_packet.x + mouse_packet.y);
-        if(mouse_packet.x != 0) {
-            // left = negative
-            mouse_spr.x += mouse_packet.x * speed;
-            mouse_spr.x = min(mouse_spr.x, ws.ws_col);
-            needs_redraw = 1;
-        }
-        if (mouse_packet.y != 0) {
-            // bottom = negative
-            mouse_spr.y -= mouse_packet.y * speed;
-            mouse_spr.y = min(mouse_spr.y, ws.ws_row);
-            needs_redraw = 1;
-        }
-        if ((mouse_packet.attr_byte & MOUSE_ATTR_LEFT_BTN) != 0) {
-            struct wm_atom atom = {
-                .type = ATOM_MOVE_TYPE,
-                .move = (struct wm_atom_move){
-                    .x = mouse_spr.x,
-                    .y = mouse_spr.y,
-                }
-            };
-            write(sample_win_fd_m, (char *)&atom, sizeof(atom));
-            waitfd(sample_win_fd_s, PACKET_TIMEOUT);
-
-            struct wm_atom respond_atom;
-            read(sample_win_fd_s, (char *)&respond_atom, sizeof(respond_atom));
-            if (respond_atom.redraw.needs_redraw) {
-                needs_redraw = 1;
-            }
-        }
-        if(needs_redraw)
-            ioctl(fb_fd, GFX_BITBLIT, &mouse_spr);
-
-        if (needs_redraw) {
-            ioctl(fb_fd, GFX_SWAPBUF, 0);
-        }
-        // TODO: consistent frame rate
-        usleep(FRAME_TICK);
-    }
-#endif
 
     return 0;
 }

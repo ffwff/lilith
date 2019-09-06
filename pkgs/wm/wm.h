@@ -9,11 +9,16 @@ struct wm_atom_redraw {
     int needs_redraw;
 };
 
+struct wm_atom_respond {
+    int retval;
+};
+
 struct wm_atom {
     int type;
     union {
         struct wm_atom_redraw redraw;
         struct wm_atom_move move;
+        struct wm_atom_respond respond;
     };
 };
 
