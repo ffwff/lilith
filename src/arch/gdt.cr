@@ -88,11 +88,11 @@ module Gdt
     entry = Kernel::GdtEntry.new
 
     entry.base_low = (base & 0xFFFF).to_u16
-    entry.base_middle = (base.unsafe_shr(16) & 0xFF).to_u8
-    entry.base_high = (base.unsafe_shr(24) & 0xFF).to_u8
+    entry.base_middle = ((base >> 16) & 0xFF).to_u8
+    entry.base_high = ((base >> 24) & 0xFF).to_u8
 
     entry.limit_low = (limit & 0xFFFF).to_u16
-    entry.granularity = (limit.unsafe_shr(16) & 0x0F).to_u8
+    entry.granularity = ((limit >> 16) & 0x0F).to_u8
 
     entry.granularity |= gran
     entry.access = access.to_u8
@@ -105,12 +105,12 @@ module Gdt
     entry = Kernel::GdtSystemEntry.new
 
     entry.base_low = (base & 0xFFFF).to_u16
-    entry.base_middle = (base.unsafe_shr(16) & 0xFF).to_u8
-    entry.base_high = (base.unsafe_shr(24) & 0xFF).to_u8
-    entry.base_higher = base.unsafe_shr(32).to_u32
+    entry.base_middle = ((base >> 16) & 0xFF).to_u8
+    entry.base_high = ((base >> 24) & 0xFF).to_u8
+    entry.base_higher = (base >> 32).to_u32
 
     entry.limit_low = (limit & 0xFFFF).to_u16
-    entry.granularity = (limit.unsafe_shr(16) & 0x0F).to_u8
+    entry.granularity = ((limit >> 16) & 0x0F).to_u8
     
     entry.granularity |= gran
     entry.access = access.to_u8

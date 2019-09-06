@@ -124,7 +124,7 @@ private module Ata
   # drive = 0 => primary
   # drive = 1 => secondary
   def select(bus, slave = 0u8)
-    X86.outb(bus + REG_HDDEVSEL, 0xA0.to_u8 | slave.unsafe_shl(4))
+    X86.outb(bus + REG_HDDEVSEL, 0xA0.to_u8 | (slave << 4))
   end
 
   def identify(bus)
@@ -176,13 +176,13 @@ private module Ata
   def read(sector, bus, slave)
     wait_ready bus
 
-    X86.outb(bus + REG_HDDEVSEL, (0xe0 | slave.unsafe_shl(4) |
-                                  (sector & 0x0f000000).unsafe_shr(24)).to_u8)
+    X86.outb(bus + REG_HDDEVSEL, (0xe0 | (slave << 4) |
+                                  ((sector & 0x0f000000) >> 24)).to_u8)
     X86.outb(bus + REG_FEATURES, 0x00)
     X86.outb(bus + REG_SECCOUNT0, 1)
     X86.outb(bus + REG_LBA0, (sector & 0x000000ff).to_u8)
-    X86.outb(bus + REG_LBA1, (sector & 0x0000ff00).unsafe_shr(8).to_u8)
-    X86.outb(bus + REG_LBA2, (sector & 0x00ff0000).unsafe_shr(16).to_u8)
+    X86.outb(bus + REG_LBA1, ((sector & 0x0000ff00) >> 8).to_u8)
+    X86.outb(bus + REG_LBA2, ((sector & 0x00ff0000) >> 16).to_u8)
     X86.outb(bus + REG_COMMAND, CMD_READ_PIO)
   end
 
@@ -194,10 +194,10 @@ private module Ata
     packet = uninitialized UInt8[SCSI_PACKET_SIZE]
     packet[0] = ATAPI_CMD_READ
     packet[1] = 0x0u8
-    packet[2] = (sector.unsafe_shr(24) & 0xFF).to_u8
-    packet[3] = (sector.unsafe_shr(16) & 0xFF).to_u8
-    packet[4] = (sector.unsafe_shr(8)  & 0xFF).to_u8
-    packet[5] = (sector.unsafe_shr(0)  & 0xFF).to_u8
+    packet[2] = ((sector >> 24) & 0xFF).to_u8
+    packet[3] = ((sector >> 16) & 0xFF).to_u8
+    packet[4] = ((sector >> 8)  & 0xFF).to_u8
+    packet[5] = ((sector >> 0)  & 0xFF).to_u8
     packet[6] = 0x0u8
     packet[7] = 0x0u8
     packet[8] = 0x0u8
@@ -207,12 +207,12 @@ private module Ata
 
     wait_ready bus
 
-    X86.outb(bus + REG_HDDEVSEL, slave.unsafe_shl(4).to_u8)
+    X86.outb(bus + REG_HDDEVSEL, (slave << 4).to_u8)
     wait_io bus
 
     X86.outb(bus + REG_FEATURES, 0x00)
     X86.outb(bus + REG_LBA0, (sector_size & 0xFF).to_u8)
-    X86.outb(bus + REG_LBA1, sector_size.unsafe_shr(8).to_u8)
+    X86.outb(bus + REG_LBA1, (sector_size >> 8).to_u8)
     X86.outb(bus + REG_COMMAND, CMD_PACKET)
 
     return unless wait(bus, true)

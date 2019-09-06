@@ -44,7 +44,7 @@ private struct Pool
 
   # how many blocks can this pool store
   def capacity
-    (POOL_SIZE - HEADER_SIZE).unsafe_div block_size
+    (POOL_SIZE - HEADER_SIZE) / block_size
   end
 
   # first free block in linked list

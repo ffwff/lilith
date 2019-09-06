@@ -23,8 +23,8 @@ end
 
 private struct VgaInstance < OutputDriver
   private def color_code(fg : VgaColor, bg : VgaColor, char : UInt8) : UInt16
-    attrib = (bg.value.unsafe_shl(4)) | fg.value
-    attrib.unsafe_shl(8) | char.to_u8
+    attrib = (bg.value << 4) | fg.value
+    (attrib << 8) | char.to_u8
   end
 
   private def offset(x : Int, y : Int)
@@ -140,7 +140,7 @@ private struct VgaInstance < OutputDriver
     X86.outb(0x3D4, 0x0F)
     X86.outb(0x3D5, (pos & 0xFF).to_u8)
     X86.outb(0x3D4, 0x0E)
-    X86.outb(0x3D5, (pos.unsafe_shr(8) & 0xFF).to_u8)
+    X86.outb(0x3D5, ((pos >> 8) & 0xFF).to_u8)
   end
 end
 

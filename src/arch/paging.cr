@@ -187,10 +187,10 @@ module Paging
   end
 
   def page_layer_indexes(addr : UInt64)
-    pdpt_idx  = addr.unsafe_shr(39) & (0x200 - 1)
-    dir_idx   = addr.unsafe_shr(30) & (0x200 - 1)
-    table_idx = addr.unsafe_shr(21) & (0x200 - 1)
-    page_idx  = addr.unsafe_shr(12) & (0x200 - 1)
+    pdpt_idx  = (addr >> 39) & (0x200 - 1)
+    dir_idx   = (addr >> 30) & (0x200 - 1)
+    table_idx = (addr >> 21) & (0x200 - 1)
+    page_idx  = (addr >> 12) & (0x200 - 1)
     Tuple.new(pdpt_idx.to_i32, dir_idx.to_i32, table_idx.to_i32, page_idx.to_i32)
   end
 

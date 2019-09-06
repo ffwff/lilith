@@ -191,7 +191,7 @@ module Gc
             unless addr >= KernelArena.start_addr && addr <= KernelArena.placement_addr
               # must be a nil union, skip
               pos += 1
-              offsets = offsets.unsafe_shr 1
+              offsets >>= 1
               next
             end
             # mark the header as gray
@@ -209,7 +209,7 @@ module Gc
             end
           end
           pos += 1
-          offsets = offsets.unsafe_shr 1
+          offsets >>= 1
         end
         node = node.value.next_node
       end

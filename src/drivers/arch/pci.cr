@@ -38,8 +38,8 @@ module PCI
   PCI_NONE = 0xFFFFu16
 
   private def config_address(bus : UInt32, slot : UInt32, func : UInt32, offset : UInt32)
-    address = bus.unsafe_shl(16) | slot.unsafe_shl(11) |
-              func.unsafe_shl(8) | (offset & 0xfc) | 0x80000000
+    address = (bus << 16) | (slot << 11) |
+              (func << 8) | (offset & 0xfc) | 0x80000000
     X86.outl PCI_ADDRESS_PORT, address
   end
 

@@ -13,6 +13,23 @@ struct Int
     end
   end
 
+  # unsafe math
+  def /(other)
+    self.unsafe_div other
+  end
+
+  def %(other)
+    self.unsafe_mod other
+  end
+
+  def <<(other)
+    self.unsafe_shl other
+  end
+
+  def >>(other)
+    self.unsafe_shr other
+  end
+
   # math
   def ~
     self ^ -1
@@ -27,7 +44,7 @@ struct Int
   end
 
   def div_ceil(other : Int)
-    (self + (other - 1)).unsafe_div other
+    (self + (other - 1)) / other
   end
 
   # bit manips
@@ -40,17 +57,17 @@ struct Int
     while (n & (n - 1)) != 0
       n = n & (n - 1)
     end
-    n.unsafe_shl 1
+    n << 1
   end
 
   def lowest_power_of_2
     x = self
-    x = x | x.unsafe_shr(1)
-    x = x | x.unsafe_shr(2)
-    x = x | x.unsafe_shr(4)
-    x = x | x.unsafe_shr(8)
-    x = x | x.unsafe_shr(16)
-    x - x.unsafe_shr(1)
+    x = x | (x >> 1)
+    x = x | (x >> 2)
+    x = x | (x >> 4)
+    x = x | (x >> 8)
+    x = x | (x >> 16)
+    x - (x >> 1)
   end
 
   # format
@@ -62,9 +79,9 @@ struct Int
     n = self.abs
     i = 0
     while i < 128
-      s[i] = BASE.bytes[n.unsafe_mod(base)]
+      s[i] = BASE.bytes[n % base]
       i += 1
-      break if (n = n.unsafe_div(base)) == 0
+      break if (n /= base) == 0
     end
     if sign
       yield '-'.ord.to_u8

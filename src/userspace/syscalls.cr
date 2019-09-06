@@ -534,7 +534,7 @@ module Syscall
             return
           end
         end
-        npages = incr.unsafe_shr(12) + 1
+        npages = incr / 0x1000
         Paging.alloc_page_pg(mmap_heap.end_addr, true, true, npages: npages.to_u64)
         mmap_heap.size += incr
       elsif incr == 0 && mmap_heap.size == 0u64
