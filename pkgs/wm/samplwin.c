@@ -11,11 +11,6 @@
 #define STBI_ASSERT(x)
 #include "../.build/stb_image.h"
 
-double ldexp(double x, int exp) {
-    abort();
-    return 0.0;
-}
-
 const int channels = 4;
 
 int main(int argc, char **argv) {
