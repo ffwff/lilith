@@ -1,5 +1,14 @@
 #pragma once
 
+#include <syscalls.h>
+
+/* Connection request */
+struct wm_connection_request {
+    pid_t pid;
+};
+
+/* Atoms */
+
 // Configure
 
 struct wm_atom_configure {

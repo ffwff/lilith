@@ -92,6 +92,10 @@ fun raise(sig : LibC::Int) : LibC::Int
   -1
 end
 
+fun getpid : LibC::Int
+  sysenter(SC_GETPID, 0).to_i32
+end
+
 fun abort
   Pointer(LibC::UInt).null.value = 0
   while true
