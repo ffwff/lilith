@@ -407,10 +407,11 @@ class Fat16FS < VFS
 
     root_dir_sectors = ((bs.value.root_dir_entries * 32) + (bs.value.sector_size - 1)) / bs.value.sector_size
 
-    sector = fat_sector.to_u64 + bs.value.fat_size_sectors.to_u64 * bs.value.number_of_fats.to_u64
+    sector = (fat_sector + bs.value.fat_size_sectors * bs.value.number_of_fats).to_u64
     @data_sector = sector + root_dir_sectors
     @sectors_per_cluster = bs.value.sectors_per_cluster.to_u64
 
+    # load root directory
     @root = Fat16Node.new self, nil, true
     entries = Slice(Fat16Structs::Fat16Entry).mmalloc 16
 
@@ -418,6 +419,9 @@ class Fat16FS < VFS
       break if sector + i > @data_sector
       device.read_sector(entries.to_unsafe.as(UInt16*), sector + i)
       entries.each do |entry|
+        if pointerof(entry).as(UInt8*)[0] == 0
+          break
+        end
         root.load_entry entry
       end
     end
