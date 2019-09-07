@@ -120,21 +120,13 @@ struct wm_window *wm_add_window(struct wm_state *state) {
     return win;
 }
 
-struct wm_window *wm_add_win_prog(struct wm_state *state) {
+struct wm_window *wm_add_win_prog(struct wm_state *state, int mfd, int sfd) {
     struct wm_window *win = wm_add_window(state);
     win->z_index = 1;
     win->type = WM_WINDOW_PROG;
-
-    win->as.prog.mfd = create("/pipes/wm:sample:m");
-    if(win->as.prog.mfd < 0) goto cleanup;
-
-    win->as.prog.sfd = create("/pipes/wm:sample:s");
-    if(win->as.prog.sfd < 0) goto cleanup;
-
+    win->as.prog.mfd = mfd;
+    win->as.prog.sfd = sfd;
     return win;
-cleanup:
-    // TODO
-    return 0;
 }
 
 struct wm_window *wm_add_sprite(struct wm_state *state, struct wm_window_sprite *sprite) {
@@ -183,6 +175,23 @@ void wm_add_queue(struct wm_state *state, struct wm_atom *atom) {
         return;
     }
     state->queue[state->queue_len++] = *atom;
+}
+
+/* CONNECTIONS */
+
+void wm_handle_connection_request(struct wm_state *state, struct wm_connection_request *conn_req) {
+    char mpath[128] = { 0 };
+    snprintf(mpath, sizeof(mpath), "/pipes/wm:%d:m", conn_req->pid);
+    int mfd = create(mpath);
+    if(mfd < 0) { return; }
+
+    char spath[128] = { 0 };
+    snprintf(spath, sizeof(spath), "/pipes/wm:%d:s", conn_req->pid);
+    int sfd = create(spath);
+    if(sfd < 0) { close(mfd); return; }
+
+    wm_add_win_prog(state, mfd, sfd);
+    wm_sort_windows_by_z(state);
 }
 
 int main(int argc, char **argv) {
@@ -241,7 +250,6 @@ int main(int argc, char **argv) {
     // sample win
     char *spawn_argv[] = {"canvwin", NULL};
     spawnv("canvwin", (char **)spawn_argv);
-    wm_add_win_prog(&wm);
 
     wm_sort_windows_by_z(&wm);
 
@@ -249,11 +257,21 @@ int main(int argc, char **argv) {
     ioctl(STDOUT_FILENO, TIOCGSTATE, 0);
 
     // control pipe
-    // int control_fd = create("/pipes/wm");
+    int control_fd = create("/pipes/wm");
 
     wm.needs_redraw = 1;
 
     while(1) {
+        {
+            // control pipe
+            struct wm_connection_request conn_req;
+            while(
+                read(control_fd, (char *)&conn_req, sizeof(struct wm_connection_request))
+                    == sizeof(struct wm_connection_request)
+            ) {
+                wm_handle_connection_request(&wm, &conn_req);
+            }
+        }
         {
             // mouse
             struct mouse_packet mouse_packet;
