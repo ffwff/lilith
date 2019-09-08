@@ -12,6 +12,8 @@ long int strtol(const char *nptr, char **endptr, int base);
 double strtod(const char *nptr, char **endptr);
 
 int abs(int j);
+long int labs(long int j);
+long long int llabs(long long int j);
 
 void exit(int status);
 void abort(void);

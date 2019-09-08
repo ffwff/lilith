@@ -44,3 +44,16 @@ fun rand : LibC::Int
   # guaranteed to be random
   4
 end
+
+# abs
+fun abs(j : LibC::Int) : LibC::Int
+  j > 0 ? j : (j * -1)
+end
+
+fun labs(j : LibC::Long) : LibC::Long
+  j > 0 ? j : (j * -1)
+end
+
+fun llabs(j : LibC::LongLong) : LibC::LongLong
+  j > 0 ? j : (j * -1)
+end

@@ -9,6 +9,8 @@ lib LibC
   alias UInt = UInt32
   alias Long = Int32
   alias ULong = UInt32
+  alias LongLong = Int64
+  alias ULongLong = UInt64
 end
 
 # Ints
