@@ -179,19 +179,20 @@ void wm_add_queue(struct wm_state *state, struct wm_atom *atom) {
 
 /* CONNECTIONS */
 
-void wm_handle_connection_request(struct wm_state *state, struct wm_connection_request *conn_req) {
-    char mpath[128] = { 0 };
-    snprintf(mpath, sizeof(mpath), "/pipes/wm:%d:m", conn_req->pid);
-    int mfd = create(mpath);
-    if(mfd < 0) { return; }
+int wm_handle_connection_request(struct wm_state *state, struct wm_connection_request *conn_req) {
+    char path[128] = { 0 };
 
-    char spath[128] = { 0 };
-    snprintf(spath, sizeof(spath), "/pipes/wm:%d:s", conn_req->pid);
-    int sfd = create(spath);
-    if(sfd < 0) { close(mfd); return; }
+    snprintf(path, sizeof(path), "/pipes/wm:%d:m", conn_req->pid);
+    int mfd = create(path);
+    if(mfd < 0) { return 0; }
+
+    snprintf(path, sizeof(path), "/pipes/wm:%d:s", conn_req->pid);
+    int sfd = create(path);
+    if(sfd < 0) { close(mfd); return 0; }
 
     wm_add_win_prog(state, mfd, sfd);
     wm_sort_windows_by_z(state);
+    return 1;
 }
 
 int main(int argc, char **argv) {
@@ -269,7 +270,9 @@ int main(int argc, char **argv) {
                 read(control_fd, (char *)&conn_req, sizeof(struct wm_connection_request))
                     == sizeof(struct wm_connection_request)
             ) {
-                wm_handle_connection_request(&wm, &conn_req);
+                if (wm_handle_connection_request(&wm, &conn_req)) {
+                    wm.needs_redraw = 1;
+                }
             }
         }
         {
