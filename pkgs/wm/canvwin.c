@@ -90,8 +90,6 @@ int main(int argc, char **argv) {
     window_redraw(ctx, &sprite, 0);
 
     // connect
-    int fd = open("/fb0", 0);
-
     printf("initializing connection\n");
     int fb_fd = open("/fb0", 0);
 
@@ -149,6 +147,11 @@ int main(int argc, char **argv) {
                             sprite.x += atom.mouse_event.delta_x;
                         if(!(atom.mouse_event.delta_y < 0 && sprite.y < -atom.mouse_event.delta_y))
                             sprite.y += atom.mouse_event.delta_y;
+                        if((atom.mouse_event.x - sprite.x) < 10) {
+                            // window_redraw(ctx, &sprite, 1);
+                            char *spawn_argv[] = {"canvwin", NULL};
+                            spawnv("canvwin", (char **)spawn_argv);
+                        }
                     }
                 } else if (atom.mouse_event.type == WM_MOUSE_RELEASE && mouse_drag) {
                     mouse_drag = 0;
