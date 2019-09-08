@@ -137,14 +137,6 @@ struct wm_window *wm_add_sprite(struct wm_state *state, struct wm_window_sprite 
     return win;
 }
 
-void wm_handle_request_atom(struct wm_state *state, struct wm_window *win, struct wm_atom *atom) {
-    switch (atom->type) {
-        case ATOM_CONFIGURE_TYPE: {
-            win->as.prog.event_mask = atom->configure.event_mask;
-        }
-    }
-}
-
 /* IMPL */
 
 int wm_sort_windows_by_z_compar(const void *av, const void *bv) {
@@ -190,7 +182,9 @@ int wm_handle_connection_request(struct wm_state *state, struct wm_connection_re
     int sfd = create(path);
     if(sfd < 0) { close(mfd); return 0; }
 
-    wm_add_win_prog(state, mfd, sfd);
+    struct wm_window *win = wm_add_win_prog(state, mfd, sfd);
+    win->as.prog.event_mask = conn_req->event_mask;
+
     wm_sort_windows_by_z(state);
     return 1;
 }
@@ -265,7 +259,7 @@ int main(int argc, char **argv) {
     while(1) {
         {
             // control pipe
-            struct wm_connection_request conn_req;
+            struct wm_connection_request conn_req = { 0 };
             while(
                 read(control_fd, (char *)&conn_req, sizeof(struct wm_connection_request))
                     == sizeof(struct wm_connection_request)
@@ -327,20 +321,11 @@ int main(int argc, char **argv) {
                     int retval;
                     struct wm_atom respond_atom;
 
-                    // read from queue
-                    struct wm_atom req_atom;
-                    while(
-                        read(win->as.prog.sfd, (char *)&req_atom, sizeof(struct wm_atom))
-                            == sizeof(struct wm_atom)
-                    ) {
-                        wm_handle_request_atom(&wm, win, &req_atom);
-                    }
-
                     // transmit events in queue
                     for(int i = 0; i < wm.queue_len; i++) {
-                        // if((win->as.prog.event_mask & (1 << wm.queue[i].type)) != 0) {
+                        if((win->as.prog.event_mask & (1 << wm.queue[i].type)) != 0) {
                             win_write_and_wait(&win->as.prog, &wm.queue[i], &respond_atom);
-                        // }
+                        }
                     }
 
                     // request a redraw
@@ -350,8 +335,9 @@ int main(int argc, char **argv) {
                     };
                     retval = win_write_and_wait(&win->as.prog, &redraw_atom, &respond_atom);
 
-                    if (retval > 0) {
-                        if (respond_atom.respond.retval)
+                    if (retval == sizeof(struct wm_atom)) {
+                        if (respond_atom.type == ATOM_RESPOND_TYPE && 
+                            respond_atom.respond.retval)
                             wm.needs_redraw = 1;
                     }
                     break;

@@ -5,15 +5,10 @@
 /* Connection request */
 struct wm_connection_request {
     pid_t pid;
+    unsigned int event_mask;
 };
 
 /* Atoms */
-
-// Configure
-
-struct wm_atom_configure {
-    unsigned long event_mask;
-};
 
 // Move
 
@@ -53,7 +48,6 @@ struct wm_atom {
         struct wm_atom_move move;
         struct wm_atom_respond respond;
         struct wm_atom_mouse_event mouse_event;
-        struct wm_atom_configure configure;
     };
 };
 
@@ -61,13 +55,11 @@ struct wm_atom {
 #define ATOM_RESPOND_TYPE       1
 #define ATOM_MOVE_TYPE          2
 #define ATOM_MOUSE_EVENT_TYPE   3
-#define ATOM_CONFIGURE_TYPE     4
 
 #define ATOM_REDRAW_MASK        (1 << ATOM_REDRAW_TYPE)
 #define ATOM_RESPOND_MASK       (1 << ATOM_RESPOND_TYPE)
 #define ATOM_MOVE_MASK          (1 << ATOM_MOVE_TYPE)
 #define ATOM_MOUSE_EVENT_MASK   (1 << ATOM_MOUSE_EVENT_TYPE)
-#define ATOM_CONFIGURE_MASK     (1 << ATOM_CONFIGURE_TYPE)
 
 static inline int wm_atom_eq(struct wm_atom *a, struct wm_atom *b) {
     if(a->type != b->type)
