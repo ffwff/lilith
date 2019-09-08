@@ -57,6 +57,7 @@ private class PipeFSNode < VFSNode
   property prev_node
 
   def initialize(@name : GcString, @parent : PipeFSRoot, @fs : PipeFS)
+    # Serial.puts "mk ", @name, '\n'
   end
 
   @buffer = Pointer(UInt8).null
@@ -78,10 +79,10 @@ private class PipeFSNode < VFSNode
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
+    # Serial.puts "read ", @name, " ", process.not_nil!.pid, '\n'
     init_buffer
     if @buffer_pos == 0
-      # TODO
-      VFS_ERR
+      0
     else
       # pop message from buffer
       size = min(slice.size, @buffer_pos)
@@ -93,10 +94,10 @@ private class PipeFSNode < VFSNode
 
   def write(slice : Slice, offset : UInt32,
             process : Multiprocessing::Process? = nil) : Int32
+    # Serial.puts "write ", @name, " ", process.not_nil!.pid, '\n'
     init_buffer
     if @buffer_pos == BUFFER_CAPACITY
-      # TODO
-      VFS_ERR
+      0
     else
       # push the message on to the buffer stack
       size = min(slice.size, BUFFER_CAPACITY - @buffer_pos)

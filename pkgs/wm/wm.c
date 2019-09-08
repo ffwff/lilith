@@ -242,11 +242,11 @@ int main(int argc, char **argv) {
         wm.mouse_win->z_index = (size_t)-1;
     }
 
+    wm_sort_windows_by_z(&wm);
+
     // sample win
     char *spawn_argv[] = {"canvwin", NULL};
     spawnv("canvwin", (char **)spawn_argv);
-
-    wm_sort_windows_by_z(&wm);
 
     // disable console
     ioctl(STDOUT_FILENO, TIOCGSTATE, 0);
