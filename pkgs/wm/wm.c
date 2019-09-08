@@ -285,8 +285,10 @@ int main(int argc, char **argv) {
                 int delta_x = mouse_packet.x * speed;
                 mouse_atom.mouse_event.delta_x = delta_x;
 
-                sprite->x += delta_x;
-                sprite->x = min(sprite->x, ws.ws_col);
+                if(!(delta_x < 0 && sprite->x < -delta_x)) {
+                    sprite->x += delta_x;
+                    sprite->x = min(sprite->x, ws.ws_col);
+                }
                 wm.needs_redraw = 1;
             }
             mouse_atom.mouse_event.x = sprite->x;
@@ -296,8 +298,10 @@ int main(int argc, char **argv) {
                 int delta_y = -mouse_packet.y * speed;
                 mouse_atom.mouse_event.delta_y = delta_y;
 
-                sprite->y += delta_y;
-                sprite->y = min(sprite->y, ws.ws_row);
+                if(!(delta_y < 0 && sprite->y < -delta_y)) {
+                    sprite->y += delta_y;
+                    sprite->y = min(sprite->y, ws.ws_row);
+                }
                 wm.needs_redraw = 1;
             }
             mouse_atom.mouse_event.y = sprite->y;
