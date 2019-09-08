@@ -24,9 +24,10 @@ void wmc_connection_deinit(struct wmc_connection *conn) {
 	close(conn->win_fd_s);
 }
 
-void wmc_connection_obtain(struct wmc_connection *conn) {
+void wmc_connection_obtain(struct wmc_connection *conn, unsigned int event_mask) {
     struct wm_connection_request conn_req = {
-        .pid = getpid()
+        .pid = getpid(),
+        .event_mask = event_mask,
     };
     write(conn->wm_control_fd, (char *)&conn_req, sizeof(struct wm_connection_request));
     while(1) {
@@ -61,7 +62,11 @@ int wmc_send_atom(struct wmc_connection *conn, struct wm_atom *atom) {
 }
 
 int wmc_recv_atom(struct wmc_connection *conn, struct wm_atom *atom) {
-	return read(conn->win_fd_m, (char *)atom, sizeof(struct wm_atom));
+    if(atom == NULL) {
+        struct wm_atom unused;
+        return read(conn->win_fd_m, (char *)&unused, sizeof(struct wm_atom));
+    }
+    return read(conn->win_fd_m, (char *)atom, sizeof(struct wm_atom));
 }
 
 int wmc_wait_atom(struct wmc_connection *conn) {

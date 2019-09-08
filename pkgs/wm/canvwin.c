@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
 
     struct wmc_connection conn;
     wmc_connection_init(&conn);
-    wmc_connection_obtain(&conn);
+    wmc_connection_obtain(&conn, ATOM_MOUSE_EVENT_MASK);
 
     // event loop
     struct fbdev_bitblit sprite = {
@@ -102,12 +102,6 @@ int main(int argc, char **argv) {
         .height = HEIGHT,
         .type = GFX_BITBLIT_SURFACE
     };
-
-    struct wm_atom configure_atom = {
-        .type = ATOM_CONFIGURE_TYPE,
-        .configure.event_mask = ATOM_MOUSE_EVENT_MASK,
-    };
-    wmc_send_atom(&conn, &configure_atom);
 
     int mouse_drag = 0;
 
