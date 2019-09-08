@@ -9,7 +9,7 @@
 #include <canvas.h>
 
 #include "../.build/font8x8_basic.h"
-#include "wm.h"
+#include "wmc.h"
 
 #define WIDTH 256
 #define HEIGHT 256
@@ -75,40 +75,9 @@ int main(int argc, char **argv) {
     printf("initializing connection\n");
     int fb_fd = open("/fb0", 0);
 
-    // window manager pipes
-    int wm_control_fd = open("/pipes/wm", 0);
-    int win_fd_m = -1, win_fd_s = -1;
-
-    // connect to wm
-    struct wm_connection_request conn_req = {
-        .pid = getpid()
-    };
-    write(wm_control_fd, (char *)&conn_req, sizeof(struct wm_connection_request));
-    while(1) {
-        // try to poll for pipes
-        char mpath[128] = { 0 };
-        snprintf(mpath, sizeof(mpath), "/pipes/wm:%d:m", conn_req.pid);
-        if(win_fd_m == -1) {
-            if((win_fd_m = open(mpath, 0)) < 0) {
-                goto await_conn;
-            }
-        }
-
-        char spath[128] = { 0 };
-        snprintf(spath, sizeof(spath), "/pipes/wm:%d:s", conn_req.pid);
-        if(win_fd_s == -1) {
-            if((win_fd_s = open(spath, 0)) < 0) {
-                goto await_conn;
-            }
-        }
-
-        if(win_fd_m != -1 && win_fd_s != -1) {
-            break;
-        }
-
-    await_conn:
-        usleep(1);
-    }
+    struct wmc_connection conn;
+    wmc_connection_init(&conn);
+    wmc_connection_obtain(&conn);
 
     // event loop
     struct fbdev_bitblit sprite = {
@@ -125,12 +94,12 @@ int main(int argc, char **argv) {
         .type = ATOM_CONFIGURE_MASK,
         .configure.event_mask = 0,
     };
-    write(win_fd_s, (char *)&configure_atom, sizeof(configure_atom));
+    wmc_send_atom(&conn, &configure_atom);
 
     struct wm_atom atom;
     int needs_redraw = 0;
     int retval = 0;
-    while ((retval = read(win_fd_m, (char *)&atom, sizeof(struct wm_atom))) >= 0) {
+    while ((retval = wmc_recv_atom(&conn, &atom)) >= 0) {
         if(retval == 0)
             goto wait;
         struct wm_atom respond_atom = {
@@ -144,14 +113,14 @@ int main(int argc, char **argv) {
                     ioctl(fb_fd, GFX_BITBLIT, &sprite);
                     respond_atom.respond.retval = 1;
                 }
-                write(win_fd_s, (char *)&respond_atom, sizeof(respond_atom));
+                wmc_send_atom(&conn, &respond_atom);
                 break;
             }
             case ATOM_MOVE_TYPE: {
                 sprite.x = atom.move.x;
                 sprite.y = atom.move.y;
                 needs_redraw = 1;
-                write(win_fd_s, (char *)&respond_atom, sizeof(respond_atom));
+                wmc_send_atom(&conn, &respond_atom);
                 break;
             }
             case ATOM_MOUSE_EVENT_TYPE: {
@@ -161,12 +130,12 @@ int main(int argc, char **argv) {
                     window_redraw(ctx, 0);
                 }
                 needs_redraw = 1;
-                write(win_fd_s, (char *)&respond_atom, sizeof(respond_atom));
+                wmc_send_atom(&conn, &respond_atom);
                 break;
             }
         }
     wait:
-        waitfd(win_fd_m, (useconds_t)-1);
+        wmc_wait_atom(&conn);
     }
 
     return 0;
