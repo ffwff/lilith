@@ -142,11 +142,6 @@ int main(int argc, char **argv) {
                 } else if (atom.mouse_event.type == WM_MOUSE_RELEASE && mouse_drag) {
                     mouse_drag = 0;
                 }
-                if(atom.mouse_event.type == WM_MOUSE_PRESS) {
-                    window_redraw(ctx, 1);
-                } else {
-                    window_redraw(ctx, 0);
-                }
                 needs_redraw = 1;
                 wmc_send_atom(&conn, &respond_atom);
                 break;
