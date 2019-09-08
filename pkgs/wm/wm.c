@@ -288,7 +288,10 @@ int main(int argc, char **argv) {
 
             if (mouse_packet.x != 0) {
                 // left = negative
-                sprite->x += mouse_packet.x * speed;
+                int delta_x = mouse_packet.x * speed;
+                mouse_atom.mouse_event.delta_x = delta_x;
+
+                sprite->x += delta_x;
                 sprite->x = min(sprite->x, ws.ws_col);
                 wm.needs_redraw = 1;
             }
@@ -296,8 +299,11 @@ int main(int argc, char **argv) {
 
             if (mouse_packet.y != 0) {
                 // bottom = negative
-                sprite->y -= mouse_packet.y * speed;
-                sprite->y = min(sprite->y, ws.ws_col);
+                int delta_y = -mouse_packet.y * speed;
+                mouse_atom.mouse_event.delta_y = delta_y;
+
+                sprite->y += delta_y;
+                sprite->y = min(sprite->y, ws.ws_row);
                 wm.needs_redraw = 1;
             }
             mouse_atom.mouse_event.y = sprite->y;
@@ -332,9 +338,9 @@ int main(int argc, char **argv) {
 
                     // transmit events in queue
                     for(int i = 0; i < wm.queue_len; i++) {
-                        if((win->as.prog.event_mask & (1 << wm.queue[i].type)) != 0) {
+                        // if((win->as.prog.event_mask & (1 << wm.queue[i].type)) != 0) {
                             win_write_and_wait(&win->as.prog, &wm.queue[i], &respond_atom);
-                        }
+                        // }
                     }
 
                     // request a redraw

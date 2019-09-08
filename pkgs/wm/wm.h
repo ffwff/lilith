@@ -18,8 +18,8 @@ struct wm_atom_configure {
 // Move
 
 struct wm_atom_move {
-    unsigned long x;
-    unsigned long y;
+    unsigned int x;
+    unsigned int y;
 };
 
 // Redraw
@@ -42,7 +42,8 @@ enum wm_atom_mouse_event_type {
 
 struct wm_atom_mouse_event {
     enum wm_atom_mouse_event_type type;
-    unsigned long x, y;
+    unsigned int x, y;
+    int delta_x, delta_y;
 };
 
 struct wm_atom {

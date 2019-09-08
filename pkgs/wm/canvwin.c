@@ -16,6 +16,12 @@
 #define FONT_WIDTH 8
 #define FONT_HEIGHT 8
 
+int clamp(int d, int min, int max) {
+    if(d < min) return min;
+    if(d < max) return max;
+    return d;
+}
+
 void canvas_ctx_draw_character(struct canvas_ctx *ctx, int xs, int ys, const char ch) {
     char *bitmap = font8x8_basic[ch];
     if(canvas_ctx_get_format(ctx) != LIBCANVAS_FORMAT_RGB24)
@@ -46,6 +52,13 @@ void window_redraw(struct canvas_ctx *ctx, int is_pressed) {
         canvas_ctx_fill_rect(ctx, 0, 0, WIDTH, HEIGHT, canvas_color_rgb(0x32, 0x36, 0x39));
     }
     canvas_ctx_stroke_rect(ctx, 0, 0, WIDTH - 1, HEIGHT - 1, canvas_color_rgb(0x20, 0x21, 0x24));
+}
+
+int is_coord_in_sprite(struct fbdev_bitblit *sprite, int x, int y) {
+    if(x < 0) return 0;
+    if(y < 0) return 0;
+    return sprite->x <= x && x <= (sprite->x + sprite->width) && 
+           sprite->y <= y && y <= (sprite->y + sprite->height);
 }
 
 int main(int argc, char **argv) {
@@ -91,10 +104,12 @@ int main(int argc, char **argv) {
     };
 
     struct wm_atom configure_atom = {
-        .type = ATOM_CONFIGURE_MASK,
-        .configure.event_mask = 0,
+        .type = ATOM_CONFIGURE_TYPE,
+        .configure.event_mask = ATOM_MOUSE_EVENT_MASK,
     };
     wmc_send_atom(&conn, &configure_atom);
+
+    int mouse_drag = 0;
 
     struct wm_atom atom;
     int needs_redraw = 0;
@@ -124,6 +139,15 @@ int main(int argc, char **argv) {
                 break;
             }
             case ATOM_MOUSE_EVENT_TYPE: {
+                if(atom.mouse_event.type == WM_MOUSE_PRESS &&
+                   (is_coord_in_sprite(&sprite, atom.mouse_event.x, atom.mouse_event.y) ||
+                   mouse_drag)) {
+                    mouse_drag = 1;
+                    sprite.x += atom.mouse_event.delta_x;
+                    sprite.y += atom.mouse_event.delta_y;
+                } else if (atom.mouse_event.type == WM_MOUSE_RELEASE && mouse_drag) {
+                    mouse_drag = 0;
+                }
                 if(atom.mouse_event.type == WM_MOUSE_PRESS) {
                     window_redraw(ctx, 1);
                 } else {
