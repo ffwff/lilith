@@ -5,7 +5,7 @@ struct fbdev_bitblit {
     unsigned long *source;
     unsigned long x, y, width, height;
     int type;
-};
+} __attribute__((packed));
 
 // ioctl values
 #define GFX_BITBLIT 3

@@ -73,7 +73,7 @@ struct cterm_state {
     int root_x, root_y;
     char *buffer;
     size_t buffer_len;
-    int stdio_fd;
+    int in_fd, out_fd;
 };
 
 void cterm_init(struct cterm_state *state) {
@@ -97,9 +97,14 @@ void cterm_init(struct cterm_state *state) {
     state->cy = 0;
     state->buffer = 0;
     state->buffer_len = 0;
+
     char path[128] = { 0 };
-    snprintf(path, sizeof(path), "/pipes/cterm:%d", getpid());
-    state->stdio_fd = create(path);
+
+    snprintf(path, sizeof(path), "/pipes/cterm:%d:in", getpid());
+    state->in_fd = create(path);
+
+    snprintf(path, sizeof(path), "/pipes/cterm:%d:out", getpid());
+    state->out_fd = create(path);
 }
 
 void cterm_draw_buffer(struct cterm_state *state);
@@ -190,7 +195,7 @@ void cterm_add_character(struct cterm_state *state, char ch) {
 
 int cterm_read_buf(struct cterm_state *state) {
     char buf[4096];
-    int retval = read(state->stdio_fd, buf, sizeof(buf));
+    int retval = read(state->out_fd, buf, sizeof(buf));
     if(retval <= 0) return retval;
     for(int i = 0; i < retval; i++) {
         cterm_add_character(state, buf[i]);
@@ -206,8 +211,8 @@ int main(int argc, char **argv) {
     // spawn main
     struct startup_info s_info = {
         .stdin = STDIN_FILENO,
-        .stdout = state.stdio_fd,
-        .stderr = state.stdio_fd,
+        .stdout = state.out_fd,
+        .stderr = state.out_fd,
     };
     char *spawn_argv[] = {"/hd0/main", NULL};
     spawnxv(&s_info, "/hd0/main", (char **)spawn_argv);

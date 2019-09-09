@@ -1,7 +1,32 @@
-class KbdFsNode < VFSNode
-  getter fs
+lib KbdFSData
+  @[Packed]
+  struct Packet
+    ch : Int32
+    modifiers : Int32
+  end
+end
+
+class KbdFSNode < VFSNode
+  getter fs, raw_node, first_child
 
   def initialize(@fs : KbdFS)
+    @raw_node = @first_child = KbdFSRawNode.new(fs)
+  end
+
+  def each_child(&block)
+    node = first_child
+    while !node.nil?
+      yield node.not_nil!
+      node = node.next_node
+    end
+  end
+
+  def open(path)
+    each_child do |node|
+      if node.name == path
+        return node
+      end
+    end
   end
 
   def read(slice : Slice, offset : UInt32,
@@ -40,6 +65,31 @@ class KbdFsNode < VFSNode
 
 end
 
+class KbdFSRawNode < VFSNode
+  getter name, fs
+
+  def initialize(@fs : KbdFS)
+    @name = GcString.new "raw"
+  end
+
+  @ch = 0
+  @modifiers = 0
+  property ch, modifiers
+
+  def read(slice : Slice, offset : UInt32,
+           process : Multiprocessing::Process? = nil) : Int32
+    packet = uninitialized KbdFSData::Packet
+    packet.ch = ch
+    packet.modifiers = modifiers
+    @ch = 0
+    @modifiers = 0
+    size = min slice.size, sizeof(KbdFSData::Packet)
+    memcpy(slice.to_unsafe, pointerof(packet).as(UInt8*), size.to_usize)
+    size
+  end
+
+end
+
 class KbdFS < VFS
   getter name
 
@@ -47,7 +97,7 @@ class KbdFS < VFS
 
   def initialize(@kbd : Keyboard)
     @name = GcString.new "kbd"
-    @root = KbdFsNode.new self
+    @root = KbdFSNode.new self
     @kbd.kbdfs = self
     @queue = VFSQueue.new
   end
@@ -102,6 +152,9 @@ class KbdFS < VFS
         Console.puts ch
       end
     end
+
+    @root.not_nil!.raw_node.ch = ch.ord.to_i32
+    @root.not_nil!.raw_node.modifiers = @kbd.modifiers.value
 
     @queue.not_nil!.keep_if do |msg|
       case msg.buffering
