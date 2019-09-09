@@ -16,8 +16,15 @@ int waitfd(int fd, useconds_t timeout);
 int remove(char *device);
 
 typedef long pid_t;
-pid_t spawnv(char *file, char **argv);
 void _exit();
+
+struct startup_info {
+	int stdin;
+	int stdout;
+	int stderr;
+};
+pid_t spawnv(char *file, char **argv);
+pid_t spawnxv(struct startup_info *startup_info, char *file, char **argv);
 
 int usleep(useconds_t usec);
 #define sleep(x) usleep((x)*1000000)

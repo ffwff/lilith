@@ -6,6 +6,18 @@ lib LibC
     len : LibC::UInt
   end
 
+  struct SyscallStartupInfo
+    stdin : LibC::Int
+    stdout : LibC::Int
+    stderr : LibC::Int
+  end
+
+  struct SyscallSpawnArgument
+    str : String
+    len : LibC::UInt
+    s_info : SyscallStartupInfo*
+  end
+
   struct SyscallSeekArgument
     offset : LibC::Int
     whence : LibC::Int
@@ -103,9 +115,18 @@ fun abort
 end
 
 fun spawnv(file : LibC::String, argv : UInt8**) : LibC::Pid
-  buf = uninitialized LibC::SyscallStringArgument
+  buf = uninitialized LibC::SyscallSpawnArgument
   buf.str = file
   buf.len = strlen(file)
+  buf.s_info = Pointer(LibC::SyscallStartupInfo).null
+  sysenter(SC_SPAWN, pointerof(buf).address.to_u32, argv.address.to_u32).to_i32
+end
+
+fun spawnxv(s_info : LibC::SyscallStartupInfo*, file : LibC::String, argv : UInt8**) : LibC::Pid
+  buf = uninitialized LibC::SyscallSpawnArgument
+  buf.str = file
+  buf.len = strlen(file)
+  buf.s_info = s_info
   sysenter(SC_SPAWN, pointerof(buf).address.to_u32, argv.address.to_u32).to_i32
 end
 
