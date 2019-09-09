@@ -57,7 +57,7 @@ private class PipeFSNode < VFSNode
   property prev_node
 
   def initialize(@name : GcString, @parent : PipeFSRoot, @fs : PipeFS)
-    # Serial.puts "mk ", @name, '\n'
+    Serial.puts "mk ", @name, '\n'
   end
 
   @buffer = Pointer(UInt8).null

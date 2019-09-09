@@ -245,8 +245,8 @@ int main(int argc, char **argv) {
     wm_sort_windows_by_z(&wm);
 
     // sample win
-    char *spawn_argv[] = {"canvwin", NULL};
-    spawnv("canvwin", (char **)spawn_argv);
+    char *spawn_argv[] = {"cterm", NULL};
+    spawnv("cterm", (char **)spawn_argv);
 
     // disable console
     ioctl(STDOUT_FILENO, TIOCGSTATE, 0);

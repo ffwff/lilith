@@ -66,7 +66,16 @@ class GcArray(T)
 
   # getter/setter
   def [](idx : Int) : T?
-    panic "GcArray: out of range" if idx < 0 && idx >= size
+    panic "GcArray: out of range" if idx < 0 || idx >= size
+    if buffer.as(USize*)[idx] == 0
+      nil
+    else
+      buffer[idx]
+    end
+  end
+
+  def []?(idx : Int) : T?
+    return if idx < 0 || idx >= size
     if buffer.as(USize*)[idx] == 0
       nil
     else
@@ -75,12 +84,12 @@ class GcArray(T)
   end
 
   def []=(idx : Int, value : T)
-    panic "GcArray: out of range" if idx < 0 && idx >= size
+    panic "GcArray: out of range" if idx < 0 || idx >= size
     buffer[idx] = value
   end
 
   def []=(idx : Int, value : Nil)
-    panic "GcArray: out of range" if idx < 0 && idx >= size
+    panic "GcArray: out of range" if idx < 0 || idx >= size
     buffer.as(USize*)[idx] = 0
   end
 

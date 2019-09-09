@@ -48,6 +48,20 @@ lib SyscallData
     request : Int32
     data    : UInt32
   end
+
+  @[Packed]
+  struct SpawnStartupInfo32
+    stdin  : Int32
+    stdout : Int32
+    stderr : Int32
+  end
+
+  @[Packed]
+  struct SpawnArgument32
+    str : UInt32
+    len : Int32
+    s_info : UInt32
+  end
 end
 
 lib Kernel
@@ -387,8 +401,10 @@ module Syscall
     when SC_GETPID
       fv.rax = process.pid
     when SC_SPAWN
-      path = try(checked_string_argument(fv.rbx))
+      spawn_arg = try(checked_pointer32(SyscallData::SpawnArgument32, fv.rbx))
+      path = try(checked_slice32(spawn_arg.value.str, spawn_arg.value.len))
       argv = try(checked_pointer32(UInt32, fv.rdx))
+      startup_info = checked_pointer32(SyscallData::SpawnStartupInfo32, spawn_arg.value.s_info)
 
       # search in path env
       vfs_node = unless (path_env = pudata.getenv("PATH")).nil?
@@ -426,12 +442,18 @@ module Syscall
         udata.pgid = pudata.pgid
 
         # copy file descriptors 0, 1, 2
-        i = 0
-        while i < 3
-          if !(fd = process.udata.fds[i]).nil?
-            udata.fds[i] = fd
+        if !startup_info.nil?
+          startup_info = startup_info.not_nil!
+          udata.fds[0] = process.udata.fds[startup_info.value.stdin]?
+          udata.fds[1] = process.udata.fds[startup_info.value.stdout]?
+          udata.fds[2] = process.udata.fds[startup_info.value.stderr]?
+        else
+          3.times do |i|
+            if !(fd = process.udata.fds[i]).nil?
+              udata.fds[i] = fd
+            end
+            i += 1
           end
-          i += 1
         end
 
         # create the process
