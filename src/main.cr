@@ -61,6 +61,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   KernelArena.start_addr = Kernel.stack_end.address + 0x1000
   Gc.init Kernel.data_start.address,
           Kernel.data_end.address,
+          Kernel.stack_start.address,
           Kernel.stack_end.address
 
   # processes

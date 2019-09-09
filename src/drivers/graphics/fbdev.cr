@@ -77,12 +77,8 @@ extend self
   def fg=(@@fg); end
   def bg=(@@bg); end
 
-  @@ansi_handler : AnsiHandler? = nil
+  @@ansi_handler = AnsiHandler.new
   def ansi_handler
-    if @@ansi_handler.nil? && !Multiprocessing.current_process.nil?
-      # TODO better way of initializing this
-      @@ansi_handler = AnsiHandler.new
-    end
     @@ansi_handler
   end
 

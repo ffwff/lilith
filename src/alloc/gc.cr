@@ -40,7 +40,8 @@ module Gc
   @@enabled = false
   @@root_scanned = false
 
-  def init(@@data_start : USize, @@data_end : USize, @@stack_end : USize)
+  def init(@@data_start : USize, @@data_end : USize,
+           @@stack_start : USize, @@stack_end : USize)
     @@enabled = true
   end
 
@@ -123,7 +124,11 @@ module Gc
       scan_region @@data_start.not_nil!, @@data_end.not_nil!
       stack_start = 0u64
       asm("mov %rsp, $0" : "=r"(stack_start) :: "volatile")
-      scan_region stack_start, @@stack_end.not_nil!
+      if stack_start >= @@stack_start.not_nil! && stack_start <= @@stack_end.not_nil!
+        scan_region stack_start, @@stack_end.not_nil!
+      else
+        panic "stack scanning occurred in non-kernel code"
+      end
       @@root_scanned = true
     elsif !@@first_gray_node.null?
       # second stage of marking phase: precisely marking gray nodes
