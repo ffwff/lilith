@@ -4,6 +4,7 @@
 #include <sys/gfx.h>
 #include <sys/ioctl.h>
 #include <sys/mouse.h>
+#include <sys/kbd.h>
 #include <syscalls.h>
 
 #include "wm.h"
@@ -66,6 +67,7 @@ struct wm_state {
     int needs_redraw;
     int mouse_fd;
     struct wm_window *mouse_win; // weakref
+    int kbd_fd;
     struct wm_atom last_mouse_atom;
     struct wm_window *windows;
     int nwindows;
@@ -242,6 +244,11 @@ int main(int argc, char **argv) {
         wm.mouse_win->z_index = (size_t)-1;
     }
 
+    // keyboard
+    {
+        wm.kbd_fd = open("/kbd/raw", 0);
+    }
+
     wm_sort_windows_by_z(&wm);
 
     // sample win
@@ -317,6 +324,18 @@ int main(int argc, char **argv) {
             }
 
             wm.last_mouse_atom = mouse_atom;
+        }
+        {
+            // keyboard
+            struct keyboard_packet keyboard_packet = { 0 };
+            read(wm.kbd_fd, (char *)&keyboard_packet, sizeof(keyboard_packet));
+            if(keyboard_packet.ch) {
+                struct wm_atom keyboard_atom = { 0 };
+                keyboard_atom.type = ATOM_KEYBOARD_EVENT_TYPE;
+                keyboard_atom.keyboard_event.ch = keyboard_packet.ch;
+                keyboard_atom.keyboard_event.modifiers = keyboard_packet.modifiers;
+                wm_add_queue(&wm, &keyboard_atom);
+            }
         }
         for (int i = 0; i < wm.nwindows; i++) {
             struct wm_window *win = &wm.windows[i];

@@ -41,6 +41,13 @@ struct wm_atom_mouse_event {
     int delta_x, delta_y;
 };
 
+// Keyboard event
+
+struct wm_atom_keyboard_event {
+    int ch;
+    int modifiers;
+};
+
 struct wm_atom {
     int type;
     union {
@@ -48,18 +55,21 @@ struct wm_atom {
         struct wm_atom_move move;
         struct wm_atom_respond respond;
         struct wm_atom_mouse_event mouse_event;
+        struct wm_atom_keyboard_event keyboard_event;
     };
 };
 
-#define ATOM_REDRAW_TYPE        0
-#define ATOM_RESPOND_TYPE       1
-#define ATOM_MOVE_TYPE          2
-#define ATOM_MOUSE_EVENT_TYPE   3
+#define ATOM_REDRAW_TYPE           0
+#define ATOM_RESPOND_TYPE          1
+#define ATOM_MOVE_TYPE             2
+#define ATOM_MOUSE_EVENT_TYPE      3
+#define ATOM_KEYBOARD_EVENT_TYPE   4
 
-#define ATOM_REDRAW_MASK        (1 << ATOM_REDRAW_TYPE)
-#define ATOM_RESPOND_MASK       (1 << ATOM_RESPOND_TYPE)
-#define ATOM_MOVE_MASK          (1 << ATOM_MOVE_TYPE)
-#define ATOM_MOUSE_EVENT_MASK   (1 << ATOM_MOUSE_EVENT_TYPE)
+#define ATOM_REDRAW_MASK          (1 << ATOM_REDRAW_TYPE)
+#define ATOM_RESPOND_MASK         (1 << ATOM_RESPOND_TYPE)
+#define ATOM_MOVE_MASK            (1 << ATOM_MOVE_TYPE)
+#define ATOM_MOUSE_EVENT_MASK     (1 << ATOM_MOUSE_EVENT_TYPE)
+#define ATOM_KEYBOARD_EVENT_MASK  (1 << ATOM_KEYBOARD_EVENT_TYPE)
 
 static inline int wm_atom_eq(struct wm_atom *a, struct wm_atom *b) {
     if(a->type != b->type)
