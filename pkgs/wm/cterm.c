@@ -131,8 +131,8 @@ void cterm_draw(struct cterm_state *state) {
     state->root_height = state->sprite.height - state->root_y - 1;
 
     // calculate characters and buffer
-    state->cwidth  = (state->root_width + FONT_WIDTH) / FONT_WIDTH;
-    state->cheight = (state->root_height + FONT_HEIGHT) / FONT_HEIGHT;
+    state->cwidth  = state->root_width / FONT_WIDTH;
+    state->cheight = state->root_height / FONT_HEIGHT;
     size_t new_len = state->cwidth * state->cheight;
     if(new_len != state->buffer_len) {
         state->buffer = realloc(state->buffer, new_len);
@@ -217,7 +217,7 @@ int main(int argc, char **argv) {
     char *spawn_argv[] = {"/hd0/main", NULL};
     spawnxv(&s_info, "/hd0/main", (char **)spawn_argv);
 
-    wmc_connection_obtain(&state.wmc_conn, ATOM_MOUSE_EVENT_MASK);
+    wmc_connection_obtain(&state.wmc_conn, ATOM_MOUSE_EVENT_MASK | ATOM_KEYBOARD_EVENT_MASK);
 
     // event loop
     int mouse_drag = 0;
@@ -276,6 +276,12 @@ int main(int argc, char **argv) {
                     mouse_drag = 0;
                     mouse_resize = 0;
                 }
+                needs_redraw = 1;
+                wmc_send_atom(&state.wmc_conn, &respond_atom);
+                break;
+            }
+            case ATOM_KEYBOARD_EVENT_TYPE: {
+                cterm_add_character(&state, atom.keyboard_event.ch);
                 needs_redraw = 1;
                 wmc_send_atom(&state.wmc_conn, &respond_atom);
                 break;
