@@ -1,4 +1,4 @@
-class AnsiHandler
+struct AnsiHandler
 
   enum State : Int32
     Default
