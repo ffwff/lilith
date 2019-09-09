@@ -101,7 +101,7 @@ private class PipeFSNode < VFSNode
     else
       # push the message on to the buffer stack
       size = min(slice.size, BUFFER_CAPACITY - @buffer_pos)
-      memcpy(@buffer, slice.to_unsafe, size.to_usize)
+      memcpy(@buffer + @buffer_pos, slice.to_unsafe, size.to_usize)
       @buffer_pos += size
       size
     end
