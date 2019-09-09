@@ -100,8 +100,8 @@ void cterm_init(struct cterm_state *state) {
 
     char path[128] = { 0 };
 
-    snprintf(path, sizeof(path), "/pipes/cterm:%d:in", getpid());
-    state->in_fd = create(path);
+    // snprintf(path, sizeof(path), "/pipes/cterm:%d:in", getpid());
+    // state->in_fd = create(path);
 
     snprintf(path, sizeof(path), "/pipes/cterm:%d:out", getpid());
     state->out_fd = create(path);
