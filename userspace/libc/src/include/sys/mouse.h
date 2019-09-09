@@ -2,7 +2,7 @@
 
 struct mouse_packet {
     unsigned long x, y, attr_byte;
-};
+} __attribute__((packed));
 
 #define MOUSE_ATTR_LEFT_BTN   (1 << 0)
 #define MOUSE_ATTR_RIGHT_BTN  (1 << 1)

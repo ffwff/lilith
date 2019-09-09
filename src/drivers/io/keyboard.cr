@@ -50,7 +50,7 @@ KEYBOARD_MAP_SHIFT = StaticArray[
 
 class Keyboard
   @[Flags]
-  enum Modifiers
+  enum Modifiers : Int32
     ShiftL = 1 << 0
     ShiftR = 1 << 1
     CtrlL  = 1 << 3
