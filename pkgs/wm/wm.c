@@ -80,7 +80,8 @@ struct wm_state {
 
 struct wm_window_prog {
     int mfd, sfd;
-    unsigned long event_mask;
+    unsigned int event_mask;
+    unsigned int x, y, width, height;
 };
 
 struct wm_window_sprite {
@@ -359,9 +360,13 @@ int main(int argc, char **argv) {
                     retval = win_write_and_wait(&win->as.prog, &redraw_atom, &respond_atom);
 
                     if (retval == sizeof(struct wm_atom)) {
-                        if (respond_atom.type == ATOM_RESPOND_TYPE && 
-                            respond_atom.respond.retval)
-                            wm.needs_redraw = 1;
+                        if (respond_atom.type == ATOM_WIN_REFRESH_TYPE) {
+                            //
+                            if(respond_atom.win_refresh.did_redraw)
+                                wm.needs_redraw = 1;
+                        } else {
+                            // TODO: wrong response atom
+                        }
                     }
                     break;
                 }
