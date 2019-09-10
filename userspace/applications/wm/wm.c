@@ -336,11 +336,12 @@ int main(int argc, char **argv) {
                     int old_wid = wm.focused_wid;
                     struct wm_window *focused_win = NULL;
                     for(int i = wm.nwindows; i >= 0; i--) {
-                        if (wm.windows[i].type == WM_WINDOW_PROG &&
-                            point_in_win_prog(&wm.windows[i].as.prog, sprite->x, sprite->y)) {
-                            wm.focused_wid = wm.windows[i].wid;
-                            focused_win = &wm.windows[i];
-                            break;
+                        if (wm.windows[i].type == WM_WINDOW_PROG) {
+                            if(point_in_win_prog(&wm.windows[i].as.prog, sprite->x, sprite->y) && !focused_win) {
+                                wm.focused_wid = wm.windows[i].wid;
+                                focused_win = &wm.windows[i];
+                            }
+                            wm.windows[i].z_index = 1;
                         }
                     }
                     if(old_wid != wm.focused_wid && focused_win) {
