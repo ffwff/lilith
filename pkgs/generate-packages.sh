@@ -1,7 +1,8 @@
 #!/bin/sh
 
 for dir in ../userspace/applications/* ../userspace/libraries/*; do
-    if [[ ! -e $dir ]]; then
-    	ln -sf $dir $(basename $dir)
+    if [[ ! -e $(basename $dir) ]]; then
+        echo $dir => $(basename $dir)
+        ln -sf $dir $(basename $dir)
     fi
 done
