@@ -107,16 +107,22 @@ int main(int argc, char **argv) {
     while ((retval = wmc_recv_atom(&conn, &atom)) >= 0) {
         if(retval == 0)
             goto wait;
-        struct wm_atom respond_atom = {
-            .type = ATOM_RESPOND_TYPE,
-            .respond.retval = 0,
-        };
         switch (atom.type) {
             case ATOM_REDRAW_TYPE: {
+                struct wm_atom respond_atom = {
+                    .type = ATOM_WIN_REFRESH_TYPE,
+                    .win_refresh = (struct wm_atom_win_refresh){
+                        .did_redraw = 0,
+                        .x = sprite.x,
+                        .y = sprite.y,
+                        .width = sprite.width,
+                        .height = sprite.height,
+                    }
+                };
                 if (needs_redraw || atom.redraw.force_redraw) {
                     needs_redraw = 0;
                     ioctl(fb_fd, GFX_BITBLIT, &sprite);
-                    respond_atom.respond.retval = 1;
+                    respond_atom.win_refresh.did_redraw = 1;
                 }
                 wmc_send_atom(&conn, &respond_atom);
                 break;
@@ -125,6 +131,11 @@ int main(int argc, char **argv) {
                 sprite.x = atom.move.x;
                 sprite.y = atom.move.y;
                 needs_redraw = 1;
+
+                struct wm_atom respond_atom = {
+                    .type = ATOM_RESPOND_TYPE,
+                    .respond.retval = 0,
+                };
                 wmc_send_atom(&conn, &respond_atom);
                 break;
             }
@@ -147,17 +158,17 @@ int main(int argc, char **argv) {
                             sprite.x += atom.mouse_event.delta_x;
                         if(!(atom.mouse_event.delta_y < 0 && sprite.y < -atom.mouse_event.delta_y))
                             sprite.y += atom.mouse_event.delta_y;
-                        if((atom.mouse_event.x - sprite.x) < 10) {
-                            // window_redraw(ctx, &sprite, 1);
-                            char *spawn_argv[] = {"canvwin", NULL};
-                            spawnv("canvwin", (char **)spawn_argv);
-                        }
                     }
                 } else if (atom.mouse_event.type == WM_MOUSE_RELEASE && mouse_drag) {
                     mouse_drag = 0;
                     mouse_resize = 0;
                 }
                 needs_redraw = 1;
+
+                struct wm_atom respond_atom = {
+                    .type = ATOM_RESPOND_TYPE,
+                    .respond.retval = 0,
+                };
                 wmc_send_atom(&conn, &respond_atom);
                 break;
             }
