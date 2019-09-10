@@ -229,16 +229,22 @@ int main(int argc, char **argv) {
     while ((retval = wmc_recv_atom(&state.wmc_conn, &atom)) >= 0) {
         if(retval == 0)
             goto wait;
-        struct wm_atom respond_atom = {
-            .type = ATOM_RESPOND_TYPE,
-            .respond.retval = 0,
-        };
         switch (atom.type) {
             case ATOM_REDRAW_TYPE: {
+                struct wm_atom respond_atom = {
+                    .type = ATOM_WIN_REFRESH_TYPE,
+                    .win_refresh = (struct wm_atom_win_refresh){
+                        .did_redraw = 0,
+                        .x = state.sprite.x,
+                        .y = state.sprite.y,
+                        .width = state.sprite.width,
+                        .height = state.sprite.height,
+                    }
+                };
                 if (cterm_read_buf(&state) || needs_redraw || atom.redraw.force_redraw) {
                     needs_redraw = 0;
+                    respond_atom.win_refresh.did_redraw = 1;
                     ioctl(state.fb_fd, GFX_BITBLIT, &state.sprite);
-                    respond_atom.respond.retval = 1;
                 }
                 wmc_send_atom(&state.wmc_conn, &respond_atom);
                 break;
@@ -247,6 +253,11 @@ int main(int argc, char **argv) {
                 state.sprite.x = atom.move.x;
                 state.sprite.y = atom.move.y;
                 needs_redraw = 1;
+
+                struct wm_atom respond_atom = {
+                    .type = ATOM_RESPOND_TYPE,
+                    .respond.retval = 0,
+                };
                 wmc_send_atom(&state.wmc_conn, &respond_atom);
                 break;
             }
@@ -277,12 +288,22 @@ int main(int argc, char **argv) {
                     mouse_resize = 0;
                 }
                 needs_redraw = 1;
+
+                struct wm_atom respond_atom = {
+                    .type = ATOM_RESPOND_TYPE,
+                    .respond.retval = 0,
+                };
                 wmc_send_atom(&state.wmc_conn, &respond_atom);
                 break;
             }
             case ATOM_KEYBOARD_EVENT_TYPE: {
                 cterm_add_character(&state, atom.keyboard_event.ch);
                 needs_redraw = 1;
+
+                struct wm_atom respond_atom = {
+                    .type = ATOM_RESPOND_TYPE,
+                    .respond.retval = 0,
+                };
                 wmc_send_atom(&state.wmc_conn, &respond_atom);
                 break;
             }

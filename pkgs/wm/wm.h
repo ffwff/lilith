@@ -29,6 +29,13 @@ struct wm_atom_respond {
     int retval;
 };
 
+// Refresh
+
+struct wm_atom_win_refresh {
+    int did_redraw;
+    unsigned int width, height, x, y;
+};
+
 // Mouse event
 enum wm_atom_mouse_event_type {
     WM_MOUSE_RELEASE = 0,
@@ -56,6 +63,7 @@ struct wm_atom {
         struct wm_atom_respond respond;
         struct wm_atom_mouse_event mouse_event;
         struct wm_atom_keyboard_event keyboard_event;
+        struct wm_atom_win_refresh win_refresh;
     };
 };
 
@@ -64,12 +72,14 @@ struct wm_atom {
 #define ATOM_MOVE_TYPE             2
 #define ATOM_MOUSE_EVENT_TYPE      3
 #define ATOM_KEYBOARD_EVENT_TYPE   4
+#define ATOM_WIN_REFRESH_TYPE      5
 
 #define ATOM_REDRAW_MASK          (1 << ATOM_REDRAW_TYPE)
 #define ATOM_RESPOND_MASK         (1 << ATOM_RESPOND_TYPE)
 #define ATOM_MOVE_MASK            (1 << ATOM_MOVE_TYPE)
 #define ATOM_MOUSE_EVENT_MASK     (1 << ATOM_MOUSE_EVENT_TYPE)
 #define ATOM_KEYBOARD_EVENT_MASK  (1 << ATOM_KEYBOARD_EVENT_TYPE)
+#define ATOM_WIN_REFRESH_MASK     (1 << ATOM_WIN_REFRESH_TYPE)
 
 static inline int wm_atom_eq(struct wm_atom *a, struct wm_atom *b) {
     if(a->type != b->type)
