@@ -12,7 +12,7 @@ Lilith's package manager.
  * **base**: directory structure for the system's root
  * **core**: core utilities
  * **gfx**: graphics demo
- * **wm**: window manager demo
+ * **wm**: window manager demo and assorted applications
 
 #### Libraries
 
@@ -28,7 +28,9 @@ Lilith's package manager.
 #### Libraries
 
  * **libcairo**: cairo graphics library
- * **libgc**: garbage collector library
+
+   compiles but diagonal lines can't be drawn and built-in fonts don't work
+ * **libgc**: garbage collector library (untested)
  * **libpixman**: pixman library (used by cairo)
  * **libpng**: png library (used by cairo)
  * **libz**: data compression library (used by cairo)
