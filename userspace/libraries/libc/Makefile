@@ -13,7 +13,8 @@ ARCH=i386-elf-lilith
 AR = $(ARCH)-ar
 CC = $(ARCH)-gcc
 AS = $(ARCH)-as
-CR=$(shell pwd)/../../toolchain/crystal/.build/crystal
+# TODO: not hard code CR
+CR=$(shell pwd)/../../../toolchain/crystal/.build/crystal
 
 CRFLAGS=--cross-compile --target i686-elf --prelude ./prelude.cr
 CCFLAGS = -Isrc/include -nostdlib -Wall

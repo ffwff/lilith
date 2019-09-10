@@ -7,11 +7,11 @@
 #include <sys/kbd.h>
 #include <syscalls.h>
 
-#include "wm.h"
+#include <wm/wm.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ASSERT(x)
-#include "../.build/stb_image.h"
+#include <stb/stb_image.h>
 
 const int channels = 4;
 #define CURSOR_FILE "/hd0/share/cursors/cursor.png"
