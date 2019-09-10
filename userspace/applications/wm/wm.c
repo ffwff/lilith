@@ -97,6 +97,7 @@ struct wm_window {
         struct wm_window_sprite sprite;
     } as;
     size_t z_index;
+    int drawn;
 };
 
 /* IPC */
@@ -112,6 +113,14 @@ int win_write_and_wait(struct wm_window_prog *prog,
     }
     // respond received
     return read(prog->sfd, (char *)respond_atom, sizeof(struct wm_atom));
+}
+
+void win_copy_refresh_atom(struct wm_window_prog *prog, struct wm_atom *atom) {
+    prog->x = atom->win_refresh.x;
+    prog->y = atom->win_refresh.y;
+    prog->width = atom->win_refresh.width;
+    prog->height = atom->win_refresh.height;
+
 }
 
 /* WINDOW */
@@ -345,7 +354,7 @@ int main(int argc, char **argv) {
                         }
                     }
                     if(old_wid != wm.focused_wid && focused_win) {
-                        // TODO: not hard code this
+                        // TODO: not hard code z_index value
                         focused_win->z_index = 2;
                         wm_sort_windows_by_z(&wm);
                     }
@@ -367,6 +376,14 @@ int main(int argc, char **argv) {
                 wm_add_queue(&wm, &keyboard_atom);
             }
         }
+        {
+            // reset window states
+            for (int i = 0; i < wm.nwindows; i++) {
+                struct wm_window *win = &wm.windows[i];
+                win->drawn = 0;
+            }
+        }
+        int undrawn_windows = 0;
         for (int i = 0; i < wm.nwindows; i++) {
             struct wm_window *win = &wm.windows[i];
             switch (win->type) {
@@ -391,13 +408,39 @@ int main(int argc, char **argv) {
                     retval = win_write_and_wait(&win->as.prog, &redraw_atom, &respond_atom);
 
                     if (retval == sizeof(struct wm_atom)) {
+                        win_copy_refresh_atom(&win->as.prog, &respond_atom);
                         if (respond_atom.type == ATOM_WIN_REFRESH_TYPE) {
-                            win->as.prog.x = respond_atom.win_refresh.x;
-                            win->as.prog.y = respond_atom.win_refresh.y;
-                            win->as.prog.width = respond_atom.win_refresh.width;
-                            win->as.prog.height = respond_atom.win_refresh.height;
-                            if(respond_atom.win_refresh.did_redraw)
+                            if(respond_atom.win_refresh.did_redraw) {
                                 wm.needs_redraw = 1;
+                                win->drawn = 1;
+                                if(undrawn_windows > 0) {
+                                    // redraw all undrawn windows
+                                    struct wm_atom redraw_atom = {
+                                        .type = ATOM_REDRAW_TYPE,
+                                        .redraw.force_redraw = wm.needs_redraw,
+                                    };
+                                    for(int j = 0; j < wm.nwindows; j++) {
+                                        struct wm_window *win = &wm.windows[j];
+                                        if(!undrawn_windows || win->drawn)
+                                            break;
+                                        switch (win->type) {
+                                            case WM_WINDOW_PROG: {
+                                                retval = win_write_and_wait(&win->as.prog, &redraw_atom, &respond_atom);
+                                                if (retval == sizeof(struct wm_atom)) {
+                                                    win_copy_refresh_atom(&win->as.prog, &respond_atom);
+                                                }
+                                                win->drawn = 1;
+                                                undrawn_windows--;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    undrawn_windows = 0;
+                                }
+                            } else {
+                                win->drawn = 0;
+                                undrawn_windows++;
+                            }
                         } else {
                             // TODO: wrong response atom
                         }
