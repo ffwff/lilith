@@ -73,6 +73,7 @@ struct wm_state {
     int nwindows;
     struct wm_atom queue[WM_EVENT_QUEUE_LEN];
     int queue_len;
+    int focused_wid;
 };
 
 #define WM_WINDOW_PROG   0
@@ -129,6 +130,7 @@ struct wm_window *wm_add_win_prog(struct wm_state *state, int mfd, int sfd) {
     win->type = WM_WINDOW_PROG;
     win->as.prog.mfd = mfd;
     win->as.prog.sfd = sfd;
+    state->focused_wid = win->wid;
     return win;
 }
 
@@ -192,6 +194,13 @@ int wm_handle_connection_request(struct wm_state *state, struct wm_connection_re
     return 1;
 }
 
+/* MISC */
+
+int point_in_win_prog(struct wm_window_prog *prog, unsigned int x, unsigned int y) {
+    return prog->x <= x && x <= (prog->x + prog->width) &&
+           prog->y <= y && y <= (prog->y + prog->height);
+}
+
 int main(int argc, char **argv) {
     int fb_fd = open("/fb0", 0);
 
@@ -200,6 +209,7 @@ int main(int argc, char **argv) {
     ioctl(fb_fd, TIOCGWINSZ, &ws);
 
     struct wm_state wm = {0};
+    wm.focused_wid = -1;
 
     // wallpaper
     {
@@ -321,6 +331,24 @@ int main(int argc, char **argv) {
             }
 
             if(!wm_atom_eq(&mouse_atom, &wm.last_mouse_atom)) {
+                // focus on window
+                if(mouse_atom.mouse_event.type == WM_MOUSE_PRESS) {
+                    int old_wid = wm.focused_wid;
+                    struct wm_window *focused_win = NULL;
+                    for(int i = wm.nwindows; i >= 0; i--) {
+                        if (wm.windows[i].type == WM_WINDOW_PROG &&
+                            point_in_win_prog(&wm.windows[i].as.prog, sprite->x, sprite->y)) {
+                            wm.focused_wid = wm.windows[i].wid;
+                            focused_win = &wm.windows[i];
+                            break;
+                        }
+                    }
+                    if(old_wid != wm.focused_wid && focused_win) {
+                        // TODO: not hard code this
+                        focused_win->z_index = 2;
+                        wm_sort_windows_by_z(&wm);
+                    }
+                }
                 wm_add_queue(&wm, &mouse_atom);
             }
 
@@ -346,9 +374,11 @@ int main(int argc, char **argv) {
                     struct wm_atom respond_atom;
 
                     // transmit events in queue
-                    for(int i = 0; i < wm.queue_len; i++) {
-                        if((win->as.prog.event_mask & (1 << wm.queue[i].type)) != 0) {
-                            win_write_and_wait(&win->as.prog, &wm.queue[i], &respond_atom);
+                    if(wm.focused_wid == win->wid) {
+                        for(int i = 0; i < wm.queue_len; i++) {
+                            if((win->as.prog.event_mask & (1 << wm.queue[i].type)) != 0) {
+                                win_write_and_wait(&win->as.prog, &wm.queue[i], &respond_atom);
+                            }
                         }
                     }
 
@@ -361,7 +391,10 @@ int main(int argc, char **argv) {
 
                     if (retval == sizeof(struct wm_atom)) {
                         if (respond_atom.type == ATOM_WIN_REFRESH_TYPE) {
-                            //
+                            win->as.prog.x = respond_atom.win_refresh.x;
+                            win->as.prog.y = respond_atom.win_refresh.y;
+                            win->as.prog.width = respond_atom.win_refresh.width;
+                            win->as.prog.height = respond_atom.win_refresh.height;
                             if(respond_atom.win_refresh.did_redraw)
                                 wm.needs_redraw = 1;
                         } else {
