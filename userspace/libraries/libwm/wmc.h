@@ -1,7 +1,7 @@
 #pragma once
 
 #include <syscalls.h>
-#include "wm.h"
+#include <wm/wm.h>
 
 struct wmc_connection {
 	int wm_control_fd;

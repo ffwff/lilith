@@ -7,12 +7,7 @@
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_ASSERT(x)
-#include "../.build/stb_image.h"
-
-double ldexp(double x, int exp) {
-    abort();
-    return 0.0;
-}
+#include <stb/stb_image.h>
 
 const int channels = 4;
 

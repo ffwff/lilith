@@ -7,9 +7,8 @@
 
 #define LIBCANVAS_IMPLEMENTATION
 #include <canvas.h>
-
-#include "../.build/font8x8_basic.h"
-#include "wmc.h"
+#include <font8x8_basic.h>
+#include <wm/wmc.h>
 
 #define INIT_WIDTH 400
 #define INIT_HEIGHT 256
