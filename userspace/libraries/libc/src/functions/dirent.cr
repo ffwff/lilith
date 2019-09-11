@@ -34,10 +34,9 @@ fun closedir(dirp : LibC::DIR*) : LibC::Int
 end
 
 fun readdir(dirp : LibC::DIR*) : LibC::Dirent*
-  direntp = dirp.as(LibC::Dirent*)
-  if LibC.sysenter(SC_READDIR, dirp.value.fd, direntp.address.to_u32) != SYSCALL_SUCCESS
+  if lilith_readdir(dirp.value.fd, dirp.as(Void*)) != SYSCALL_SUCCESS
     Pointer(LibC::Dirent).null
   else
-    direntp
+    dirp.as(LibC::Dirent*)
   end
 end

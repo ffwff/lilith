@@ -1,7 +1,7 @@
 module UserAddressSanitiser
   extend self
 
-  def checked_pointer32(size, addr) : Void*?
+  def checked_pointer(size, addr) : Void*?
     addr = addr.to_u64
     size = size.to_u64
     i = addr
@@ -12,7 +12,7 @@ module UserAddressSanitiser
     Pointer(Void).new(addr)
   end
 
-  def checked_slice32(addr, len) : Slice(UInt8)?
+  def checked_slice(addr, len) : Slice(UInt8)?
     addr = addr.to_u64
     len = len.to_u64
     i = addr
@@ -25,9 +25,9 @@ module UserAddressSanitiser
 
 end
 
-macro checked_pointer32(t, addr)
+macro checked_pointer(t, addr)
   begin
-    if (ptr = UserAddressSanitiser.checked_pointer32(sizeof({{ t }}), {{ addr }}))
+    if (ptr = UserAddressSanitiser.checked_pointer(sizeof({{ t }}), {{ addr }}))
       ptr.as({{ t }}*)
     else
       nil  
@@ -35,6 +35,6 @@ macro checked_pointer32(t, addr)
   end
 end
 
-macro checked_slice32(addr, len)
-  UserAddressSanitiser.checked_slice32({{ addr }}, {{ len }})
+macro checked_slice(addr, len)
+  UserAddressSanitiser.checked_slice({{ addr }}, {{ len }})
 end

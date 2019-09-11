@@ -159,13 +159,12 @@ module Multiprocessing
       end
 
       def get_fd(i : Int32) : FileDescriptor?
-        return nil if i > MAX_FD || i < 0
-        fds[i]
+        fds[i]?
       end
 
       def close_fd(i : Int32) : Bool
-        return false if i > MAX_FD || i < 0
-        fds[i]
+        return false if fds[i]?.nil?
+        fds[i] = nil
         true
       end
 
