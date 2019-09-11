@@ -2,7 +2,7 @@
 #include <syscalls.h>
 
 int main(int argc, char **argv) {
-    int fd = open("/pipes/example", 0);
+    int fd = open("/pipes/example", O_RDONLY);
     char buf[1024] = {0};
 
     read(fd, buf, sizeof(buf) - 1);

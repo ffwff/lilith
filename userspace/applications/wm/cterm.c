@@ -88,7 +88,7 @@ void cterm_init(struct cterm_state *state) {
     state->ctx = canvas_ctx_create(state->sprite.width,
                                    state->sprite.height,
                                    LIBCANVAS_FORMAT_RGB24);
-    state->fb_fd = open("/fb0", 0);
+    state->fb_fd = open("/fb0", O_RDWR);
     wmc_connection_init(&state->wmc_conn);
     state->cwidth = 0;
     state->cheight = 0;
