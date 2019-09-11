@@ -16,4 +16,11 @@ class FileDescriptor
 
   def initialize(@node)
   end
+
+  def clone
+    fd = FileDescriptor.new(@node)
+    fd.offset = @offset
+    fd.buffering = @buffering
+    fd
+  end
 end

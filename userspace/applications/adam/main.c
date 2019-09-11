@@ -18,7 +18,8 @@ void spawn_process(char *s, char **argv) {
 }
 
 int main(int argc, char **argv) {
-    // tty
+    // FIXME: check stdin, stdout and launch tty correctly
+    close(0);
     open("/kbd", 0);
     open("/con", 0);
     open("/con", 0);
