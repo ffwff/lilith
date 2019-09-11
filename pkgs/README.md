@@ -30,7 +30,9 @@ Lilith's package manager.
  * **libcairo**: cairo graphics library
 
    compiles but diagonal lines can't be drawn and built-in fonts don't work
- * **libgc**: garbage collector library (untested)
+ * **libgc**: garbage collector library
+
+   compiles but doesn't work
  * **libpixman**: pixman library (used by cairo)
  * **libpng**: png library (used by cairo)
  * **libz**: data compression library (used by cairo)
