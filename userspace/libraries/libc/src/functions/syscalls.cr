@@ -5,13 +5,14 @@ require "../syscall_defs.cr"
 private def __lilith_syscall(eax : UInt32, ebx : UInt32,
                              edx = 0u32, edi = 0u32, esi = 0u32) : Int32
   ret = 0
+  l0 = l1 = 0
   asm("push $$1f
        mov %esp, %ecx
        sysenter
        1: add $$4, %esp"
-      : "={eax}"(ret)
+      : "={eax}"(ret), "={edi}"(l0), "={esi}"(l1)
       : "{eax}"(eax), "{ebx}"(ebx), "{edx}"(edx), "{edi}"(edi), "{esi}"(esi)
-      : "cc", "ecx", "edi", "esi", "memory", "volatile")
+      : "cc", "ecx", "memory", "volatile")
   ret
 end
 

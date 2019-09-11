@@ -244,7 +244,7 @@ module Syscall
       end
     when SC_CLOSE
       if pudata.close_fd(arg(1).to_i32)
-        fv.rax = SYSCALL_SUCCESS
+        sysret(SYSCALL_SUCCESS)
       else
         sysret(SYSCALL_ERR)
       end
@@ -408,13 +408,19 @@ module Syscall
         # copy file descriptors 0, 1, 2
         if !startup_info.nil?
           startup_info = startup_info.not_nil!
-          udata.fds[0] = process.udata.fds[startup_info.value.stdin]?
-          udata.fds[1] = process.udata.fds[startup_info.value.stdout]?
-          udata.fds[2] = process.udata.fds[startup_info.value.stderr]?
+          if process.udata.fds[startup_info.value.stdin]?
+            udata.fds[0] = process.udata.fds[startup_info.value.stdin].not_nil!.clone
+          end
+          if process.udata.fds[startup_info.value.stdin]?
+            udata.fds[1] = process.udata.fds[startup_info.value.stdout].not_nil!.clone
+          end
+          if process.udata.fds[startup_info.value.stdin]?
+            udata.fds[2] = process.udata.fds[startup_info.value.stderr].not_nil!.clone
+          end
         else
           3.times do |i|
-            if !(fd = process.udata.fds[i]).nil?
-              udata.fds[i] = fd
+            if (fd = process.udata.fds[i])
+              udata.fds[i] = fd.clone
             end
             i += 1
           end

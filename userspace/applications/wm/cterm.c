@@ -209,7 +209,7 @@ int main(int argc, char **argv) {
 
     // spawn main
     struct startup_info s_info = {
-        .stdin = STDIN_FILENO,
+        .stdin = 0,
         .stdout = state.out_fd,
         .stderr = state.out_fd,
     };

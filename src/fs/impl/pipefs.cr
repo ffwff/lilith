@@ -79,7 +79,7 @@ private class PipeFSNode < VFSNode
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
-    # Serial.puts "read ", @name, " ", process.not_nil!.pid, '\n'
+    # Serial.puts "read pipe ", @name, " ", process.not_nil!.pid, '\n'
     init_buffer
     if @buffer_pos == 0
       0

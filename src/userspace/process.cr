@@ -163,7 +163,6 @@ module Multiprocessing
       end
 
       def close_fd(i : Int32) : Bool
-        return false if fds[i]?.nil?
         fds[i] = nil
         true
       end
