@@ -43,7 +43,7 @@ int main(int argc, char **argv) {
     canvas_ctx_draw_text(ctx, 0, 0, "Hello World");
 
     // draw it!
-    int fd = open("/fb0", 0);
+    int fd = open("/fb0", O_RDWR);
 
     unsigned char *data = canvas_ctx_get_surface(ctx);
     for (int i = 0; i < (WIDTH * HEIGHT * 4); i += 4) {

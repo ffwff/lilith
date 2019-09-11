@@ -26,7 +26,7 @@ int main(int argc, char **argv) {
     }
 
     // draw it!
-    int fd = open("/fb0", 0);
+    int fd = open("/fb0", O_RDWR);
 
     for (int i = 0; i < (w * h * 4); i += 4) {
         unsigned char r = data[i + 0];

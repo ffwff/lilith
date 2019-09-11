@@ -90,7 +90,7 @@ int main(int argc, char **argv) {
 
     // connect
     printf("initializing connection\n");
-    int fb_fd = open("/fb0", 0);
+    int fb_fd = open("/fb0", O_RDWR);
 
     struct wmc_connection conn;
     wmc_connection_init(&conn);

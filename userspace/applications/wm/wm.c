@@ -211,7 +211,7 @@ int point_in_win_prog(struct wm_window_prog *prog, unsigned int x, unsigned int 
 }
 
 int main(int argc, char **argv) {
-    int fb_fd = open("/fb0", 0);
+    int fb_fd = open("/fb0", O_RDWR);
 
     // setup
     struct winsize ws;
@@ -239,7 +239,7 @@ int main(int argc, char **argv) {
 
     // mouse
     {
-        wm.mouse_fd = open("/mouse/raw", 0);
+        wm.mouse_fd = open("/mouse/raw", O_RDONLY);
 
         struct wm_window_sprite mouse_spr = {
             .sprite = (struct fbdev_bitblit){
@@ -266,7 +266,7 @@ int main(int argc, char **argv) {
 
     // keyboard
     {
-        wm.kbd_fd = open("/kbd/raw", 0);
+        wm.kbd_fd = open("/kbd/raw", O_RDONLY);
     }
 
     wm_sort_windows_by_z(&wm);

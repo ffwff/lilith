@@ -35,7 +35,7 @@ int main(int argc, char **argv) {
         .height = HEIGHT,
         .type = GFX_BITBLIT_SURFACE
     };
-    int fd = open("/fb0", 0);
+    int fd = open("/fb0", O_RDWR);
     ioctl(fd, GFX_BITBLIT, &bitblit);
 
     return 0;
