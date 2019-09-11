@@ -64,7 +64,7 @@ private class FbdevFSNode < VFSNode
   def ioctl(request : Int32, data : UInt32) : Int32
     case request
     when SC_IOCTL_TIOCGWINSZ
-      unless (ptr = checked_pointer32(IoctlData::Winsize, data)).nil?
+      unless (ptr = checked_pointer(IoctlData::Winsize, data)).nil?
         retval = 0
         FbdevState.lock do |state|
           retval = IoctlHandler.winsize(ptr.not_nil!, state.width, state.height, 1, 1)
@@ -74,7 +74,7 @@ private class FbdevFSNode < VFSNode
         -1
       end
     when SC_IOCTL_GFX_BITBLIT
-      arg = checked_pointer32(FbdevFSData::FbBitBlit, data)
+      arg = checked_pointer(FbdevFSData::FbBitBlit, data)
       arg = if arg.nil?
         return -1
       else
@@ -101,7 +101,7 @@ private class FbdevFSNode < VFSNode
 
       # source
       source_sz = arg.width * arg.height * 4
-      source = checked_slice32(arg.source, source_sz)
+      source = checked_slice(arg.source, source_sz)
       return -1 if source.nil?
       source = source.not_nil!.to_unsafe
 

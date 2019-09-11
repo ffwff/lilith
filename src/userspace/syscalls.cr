@@ -11,18 +11,6 @@ lib SyscallData
     rsp : UInt64
   end
 
-  @[Packed]
-  struct StringArgument32
-    str : UInt32
-    len : Int32
-  end
-
-  @[Packed]
-  struct SeekArgument32
-    offset : Int32
-    whence : Int32
-  end
-
   alias Ino32 = Int32
 
   @[Packed]
@@ -38,29 +26,10 @@ lib SyscallData
   end
 
   @[Packed]
-  struct WaitPidArgument32
-    status : Int32*
-    options : UInt32
-  end
-
-  @[Packed]
-  struct IoctlArgument32
-    request : Int32
-    data    : UInt32
-  end
-
-  @[Packed]
   struct SpawnStartupInfo32
     stdin  : Int32
     stdout : Int32
     stderr : Int32
-  end
-
-  @[Packed]
-  struct SpawnArgument32
-    str : UInt32
-    len : Int32
-    s_info : UInt32
   end
 end
 
@@ -193,13 +162,6 @@ module Syscall
     Tuple.new(cpath, idx, vfs_node)
   end
 
-  # checks if string argument is correct and return the corresponding slice
-  private def checked_string_argument(addr)
-    ptr = checked_pointer32(SyscallData::StringArgument32, addr)
-    return ptr if ptr.nil?
-    checked_slice32(ptr.value.str, ptr.value.len)
-  end
-
   # quick way to dereference a frame
   private macro fv
     frame.value
@@ -213,10 +175,25 @@ module Syscall
       if !(x = {{ expr }}).nil?
         x.not_nil!
       else
-        fv.rax = SYSCALL_ERR
+        sysret(SYSCALL_ERR)
         return
       end
     end
+  end
+
+  # get syscall argument
+  private macro arg(num)
+    {% 
+      arg_registers = [
+        "rbx", "rdx", "rdi", "rsi"
+      ]
+    %}
+    fv.{{ arg_registers[num].id }}
+  end
+
+  private macro sysret(num)
+    fv.rax = {{ num }}
+    return
   end
 
   @[AlwaysInline]
@@ -240,7 +217,7 @@ module Syscall
         process.status = Multiprocessing::Process::Status::WaitIo
         Multiprocessing.switch_process(frame)
       else
-        fv.rax = SYSCALL_ERR
+        sysret(SYSCALL_ERR)
       end
       unlock
       return Kernel.ksyscall_sc_ret_driver(frame)
@@ -250,33 +227,38 @@ module Syscall
     case fv.rax
     # files
     when SC_OPEN
-      path = try(checked_string_argument(fv.rbx))
+      path = try(checked_slice(arg(0), arg(1)))
       vfs_node = parse_path_into_vfs path, pudata.cwd_node
       if vfs_node.nil?
-        fv.rax = SYSCALL_ERR
+        sysret(SYSCALL_ERR)
       else
-        fv.rax = pudata.install_fd(vfs_node.not_nil!)
-      end
-    when SC_REMOVE
-      path = try(checked_string_argument(fv.rbx))
-      vfs_node = parse_path_into_vfs path, pudata.cwd_node
-      if vfs_node.nil?
-        fv.rax = SYSCALL_ERR
-      else
-        fv.rax = vfs_node.remove
+        sysret(pudata.install_fd(vfs_node.not_nil!))
       end
     when SC_CREATE
-      path = try(checked_string_argument(fv.rbx))
+      path = try(checked_slice(arg(0), arg(1)))
       vfs_node = parse_path_into_vfs path, pudata.cwd_node, true
       if vfs_node.nil?
-        fv.rax = SYSCALL_ERR
+        sysret(SYSCALL_ERR)
       else
-        fv.rax = pudata.install_fd(vfs_node.not_nil!)
+        sysret(pudata.install_fd(vfs_node.not_nil!))
+      end
+    when SC_CLOSE
+      if pudata.close_fd(arg(1).to_i32)
+        fv.rax = SYSCALL_SUCCESS
+      else
+        sysret(SYSCALL_ERR)
+      end
+    when SC_REMOVE
+      path = try(checked_slice(arg(0), arg(1)))
+      vfs_node = parse_path_into_vfs path, pudata.cwd_node
+      if vfs_node.nil?
+        sysret(SYSCALL_ERR)
+      else
+        sysret(vfs_node.remove)
       end
     when SC_READ
-      fdi = fv.rbx.to_i32
-      fd = try(pudata.get_fd(fdi))
-      str = try(checked_string_argument(fv.rdx))
+      fd = try(pudata.get_fd(arg(0).to_i32))
+      str = try(checked_slice(arg(1), arg(2)))
       result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
       case result
       when VFS_WAIT
@@ -288,12 +270,11 @@ module Syscall
         Multiprocessing.switch_process(frame)
       else
         fd.offset += result
-        fv.rax = result
+        sysret(result)
       end
     when SC_WRITE
-      fdi = fv.rbx.to_i32
-      fd = try(pudata.get_fd(fdi))
-      str = try(checked_string_argument(fv.rdx))
+      fd = try(pudata.get_fd(arg(0).to_i32))
+      str = try(checked_slice(arg(1), arg(2)))
       result = fd.not_nil!.node.not_nil!.write(str, fd.offset, process)
       case result
       when VFS_WAIT
@@ -305,69 +286,53 @@ module Syscall
         return Multiprocessing.switch_process(frame)
       else
         fd.offset += result
-        fv.rax = result
+        sysret(result)
       end
     when SC_TRUNCATE
-      fdi = fv.rbx.to_i32
-      fd = try(pudata.get_fd(fdi))
-      size = fv.rdx.to_i32
-      fv.rax = fd.node.not_nil!.truncate(size)
+      fd = try(pudata.get_fd(arg(0).to_i32))
+      fv.rax = fd.node.not_nil!.truncate(arg(1).to_i32)
     when SC_SEEK
-      fdi = fv.rbx.to_i32
-      fd = try(pudata.get_fd(fdi))
-      arg = try(checked_pointer32(SyscallData::SeekArgument32, fv.rdx))
+      fd = try(pudata.get_fd(arg(0).to_i32))
+      whence = arg(1)
+      offset = arg(2).to_i32
 
-      case arg.value.whence
+      case whence
       when SC_SEEK_SET
-        fd.offset = arg.value.offset.to_u32
-        fv.rax = fd.offset
+        fd.offset = offset.to_u32
+        sysret(fd.offset)
       when SC_SEEK_CUR
-        fd.offset += arg.value.offset
-        fv.rax = fd.offset
+        fd.offset += offset
+        sysret(fd.offset)
       when SC_SEEK_END
-        fd.offset = (fd.node.not_nil!.size.to_i32 + arg.value.offset).to_u32
-        fv.rax = fd.offset
+        fd.offset = (fd.node.not_nil!.size.to_i32 + offset).to_u32
+        sysret(fd.offset)
       else
-        fv.rax = SYSCALL_ERR
+        sysret(SYSCALL_ERR)
       end
     when SC_IOCTL
-      fdi = fv.rbx.to_i32
-      fd = try(pudata.get_fd(fdi))
-      arg = try(checked_pointer32(SyscallData::IoctlArgument32, fv.rdx))
-      fv.rax = fd.node.not_nil!.ioctl(arg.value.request, arg.value.data)
+      fd = try(pudata.get_fd(arg(0).to_i32))
+      sysret(fd.node.not_nil!.ioctl(arg(1).to_i32, arg(2).to_u32))
     when SC_WAITFD
-      fdi = fv.rbx.to_i32
-      fd = try(pudata.get_fd(fdi))
-      timeout = fv.rdx.to_u32
+      fd = try(pudata.get_fd(arg(0).to_i32))
+      timeout = arg(1).to_u32
 
       if fd.node.not_nil!.available?
-        fv.rax = 1
-        return
+        sysret(1)
       else
         process.status = Multiprocessing::Process::Status::WaitFd
         pudata.wait_object = fd.node.not_nil!
         pudata.wait_usecs = timeout
         Multiprocessing.switch_process(frame)
       end
-    when SC_CLOSE
-      fdi = fv.rbx.to_i32
-      if pudata.close_fd(fdi)
-        fv.rax = SYSCALL_SUCCESS
-      else
-        fv.rax = SYSCALL_ERR
-      end
     # directories
     when SC_READDIR
-      fdi = fv.rbx.to_i32
-      fd = try(pudata.get_fd(fdi))
-      retval = try(checked_pointer32(SyscallData::DirentArgument32, fv.rdx))
+      fd = try(pudata.get_fd(arg(0).to_i32))
+      retval = try(checked_pointer(SyscallData::DirentArgument32, arg(1).to_u32))
       if fd.cur_child_end
-        fv.rax = 0
-        return
+        sysret(0)
       elsif fd.cur_child.nil?
         if (child = fd.node.not_nil!.first_child).nil?
-          fv.rax = SYSCALL_ERR
-          return
+          sysret(SYSCALL_ERR)
         end
         fd.cur_child = child
       end
@@ -396,15 +361,14 @@ module Syscall
       if fd.cur_child.nil?
         fd.cur_child_end = true
       end
-      fv.rax = SYSCALL_SUCCESS
+      sysret(SYSCALL_SUCCESS)
     # process management
     when SC_GETPID
-      fv.rax = process.pid
+      sysret(process.pid)
     when SC_SPAWN
-      spawn_arg = try(checked_pointer32(SyscallData::SpawnArgument32, fv.rbx))
-      path = try(checked_slice32(spawn_arg.value.str, spawn_arg.value.len))
-      argv = try(checked_pointer32(UInt32, fv.rdx))
-      startup_info = checked_pointer32(SyscallData::SpawnStartupInfo32, spawn_arg.value.s_info)
+      path = try(checked_slice(arg(0), arg(1)))
+      startup_info = checked_pointer(SyscallData::SpawnStartupInfo32, arg(2))
+      argv = try(checked_pointer(UInt32, arg(3)))
 
       # search in path env
       vfs_node = unless (path_env = pudata.getenv("PATH")).nil?
@@ -419,7 +383,7 @@ module Syscall
       end
 
       if vfs_node.nil?
-        fv.rax = SYSCALL_ERR
+        sysret(SYSCALL_ERR)
       else
         # argv
         pargv = GcArray(GcString).new 0
@@ -428,7 +392,7 @@ module Syscall
           if argv[i] == 0
             break
           end
-          arg = NullTerminatedSlice.new(try(checked_pointer32(UInt8, argv[i].to_u64)))
+          arg = NullTerminatedSlice.new(try(checked_pointer(UInt8, argv[i].to_u64)))
           pargv.push GcString.new(arg, arg.size)
           i += 1
         end
@@ -465,13 +429,13 @@ module Syscall
           process.status = Multiprocessing::Process::Status::WaitIo
           Multiprocessing.switch_process(frame)
         else
-          fv.rax = retval
+          sysret(retval)
         end
       end
     when SC_WAITPID
-      pid = fv.rbx.to_i32
+      pid = arg(0).to_i32
       # if fv.rdx != 0
-      #   arg = try(checked_pointer32(SyscallData::WaitPidArgument32, fv.rdx))
+      #   arg = try(checked_pointer(SyscallData::WaitPidArgument32, fv.rdx))
       # end
       if pid <= 0
         # wait for any child process
@@ -485,7 +449,7 @@ module Syscall
           end
         end
         if cprocess.nil?
-          fv.rax = SYSCALL_ERR
+          sysret(SYSCALL_ERR)
         else
           fv.rax = pid
           process.status = Multiprocessing::Process::Status::WaitProcess
@@ -509,16 +473,12 @@ module Syscall
     when SC_SETENV
       # TODO
     when SC_EXIT
-      if process.pid == 1
-        panic "init exited"
-      end
       Multiprocessing.switch_process_and_terminate
     # working directory
     when SC_GETCWD
-      str = try(checked_string_argument(fv.rbx))
+      str = try(checked_slice(arg(0), arg(1)))
       if str.size > PATH_MAX
-        fv.rax = SYSCALL_ERR
-        return
+        sysret(SYSCALL_ERR)
       end
       idx = 0
       pudata.cwd.each do |ch|
@@ -527,33 +487,34 @@ module Syscall
         idx += 1
       end
       str[idx] = 0
-      fv.rax = idx
+      sysret(idx)
     when SC_CHDIR
-      path = try(checked_string_argument(fv.rbx))
+      path = try(checked_slice(arg(0), arg(1)))
       if (t = append_paths path, pudata.cwd, pudata.cwd_node).nil?
-        fv.rax = SYSCALL_ERR
+        sysret(SYSCALL_ERR)
       else
         cpath, idx, vfs_node = t.not_nil!
         if !vfs_node.nil?
           pudata.cwd = GcString.new(cpath, idx)
           pudata.cwd_node = vfs_node.not_nil!
+          sysret(SYSCALL_SUCCESS)
+        else
+          sysret(SYSCALL_ERR)
         end
       end
     # memory management
     when SC_SBRK
-      incr = fv.rbx.to_i64
+      incr = arg(0).to_i64
       # must be page aligned
       if (incr & 0xfff != 0) || pudata.mmap_heap.nil?
-        fv.rax = SYSCALL_ERR
-        return
+        sysret(SYSCALL_ERR)
       end
       mmap_heap = pudata.mmap_heap.not_nil!
       if incr > 0
         if !mmap_heap.next_node.nil?
           if mmap_heap.end_addr + incr >= mmap_heap.next_node.not_nil!.addr
             # out of virtual memory
-            fv.rax = SYSCALL_ERR
-            return
+            sysret(SYSCALL_ERR)
           end
         end
         npages = (incr >> 12) + 1
@@ -563,8 +524,7 @@ module Syscall
         if !mmap_heap.next_node.nil?
           if mmap_heap.end_addr + 0x1000 >= mmap_heap.next_node.not_nil!.addr
             # out of virtual memory
-            fv.rax = SYSCALL_ERR
-            return
+            sysret(SYSCALL_ERR)
           end
         end
         Paging.alloc_page_pg(mmap_heap.addr, true, true)
@@ -575,7 +535,7 @@ module Syscall
       end
       fv.rax = mmap_heap.addr
     else
-      fv.rax = SYSCALL_ERR
+      sysret(SYSCALL_ERR)
     end
   end
 end
