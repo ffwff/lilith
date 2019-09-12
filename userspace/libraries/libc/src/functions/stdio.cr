@@ -132,6 +132,10 @@ class File
   end
 
   # reading
+  def fputs(str : String)
+    write(@fd, str.to_unsafe.as(LibC::String), str.size).to_int
+  end
+
   def fputs(str)
     return -1 unless @status.includes?(Status::Write)
     len = strlen(str).to_int

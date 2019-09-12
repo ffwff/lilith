@@ -215,7 +215,7 @@ module Malloc
                end
     if !prev_hdr.null? &&
         prev_hdr.value.magic != MAGIC && prev_hdr.value.magic != MAGIC_FREE
-      # dbg "free: invalid magic number for prev_hdr"
+      Stdio.stderr.fputs "free: invalid magic number for prev_hdr"
       abort
     end
     prev_hdr
@@ -228,7 +228,7 @@ module Malloc
     end
     if !next_hdr.null? &&
         next_hdr.value.magic != MAGIC && next_hdr.value.magic != MAGIC_FREE
-      # dbg "free: invalid magic number for next_hdr\n"
+      Stdio.stderr.fputs "free: invalid magic number for next_hdr\n"
       abort
     end
     next_hdr
@@ -240,7 +240,7 @@ module Malloc
 
     hdr = Pointer(Data::Header).new(ptr.address - sizeof(Data::Header))
     if hdr.value.magic != MAGIC
-      # dbg "free: wrong magic number for hdr"
+      Stdio.stderr.fputs "free: wrong magic number for hdr\n"
       abort
     end
 
@@ -304,7 +304,7 @@ module Malloc
     # handle if non-null
     hdr = Pointer(Data::Header).new(ptr.address - sizeof(Data::Header))
     if hdr.value.magic != MAGIC # wrong magic number
-      # dbg "invalid pointer"
+      Stdio.stderr.fputs "free: invalid pointer"
       abort
     end
     if size == 0
@@ -364,7 +364,7 @@ module Malloc
           unchain_header prev_hdr
 
           new_hdr = prev_hdr
-          new_ftr = footer_for_block(next_hdr)
+          new_ftr = footer_for_block(hdr)
 
           new_hdr.value.magic = MAGIC
           new_hdr.value.size = new_size

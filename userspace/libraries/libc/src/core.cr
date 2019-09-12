@@ -116,6 +116,10 @@ class String
   def to_unsafe
     pointerof(@c)
   end
+
+  def size
+    @length
+  end
 end
 
 # Enums
