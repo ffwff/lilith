@@ -1,5 +1,4 @@
-fun localeconv : Void*
-  # TODO
+fun setlocale(category : LibC::Int, locale : LibC::String) : LibC::String
   abort
-  Pointer(Void).null
+  locale
 end

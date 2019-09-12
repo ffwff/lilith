@@ -42,6 +42,25 @@ static int __printf_itoa(int num, int base, char *str) {
     return i;
 }
 
+int __printf_lltoa(long long num, long long base, char *str) {
+    int sign = num < 0;
+    if(num < 0)
+        num *= -1;
+    int i = 0;
+    for(; i < ITOA_BUFFER_LEN - 2; i++) {
+        str[i] = __printf_itoa_buf[num % base];
+        num /= base;
+        if(!num) break;
+    }
+    i++;
+    if(sign) {
+        str[i++] = '-';
+    }
+    __printf_reverse(str, i);
+    str[i] = 0;
+    return i;
+}
+
 static int __printf_uitoa(unsigned int num, int base, char *str) {
     int i = 0;
     for(; i < ITOA_BUFFER_LEN - 2; i++) {
@@ -87,16 +106,17 @@ static int __printf(nputs_fn_t nputs_fn, void *userptr,
                     written += retval;
                     break;
                 }
-#define HANDLE_INT_FORMAT(formatc, base)                       \
+#define HANDLE_XINT_FORMAT(type, formatc, base, fn)            \
     case formatc: {                                            \
         format++;                                              \
-        int num = va_arg(args, int);                           \
-        int length = __printf_itoa(num, base, __itoa_buf);     \
+        type num = va_arg(args, type);                         \
+        int length = fn(num, base, __itoa_buf);                \
         if (!(retval = nputs_fn(__itoa_buf, length, userptr))) \
             return written;                                    \
         written += retval;                                     \
         break;                                                 \
     }
+#define HANDLE_INT_FORMAT(formatc, base) HANDLE_XINT_FORMAT(int, formatc, base, __printf_itoa)
                 HANDLE_INT_FORMAT('d', 10)
                 HANDLE_INT_FORMAT('x', 16)
                 HANDLE_INT_FORMAT('o', 8)
@@ -134,9 +154,39 @@ static int __printf(nputs_fn_t nputs_fn, void *userptr,
 
                     break;
                 }
-                default: {
-                    format--;
+                case 'l': {
+                    format++;
+                    switch (*format) {
+                        case 0:
+                            return written;
+                        case 'l': {
+                            format++;
+                            switch (*format) {
+                                case 0:
+                                default: {
+                                    return written;
+                                }
+                                HANDLE_XINT_FORMAT(long long, 'd', 10, __printf_lltoa)
+                                HANDLE_XINT_FORMAT(long long, 'x', 16, __printf_lltoa)
+                                HANDLE_XINT_FORMAT(long long, 'o', 8, __printf_lltoa)
+                            }
+                            break;
+                        }
+                        HANDLE_INT_FORMAT('d', 10)
+                        default: {
+                            fputs("unsupported long format: ", stderr);
+                            fputc(*format, stderr);
+                            fputc('\n', stderr);
+                            return written;
+                        }
+                    }
                     break;
+                }
+                default: {
+                    fputs("unsupported format: ", stderr);
+                    fputc(*format, stderr);
+                    fputc('\n', stderr);
+                    return written;
                 }
             }
         }
@@ -150,9 +200,11 @@ static int __printf(nputs_fn_t nputs_fn, void *userptr,
             amount++;
             format++;
         }
-        if (!(retval = nputs_fn(format_start, amount, userptr)))
-            return written;
-        written += retval;
+        if (amount) {
+            if (!(retval = nputs_fn(format_start, amount, userptr)))
+                return written;
+            written += retval;
+        }
     }
 
     return written;

@@ -9,9 +9,15 @@ typedef unsigned int       uint32_t;
 typedef long long           int64_t;
 typedef unsigned long long uint64_t;
 
+
 #define SIZET_MAX   UINT32_MAX
 #define SIZE_MAX    UINT32_MAX
 #define INTPTR_MAX  UINT32_MAX
+
+#define INT8_MAX   0x7F
+#define INT8_MIN   (-INT8_MAX-1)
+#define UINT8_MAX  0xFF
+#define CHAR_MAX   INT8_MAX
 
 #define INT16_MAX   0x7FFF
 #define INT16_MIN   (-INT16_MAX-1)

@@ -11,3 +11,10 @@ typedef long intptr_t;
 typedef long ptrdiff_t;
 
 typedef unsigned char wchar_t;
+
+#if defined(__GNUC__) || defined(__clang__)
+#define offsetof(st, m) __builtin_offsetof(st, m)
+#else
+#define offsetof(s,memb) \
+    ((size_t)((char *)&((s *)0)->memb - (char *)0))
+#endif

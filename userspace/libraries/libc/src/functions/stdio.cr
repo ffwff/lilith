@@ -290,9 +290,22 @@ fun fopen(file : LibC::String, mode : LibC::String) : Void*
   File.new(fd, mode).as(Void*)
 end
 
-fun tmpfile : Void*
+fun freopen(file : LibC::String, mode : LibC::String, stream : Void*) : Void*
+  # TODO
   abort
   Pointer(Void).null
+end
+
+fun tmpfile : Void*
+  # TODO
+  abort
+  Pointer(Void).null
+end
+
+fun tmpnam(str : LibC::String) : LibC::String
+  # TODO
+  abort
+  LibC::String.null
 end
 
 fun fclose(stream : Void*) : LibC::Int
@@ -355,12 +368,27 @@ fun fgetc(stream : Void*) : LibC::Int
   stream.as(File).fgetc
 end
 
+fun ungetc(ch : LibC::Int, stream : Void*) : LibC::Int
+  # TODO
+  abort
+  0
+end
+
+fun setvbuf(stream : Void*, buffer : LibC::String, mode : LibC::Int, size : LibC::SizeT) :: LibC::Int
+  # TODO
+  abort
+  0
+end
+
 fun feof(stream : Void*) : LibC::Int
   stream.as(File).feof ? 1 : 0
 end
 
 fun ferror(stream : Void*) : LibC::Int
   stream.as(File).ferror ? 1 : 0
+end
+
+fun clearerr(stream : Void*)
 end
 
 fun fputs(str : LibC::String, stream : Void*) : LibC::Int

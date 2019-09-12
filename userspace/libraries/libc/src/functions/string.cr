@@ -145,6 +145,25 @@ fun strchr(str : LibC::String, c : LibC::Int) : LibC::String
   str
 end
 
+# pbrk
+fun strpbrk(s1 : LibC::String, s2 : LibC::String) : LibC::String
+  until s1.value == 0
+    return s1 if strchr(s2, s1.value.to_i32)
+    s1 += 1
+  end
+  LibC::String.null
+end 
+
+# spn
+fun strspn(s1 : LibC::String, s2 : LibC::String) : LibC::SizeT
+  ret = 0u32
+  while s1.value != 0 && strchr(s2, s1.value.to_i32)
+    s1 += 1
+    ret += 1
+  end
+  ret
+end
+
 # str
 fun strstr(s1 : LibC::UString, s2 : LibC::UString) : LibC::UString
   n = strlen s2.as(LibC::String)

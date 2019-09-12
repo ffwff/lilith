@@ -1,10 +1,10 @@
 #pragma once
-#include <stdint.h>
 
-typedef uint32_t time_t;
+typedef unsigned long time_t;
+typedef unsigned long suseconds_t;
+typedef unsigned long clock_t;
+
 time_t time(time_t *tloc);
-
-typedef uint32_t suseconds_t;
 
 struct timeval {
     time_t tv_sec;
@@ -24,3 +24,8 @@ struct tm {
     int tm_isdst;
 };
 struct tm *gmtime(const time_t *timep);
+time_t mktime(struct tm *tm);
+size_t strftime(char *s, size_t max, const char *format,
+                       const struct tm *tm);
+
+#define CLOCKS_PER_SEC 1000000

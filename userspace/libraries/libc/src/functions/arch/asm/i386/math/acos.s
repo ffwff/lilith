@@ -1,3 +1,5 @@
+# use acos(x) = atan2(fabs(sqrt((1-x)*(1+x))), x)
+
 .global acosf
 .type acosf,@function
 acosf:
