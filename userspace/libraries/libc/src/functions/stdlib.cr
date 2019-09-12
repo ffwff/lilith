@@ -57,3 +57,8 @@ end
 fun llabs(j : LibC::LongLong) : LibC::LongLong
   j > 0 ? j : (j * -1)
 end
+
+# spawn
+fun system(command : LibC::String) : LibC::Int
+  0
+end

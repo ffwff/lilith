@@ -35,6 +35,24 @@ fun tan(arg : Float64) : Float64
   sin(arg) / cos(arg)
 end
 
+# hyp functions
+fun tanh(arg : Float64) : Float64
+  # TODO
+  LibC.abort
+  0.0f64
+end
+fun sinh(arg : Float64) : Float64
+  # TODO
+  LibC.abort
+  0.0f64
+end
+fun cosh(arg : Float64) : Float64
+  # TODO
+  LibC.abort
+  0.0f64
+end
+
+# arc- functions
 fun atan2(arg : Float64) : Float64
   # TODO
   LibC.abort

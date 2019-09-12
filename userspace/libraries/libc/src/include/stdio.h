@@ -11,6 +11,7 @@ extern FILE *stdout;
 extern FILE *stderr;
 
 FILE *fopen(const char *pathname, const char *mode);
+FILE *freopen(const char *pathname, const char *mode, FILE *stream);
 FILE *tmpfile(void);
 int fclose(FILE *stream);
 
@@ -55,6 +56,11 @@ void perror(const char *s);
 
 ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 
+int setvbuf(FILE *stream, char *buf, int mode, size_t size);
+
+char * tmpnam (char * str);
+#define L_tmpnam 32
+
 #define STDIN_FILENO  0
 #define STDOUT_FILENO 1
 #define STDERR_FILENO 2
@@ -64,3 +70,9 @@ ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 #define SEEK_END 2
 
 #define EOF (char)-1
+
+#define BUFSIZ 256
+
+#define _IONBF 0
+#define _IOLBF 1
+#define _IOFBF 2
