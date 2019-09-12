@@ -19,11 +19,6 @@ fun atol(nptr : LibC::String) : LibC::Long
   0
 end
 
-fun atof(nptr : LibC::String) : Float32
-  abort
-  0.0f32
-end
-
 # environ
 fun getenv(name : LibC::String) : LibC::String
   LibC::String.null
