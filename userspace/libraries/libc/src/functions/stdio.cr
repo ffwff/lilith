@@ -13,7 +13,7 @@ class FileBuffer
   def initialize(@is_write : Bool)
   end
 
-  def lazy_init
+  private def lazy_init
     if @buffer.null?
       @buffer = Pointer(UInt8).malloc FILE_BUFFER_SZ.to_u64
     end
@@ -59,6 +59,16 @@ class FileBuffer
     end
     @pos = 0
     retval
+  end
+
+  def ungetc(ch)
+    lazy_init
+    if @pos == FILE_BUFFER_SZ
+      return -1
+    end
+    @buffer[@pos] = ch.to_u8
+    @pos += 1
+    ch
   end
 
 end
@@ -190,6 +200,12 @@ class File
       abort
       0
     end
+  end
+
+  def ungetc(ch)
+    return -1 unless @status.includes?(Status::Read)
+    return -1 if @buffering == Buffering::Unbuffered
+    @rbuffer.ungetc(ch)
   end
 
   GETLINE_INITIAL = 128u32
@@ -373,9 +389,7 @@ fun fgetc(stream : Void*) : LibC::Int
 end
 
 fun ungetc(ch : LibC::Int, stream : Void*) : LibC::Int
-  # TODO
-  abort
-  0
+  stream.as(File).ungetc ch
 end
 
 fun setvbuf(stream : Void*, buffer : LibC::String, mode : LibC::Int, size : LibC::SizeT) :: LibC::Int
