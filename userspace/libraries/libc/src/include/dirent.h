@@ -1,5 +1,4 @@
-#ifndef _LIBC_DIRENT_H
-#define _LIBC_DIRENT_H
+#pragma once
 
 typedef unsigned long ino_t;
 typedef void DIR;
@@ -18,5 +17,3 @@ struct dirent {
 extern DIR *opendir(const char *dirname);
 extern int closedir(DIR *dirp);
 extern struct dirent* readdir(DIR *dirp);
-
-#endif _PDCLIB_DIRENT_H

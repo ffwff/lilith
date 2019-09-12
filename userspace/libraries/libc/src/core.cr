@@ -13,6 +13,13 @@ lib LibC
   alias ULongLong = UInt64
 end
 
+# Bools
+struct Bool
+  def to_int
+    self ? 1 : 0
+  end
+end
+
 # Ints
 struct Int
   def to_int
