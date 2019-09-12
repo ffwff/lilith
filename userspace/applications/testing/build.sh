@@ -7,5 +7,5 @@ install() {
     # for i in $script_dir/*.c; do
     #     sudo cp $build_dir/$(basename $i .c) $install_dir/bin/
     # done
-    sudo cp $script_dir/test.rb $install_dir/
+    sudo cp $script_dir/fib.lua $install_dir/
 }
