@@ -12,29 +12,29 @@ fun tolower(ch : LibC::Int) : LibC::Int
   ch
 end
 
-fun isspace(ch : LibC::Int) : LibC::Int
+fun isspace(ch : LibC::Int) : Bool
   ch = ch.unsafe_chr
-  (ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n') ? 1 : 0
+  ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n'
 end
 
-fun isprint(ch : LibC::Int) : LibC::Int
-  (ch >= 0x20 && ch <= 0x7e) ? 1 : 0
+fun isprint(ch : LibC::Int) : Bool
+  ch >= 0x20 && ch <= 0x7e
 end
 
-fun isdigit(ch : LibC::Int) : LibC::Int
-  (ch >= '0'.ord && ch <= '9'.ord) ? 1 : 0
+fun isdigit(ch : LibC::Int) : Bool
+  ch >= '0'.ord && ch <= '9'.ord
 end
 
-fun islower(ch : LibC::Int) : LibC::Int
-  (ch >= 'a'.ord && ch <= 'z'.ord) ? 1 : 0
+fun islower(ch : LibC::Int) : Bool
+  ch >= 'a'.ord && ch <= 'z'.ord
 end
 
-fun isupper(ch : LibC::Int) : LibC::Int
-  (ch >= 'A'.ord && ch <= 'Z'.ord) ? 1 : 0
+fun isupper(ch : LibC::Int) : Bool
+  ch >= 'A'.ord && ch <= 'Z'.ord
 end
 
-fun isalpha(ch : LibC::Int) : LibC::Int
-  (islower(ch) == 1 || isupper(ch) == 1) ? 1 : 0
+fun isalpha(ch : LibC::Int) : Bool
+  islower(ch) || isupper(ch)
 end
 
 fun isgraph(ch : LibC::Int) : LibC::Int
@@ -61,12 +61,6 @@ fun isxdigit(ch : LibC::Int) : LibC::Int
   0
 end
 
-fun isalnum(ch : LibC::Int) : LibC::Int
-  if isalpha(ch)
-    1
-  elsif isdigit(ch)
-    1
-  else
-    0
-  end
+fun isalnum(ch : LibC::Int) : Bool
+  isalpha(ch) || isdigit(ch)
 end

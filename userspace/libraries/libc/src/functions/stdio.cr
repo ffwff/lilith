@@ -134,9 +134,9 @@ class File
   # reading
   def fputs(str)
     return -1 unless @status.includes?(Status::Write)
-    len = strlen(str).to_i32
+    len = strlen(str).to_int
     if @buffering == Buffering::Unbuffered
-      write(@fd, str, len).to_i32
+      write(@fd, str, len).to_int
     else
       @wbuffer.fwrite(@fd, str.as(UInt8*), len, line_buffered?)
     end
@@ -145,9 +145,9 @@ class File
   def fnputs(str, len)
     return -1 unless @status.includes?(Status::Write)
     if @buffering == Buffering::Unbuffered
-      write(@fd, str, len.to_i32).to_i32
+      write(@fd, str, len.to_int).to_int
     else
-      @wbuffer.fwrite(@fd, str.as(UInt8*), len.to_i32, line_buffered?)
+      @wbuffer.fwrite(@fd, str.as(UInt8*), len.to_int, line_buffered?)
     end
   end
 
@@ -155,7 +155,7 @@ class File
     return -1 unless @status.includes?(Status::Write)
     buffer = uninitialized Int8[1]
     buffer.to_unsafe[0] = c.to_i8
-    write(@fd, buffer.to_unsafe, 1).to_i32
+    write(@fd, buffer.to_unsafe, 1).to_int
   end
 
   # getting
@@ -224,7 +224,7 @@ class File
   def fread(ptr, len)
     return 0u32 unless @status.includes?(Status::Read)
     if @buffering == Buffering::Unbuffered
-      read(@fd, ptr.as(LibC::String), len.to_i32).to_u32
+      read(@fd, ptr.as(LibC::String), len.to_int).to_u32
     else
       abort
       0u32
@@ -234,9 +234,9 @@ class File
   def fwrite(ptr, len)
     return 0u32 unless @status.includes?(Status::Write)
     if @buffering == Buffering::Unbuffered
-      write(@fd, ptr.as(LibC::String), len.to_i32).to_u32
+      write(@fd, ptr.as(LibC::String), len.to_int).to_u32
     else
-      ret = @wbuffer.fwrite(@fd, ptr.as(UInt8*), len.to_i32, line_buffered?)
+      ret = @wbuffer.fwrite(@fd, ptr.as(UInt8*), len.to_int, line_buffered?)
       ret == EOF ? 0u32 : ret.to_u32
     end
   end
@@ -401,13 +401,13 @@ end
 
 # prints
 fun puts(data : LibC::String) : LibC::Int
-  ret = write(STDOUT, data, strlen(data).to_i32)
-  ret += putchar '\n'.ord.to_i32
+  ret = write(STDOUT, data, strlen(data).to_int)
+  ret += putchar '\n'.ord.to_int
   ret
 end
 
 fun nputs(data : LibC::String, len : LibC::SizeT) : LibC::Int
-  write(STDOUT, data, len.to_i32)
+  write(STDOUT, data, len.to_int)
 end
 
 fun putchar(c : LibC::Int) : LibC::Int

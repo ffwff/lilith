@@ -15,9 +15,23 @@ end
 
 # Ints
 struct Int
-  # needed by SimpleAllocator
-  def ~
-    self ^ -1
+  def to_int
+    self.to_i32
+  end
+  def to_uint
+    self.to_u32
+  end
+  def to_long
+    self.to_i32
+  end
+  def to_ulong
+    self.to_u32
+  end
+  def to_longlong
+    self.to_i64
+  end
+  def to_ulonglong
+    self.to_u64
   end
 end
 

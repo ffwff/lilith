@@ -63,23 +63,23 @@ fun create(device : LibC::String) : LibC::Int
 end
 
 fun close(fd : LibC::Int) : LibC::Int
-  __lilith_syscall(SC_CLOSE, fd).to_i32
+  __lilith_syscall(SC_CLOSE, fd).to_int
 end
 
 fun read(fd : LibC::Int, str : LibC::String, len : LibC::Int) : LibC::Int
-  __lilith_syscall(SC_READ, fd, str, len).to_i32
+  __lilith_syscall(SC_READ, fd, str, len).to_int
 end
 
 fun write(fd : LibC::Int, str : LibC::String, len : LibC::Int) : LibC::Int
-  __lilith_syscall(SC_WRITE, fd, str, len).to_i32
+  __lilith_syscall(SC_WRITE, fd, str, len).to_int
 end
 
 fun ftruncate(fd : LibC::Int, length : LibC::Int) : LibC::Int
-  __lilith_syscall(SC_TRUNCATE, fd.to_u32, length.to_u32).to_i32
+  __lilith_syscall(SC_TRUNCATE, fd.to_u32, length.to_u32).to_int
 end
 
 fun lseek(fd : LibC::Int, offset : Int32, whence : LibC::Int) : Int32
-  __lilith_syscall(SC_SEEK, fd.to_u32, offset.to_u32, whence.to_u32).to_i32
+  __lilith_syscall(SC_SEEK, fd.to_u32, offset.to_u32, whence.to_u32).to_int
 end
 
 fun lseek64(fd : LibC::Int, offset : Int64, whence : LibC::Int) : Int64
@@ -87,19 +87,19 @@ fun lseek64(fd : LibC::Int, offset : Int64, whence : LibC::Int) : Int64
 end
 
 fun ioctl(fd : LibC::Int, request : LibC::Int, data : Void*) : LibC::Int
-  __lilith_syscall(SC_IOCTL, fd.to_u32, request.to_u32, data.address.to_u32).to_i32
+  __lilith_syscall(SC_IOCTL, fd.to_u32, request.to_u32, data.address.to_u32).to_int
 end
 
 fun waitfd(fd : LibC::Int, timeout : LibC::UInt) : LibC::Int
-  __lilith_syscall(SC_WAITFD, fd.to_u32, timeout.to_u32).to_i32
+  __lilith_syscall(SC_WAITFD, fd.to_u32, timeout.to_u32).to_int
 end
 
 fun remove(str : LibC::String) : LibC::Int
-  __lilith_syscall(SC_REMOVE, str, strlen(str)).to_i32
+  __lilith_syscall(SC_REMOVE, str, strlen(str)).to_int
 end
 
 fun lilith_readdir(fd : LibC::Int, direntp : Void*) : LibC::Int
-  __lilith_syscall(SC_READDIR, fd, direntp)
+  __lilith_syscall(SC_READDIR, fd, direntp).to_int
 end
 
 # process
@@ -112,7 +112,7 @@ fun raise(sig : LibC::Int) : LibC::Int
 end
 
 fun getpid : LibC::Int
-  __lilith_syscall(SC_GETPID, 0).to_i32
+  __lilith_syscall(SC_GETPID, 0).to_int
 end
 
 fun abort
@@ -130,20 +130,20 @@ fun spawnxv(s_info : Void*, file : LibC::String, argv : UInt8**) : LibC::Pid
 end
 
 fun waitpid(pid : LibC::Pid, status : LibC::Int*, options : LibC::Int) : LibC::Pid
-  __lilith_syscall(SC_WAITPID, pid.to_u32).to_i32
+  __lilith_syscall(SC_WAITPID, pid.to_u32).to_int
 end
 
 fun usleep(timeout : LibC::UInt) : LibC::Int
-  __lilith_syscall(SC_SLEEP, timeout).to_i32
+  __lilith_syscall(SC_SLEEP, timeout).to_int
 end
 
 # working directory
 fun getcwd(str : LibC::String, len : LibC::Int) : LibC::Int
-  __lilith_syscall(SC_GETCWD, str, len.to_u32).to_i32
+  __lilith_syscall(SC_GETCWD, str, len.to_u32).to_int
 end
 
 fun chdir(str : LibC::String) : LibC::Int
-  __lilith_syscall(SC_GETCWD, str, strlen(str)).to_i32
+  __lilith_syscall(SC_GETCWD, str, strlen(str)).to_int
 end
 
 # malloc
