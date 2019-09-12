@@ -9,11 +9,6 @@ fun strtoul(nptr : LibC::String, endptr : LibC::String*, base : LibC::Int) : Lib
   0u32
 end
 
-fun strtod(nptr : LibC::String, endptr : LibC::String*) : Float64
-  abort
-  0.0f64
-end
-
 fun atoi(nptr : LibC::String) : LibC::Int
   abort
   0

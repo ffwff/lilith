@@ -46,6 +46,62 @@ static void __scanf_ungetc(char ch, void *userptr) {
     slice->overflow_ch = ch;
 }
 
+struct scanf_fp {
+    int sign;
+    int intg_part;
+    unsigned int dec_part;
+    unsigned int dec_base;
+};
+
+static struct scanf_fp __scanf_atofp(ngets_fn_t ngets_fn, nungetc_fn_t ungetc_fn, void *userptr, int *readden) {
+    struct scanf_fp fp = { 0 };
+    fp.sign = 1;
+    fp.dec_base = 1;
+    char ch = 0;
+    int retval;
+
+    // negative or digit
+    if (!(retval = ngets_fn(&ch, 1, userptr)))
+        return fp;
+    if (ch == '-') {
+        fp.sign = -1;
+        (*readden)++;
+    } else if (ch == '+') {
+        (*readden)++;
+    } else if (isdigit(ch)) {
+        fp.intg_part = (int)(ch - '0');
+        (*readden)++;
+    } else {
+        return fp;
+    }
+
+    // integer part
+    while ((retval = ngets_fn(&ch, 1, userptr))) {
+        if (isdigit(ch)) {
+            int digit = ch - '0';
+            fp.intg_part = fp.intg_part * 10 + digit;
+        } else {
+            break;
+        }
+        (*readden)++;
+    }
+    // decimal part
+    if(ch == '.') {
+        (*readden)++;
+        while ((retval = ngets_fn(&ch, 1, userptr))) {
+            if (isdigit(ch)) {
+                int digit = ch - '0';
+                fp.dec_part = fp.dec_part * 10 + digit;
+            } else {
+                break;
+            }
+            (*readden)++;
+            fp.dec_base *= 10;
+        }
+    }
+    return fp;
+}
+
 // expose
 static int __sscanf(ngets_fn_t ngets_fn, nungetc_fn_t ungetc_fn, void *userptr,
                     const char *restrict format, va_list args) {
@@ -84,6 +140,8 @@ static int __sscanf(ngets_fn_t ngets_fn, nungetc_fn_t ungetc_fn, void *userptr,
                         return readden;
                     if (ch == '-') {
                         sign = -1;
+                    } else if (ch == '+') {
+                        // noop
                     } else if (isdigit(ch)) {
                         num = (int)(ch - '0');
                     } else {
@@ -109,6 +167,34 @@ static int __sscanf(ngets_fn_t ngets_fn, nungetc_fn_t ungetc_fn, void *userptr,
                     // store
                     int *intptr = va_arg(args, int *);
                     *intptr = num;
+                    break;
+                }
+                case 'f': {
+                    format++;
+                    struct scanf_fp fp = __scanf_atofp(ngets_fn, ungetc_fn, userptr, &readden);
+                    // store
+                    float d = (float)fp.sign * ((float)fp.intg_part + ((float)fp.dec_part / (float)fp.dec_base));
+                    float *dptr = va_arg(args, float *);
+                    *dptr = d;
+                    break;
+                }
+                case 'l': {
+                    format++;
+                    switch (*format) {
+                        case 0:
+                        default: {
+                            return readden;
+                        }
+                        case 'f': {
+                            format++;
+                            struct scanf_fp fp = __scanf_atofp(ngets_fn, ungetc_fn, userptr, &readden);
+                            // store
+                            float d = (double)fp.sign * ((double)fp.intg_part + ((double)fp.dec_part / (double)fp.dec_base));
+                            double *dptr = va_arg(args, double *);
+                            *dptr = d;
+                            break;
+                        }
+                    }
                     break;
                 }
                 default: {

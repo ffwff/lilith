@@ -25,7 +25,7 @@ fun strcmp(s1 : LibC::UString, s2 : LibC::UString) : LibC::Int
     s1 += 1
     s2 += 1
   end
-  (s1.value - s2.value).to_i32
+  (s1.value - s2.value).to_int
 end
 
 fun strncmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : LibC::Int
@@ -35,7 +35,7 @@ fun strncmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : LibC::Int
     n -= 1
   end
   return 0 if n == 0
-  (s1.value - s2.value).to_i32
+  (s1.value - s2.value).to_int
 end
 
 # cpy
@@ -63,7 +63,7 @@ fun strncpy(dst : LibC::String, src : LibC::String, n : LibC::SizeT) : LibC::Str
 end
 
 # tok
-module Strtok
+private module Strtok
   extend self
 
   @@saveptr = LibC::String.null
@@ -139,8 +139,8 @@ end
 # chr
 fun strchr(str : LibC::String, c : LibC::Int) : LibC::String
   until str.value == c
-    str += 1
     return LibC::String.null if str.value == 0
+    str += 1
   end
   str
 end
@@ -148,7 +148,7 @@ end
 # pbrk
 fun strpbrk(s1 : LibC::String, s2 : LibC::String) : LibC::String
   until s1.value == 0
-    return s1 if strchr(s2, s1.value.to_i32)
+    return s1 if strchr(s2, s1.value.to_int)
     s1 += 1
   end
   LibC::String.null
@@ -157,7 +157,7 @@ end
 # spn
 fun strspn(s1 : LibC::String, s2 : LibC::String) : LibC::SizeT
   ret = 0u32
-  while s1.value != 0 && strchr(s2, s1.value.to_i32)
+  while s1.value != 0 && strchr(s2, s1.value.to_int)
     s1 += 1
     ret += 1
   end
@@ -218,7 +218,7 @@ fun memcmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : LibC::Int
     n -= 1
   end
   return 0 if n == 0
-  (s1.value - s2.value).to_i32
+  (s1.value - s2.value).to_int
 end
 
 fun memchr(str : LibC::String, c : LibC::Int, n : LibC::SizeT) : LibC::String
