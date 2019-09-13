@@ -17,6 +17,8 @@ Lilith's package manager.
 #### Libraries
 
  * **libc**: c library
+ * **libcanvas**: single-header canvas library
+ * **libwm**: window manager server/client
 
 ### Ported packages
 
@@ -24,12 +26,13 @@ Lilith's package manager.
 
  * **kilo**: terminal text editor
  * **mruby**: embedded ruby implementation
+ * **lua**: lua implementation
 
 #### Libraries
 
  * **libcairo**: cairo graphics library
 
-   compiles but diagonal lines can't be drawn and built-in fonts don't work
+   runs but diagonal lines can't be drawn and built-in fonts don't work
  * **libgc**: garbage collector library
 
    compiles but doesn't work

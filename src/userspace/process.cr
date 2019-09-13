@@ -131,14 +131,19 @@ module Multiprocessing
       # argv
       property argv
 
+      class EnvVar
+        getter key
+        property value
+        def initialize(@key : GcString, @value : GcString)
+        end
+      end
+
       # environment variables
-      getter environ_keys
-      getter environ_values
+      getter environ
 
       def initialize(@argv : GcArray(GcString),
                      @cwd : GcString, @cwd_node : VFSNode,
-                     @environ_keys = GcArray(GcString).new(0),
-                     @environ_values = GcArray(GcString).new(0))
+                     @environ = GcArray(EnvVar).new(0))
         # TODO: storing environ keys/values within 1 class doesn't work
         @fds = GcArray(FileDescriptor).new MAX_FD
         @mmap_list = MemMapList.new
@@ -168,17 +173,21 @@ module Multiprocessing
       end
 
       # environ
-      def getenv(find_key)
-        i = 0
-        @environ_keys.each do |key|
-          return @environ_values[i] if key == find_key
-          i += 1
+      def getenv(key)
+        @environ.each do |env|
+          return env.not_nil!.value if env.not_nil!.key == key
         end
       end
 
       def setenv(key, value, override = false)
-        @environ_keys.push(key)
-        @environ_values.push(value)
+        @environ.each do |env|
+          if env.not_nil!.key == key
+            return false unless override
+            env.not_nil!.value = value
+            return true
+          end
+        end
+        @environ.push(EnvVar.new(key, value))
         true
       end
     end
