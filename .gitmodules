@@ -1,3 +1,0 @@
-[submodule "pkgs/libcanvas/src"]
-	path = pkgs/libcanvas/src
-	url = https://github.com/ffwff/libcanvas
