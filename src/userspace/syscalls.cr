@@ -259,7 +259,6 @@ module Syscall
     when SC_READ
       fd = try(pudata.get_fd(arg(0).to_i32))
       str = try(checked_slice(arg(1), arg(2)))
-      Serial.puts "read ", arg(0).to_i32, " ", str, '\n'
       result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
       case result
       when VFS_WAIT
@@ -293,7 +292,7 @@ module Syscall
       fd = try(pudata.get_fd(arg(0).to_i32))
       fv.rax = fd.node.not_nil!.truncate(arg(1).to_i32)
     when SC_SEEK
-      fd = try(pudata.get_fd(arg(0).to_i32))
+      fd = try(pudata.get_fd(arg(0).to_i32))  
       whence = arg(1)
       offset = arg(2).to_i32
 
@@ -402,8 +401,7 @@ module Syscall
           .new(pargv,
             pudata.cwd.clone,
             pudata.cwd_node,
-            pudata.environ_keys.clone,
-            pudata.environ_values.clone)
+            pudata.environ.clone)
         udata.pgid = pudata.pgid
 
         # copy file descriptors 0, 1, 2
