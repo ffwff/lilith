@@ -243,7 +243,7 @@ module Syscall
         sysret(pudata.install_fd(vfs_node.not_nil!))
       end
     when SC_CLOSE
-      if pudata.close_fd(arg(1).to_i32)
+      if pudata.close_fd(arg(0).to_i32)
         sysret(SYSCALL_SUCCESS)
       else
         sysret(SYSCALL_ERR)

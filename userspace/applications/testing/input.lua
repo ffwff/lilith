@@ -1,2 +1,5 @@
-print("Enter your name: \n")
+io.write("Enter your name: ")
+io.flush()
 name = io.read()
+io.write("Hello ", name, "!")
+io.flush()
