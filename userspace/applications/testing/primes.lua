@@ -12,6 +12,6 @@ end
 print("Input a number: ")
 n = io.read("*n")
 print("Primes up to ", n, ":\n")
-for i in erato(n) do
-	print(i, "\n")
+for k in pairs(erato(n)) do
+  print(k)
 end
