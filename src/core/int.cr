@@ -93,6 +93,32 @@ struct Int
       i -= 1
     end
   end
+  
+  def to_gcstr(base = 10)
+    s = uninitialized UInt8[128]
+    sign = self < 0
+    n = self.abs
+    i = 0
+    while i < 128
+      s[i] = BASE.bytes[n % base]
+      i += 1
+      break if (n /= base) == 0
+    end
+    if sign
+      s[i] = '-'.ord.to_u8
+    else
+      i -= 1
+    end
+    str = GcString.new(i + 1)
+    j = 0
+    while true
+      str[j] = s[i]
+      break if i == 0
+      j += 1
+      i -= 1
+    end
+    str
+  end
 
   def to_s(io, base = 10)
     each_digit(base) do |ch|
