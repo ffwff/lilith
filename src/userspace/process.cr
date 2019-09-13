@@ -144,7 +144,6 @@ module Multiprocessing
       def initialize(@argv : GcArray(GcString),
                      @cwd : GcString, @cwd_node : VFSNode,
                      @environ = GcArray(EnvVar).new(0))
-        # TODO: storing environ keys/values within 1 class doesn't work
         @fds = GcArray(FileDescriptor).new MAX_FD
         @mmap_list = MemMapList.new
       end
@@ -152,10 +151,9 @@ module Multiprocessing
       # file descriptors
       def install_fd(node : VFSNode) : Int32
         i = 0
-        f = fds.not_nil!
-        while i < MAX_FD
-          if f[i].nil?
-            f[i] = FileDescriptor.new node
+        while i < @fds.size
+          if @fds[i].nil?
+            @fds[i] = FileDescriptor.new node
             return i
           end
           i += 1
@@ -164,11 +162,13 @@ module Multiprocessing
       end
 
       def get_fd(i : Int32) : FileDescriptor?
-        fds[i]?
+        @fds[i]?
       end
 
       def close_fd(i : Int32) : Bool
-        fds[i] = nil
+        return false unless i >= 0 && i <= @fds.size
+        return false if @fds[i].nil?
+        @fds[i] = nil
         true
       end
 
