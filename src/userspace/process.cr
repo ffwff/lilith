@@ -49,11 +49,13 @@ module Multiprocessing
   mod_property n_process
   @@fxsave_region = Pointer(UInt8).null
 
-  def fxsave_region
-    @@fxsave_region
-  end
-
+  def fxsave_region; @@fxsave_region; end
   def fxsave_region=(@@fxsave_region); end
+  
+  @@procfs : ProcFS? = nil
+
+  def procfs; @@procfs; end
+  def procfs=(@@procfs); end
 
   class Process
     @pid = 0
@@ -201,8 +203,10 @@ module Multiprocessing
     def kernel_process?
       @udata.nil?
     end
+    
+    getter name
 
-    def initialize(@udata : UserData? = nil, &on_setup_paging : Process -> _)
+    def initialize(@name : GcString?, @udata : UserData? = nil, &on_setup_paging : Process -> _)
       Multiprocessing.n_process += 1
       @pid = Multiprocessing.pids
       Multiprocessing.pids += 1
@@ -220,6 +224,7 @@ module Multiprocessing
         memset(@fxsave_region, 0x0, FXSAVE_SIZE)
       end
 
+      # create vmm map and save old vmm map
       last_pg_struct = Pointer(PageStructs::PageDirectoryPointerTable).null
       if @pid != 0
         last_pg_struct = Paging.current_pdpt
@@ -244,6 +249,7 @@ module Multiprocessing
         return
       end
 
+      # append to linked list
       if Multiprocessing.first_process.nil?
         Multiprocessing.first_process = self
         Multiprocessing.last_process = self
@@ -253,10 +259,16 @@ module Multiprocessing
         Multiprocessing.last_process = self
       end
 
+      # restore vmm map
       unless last_pg_struct.null?
         Paging.current_pdpt = last_pg_struct
         Paging.flush
       end
+      
+      # append to procfs
+      if Multiprocessing.procfs
+		Multiprocessing.procfs.not_nil!.root.not_nil!.create_for_process(self)
+	  end
 
       Idt.enable
     end
@@ -347,7 +359,7 @@ module Multiprocessing
     def self.spawn_user_4gb(initial_ip, heap_start, udata)
       old_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
           .new(Paging.mt_addr(Paging.current_pdpt.address))
-      Multiprocessing::Process.new(udata) do |process|
+      Multiprocessing::Process.new(udata.argv[0].not_nil!, udata) do |process|
         process.initial_ip = initial_ip
 
         # TODO: move this
@@ -417,8 +429,8 @@ module Multiprocessing
     end
 
     # spawn kernel process with optional argument
-    def self.spawn_kernel(function, arg : Void*? = nil, stack_pages = 1, &block)
-      Multiprocessing::Process.new do |process|
+    def self.spawn_kernel(name : GcString, function, arg : Void*? = nil, stack_pages = 1, &block)
+      Multiprocessing::Process.new(name) do |process|
         stack_start = Paging.t_addr(process.initial_sp) - (stack_pages - 1) * 0x1000
         stack = Paging.alloc_page_pg(stack_start, true, false, npages: stack_pages.to_u64)
         process.initial_ip = function.pointer.address
