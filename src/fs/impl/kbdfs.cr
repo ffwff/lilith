@@ -72,18 +72,24 @@ class KbdFSRawNode < VFSNode
 
   @ch = 0
   @modifiers = 0
-  property ch, modifiers
+  @packet_available = false
+  property ch, modifiers, packet_available
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
+    @packet_available = false
     packet = uninitialized KbdFSData::Packet
-    packet.ch = ch
-    packet.modifiers = modifiers
+    packet.ch = @ch
+    packet.modifiers = @modifiers
     @ch = 0
     @modifiers = 0
     size = min slice.size, sizeof(KbdFSData::Packet)
     memcpy(slice.to_unsafe, pointerof(packet).as(UInt8*), size.to_usize)
     size
+  end
+
+  def available?
+    @packet_available
   end
 
 end
@@ -153,6 +159,7 @@ class KbdFS < VFS
 
     @root.not_nil!.raw_node.ch = ch.ord.to_i32
     @root.not_nil!.raw_node.modifiers = @kbd.modifiers.value
+    @root.not_nil!.raw_node.packet_available = true
 
     @queue.not_nil!.keep_if do |msg|
       case msg.buffering

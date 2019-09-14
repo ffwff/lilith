@@ -68,6 +68,10 @@ class MouseFSRawNode < VFSNode
     size
   end
 
+  def available?
+    fs.mouse.available?
+  end
+
 end
 
 

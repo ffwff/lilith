@@ -77,12 +77,15 @@ class Mouse
   @attr_byte = AttributeByte::None
   @x = 0
   @y = 0
+  @available = false
+  getter available
 
   def flush
     tuple = Tuple.new(@x, @y, @attr_byte)
     @attr_byte = AttributeByte::None
     @x = 0
     @y = 0
+    @available = false
     tuple
   end
 
@@ -110,6 +113,7 @@ class Mouse
     # process it
     if packet_finished
       # complete the packet
+      @available = true
       if @attr_byte.includes?(AttributeByte::XSign)
         @x = (@x.to_u32 | 0xFFFFFF00).to_i32
       end
