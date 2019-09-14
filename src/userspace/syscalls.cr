@@ -325,21 +325,36 @@ module Syscall
       fd = try(pudata.get_fd(arg(0).to_i32))
       sysret(fd.node.not_nil!.ioctl(arg(1).to_i32, arg(2).to_u32))
     when SC_WAITFD
-      fd = try(pudata.get_fd(arg(0).to_i32))
-      timeout = arg(1).to_u32
-
-      if fd.node.not_nil!.available?
-        sysret(1)
-      else
+      fds = try(checked_slice(Int32, arg(0), arg(1).to_i32))
+      timeout = arg(2).to_u32
+      
+      if fds.size == 0
+        sysret(0)
+      elsif fds.size == 1
+        fd = try(pudata.get_fd(fds[0]))
         process.status = Multiprocessing::Process::Status::WaitFd
-        pudata.wait_object = fd.node.not_nil!
+        pudata.wait_object = fd
         pudata.wait_usecs = timeout
         Multiprocessing.switch_process(frame)
       end
+      
+      waitfds = GcArray(FileDescriptor).new 0
+      fds.each do |fdi|
+        fd = try(pudata.get_fd(fdi))
+        if fd.node.not_nil!.available?
+          sysret(fdi)
+        end
+        waitfds.push fd
+      end
+      
+      process.status = Multiprocessing::Process::Status::WaitFd
+      pudata.wait_object = waitfds
+      pudata.wait_usecs = timeout
+      Multiprocessing.switch_process(frame)
     # directories
     when SC_READDIR
       fd = try(pudata.get_fd(arg(0).to_i32))
-      retval = try(checked_pointer(SyscallData::DirentArgument32, arg(1).to_u32))
+      retval = try(checked_pointer(SyscallData::DirentArgument32, arg(1)))
       if fd.cur_child_end
         sysret(0)
       elsif fd.cur_child.nil?
@@ -404,7 +419,7 @@ module Syscall
           if argv[i] == 0
             break
           end
-          arg = NullTerminatedSlice.new(try(checked_pointer(UInt8, argv[i].to_u64)))
+          arg = NullTerminatedSlice.new(try(checked_pointer(UInt8, argv[i])))
           pargv.push GcString.new(arg, arg.size)
           i += 1
         end
@@ -420,18 +435,18 @@ module Syscall
         if !startup_info.nil?
           startup_info = startup_info.not_nil!
           if process.udata.fds[startup_info.value.stdin]?
-            udata.fds[0] = process.udata.fds[startup_info.value.stdin].not_nil!.clone
+            udata.fds[0] = process.udata.fds[startup_info.value.stdin].not_nil!.clone 0
           end
           if process.udata.fds[startup_info.value.stdin]?
-            udata.fds[1] = process.udata.fds[startup_info.value.stdout].not_nil!.clone
+            udata.fds[1] = process.udata.fds[startup_info.value.stdout].not_nil!.clone 1
           end
           if process.udata.fds[startup_info.value.stdin]?
-            udata.fds[2] = process.udata.fds[startup_info.value.stderr].not_nil!.clone
+            udata.fds[2] = process.udata.fds[startup_info.value.stderr].not_nil!.clone 2
           end
         else
           3.times do |i|
             if (fd = process.udata.fds[i])
-              udata.fds[i] = fd.clone
+              udata.fds[i] = fd.clone i
             end
             i += 1
           end

@@ -13,12 +13,14 @@ class FileDescriptor
   property cur_child
   @cur_child_end = false
   property cur_child_end
+  
+  getter idx
 
-  def initialize(@node)
+  def initialize(@idx : Int32, @node)
   end
 
-  def clone
-    fd = FileDescriptor.new(@node)
+  def clone(idx)
+    fd = FileDescriptor.new(idx, @node)
     fd.offset = @offset
     fd.buffering = @buffering
     fd

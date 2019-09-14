@@ -1,5 +1,7 @@
 #pragma once
 
+#include <syscalls.h>
+
 struct winsize {
     unsigned short ws_row;    /* rows, in characters */
     unsigned short ws_col;    /* columns, in characters */
@@ -7,7 +9,6 @@ struct winsize {
     unsigned short ws_ypixel; /* vertical size, pixels */
 } __attribute__((packed));
 
-int _ioctl(int fd, int request, unsigned int arg);
 #define ioctl(fd, request, arg) _ioctl((fd), (request), (unsigned int)(arg))
 
 // TCSA*            0, 1

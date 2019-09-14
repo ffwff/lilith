@@ -69,7 +69,7 @@ class MouseFSRawNode < VFSNode
   end
 
   def available?
-    fs.mouse.available?
+    fs.mouse.available
   end
 
 end

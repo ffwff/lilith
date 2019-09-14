@@ -10,9 +10,10 @@ int open(char *device, int flags, ...);
 int create(char *device);
 int close(int fd);
 long write(int fd, void *str, size_t len);
-long read(int fd, char *str, unsigned long len);
+long read(int fd, char *str, size_t len);
 int ftruncate(int fd, off_t length);
-int waitfd(int fd, useconds_t timeout);
+int _ioctl(int fd, int request, unsigned int arg);
+int waitfd(int *fds, size_t nfds, useconds_t timeout);
 int remove(char *device);
 
 typedef long pid_t;

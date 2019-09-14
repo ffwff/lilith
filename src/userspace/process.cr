@@ -105,7 +105,7 @@ module Multiprocessing
     class UserData
       # wait process / file
       # TODO: this should be a weak pointer once it's implemented
-      @wait_object : (Process | VFSNode)? = nil
+      @wait_object : (Process | FileDescriptor | GcArray(FileDescriptor))? = nil
       property wait_object
 
       # wait useconds
@@ -155,7 +155,7 @@ module Multiprocessing
         i = 0
         while i < @fds.size
           if @fds[i].nil?
-            @fds[i] = FileDescriptor.new node
+            @fds[i] = FileDescriptor.new(i, node)
             return i
           end
           i += 1
@@ -543,7 +543,7 @@ module Multiprocessing
     when Multiprocessing::Process::Status::WaitFd
       wait_object = process.udata.wait_object
       case wait_object
-      when VFSNode
+      when GcArray(FileDescriptor)
         if process.udata.wait_usecs != 0xFFFF_FFFFu32
           if process.udata.wait_usecs <= Pit::USECS_PER_TICK
             process.frame.not_nil!.to_unsafe.value.rax = 0
@@ -553,12 +553,34 @@ module Multiprocessing
             process.udata.wait_usecs -= Pit::USECS_PER_TICK
           end
         end
-        if wait_object.as(VFSNode).available?
-          process.frame.not_nil!.to_unsafe.value.rax = 1
-          process.unawait
-          true
+        fds = wait_object.as(GcArray(FileDescriptor))
+        fds.each do |fd|
+          fd = fd.not_nil!
+          if fd.node.not_nil!.available?
+            process.frame.not_nil!.to_unsafe.value.rax = fd.idx
+            process.unawait
+            return true
+          end
         end
         false
+      when FileDescriptor
+        if process.udata.wait_usecs != 0xFFFF_FFFFu32
+          if process.udata.wait_usecs <= Pit::USECS_PER_TICK
+            process.frame.not_nil!.to_unsafe.value.rax = 0
+            process.unawait
+            return true
+          else
+            process.udata.wait_usecs -= Pit::USECS_PER_TICK
+          end
+        end
+        fd = wait_object.as(FileDescriptor)
+        if fd.node.not_nil!.available?
+          process.frame.not_nil!.to_unsafe.value.rax = fd.idx
+          process.unawait
+          true
+        else
+          false
+        end
       when Nil
         process.unawait
         true
