@@ -62,9 +62,11 @@ struct wm_window_prog;
 struct wm_window_sprite;
 
 #define WM_EVENT_QUEUE_LEN 128
+#define WAITFD_LEN 512
 
 struct wm_state {
     int needs_redraw;
+    int control_fd;
     int mouse_fd;
     struct wm_window *mouse_win; // weakref
     int kbd_fd;
@@ -72,8 +74,10 @@ struct wm_state {
     struct wm_window *windows;
     int nwindows;
     struct wm_atom queue[WM_EVENT_QUEUE_LEN];
-    int queue_len;
+    size_t queue_len;
     int focused_wid;
+    int waitfds[WAITFD_LEN];
+    size_t waitfds_len;
 };
 
 #define WM_WINDOW_PROG   0
@@ -107,7 +111,7 @@ int win_write_and_wait(struct wm_window_prog *prog,
                        struct wm_atom *respond_atom) {
     ftruncate(prog->mfd, 0);
     write(prog->mfd, (char *)write_atom, sizeof(struct wm_atom));
-    if (waitfd(prog->sfd, PACKET_TIMEOUT) < 0) {
+    if (waitfd(&prog->sfd, 1, PACKET_TIMEOUT) < 0) {
         ftruncate(prog->sfd, 0);
         return 0;
     }
@@ -203,6 +207,12 @@ int wm_handle_connection_request(struct wm_state *state, struct wm_connection_re
     return 1;
 }
 
+void wm_build_waitfds(struct wm_state *state) {
+    state->waitfds_len = 0;
+    state->waitfds[state->waitfds_len++] = state->mouse_fd;
+    state->waitfds[state->waitfds_len++] = state->kbd_fd;
+}
+
 /* MISC */
 
 int point_in_win_prog(struct wm_window_prog *prog, unsigned int x, unsigned int y) {
@@ -279,7 +289,9 @@ int main(int argc, char **argv) {
     ioctl(STDOUT_FILENO, TIOCGSTATE, 0);
 
     // control pipe
-    int control_fd = create("/pipes/wm");
+    wm.control_fd = create("/pipes/wm");
+
+    wm_build_waitfds(&wm);
 
     wm.needs_redraw = 1;
 
@@ -288,7 +300,7 @@ int main(int argc, char **argv) {
             // control pipe
             struct wm_connection_request conn_req = { 0 };
             while(
-                read(control_fd, (char *)&conn_req, sizeof(struct wm_connection_request))
+                read(wm.control_fd, (char *)&conn_req, sizeof(struct wm_connection_request))
                     == sizeof(struct wm_connection_request)
             ) {
                 if (wm_handle_connection_request(&wm, &conn_req)) {
@@ -296,7 +308,8 @@ int main(int argc, char **argv) {
                 }
             }
         }
-        {
+        int select_fd = waitfd(wm.waitfds, wm.waitfds_len, PACKET_TIMEOUT);
+        if (select_fd == wm.mouse_fd) {
             // mouse
             struct mouse_packet mouse_packet;
             read(wm.mouse_fd, (char *)&mouse_packet, sizeof(mouse_packet));
@@ -363,8 +376,7 @@ int main(int argc, char **argv) {
             }
 
             wm.last_mouse_atom = mouse_atom;
-        }
-        {
+        } else if (select_fd == wm.kbd_fd) {
             // keyboard
             struct keyboard_packet keyboard_packet = { 0 };
             read(wm.kbd_fd, (char *)&keyboard_packet, sizeof(keyboard_packet));
@@ -393,7 +405,7 @@ int main(int argc, char **argv) {
 
                     // transmit events in queue
                     if(wm.focused_wid == win->wid) {
-                        for(int i = 0; i < wm.queue_len; i++) {
+                        for(size_t i = 0; i < wm.queue_len; i++) {
                             if((win->as.prog.event_mask & (1 << wm.queue[i].type)) != 0) {
                                 win_write_and_wait(&win->as.prog, &wm.queue[i], &respond_atom);
                             }

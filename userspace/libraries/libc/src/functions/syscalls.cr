@@ -90,8 +90,8 @@ fun _ioctl(fd : LibC::Int, request : LibC::Int, data : UInt32) : LibC::Int
   __lilith_syscall(SC_IOCTL, fd.to_u32, request.to_u32, data.to_u32).to_int
 end
 
-fun waitfd(fd : LibC::Int, timeout : LibC::UInt) : LibC::Int
-  __lilith_syscall(SC_WAITFD, fd.to_u32, timeout.to_u32).to_int
+fun waitfd(fds : LibC::Int*, nfd: LibC::SizeT, timeout : LibC::UInt) : LibC::Int
+  __lilith_syscall(SC_WAITFD, fds.address.to_u32, nfd.to_u32, timeout.to_u32).to_int
 end
 
 fun remove(str : LibC::String) : LibC::Int

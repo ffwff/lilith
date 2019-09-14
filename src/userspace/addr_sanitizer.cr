@@ -22,19 +22,29 @@ module UserAddressSanitiser
     end
     Slice(UInt8).new(Pointer(UInt8).new(addr), len.to_i32)
   end
+  
+  def checked_slice(addr, size, len) : Slice(UInt8)?
+    checked_slice(addr, size * len)
+  end
 
 end
 
 macro checked_pointer(t, addr)
-  begin
-    if (ptr = UserAddressSanitiser.checked_pointer(sizeof({{ t }}), {{ addr }}))
-      ptr.as({{ t }}*)
-    else
-      nil  
-    end
+  if (__ptr = UserAddressSanitiser.checked_pointer(sizeof({{ t }}), {{ addr }}))
+    __ptr.as({{ t }}*)
+  else
+    nil
   end
 end
 
 macro checked_slice(addr, len)
   UserAddressSanitiser.checked_slice({{ addr }}, {{ len }})
+end
+
+macro checked_slice(t, addr, len)
+  if (__ptr = UserAddressSanitiser.checked_slice({{ addr }}, sizeof({{ t }}), {{ len }}))
+    Slice({{ t }}).new(__ptr.to_unsafe.as({{ t }}*), {{ len }})
+  else
+    nil
+  end
 end

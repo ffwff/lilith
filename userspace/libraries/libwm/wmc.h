@@ -9,7 +9,7 @@ struct wmc_connection {
 };
 
 int wmc_connection_init(struct wmc_connection *conn) {
-	conn->wm_control_fd = open("/pipes/wm", 0);
+	conn->wm_control_fd = open("/pipes/wm", O_WRONLY);
 	if(conn->wm_control_fd < 0) {
 		return 0;
 	}
@@ -36,14 +36,14 @@ void wmc_connection_obtain(struct wmc_connection *conn, unsigned int event_mask)
 
         if(conn->win_fd_m == -1) {
             snprintf(path, sizeof(path), "/pipes/wm:%d:m", conn_req.pid);
-            if((conn->win_fd_m = open(path, 0)) < 0) {
+            if((conn->win_fd_m = open(path, O_RDONLY)) < 0) {
                 goto await_conn;
             }
         }
 
         if(conn->win_fd_s == -1) {
             snprintf(path, sizeof(path), "/pipes/wm:%d:s", conn_req.pid);
-            if((conn->win_fd_s = open(path, 0)) < 0) {
+            if((conn->win_fd_s = open(path, O_WRONLY)) < 0) {
                 goto await_conn;
             }
         }
@@ -70,5 +70,5 @@ int wmc_recv_atom(struct wmc_connection *conn, struct wm_atom *atom) {
 }
 
 int wmc_wait_atom(struct wmc_connection *conn) {
-	return waitfd(conn->win_fd_m, (useconds_t)-1);
+    return waitfd(&conn->win_fd_m, 1, (useconds_t)-1);
 }
