@@ -34,37 +34,15 @@ class MouseFSNode < VFSNode
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
-    remaining = slice.size
-    idx = 0
-
     x, y, _ = fs.mouse.flush
+    
+    writer = SliceWriter.new(slice)
+    writer << x
+    writer << ','
+    writer << y
+    writer << '\n'
 
-    x.each_digit(10) do |ch|
-      slice[idx] = ch
-      idx += 1
-      remaining -= 1
-      return idx unless remaining > 0
-    end
-
-    slice[idx] = ','.ord.to_u8
-    idx += 1
-    remaining -= 1
-    return idx unless remaining > 0
-
-    y.each_digit(10) do |ch|
-      slice[idx] = ch
-      idx += 1
-      remaining -= 1
-      return idx unless remaining > 0
-    end
-
-    if remaining > 0
-      slice[idx] = '\n'.ord.to_u8
-      idx += 1
-      remaining -= 1
-    end
-
-    idx
+    writer.offset
   end
 
 end

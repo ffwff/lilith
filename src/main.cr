@@ -69,7 +69,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Gdt.flush_tss
   Kernel.ksyscall_setup
 
-  idle_process = Multiprocessing::Process.new do |process|
+  idle_process = Multiprocessing::Process.new(nil) do |process|
     process.initial_sp = Kernel.stack_end.address
     process.initial_ip = 0u64
     true
@@ -89,6 +89,8 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   end
 
   # initial rootfs
+  Multiprocessing.procfs = ProcFS.new
+  RootFS.append(Multiprocessing.procfs.not_nil!)
   RootFS.append(KbdFS.new(Keyboard.new))
   RootFS.append(MouseFS.new(Mouse.new))
   RootFS.append(ConsoleFS.new)

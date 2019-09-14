@@ -434,7 +434,8 @@ class Fat16FS < VFS
     @process_allocator =
       StackAllocator.new(Pointer(Void).new(Multiprocessing::KERNEL_HEAP_INITIAL))
     @process = Multiprocessing::Process
-      .spawn_kernel(->(ptr : Void*) { ptr.as(Fat16FS).process },
+      .spawn_kernel(GcString.new("[fat16fs]"),
+                    ->(ptr : Void*) { ptr.as(Fat16FS).process },
                     self.as(Void*),
                     stack_pages: 4) do |process|
       Paging.alloc_page_pg(Multiprocessing::KERNEL_HEAP_INITIAL, true, false)
@@ -463,6 +464,7 @@ class Fat16FS < VFS
           msg.unawait
         when VFSMessage::Type::Write
           # TODO
+          msg.unawait
         when VFSMessage::Type::Spawn
           udata = msg.udata.not_nil!
           case (retval = ElfReader.load_from_kernel_thread(fat16_node, @process_allocator.not_nil!))

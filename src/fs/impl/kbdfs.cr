@@ -13,19 +13,13 @@ class KbdFSNode < VFSNode
     @raw_node = @first_child = KbdFSRawNode.new(fs)
   end
 
-  def each_child(&block)
-    node = first_child
-    while !node.nil?
-      yield node.not_nil!
-      node = node.next_node
-    end
-  end
-
   def open(path)
-    each_child do |node|
-      if node.name == path
+  	node = @first_child
+    while !node.nil?
+      if node.not_nil!.name == path
         return node
       end
+      node = node.next_node
     end
   end
 
