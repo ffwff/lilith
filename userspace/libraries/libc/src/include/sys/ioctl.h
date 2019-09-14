@@ -7,7 +7,8 @@ struct winsize {
     unsigned short ws_ypixel; /* vertical size, pixels */
 } __attribute__((packed));
 
-int ioctl(int fd, int request, void *arg);
+int _ioctl(int fd, int request, unsigned int arg);
+#define ioctl(fd, request, arg) _ioctl((fd), (request), (unsigned int)(arg))
 
 // TCSA*            0, 1
 #define TIOCGWINSZ  2

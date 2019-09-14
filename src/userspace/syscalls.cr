@@ -258,9 +258,15 @@ module Syscall
       end
     when SC_READ
       fd = try(pudata.get_fd(arg(0).to_i32))
+      if arg(2) == 0u64
+        sysret(0)
+      end
       str = try(checked_slice(arg(1), arg(2)))
       result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
       case result
+      when VFS_WAIT_NO_ENQUEUE
+        process.status = Multiprocessing::Process::Status::WaitIo
+        Multiprocessing.switch_process(frame)
       when VFS_WAIT
         vfs_node = fd.not_nil!.node.not_nil!
         vfs_node.fs.queue.not_nil!
@@ -274,9 +280,15 @@ module Syscall
       end
     when SC_WRITE
       fd = try(pudata.get_fd(arg(0).to_i32))
+      if arg(2) == 0u64
+        sysret(0)
+      end
       str = try(checked_slice(arg(1), arg(2)))
       result = fd.not_nil!.node.not_nil!.write(str, fd.offset, process)
       case result
+      when VFS_WAIT_NO_ENQUEUE
+        process.status = Multiprocessing::Process::Status::WaitIo
+        Multiprocessing.switch_process(frame)
       when VFS_WAIT
         vfs_node = fd.not_nil!.node.not_nil!
         vfs_node.fs.queue.not_nil!

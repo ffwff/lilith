@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stddef.h>
+
 typedef unsigned long time_t;
 typedef unsigned long suseconds_t;
 typedef unsigned long clock_t;

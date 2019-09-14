@@ -35,15 +35,19 @@ class KbdFSNode < VFSNode
     VFS_WAIT
   end
 
-  def ioctl(request : Int32, data : Void*) : Int32
+  def ioctl(request : Int32, data : UInt32) : Int32
     case request
     when SC_IOCTL_TCSAFLUSH
-      data = data.as(IoctlData::Termios*).value
+      data = checked_pointer(IoctlData::Termios, data)
+      return -1 if data.nil?
+      data = data.not_nil!.value
       @fs.echo_input = data.c_lflag.includes?(TermiosData::LFlag::ECHO)
       @fs.canonical = data.c_lflag.includes?(TermiosData::LFlag::ICANON)
       0
     when SC_IOCTL_TCSAGETS
-      IoctlHandler.tcsa_gets(data) do |termios|
+      data = checked_pointer(IoctlData::Termios, data)
+      return -1 if data.nil?
+      IoctlHandler.tcsa_gets(data.not_nil!) do |termios|
         if @fs.echo_input
           termios.c_lflag |= TermiosData::LFlag::ECHO
         end

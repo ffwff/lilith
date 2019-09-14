@@ -86,8 +86,8 @@ fun lseek64(fd : LibC::Int, offset : Int64, whence : LibC::Int) : Int64
   (-1).to_i64
 end
 
-fun ioctl(fd : LibC::Int, request : LibC::Int, data : Void*) : LibC::Int
-  __lilith_syscall(SC_IOCTL, fd.to_u32, request.to_u32, data.address.to_u32).to_int
+fun _ioctl(fd : LibC::Int, request : LibC::Int, data : UInt32) : LibC::Int
+  __lilith_syscall(SC_IOCTL, fd.to_u32, request.to_u32, data.to_u32).to_int
 end
 
 fun waitfd(fd : LibC::Int, timeout : LibC::UInt) : LibC::Int

@@ -18,11 +18,12 @@ void spawn_process(char *s, char **argv) {
 }
 
 int main(int argc, char **argv) {
-    // FIXME: check stdin, stdout and launch tty correctly
-    close(STDIN_FILENO);
-    open("/kbd", O_RDONLY);
-    open("/con", O_WRONLY);
-    open("/con", O_WRONLY);
+    if (read(STDIN_FILENO, NULL, 0) < 0)
+        open("/kbd", O_RDONLY);
+    if (write(STDOUT_FILENO, NULL, 0) < 0)
+        open("/con", O_WRONLY);
+    if (write(STDERR_FILENO, NULL, 0) < 0)
+        open("/con", O_WRONLY);
 
     // shell
     char *path = calloc(PATH_MAX + 1, 1);
