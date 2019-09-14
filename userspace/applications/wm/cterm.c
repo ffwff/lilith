@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/gfx.h>
 #include <sys/ioctl.h>
+#include <sys/pipes.h>
 #include <syscalls.h>
 
 #define LIBCANVAS_IMPLEMENTATION
@@ -61,6 +62,8 @@ int is_coord_in_bottom_right_corner(struct fbdev_bitblit *sprite, unsigned int x
 
 /* WINDOW DRAWING */
 
+#define LINE_BUFFER_LEN 128
+
 struct cterm_state {
     struct canvas_ctx *ctx;
     struct fbdev_bitblit sprite;
@@ -73,6 +76,8 @@ struct cterm_state {
     char *buffer;
     size_t buffer_len;
     int in_fd, out_fd;
+    char line_buffer[LINE_BUFFER_LEN];
+    size_t line_buffer_len;
 };
 
 void cterm_init(struct cterm_state *state) {
@@ -99,8 +104,9 @@ void cterm_init(struct cterm_state *state) {
 
     char path[128] = { 0 };
 
-    // snprintf(path, sizeof(path), "/pipes/cterm:%d:in", getpid());
-    // state->in_fd = create(path);
+    snprintf(path, sizeof(path), "/pipes/cterm:%d:in", getpid());
+    state->in_fd = create(path);
+    ioctl(state->in_fd, PIPE_CONFIGURE, PIPE_WAIT_READ);
 
     snprintf(path, sizeof(path), "/pipes/cterm:%d:out", getpid());
     state->out_fd = create(path);
@@ -166,6 +172,9 @@ void cterm_newline(struct cterm_state *state) {
                     = state->buffer[(y + 1) * state->cwidth + x];
             }
         }
+        for(int x = 0; x < state->cwidth; x++) {
+            state->buffer[(state->cheight - 1) * state->cwidth + x] = 0;
+        }
         cterm_draw_buffer(state);
     } else {
         state->cy++;
@@ -192,6 +201,17 @@ void cterm_add_character(struct cterm_state *state, char ch) {
     }
 }
 
+void cterm_type(struct cterm_state *state, char ch) {
+    cterm_add_character(state, ch);
+    if(ch == '\n' || state->line_buffer_len == LINE_BUFFER_LEN - 2) {
+        state->line_buffer[state->line_buffer_len++] = '\n';
+        write(state->in_fd, state->line_buffer, state->line_buffer_len);
+        state->line_buffer_len = 0;
+    } else {
+        state->line_buffer[state->line_buffer_len++] = ch;
+    }
+}
+
 int cterm_read_buf(struct cterm_state *state) {
     char buf[4096];
     int retval = read(state->out_fd, buf, sizeof(buf));
@@ -209,7 +229,7 @@ int main(int argc, char **argv) {
 
     // spawn main
     struct startup_info s_info = {
-        .stdin = 0,
+        .stdin = state.in_fd,
         .stdout = state.out_fd,
         .stderr = state.out_fd,
     };
@@ -296,7 +316,7 @@ int main(int argc, char **argv) {
                 break;
             }
             case ATOM_KEYBOARD_EVENT_TYPE: {
-                cterm_add_character(&state, atom.keyboard_event.ch);
+                cterm_type(&state, atom.keyboard_event.ch);
                 needs_redraw = 1;
 
                 struct wm_atom respond_atom = {

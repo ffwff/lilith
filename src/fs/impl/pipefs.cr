@@ -63,6 +63,15 @@ private class PipeFSNode < VFSNode
   @buffer = Pointer(UInt8).null
   @buffer_pos = 0
   BUFFER_CAPACITY = 0x1000
+  
+  @[Flags]
+  enum Flags : UInt32
+    WaitRead = 1 << 0
+  end
+  
+  @flags = Flags::None
+  
+  @queue : VFSQueue? = nil
 
   def remove : Int32
     FrameAllocator.declaim_addr(@buffer.address & ~PTR_IDENTITY_MASK)
@@ -76,13 +85,27 @@ private class PipeFSNode < VFSNode
       @buffer = Pointer(UInt8).new(FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK)
     end
   end
+  
+  private def init_queue
+    if @queue.nil?
+      @queue = VFSQueue.new
+    end
+  end
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
     # Serial.puts "read pipe ", @name, " ", process.not_nil!.pid, '\n'
     init_buffer
     if @buffer_pos == 0
-      0
+      if @flags.includes?(Flags::WaitRead)
+        init_queue
+        @queue.not_nil!
+          .enqueue(VFSMessage.new(VFSMessage::Type::Read,
+            slice, process, nil, self))
+        VFS_WAIT_NO_ENQUEUE
+      else
+        0
+      end
     else
       # pop message from buffer
       size = min(slice.size, @buffer_pos)
@@ -99,10 +122,24 @@ private class PipeFSNode < VFSNode
     if @buffer_pos == BUFFER_CAPACITY
       0
     else
+      remaining = slice.size
+      size = 0
+      if @queue
+        # pop vfsmessage from queue and respond
+        while (msg = @queue.not_nil!.dequeue)
+          panic "vfsmessage must be read type" unless msg.type == VFSMessage::Type::Read
+          written = msg.respond slice
+          msg.unawait
+          size += written
+          remaining -= written
+          return size if remaining == 0
+        end
+      end
+      remaining = min(remaining, BUFFER_CAPACITY - @buffer_pos)
       # push the message on to the buffer stack
-      size = min(slice.size, BUFFER_CAPACITY - @buffer_pos)
-      memcpy(@buffer + @buffer_pos, slice.to_unsafe, size.to_usize)
-      @buffer_pos += size
+      memcpy(@buffer + @buffer_pos, slice.to_unsafe, remaining.to_usize)
+      @buffer_pos += remaining
+      size += remaining
       size
     end
   end
@@ -116,6 +153,16 @@ private class PipeFSNode < VFSNode
 
   def available?
     @buffer_pos > 0
+  end
+  
+  def ioctl(request : Int32, data : UInt32) : Int32
+    case request
+    when SC_IOCTL_PIPE_CONFIGURE
+      @flags = Flags.new(data)
+      0
+    else
+      -1
+    end
   end
 end
 

@@ -108,7 +108,7 @@ class VFSMessage
       phys_pg_addr = @process.not_nil!.physical_page_for_address(virt_pg_addr)
       if phys_pg_addr.nil?
         finish
-        return
+        return @offset
       end
       phys_pg_addr = phys_pg_addr.not_nil!
       while remaining > 0 && pg_offset < 0x1000
@@ -120,9 +120,10 @@ class VFSMessage
       pg_offset = 0
       virt_pg_addr += 0x1000
     end
+    @offset
   end
 
-  def respond(ch)
+  def respond(ch : UInt8)
     unless finished?
       unless @process.not_nil!.write_to_virtual(@slice.not_nil!.to_unsafe + @offset, ch.to_u8)
         finish
@@ -133,14 +134,16 @@ class VFSMessage
   end
 
   def unawait
+    return if @process.not_nil!.status == Multiprocessing::Process::Status::Normal
     @process.not_nil!.status = Multiprocessing::Process::Status::Normal
-    unless @fd.nil?
+    if @fd
       @fd.not_nil!.offset += @offset
     end
     @process.not_nil!.frame.not_nil!.to_unsafe.value.rax = @offset
   end
   
   def unawait(retval)
+    return if @process.not_nil!.status == Multiprocessing::Process::Status::Normal
     @process.not_nil!.status = Multiprocessing::Process::Status::Normal
     @process.not_nil!.frame.not_nil!.to_unsafe.value.rax = retval
   end

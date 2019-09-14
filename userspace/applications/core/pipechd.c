@@ -8,7 +8,6 @@ int main(int argc, char **argv) {
     read(fd, buf, sizeof(buf) - 1);
     printf("recv: %s\n", buf);
 
-    waitfd(fd, (useconds_t)-1);
     read(fd, buf, sizeof(buf) - 1);
     printf("recv: %s\n", buf);
 

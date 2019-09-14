@@ -48,6 +48,8 @@ int vsnprintf(char *str, size_t size, const char *format, va_list ap);
 
 int sscanf(const char *str, const char *format, ...);
 
+int fputc(int c, FILE *stream);
+int fputs(const char *s, FILE *stream);
 int putc(int c, FILE *stream);
 int puts(const char *s);
 int getchar(void);
