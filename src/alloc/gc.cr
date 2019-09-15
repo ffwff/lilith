@@ -39,6 +39,20 @@ module Gc
   @@first_black_node = Pointer(Kernel::GcNode).null
   @@enabled = false
   @@root_scanned = false
+  
+  # Number of garbage collection cycles performed
+  @@ticks = 0
+  # Last tick when sweep phase was performed
+  @@last_sweep_tick = 0
+  # Last tick when mark phase was started
+  @@last_start_tick = 0
+  # Number of cycles to be performed per allocation
+  @@cycles_per_alloc = 1
+  
+  private def calc_cycles_per_alloc
+    old = @@cycles_per_alloc
+    @@cycles_per_alloc = max((@@last_sweep_tick - @@last_start_tick) >> 2, 1)
+  end
 
   def init(@@data_start : USize, @@data_end : USize,
            @@stack_start : USize, @@stack_end : USize)
@@ -117,6 +131,8 @@ module Gc
   end
 
   def cycle
+    @@ticks += 1
+
     # marking phase
     if !@@root_scanned
       # we don't have any gray/black nodes at the beginning of a cycle
@@ -130,6 +146,7 @@ module Gc
         panic "stack scanning occurred in non-kernel code"
       end
       @@root_scanned = true
+      @@last_start_tick = @@ticks
     elsif !@@first_gray_node.null?
       # second stage of marking phase: precisely marking gray nodes
       # new_first_gray_node = Pointer(Kernel::GcNode).null
@@ -251,6 +268,8 @@ module Gc
       if @@first_gray_node.null?
         # sweeping phase
         debug "sweeping phase: ", self, "\n"
+        @@last_sweep_tick = @@ticks
+        calc_cycles_per_alloc
         node = @@first_white_node
         while !node.null?
           panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
@@ -284,7 +303,9 @@ module Gc
 
   def unsafe_malloc(size : USize, atomic = false)
     if @@enabled
-      cycle
+      @@cycles_per_alloc.times do |i|
+        cycle
+      end
     end
     size += sizeof(Kernel::GcNode)
     header = Pointer(Kernel::GcNode).new(KernelArena.malloc(size))
