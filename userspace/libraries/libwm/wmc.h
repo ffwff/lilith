@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdio.h>
 #include <syscalls.h>
 #include <wm/wm.h>
 
@@ -35,14 +36,14 @@ void wmc_connection_obtain(struct wmc_connection *conn, unsigned int event_mask)
         char path[128] = { 0 };
 
         if(conn->win_fd_m == -1) {
-            snprintf(path, sizeof(path), "/pipes/wm:%d:m", conn_req.pid);
+            snprintf(path, sizeof(path), "/pipes/wm:%ld:m", conn_req.pid);
             if((conn->win_fd_m = open(path, O_RDONLY)) < 0) {
                 goto await_conn;
             }
         }
 
         if(conn->win_fd_s == -1) {
-            snprintf(path, sizeof(path), "/pipes/wm:%d:s", conn_req.pid);
+            snprintf(path, sizeof(path), "/pipes/wm:%ld:s", conn_req.pid);
             if((conn->win_fd_s = open(path, O_WRONLY)) < 0) {
                 goto await_conn;
             }
