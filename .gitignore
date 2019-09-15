@@ -2,3 +2,5 @@ build
 .vscode
 *.img
 os.iso
+*.a
+*.o
