@@ -9,17 +9,12 @@
 #include <canvas.h>
 #include <font8x8_basic.h>
 #include <wm/wmc.h>
+#include <gui.h>
 
 #define INIT_WIDTH 400
 #define INIT_HEIGHT 256
 #define FONT_WIDTH 8
 #define FONT_HEIGHT 8
-
-int clamp(int d, int min, int max) {
-    if(d < min) return min;
-    if(d < max) return max;
-    return d;
-}
 
 void canvas_ctx_draw_character(struct canvas_ctx *ctx, int xs, int ys, const char ch) {
     char *bitmap = font8x8_basic[ch];
@@ -44,30 +39,11 @@ void canvas_ctx_draw_text(struct canvas_ctx *ctx, int xs, int ys, const char *s)
     }
 }
 
-/* CHECKS */
-
-int is_coord_in_sprite(struct fbdev_bitblit *sprite, unsigned int x, unsigned int y) {
-    return sprite->x <= x && x <= (sprite->x + sprite->width) && 
-           sprite->y <= y && y <= (sprite->y + sprite->height);
-}
-
-int is_coord_in_bottom_right_corner(struct fbdev_bitblit *sprite, unsigned int x, unsigned int y) {
-    const int RESIZE_DIST = 10;
-    int cx = sprite->x + sprite->width;
-    int cy = sprite->y + sprite->height;
-
-    return abs(cx - (int)x) <= RESIZE_DIST && abs(cy - (int)y) <= RESIZE_DIST;
-}
-
 /* WINDOW DRAWING */
 
 #define LINE_BUFFER_LEN 128
 
 struct cterm_state {
-    struct canvas_ctx *ctx;
-    struct fbdev_bitblit sprite;
-    int fb_fd;
-    struct wmc_connection wmc_conn;
     int cwidth, cheight; // in number of characters
     int cx, cy;
     int root_width, root_height;
@@ -80,20 +56,6 @@ struct cterm_state {
 };
 
 void cterm_init(struct cterm_state *state) {
-    state->sprite = (struct fbdev_bitblit){
-        .target_buffer = GFX_BACK_BUFFER,
-        .source = 0,
-        .x = 0,
-        .y = 0,
-        .width  = INIT_WIDTH,
-        .height = INIT_HEIGHT,
-        .type = GFX_BITBLIT_SURFACE
-    };
-    state->ctx = canvas_ctx_create(state->sprite.width,
-                                   state->sprite.height,
-                                   LIBCANVAS_FORMAT_RGB24);
-    state->fb_fd = open("/fb0", O_RDWR);
-    wmc_connection_init(&state->wmc_conn);
     state->cwidth = 0;
     state->cheight = 0;
     state->cx = 0;
@@ -111,9 +73,34 @@ void cterm_init(struct cterm_state *state) {
     state->out_fd = create(path);
 }
 
+int cterm_app_redraw(struct g_application *app) {
+    struct canvas_ctx *ctx = g_application_ctx(app);
+    unsigned int width = g_application_width(app);
+    unsigned int height = g_application_height(app);
+
+    // window decorations
+    canvas_ctx_fill_rect(ctx, 0, 0,
+        width, height,
+        canvas_color_rgb(0x32, 0x36, 0x39));
+    canvas_ctx_stroke_rect(ctx, 0, 0,
+        width - 1, height - 1,
+        canvas_color_rgb(0x20, 0x21, 0x24));
+
+    {
+        const char *title = "Terminal";
+        int x_title = (width - strlen(title) * FONT_WIDTH) / 2;
+        canvas_ctx_draw_text(ctx, x_title, 10, title);
+    }
+    
+    // calculate root
+    
+    return 0;
+}
+
+#if 0
+
 void cterm_draw_buffer(struct cterm_state *state);
 void cterm_draw(struct cterm_state *state) {
-    state->sprite.source = (unsigned long *)canvas_ctx_get_surface(state->ctx);
     // window decorations
     canvas_ctx_fill_rect(state->ctx, 0, 0,
         state->sprite.width, state->sprite.height,
@@ -221,9 +208,10 @@ int cterm_read_buf(struct cterm_state *state) {
     return retval;
 }
 
+#endif
+
 int main(int argc, char **argv) {
-    struct cterm_state state = { 0 };
-    cterm_init(&state);
+    #if 0
     cterm_draw(&state);
 
     // spawn main
@@ -234,101 +222,14 @@ int main(int argc, char **argv) {
     };
     char *spawn_argv[] = {"/hd0/main", NULL};
     spawnxv(&s_info, "/hd0/main", (char **)spawn_argv);
+    #endif
 
-    wmc_connection_obtain(&state.wmc_conn, ATOM_MOUSE_EVENT_MASK | ATOM_KEYBOARD_EVENT_MASK);
+    struct cterm_state state = { 0 };
+    cterm_init(&state);
 
-    // event loop
-    int mouse_drag = 0;
-    int mouse_resize = 0;
+    struct g_application *app = g_application_create(INIT_WIDTH, INIT_HEIGHT);
+    g_application_set_userdata(app, &state);
+    g_application_set_redraw_cb(app, cterm_app_redraw);
 
-    struct wm_atom atom;
-    int needs_redraw = 0;
-    int retval = 0;
-    while ((retval = wmc_recv_atom(&state.wmc_conn, &atom)) >= 0) {
-        if(retval == 0)
-            goto wait;
-        switch (atom.type) {
-            case ATOM_REDRAW_TYPE: {
-                struct wm_atom respond_atom = {
-                    .type = ATOM_WIN_REFRESH_TYPE,
-                    .win_refresh = (struct wm_atom_win_refresh){
-                        .did_redraw = 0,
-                        .x = state.sprite.x,
-                        .y = state.sprite.y,
-                        .width = state.sprite.width,
-                        .height = state.sprite.height,
-                    }
-                };
-                if (cterm_read_buf(&state) || needs_redraw || atom.redraw.force_redraw) {
-                    needs_redraw = 0;
-                    respond_atom.win_refresh.did_redraw = 1;
-                    ioctl(state.fb_fd, GFX_BITBLIT, &state.sprite);
-                }
-                wmc_send_atom(&state.wmc_conn, &respond_atom);
-                break;
-            }
-            case ATOM_MOVE_TYPE: {
-                state.sprite.x = atom.move.x;
-                state.sprite.y = atom.move.y;
-                needs_redraw = 1;
-
-                struct wm_atom respond_atom = {
-                    .type = ATOM_RESPOND_TYPE,
-                    .respond.retval = 0,
-                };
-                wmc_send_atom(&state.wmc_conn, &respond_atom);
-                break;
-            }
-            case ATOM_MOUSE_EVENT_TYPE: {
-                if(atom.mouse_event.type == WM_MOUSE_PRESS &&
-                   (is_coord_in_sprite(&state.sprite,
-                                       atom.mouse_event.x,
-                                       atom.mouse_event.y) ||
-                    mouse_drag)) {
-                    mouse_drag = 1;
-                    if(is_coord_in_bottom_right_corner(&state.sprite,
-                        atom.mouse_event.x,
-                        atom.mouse_event.y) || mouse_resize) {
-                        // resize
-                        mouse_resize = 1;
-                        state.sprite.width += atom.mouse_event.delta_x;
-                        state.sprite.height += atom.mouse_event.delta_y;
-                        canvas_ctx_resize_buffer(state.ctx, state.sprite.width, state.sprite.height);
-                        cterm_draw(&state);
-                    } else {
-                        if(!(atom.mouse_event.delta_x < 0 && state.sprite.x < -atom.mouse_event.delta_x))
-                            state.sprite.x += atom.mouse_event.delta_x;
-                        if(!(atom.mouse_event.delta_y < 0 && state.sprite.y < -atom.mouse_event.delta_y))
-                            state.sprite.y += atom.mouse_event.delta_y;
-                    }
-                } else if (atom.mouse_event.type == WM_MOUSE_RELEASE && mouse_drag) {
-                    mouse_drag = 0;
-                    mouse_resize = 0;
-                }
-                needs_redraw = 1;
-
-                struct wm_atom respond_atom = {
-                    .type = ATOM_RESPOND_TYPE,
-                    .respond.retval = 0,
-                };
-                wmc_send_atom(&state.wmc_conn, &respond_atom);
-                break;
-            }
-            case ATOM_KEYBOARD_EVENT_TYPE: {
-                cterm_type(&state, atom.keyboard_event.ch);
-                needs_redraw = 1;
-
-                struct wm_atom respond_atom = {
-                    .type = ATOM_RESPOND_TYPE,
-                    .respond.retval = 0,
-                };
-                wmc_send_atom(&state.wmc_conn, &respond_atom);
-                break;
-            }
-        }
-    wait:
-        wmc_wait_atom(&state.wmc_conn);
-    }
-
-    return 0;
+    return g_application_run(app);
 }

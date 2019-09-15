@@ -1,7 +1,18 @@
 PREFIX ?= /usr
 INCLUDEDIR ?= $(PREFIX)/include
-.PHONY: install
+LIBDIR ?= $(PREFIX)/lib
+DEFAULT: libwmc.a
+.PHONY: install clean
 
-install: wm.h wmc.h
-	mkdir -p $(INCLUDEDIR)/wm
-	cp $^ $(INCLUDEDIR)/wm/
+%.o: %.c
+	$(CC) -g -O2 -Wall $(CFLAGS) -c $^ -o $@
+
+libwmc.a: wmc.o
+	ar rcs $@ $^
+
+install: wm.h wmc.h libwmc.a
+	cp wm.h wmc.h $(INCLUDEDIR)
+	cp libwmc.a $(LIBDIR)
+
+clean:
+	rm -f *.a *.o

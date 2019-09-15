@@ -1,14 +1,9 @@
-#pragma once
-
 #include <wm/wmc.h>
 #include <canvas.h>
 #include <sys/gfx.h>
 #include <sys/ioctl.h>
-#include "coords.h"
+#include "priv/coords.h"
 #include "gui.h"
-
-#define INIT_WIDTH 256
-#define INIT_HEIGHT 256
 
 // application
 struct g_application {
@@ -17,32 +12,66 @@ struct g_application {
 	struct fbdev_bitblit sprite;
     struct canvas_ctx *ctx;
     
+    struct g_widget **widgets;
+    size_t widgets_len;
+    
     // callbacks
     g_redraw_cb redraw_cb;
     g_key_cb key_cb;
+    
+    void *userdata;
 };
 
-int g_application_init(struct g_application *app, int width, int height) {
-	app->fb_fd = open("/fb0", 0);
-	wmc_connection_init(&app->wmc_conn);
+struct g_application *g_application_create(int width, int height) {
+    struct g_application *app = malloc(sizeof(struct g_application));
+    if(!app) {
+        return 0;
+    }
+	app->fb_fd = open("/fb0", O_RDWR);
+    if(app->fb_fd < 0) {
+        free(app);
+        return 0;
+    }
+	if(!wmc_connection_init(&app->wmc_conn)) {
+        close(app->fb_fd);
+        free(app);
+        return 0;
+    }
     app->sprite = (struct fbdev_bitblit){
         .target_buffer = GFX_BACK_BUFFER,
         .source = 0,
         .x = 0,
         .y = 0,
-        .width  = INIT_WIDTH,
-        .height = INIT_HEIGHT,
+        .width  = width,
+        .height = height,
         .type = GFX_BITBLIT_SURFACE
     };
     app->ctx = canvas_ctx_create(app->sprite.width,
                                  app->sprite.height,
                                  LIBCANVAS_FORMAT_RGB24);
+    app->widgets = 0;
+    app->widgets_len = 0;
 
+    if(!app->ctx) {
+        close(app->fb_fd);
+        wmc_connection_deinit(&app->wmc_conn);
+        free(app);
+        return 0;
+    }
     app->redraw_cb = 0;
     app->key_cb = 0;
+    app->userdata = 0;
+    return app;
+}
+
+void g_application_destroy(struct g_application *app) {
+    close(app->fb_fd);
+    wmc_connection_deinit(&app->wmc_conn);
+    free(app);
 }
 
 int g_application_redraw(struct g_application *app) {
+    app->sprite.source = (unsigned long *)canvas_ctx_get_surface(app->ctx);
     if (app->redraw_cb) {
         return app->redraw_cb(app);
     }
@@ -56,7 +85,7 @@ static int g_application_on_key(struct g_application *app, int ch) {
     return 0;
 }
 
-void g_application_run(struct g_application *app) {
+int g_application_run(struct g_application *app) {
     wmc_connection_obtain(&app->wmc_conn, ATOM_MOUSE_EVENT_MASK | ATOM_KEYBOARD_EVENT_MASK);
 
 	// event loop
@@ -151,12 +180,47 @@ void g_application_run(struct g_application *app) {
     wait:
         wmc_wait_atom(&app->wmc_conn);
     }
+    
+    return 0;
+}
+
+// widgets
+void g_application_add_widget(struct g_application *app, struct g_widget *widget) {
+    size_t idx = app->widgets_len++;
+    app->widget = realloc(app->widgets, sizeof(struct g_widget *) * app->widgets_len);
+    app->widget[idx] = widget;
 }
 
 // getters
 
 struct canvas_ctx *g_application_ctx(struct g_application *app) {
     return app->ctx;
+}
+
+unsigned int g_application_x(struct g_application *app) {
+    return app->sprite.x;
+}
+
+unsigned int g_application_y(struct g_application *app) {
+    return app->sprite.y;
+}
+
+unsigned int g_application_width(struct g_application *app) {
+    return app->sprite.width;
+}
+
+unsigned int g_application_height(struct g_application *app) {
+    return app->sprite.height;
+}
+
+// properties
+
+void *g_application_userdata(struct g_application *app) {
+    return app->userdata;
+}
+
+void g_application_set_userdata(struct g_application *app, void *ptr) {
+    app->userdata = ptr;
 }
 
 // callbacks

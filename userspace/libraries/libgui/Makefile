@@ -10,7 +10,8 @@ DEFAULT: canvas.a
 libgui.a: $(patsubst %.c, %.o, $(wildcard ./*.c))
 	ar rcs $@ $^
 
-install: gui.h libgui.a
+install: $(wildcard ./gui/*.h) libgui.a
+	cp -r gui $(INCLUDEDIR)
 	cp gui.h $(INCLUDEDIR)
 	cp libgui.a $(LIBDIR)
 

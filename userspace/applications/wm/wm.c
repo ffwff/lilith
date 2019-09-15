@@ -100,7 +100,7 @@ struct wm_window {
         struct wm_window_prog prog;
         struct wm_window_sprite sprite;
     } as;
-    size_t z_index;
+    unsigned int z_index;
     int drawn;
 };
 
@@ -271,7 +271,7 @@ int main(int argc, char **argv) {
         filter_data_with_alpha(&mouse_spr.sprite);
 
         wm.mouse_win = wm_add_sprite(&wm, &mouse_spr);
-        wm.mouse_win->z_index = (size_t)-1;
+        wm.mouse_win->z_index = (unsigned int)-1;
     }
 
     // keyboard
