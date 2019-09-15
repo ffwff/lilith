@@ -2,26 +2,12 @@
 #include <canvas.h>
 #include <sys/gfx.h>
 #include <sys/ioctl.h>
-#include "priv/coords.h"
 #include "gui.h"
+#include "priv/coords.h"
+#include "priv/gapplication-impl.h"
+#include "priv/gwidget-impl.h"
 
 // application
-struct g_application {
-	int fb_fd;
-	struct wmc_connection wmc_conn;
-	struct fbdev_bitblit sprite;
-    struct canvas_ctx *ctx;
-    
-    struct g_widget **widgets;
-    size_t widgets_len;
-    
-    // callbacks
-    g_redraw_cb redraw_cb;
-    g_key_cb key_cb;
-    
-    void *userdata;
-};
-
 struct g_application *g_application_create(int width, int height) {
     struct g_application *app = malloc(sizeof(struct g_application));
     if(!app) {
@@ -72,10 +58,17 @@ void g_application_destroy(struct g_application *app) {
 
 int g_application_redraw(struct g_application *app) {
     app->sprite.source = (unsigned long *)canvas_ctx_get_surface(app->ctx);
-    if (app->redraw_cb) {
-        return app->redraw_cb(app);
+    int needs_redraw = 0;
+    for(size_t i = 0; i < app->widgets_len; i++) {
+        if(app->widgets[i]->redraw_fn(app->widgets[i], app)) {
+            needs_redraw = 1;
+        }
     }
-    return 0;
+    if (app->redraw_cb) {
+        if (app->redraw_cb(app))
+            needs_redraw = 1;
+    }
+    return needs_redraw;
 }
 
 static int g_application_on_key(struct g_application *app, int ch) {
@@ -187,8 +180,9 @@ int g_application_run(struct g_application *app) {
 // widgets
 void g_application_add_widget(struct g_application *app, struct g_widget *widget) {
     size_t idx = app->widgets_len++;
-    app->widget = realloc(app->widgets, sizeof(struct g_widget *) * app->widgets_len);
-    app->widget[idx] = widget;
+    app->widgets = realloc(app->widgets, sizeof(struct g_widget *) * app->widgets_len);
+    app->widgets[idx] = widget;
+    qsort(app->widgets, app->widgets_len, sizeof(struct g_widget *), g_widget_cmp_z_index);
 }
 
 // getters
