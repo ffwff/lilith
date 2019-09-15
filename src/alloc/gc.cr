@@ -130,6 +130,11 @@ module Gc
     fix_white
   end
 
+  private enum CycleType
+    Mark
+    Sweep
+  end
+
   def cycle
     @@ticks += 1
 
@@ -147,6 +152,8 @@ module Gc
       end
       @@root_scanned = true
       @@last_start_tick = @@ticks
+      
+      return CycleType::Mark
     elsif !@@first_gray_node.null?
       # second stage of marking phase: precisely marking gray nodes
       # new_first_gray_node = Pointer(Kernel::GcNode).null
@@ -297,6 +304,9 @@ module Gc
         @@first_black_node = Pointer(Kernel::GcNode).null
         @@root_scanned = false
         # begins a new cycle
+        return CycleType::Sweep
+      else
+        return CycleType::Mark
       end
     end
   end
@@ -304,7 +314,7 @@ module Gc
   def unsafe_malloc(size : USize, atomic = false)
     if @@enabled
       @@cycles_per_alloc.times do |i|
-        cycle
+        break if cycle == CycleType::Sweep
       end
     end
     size += sizeof(Kernel::GcNode)
