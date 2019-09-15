@@ -5,10 +5,8 @@
 #include <sys/ioctl.h>
 #include <syscalls.h>
 
-#define LIBCANVAS_IMPLEMENTATION
 #include <canvas.h>
-
-#include "font8x8_basic.h"
+#include <font8x8_basic.h>
 
 #define WIDTH 512
 #define HEIGHT 512

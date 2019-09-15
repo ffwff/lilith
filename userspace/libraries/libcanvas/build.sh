@@ -5,7 +5,7 @@ build() {
             git clone https://github.com/ffwff/libcanvas
         fi
         cd libcanvas
-        make install PREFIX=$opt_toolsdir
+        make install PREFIX=$opt_toolsdir CC=$opt_arch-gcc
     popd
 }
 
