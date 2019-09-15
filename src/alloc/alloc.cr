@@ -8,9 +8,9 @@ private MAGIC_POOL_HEADER = 0xC0FEC0FE
 
 private lib Kernel
   struct PoolHeader
-    block_buffer_size : USize
     next_pool : PoolHeader*
     first_free_block : PoolBlockHeader*
+    block_buffer_size : USize
     magic_number : USize
   end
 
@@ -39,7 +39,7 @@ private struct Pool
 
   # full size of a block
   def block_size
-    @header.value.block_buffer_size + sizeof(Kernel::PoolBlockHeader)
+    block_buffer_size + sizeof(Kernel::PoolBlockHeader)
   end
 
   # how many blocks can this pool store
@@ -81,12 +81,14 @@ private struct Pool
   # returns a pointer to the buffer
   def get_free_block : USize
     block = first_free_block
+    # Serial.puts "allocate block of size ", block_buffer_size, '\n'
     @header.value.first_free_block = block.value.next_free_block
     block.address + BLOCK_HEADER_SIZE
   end
 
   # release a free block
   def release_block(addr : USize)
+    # Serial.puts "free block of size ", block_buffer_size, '\n'
     block = Pointer(Kernel::PoolBlockHeader).new(addr - BLOCK_HEADER_SIZE)
     block.value.next_free_block = @header.value.first_free_block
     @header.value.first_free_block = block

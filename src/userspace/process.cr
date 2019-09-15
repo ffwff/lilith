@@ -84,6 +84,7 @@ module Multiprocessing
     property frame
 
     # sse state
+    # FIXME: fxsave_region is manually allocated to save memory
     @fxsave_region = Pointer(UInt8).null
     getter fxsave_region
 
@@ -220,7 +221,7 @@ module Multiprocessing
       Idt.disable
 
       if @pid != 0
-        @fxsave_region = Pointer(UInt8).malloc(FXSAVE_SIZE)
+        @fxsave_region = Pointer(UInt8).mmalloc(FXSAVE_SIZE)
         memset(@fxsave_region, 0x0, FXSAVE_SIZE)
       end
 
@@ -454,8 +455,15 @@ module Multiprocessing
       else
         @next_process.not_nil!.prev_process = @prev_process
       end
-      # cleanup userspace data so as to minimize leaks
+      # cleanup manually allocated fxsave region
+      @fxsave_region.mfree
+      @fxsave_region = Pointer(UInt8).null
+      # cleanup gc data so as to minimize leaks
       @udata = nil
+      @frame = nil
+      @prev_process = nil
+      @next_process = nil
+      @status = Status::Removed
     end
 
     # write address to page without switching tlb to the process' pdpt
