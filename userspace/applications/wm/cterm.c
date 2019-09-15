@@ -230,6 +230,10 @@ int main(int argc, char **argv) {
     struct g_application *app = g_application_create(INIT_WIDTH, INIT_HEIGHT);
     g_application_set_userdata(app, &state);
     g_application_set_redraw_cb(app, cterm_app_redraw);
+    
+    struct g_termbox *tb = g_termbox_create();
+    g_widget_move_resize(tb, 0, 15, INIT_WIDTH, INIT_HEIGHT - 15);
+    g_application_add_widget(app, tb);
 
     return g_application_run(app);
 }
