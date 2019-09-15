@@ -6,7 +6,6 @@
 #include <sys/pipes.h>
 #include <syscalls.h>
 
-#define LIBCANVAS_IMPLEMENTATION
 #include <canvas.h>
 #include <font8x8_basic.h>
 #include <wm/wmc.h>
