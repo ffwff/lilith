@@ -59,23 +59,30 @@ void g_application_destroy(struct g_application *app) {
 int g_application_redraw(struct g_application *app) {
     app->sprite.source = (unsigned long *)canvas_ctx_get_surface(app->ctx);
     int needs_redraw = 0;
-    for(size_t i = 0; i < app->widgets_len; i++) {
-        if(app->widgets[i]->redraw_fn(app->widgets[i], app)) {
-            needs_redraw = 1;
-        }
-    }
     if (app->redraw_cb) {
         if (app->redraw_cb(app))
             needs_redraw = 1;
+    }
+    for(size_t i = 0; i < app->widgets_len; i++) {
+        if(app->widgets[i]->redraw_fn(app->widgets[i], app)) {
+            canvas_ctx_bitblit(app->ctx, app->widgets[i]->ctx,
+                        app->widgets[i]->x, app->widgets[i]->y);
+            needs_redraw = 1;
+        }
     }
     return needs_redraw;
 }
 
 static int g_application_on_key(struct g_application *app, int ch) {
     if (app->key_cb) {
-        return app->key_cb(app, ch);
+        app->key_cb(app, ch);
     }
-    return 0;
+    for(size_t i = 0; i < app->widgets_len; i++) {
+        if(app->widgets[i]->on_key_fn) {
+            app->widgets[i]->on_key_fn(app->widgets[i], ch);
+        }
+    }
+    return 1;
 }
 
 int g_application_run(struct g_application *app) {
@@ -160,7 +167,7 @@ int g_application_run(struct g_application *app) {
                 break;
             }
             case ATOM_KEYBOARD_EVENT_TYPE: {
-                needs_redraw = g_application_on_key(app, atom.keyboard_event.ch);
+                g_application_on_key(app, atom.keyboard_event.ch);
 
                 struct wm_atom respond_atom = {
                     .type = ATOM_RESPOND_TYPE,
