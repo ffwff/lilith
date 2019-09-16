@@ -2,9 +2,15 @@
 #include <canvas.h>
 #include <sys/gfx.h>
 #include <sys/ioctl.h>
-#include "priv/coords.h"
-#include "priv/gwidget-impl.h"
 #include "gui.h"
+#include "priv/gwidget-impl.h"
+
+void g_widget_init_ctx(struct g_widget *widget) {
+  if(widget->ctx == 0) {
+    widget->ctx = canvas_ctx_create(widget->width, widget->height,
+                                    LIBCANVAS_FORMAT_ARGB32);
+  }
+}
 
 // getters
 struct canvas_ctx *g_widget_ctx(struct g_widget *widget) {
@@ -36,9 +42,15 @@ void g_widget_set_y(struct g_widget *widget, unsigned int val) {
 }
 void g_widget_set_width(struct g_widget *widget, unsigned val) {
   widget->width = val;
+  if(widget->resize_fn) {
+    widget->resize_fn(widget, widget->width, widget->height);
+  }
 }
 void g_widget_set_height(struct g_widget *widget, unsigned val) {
   widget->height = val;
+  if(widget->resize_fn) {
+    widget->resize_fn(widget, widget->width, widget->height);
+  }
 }
 void g_widget_set_z_index(struct g_widget *widget, unsigned val) {
   widget->z_index = val;
@@ -49,5 +61,8 @@ void g_widget_move_resize(struct g_widget *widget, unsigned int x,
   widget->y = y;
   widget->width = width;
   widget->height = height;
+  if(widget->resize_fn) {
+    widget->resize_fn(widget, widget->width, widget->height);
+  }
 }
 
