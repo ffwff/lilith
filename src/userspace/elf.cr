@@ -169,15 +169,16 @@ module ElfReader
     nil
   end
 
-  struct Result
-    getter initial_ip, heap_start
-    def initialize(@initial_ip : USize, @heap_start : USize)
+  struct InlineMemMapNode
+    getter file_offset, filesz, vaddr, memsz, attrs
+    def initialize(@file_offset : UInt64, @filesz : UInt64, @vaddr : UInt64,
+          @memsz : UInt64, @attrs : MemMapNode::Attributes)
     end
   end
 
-  struct MemMapNode
-    getter file_offset, filesz, vaddr, memsz
-    def initialize(@file_offset : UInt64, @filesz : UInt64, @vaddr : UInt64, @memsz : UInt64)
+  struct Result
+    getter initial_ip, heap_start, mmap_list
+    def initialize(@initial_ip : USize, @heap_start : USize, @mmap_list : Slice(InlineMemMapNode))
     end
   end
 
@@ -186,7 +187,7 @@ module ElfReader
     unless node.size > 0
       return ParserError::EmptyFile
     end
-    mmap_list = Slice(MemMapNode).null
+    mmap_list = Slice(InlineMemMapNode).null
     mmap_append_idx = 0
     mmap_idx = 0
 
@@ -199,22 +200,35 @@ module ElfReader
         data = data.as(ElfStructs::Elf32Header)
         ret_initial_ip = data.e_entry.to_usize
         sz = data.e_phnum.to_i32
-        mmap_list = Slice(MemMapNode).new(allocator.malloc(sz * sizeof(MemMapNode)).as(MemMapNode*), sz)
+        mmap_list = Slice(InlineMemMapNode).new(allocator.malloc(sz * sizeof(InlineMemMapNode)).as(InlineMemMapNode*), sz)
       when ElfStructs::Elf32ProgramHeader
         data = data.as(ElfStructs::Elf32ProgramHeader)
         if data.p_memsz > 0
-          # mmap list
+          # mmap
+          attrs = MemMapNode::Attributes::None
+          if data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_R)
+            attrs |= MemMapNode::Attributes::Read
+          end
+          if data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_W)
+            attrs |= MemMapNode::Attributes::Write
+          end
+          if data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_X)
+            attrs |= MemMapNode::Attributes::Execute
+          end
           mmap_list[mmap_append_idx] =
-            MemMapNode.new(data.p_offset.to_u64, data.p_filesz.to_u64,
-              data.p_vaddr.to_u64, data.p_memsz.to_u64)
+            InlineMemMapNode.new(data.p_offset.to_u64, data.p_filesz.to_u64,
+              data.p_vaddr.to_u64, data.p_memsz.to_u64, attrs)
           mmap_append_idx += 1
+
           if data.p_type == ElfStructs::Elf32PType::TLS
             # TODO
           elsif data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_R)
-            npages = (data.p_memsz.to_usize >> 12) + 1
+            section_start = Paging.t_addr(data.p_vaddr.to_u64)
+            section_end = Paging.aligned(data.p_vaddr.to_u64 + data.p_memsz.to_u64)
+            npages = (section_end - section_start) >> 12
             # create page and zero-initialize it
             # Serial.puts Pointer(Void).new(data.p_vaddr.to_u64), data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_W), '\n'
-            page_start = Paging.alloc_page_pg_drv(data.p_vaddr.to_usize,
+            page_start = Paging.alloc_page_pg_drv(section_start,
               data.p_flags.includes?(ElfStructs::Elf32PFlags::PF_W),
               true, npages)
             zero_page Pointer(UInt8).new(page_start), npages
@@ -241,7 +255,7 @@ module ElfReader
       ret_heap_start += 0x2000
       # allocate the stack
       Paging.alloc_page_pg_drv(Multiprocessing::USER_STACK_INITIAL - 0x1000 * 4, true, true, 4)
-      Result.new(ret_initial_ip, ret_heap_start)
+      Result.new(ret_initial_ip, ret_heap_start, mmap_list)
     else
       result
     end

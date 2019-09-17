@@ -15,19 +15,19 @@ module Multiprocessing
   USER_STACK_BOTTOM_MAX = USER_STACK_TOP - USER_STACK_SIZE
   USER_STACK_BOTTOM     = 0x8000_0000u64
 
-  USER_STACK_INITIAL    = 0xFFFF_FFFFu64
-  USER_MMAP_INITIAL     = USER_STACK_BOTTOM_MAX
+  USER_STACK_INITIAL = 0xFFFF_FFFFu64
+  USER_MMAP_INITIAL  = USER_STACK_BOTTOM_MAX
 
-  KERNEL_STACK_INITIAL  = 0x7F_FFFF_FFFFu64
-  KERNEL_HEAP_INITIAL  = 0x7F_FFFF_D000u64
+  KERNEL_STACK_INITIAL = Paging::KERNEL_PDPT_POINTER + 0x7F_FFFF_FFFFu64
+  KERNEL_HEAP_INITIAL  = Paging::KERNEL_PDPT_POINTER + 0x0u64
 
-  USER_CS_SEGMENT = 0x1b
-  USER_SS_SEGMENT = 0x23
-  USER_RFLAGS = 0x212
+  USER_CS_SEGMENT =  0x1b
+  USER_SS_SEGMENT =  0x23
+  USER_RFLAGS     = 0x212
 
-  KERNEL_CS_SEGMENT = 0x29
-  KERNEL_SS_SEGMENT = 0x31
-  KERNEL_RFLAGS = 0x1202 # IOPL=1
+  KERNEL_CS_SEGMENT =   0x29
+  KERNEL_SS_SEGMENT =   0x31
+  KERNEL_RFLAGS     = 0x1202 # IOPL=1
 
   FXSAVE_SIZE = 512u64
 
@@ -50,12 +50,18 @@ module Multiprocessing
   mod_property n_process
   @@fxsave_region = Pointer(UInt8).null
 
-  def fxsave_region; @@fxsave_region; end
+  def fxsave_region
+    @@fxsave_region
+  end
+
   def fxsave_region=(@@fxsave_region); end
-  
+
   @@procfs : ProcFS? = nil
 
-  def procfs; @@procfs; end
+  def procfs
+    @@procfs
+  end
+
   def procfs=(@@procfs); end
 
   class Process
@@ -77,8 +83,11 @@ module Multiprocessing
     property initial_sp
 
     # physical location of the process' page directory
-    @phys_pg_struct : USize = 0u64
+    @phys_pg_struct : UInt64 = 0u64
     property phys_pg_struct
+    
+    @phys_user_pg_struct : UInt64 = 0u64
+    property phys_user_pg_struct
 
     # interrupt frame for preemptive multitasking
     @frame : Box(IdtData::Registers)? = nil
@@ -138,6 +147,7 @@ module Multiprocessing
       class EnvVar
         getter key
         property value
+
         def initialize(@key : GcString, @value : GcString)
         end
       end
@@ -205,7 +215,7 @@ module Multiprocessing
     def kernel_process?
       @udata.nil?
     end
-    
+
     getter name
 
     def initialize(@name : GcString?, @udata : UserData? = nil, &on_setup_paging : Process -> _)
@@ -229,9 +239,14 @@ module Multiprocessing
       # create vmm map and save old vmm map
       last_pg_struct = Pointer(PageStructs::PageDirectoryPointerTable).null
       if @pid != 0
-        last_pg_struct = Paging.current_pdpt
         page_struct = Paging.alloc_process_pdpt
-        Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_struct
+        if kernel_process?
+          last_pg_struct = Paging.current_kernel_pdpt
+          Paging.current_kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_struct
+        else
+          last_pg_struct = Paging.current_pdpt
+          Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_struct
+        end
         Paging.flush
         @phys_pg_struct = page_struct
       else
@@ -241,6 +256,9 @@ module Multiprocessing
       # setup process
       unless yield self
         # unable to setup, bailing
+        if kernel_process?
+          panic "unable to set up kernel process"
+        end
         unless last_pg_struct.null?
           Paging.current_pdpt = last_pg_struct
           Paging.flush
@@ -263,14 +281,18 @@ module Multiprocessing
 
       # restore vmm map
       unless last_pg_struct.null?
-        Paging.current_pdpt = last_pg_struct
+        if kernel_process?
+          Paging.current_kernel_pdpt = last_pg_struct
+        else
+          Paging.current_pdpt = last_pg_struct
+        end
         Paging.flush
       end
-      
+
       # append to procfs
       if Multiprocessing.procfs
-		Multiprocessing.procfs.not_nil!.root.not_nil!.create_for_process(self)
-	  end
+        Multiprocessing.procfs.not_nil!.root.not_nil!.create_for_process(self)
+      end
 
       Idt.enable
     end
@@ -278,19 +300,15 @@ module Multiprocessing
     def initial_switch
       Multiprocessing.current_process = self
       panic "page dir is nil" if @phys_pg_struct == 0
-      Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(@phys_pg_struct)
-      Paging.flush
       if kernel_process?
         DriverThread.lock
-        Kernel.ksyscall_switch(@frame.not_nil!.to_unsafe)
+        Paging.current_kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(@phys_pg_struct)
+        Paging.flush
       else
-        new_frame
-        asm("jmp kswitch_usermode32"
-            :: "{rcx}"(@initial_ip),
-              "{r11}"(@frame.not_nil!.to_unsafe.value.rflags)
-              "{rsp}"(@initial_sp)
-            : "volatile", "memory")
+        Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(@phys_pg_struct)
+        Paging.flush
       end
+      Kernel.ksyscall_switch(@frame.not_nil!.to_unsafe)
     end
 
     # new register frame for multitasking
@@ -321,10 +339,10 @@ module Multiprocessing
       frame = IdtData::Registers.new
 
       {% for id in [
-          "rbp", "rdi", "rsi",
-          "r15", "r14", "r13", "r12", "r11", "r10", "r9", "r8",
-          "rdx", "rcx", "rbx", "rax"
-        ] %}
+                     "rbp", "rdi", "rsi",
+                     "r15", "r14", "r13", "r12", "r11", "r10", "r9", "r8",
+                     "rdx", "rcx", "rbx", "rax",
+                   ] %}
       frame.{{ id.id }} = syscall_frame.value.{{ id.id }}
       {% end %}
 
@@ -354,14 +372,13 @@ module Multiprocessing
       end
     end
 
-    # spawn user process and move the first 4gb of memory in current the address space
-    # to the newly created process' address space
-    # TODO: holy hell this is unportable, need to port this
-    # when we get long mode user processes
+    # spawn user process and move the lower-half of the current the address space
+    # to the newly-spawned user process
     @[NoInline]
-    def self.spawn_user_4gb(initial_ip, heap_start, udata)
+    def self.spawn_user(initial_ip : UInt64, heap_start : UInt64,
+          udata : UserData, mmap_list : Slice(ElfReader::InlineMemMapNode))
       old_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
-          .new(Paging.mt_addr(Paging.current_pdpt.address))
+        .new(Paging.mt_addr(Paging.current_pdpt.address))
       Multiprocessing::Process.new(udata.argv[0].not_nil!, udata) do |process|
         process.initial_ip = initial_ip
 
@@ -369,42 +386,23 @@ module Multiprocessing
         new_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
           .new(Paging.mt_addr(process.phys_pg_struct))
 
-        4.times do |dir_idx|
-          # copy the 4gb over
+        512.times do |dir_idx|
+          # copy the lower pdpt over
           new_pdpt.value.dirs[dir_idx] = old_pdpt.value.dirs[dir_idx]
           old_pdpt.value.dirs[dir_idx] = 0u64
-
-          # setup memory map
-          # TODO: figure out a faster way to do this
-          # dirs
-          unless new_pdpt.value.dirs[dir_idx] == 0u64
-            page_dir = Pointer(PageStructs::PageDirectory)
-              .new(Paging.mt_addr(new_pdpt.value.dirs[dir_idx]))
-            # tables
-            512.times do |table_idx|
-              unless page_dir.value.tables[table_idx] == 0u64
-                page_table = Pointer(PageStructs::PageTable)
-                  .new(Paging.mt_addr(page_dir.value.tables[table_idx]))
-                # pages
-                512.times do |page_idx|
-                  page = page_table.value.pages[page_idx]
-                  attr = MemMapNode::Attributes::Read
-                  if (page & Paging::PG_WRITE_BIT) != 0u64
-                    attr |= MemMapNode::Attributes::Write
-                  end
-                  unless page == 0u64
-                    addr = Paging.indexes_to_address(dir_idx, table_idx, page_idx)
-                    udata.mmap_list.add(addr, 0x1000, attr)
-                  end
-                end
-              end
-            end
-          end
         end
         Paging.current_pdpt = Pointer(Void).new(process.phys_pg_struct)
         Paging.flush
 
         # memory map
+        mmap_list.each do |mmap_node|
+          next if mmap_node.memsz == 0u64
+          region_start = Paging.t_addr(mmap_node.vaddr)
+          region_end = Paging.aligned(mmap_node.vaddr + mmap_node.memsz)
+          region_size = region_end - region_start
+          udata.mmap_list.add(region_start, region_size, mmap_node.attrs)
+        end
+        
         udata.mmap_heap = udata.mmap_list.add(heap_start, 0,
           MemMapNode::Attributes::Read | MemMapNode::Attributes::Write).not_nil!
 
@@ -419,15 +417,20 @@ module Multiprocessing
     end
 
     @[NoInline]
-    def self.spawn_user_4gb_drv(initial_ip : UInt64, heap_start : UInt64, udata : UserData)
+    def self.spawn_user_drv(initial_ip : UInt64, heap_start : UInt64,
+          udata : UserData, mmap_list : Slice(ElfReader::InlineMemMapNode))
       retval = 0u64
+      mmap_list_addr = mmap_list.to_unsafe.address
+      mmap_list_size = mmap_list.size
       asm("syscall"
-          : "={rax}"(retval)
-          : "{rax}"(SC_PROCESS_CREATE_DRV),
-            "{rbx}"(initial_ip),
-            "{rdx}"(heap_start),
-            "{r8}"(udata),
-          : "cc", "memory","{rcx}", "{r11}", "{rdi}", "{rsi}")
+              : "={rax}"(retval)
+              : "{rax}"(SC_PROCESS_CREATE_DRV),
+                "{rbx}"(initial_ip),
+                "{rdx}"(heap_start),
+                "{r8}"(udata),
+                "{r9}"(mmap_list_addr),
+                "{r10}"(mmap_list_size)
+              : "cc", "memory", "{rcx}", "{r11}", "{rdi}", "{rsi}")
       retval
     end
 
@@ -639,9 +642,9 @@ module Multiprocessing
   def sleep_drv
     retval = 0u64
     asm("syscall"
-        : "={rax}"(retval)
-        : "{rax}"(SC_SLEEP)
-        : "cc", "memory", "{rcx}", "{r11}", "{rdi}", "{rsi}")
+            : "={rax}"(retval)
+            : "{rax}"(SC_SLEEP)
+            : "cc", "memory", "{rcx}", "{r11}", "{rdi}", "{rsi}")
     retval
   end
 
@@ -682,8 +685,16 @@ module Multiprocessing
     end
 
     # switch page directory
-    Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
-      .new(next_process.phys_pg_struct)
+    if next_process.kernel_process?
+      breakpoint
+      Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+        .new(next_process.phys_user_pg_struct)
+      Paging.current_kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+        .new(next_process.phys_pg_struct)
+    else
+      Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+        .new(next_process.phys_pg_struct)
+    end
     Paging.flush
     if remove
       Paging.free_process_pdpt(current_process.phys_pg_struct)
@@ -693,7 +704,7 @@ module Multiprocessing
     unless next_process.fxsave_region.null?
       memcpy Multiprocessing.fxsave_region, next_process.fxsave_region, FXSAVE_SIZE
     end
-    
+
     # lock kernel subsytems for driver threads
     if next_process.kernel_process?
       DriverThread.lock
@@ -716,9 +727,9 @@ module Multiprocessing
     Syscall.unlock
     Kernel.ksyscall_switch(current_process.frame.not_nil!.to_unsafe)
   end
-  
+
   def switch_process_and_terminate
-    current_process = switch_process_save_and_load(true) {}
+    current_process = switch_process_save_and_load(true) { }
     Syscall.unlock
     Kernel.ksyscall_switch(current_process.frame.not_nil!.to_unsafe)
   end
@@ -732,5 +743,4 @@ module Multiprocessing
       process = process.next_process
     end
   end
-
 end

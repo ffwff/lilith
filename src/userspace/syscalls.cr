@@ -210,14 +210,18 @@ module Syscall
       when SC_MMAP_DRV
         virt_addr = fv.rbx
         fv.rax = Paging.alloc_page_pg(
-          fv.rbx, fv.rdx != 0, fv.r8 != 0,
+          virt_addr, fv.rdx != 0, fv.r8 != 0,
           fv.r9
         )
+        if virt_addr <= PDPT_SIZE && process.phys_user_pg_struct == 0u64
+          process.phys_user_pg_struct = Paging.real_pdpt.address
+        end
       when SC_PROCESS_CREATE_DRV
         initial_ip = fv.rbx
         heap_start = fv.rdx
         udata = Pointer(Void).new(fv.r8).as(Multiprocessing::Process::UserData)
-        process = Multiprocessing::Process.spawn_user_4gb(initial_ip, heap_start, udata)
+        mmap_list = Slice(ElfReader::InlineMemMapNode).new(Pointer(ElfReader::InlineMemMapNode).new(fv.r9), fv.r10.to_i32)
+        process = Multiprocessing::Process.spawn_user(initial_ip, heap_start, udata, mmap_list)
         fv.rax = process.pid
       when SC_SLEEP
         process.status = Multiprocessing::Process::Status::WaitIo

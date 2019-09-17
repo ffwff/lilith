@@ -28,6 +28,9 @@ PDPT_SIZE         = 0x80_0000_0000u64
 module Paging
   extend self
 
+  KERNEL_PDPT_POINTER = 0xFFFF_8800_0000_0000u64
+  KERNEL_PDPT_IDX = page_layer_indexes(KERNEL_PDPT_POINTER)[0]
+
   # present, us, rw, global
   # PT_MASK_GLOBAL = 0x107
   # global mask, ps, 1gb
@@ -44,19 +47,42 @@ module Paging
     @@usable_physical_memory
   end
 
-  # identity-mapped virtual addresses of the page directory pointer table
+  # identity-mapped virtual address of the page directory pointer table for user processes
   @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).null
-  @@kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).null
+  # identity-mapped virtual address of the page directory pointer table for kernel processes
+  @@current_kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).null
 
   # linear address of the page directory pointer table
   def current_pdpt
     new_addr = @@current_pdpt.address & ~PTR_IDENTITY_MASK
     Pointer(PageStructs::PageDirectoryPointerTable).new(new_addr)
   end
+  
+  # lower-half page directory pointer table for kernel processes
+  def real_pdpt
+    pml4_addr = @@pml4_table.address | PTR_IDENTITY_MASK
+    pml4_table = Pointer(PageStructs::PML4Table).new pml4_addr
+    new_addr = pml4_table.value.pdpt[0] & ~PTR_IDENTITY_MASK
+    Pointer(PageStructs::PageDirectoryPointerTable).new(new_addr)
+  end
 
-  # set linear address of the page directory pointer table
+  # linear address of the page directory pointer table
+  def current_kernel_pdpt
+    new_addr = @@current_kernel_pdpt.address & ~PTR_IDENTITY_MASK
+    Pointer(PageStructs::PageDirectoryPointerTable).new(new_addr)
+  end
+
+  # map user page directory pointer table
   @[NoInline]
   def current_pdpt=(x)
+    if x.null?
+      @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).null
+      pml4_addr = @@pml4_table.address | PTR_IDENTITY_MASK
+      pml4_table = Pointer(PageStructs::PML4Table).new pml4_addr
+      pml4_table.value.pdpt[0] = 0u64
+      return
+    end
+  
     new_addr = x.address | PTR_IDENTITY_MASK
     @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new new_addr
 
@@ -64,6 +90,18 @@ module Paging
     pml4_addr = @@pml4_table.address | PTR_IDENTITY_MASK
     pml4_table = Pointer(PageStructs::PML4Table).new pml4_addr
     pml4_table.value.pdpt[0] = x.address | PT_MASK
+  end
+  
+  # map kernel page directory pointer table
+  @[NoInline]
+  def current_kernel_pdpt=(x)
+    new_addr = x.address | PTR_IDENTITY_MASK
+    @@current_kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new new_addr
+
+    # update pml4 table
+    pml4_addr = @@pml4_table.address | PTR_IDENTITY_MASK
+    pml4_table = Pointer(PageStructs::PML4Table).new pml4_addr
+    pml4_table.value.pdpt[KERNEL_PDPT_IDX] = x.address | PT_MASK
   end
 
   @@pml4_table = Pointer(PageStructs::PML4Table).null
@@ -94,9 +132,8 @@ module Paging
 
     # allocate for the kernel's pdpt
     @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).pmalloc_a
-    @@kernel_pdpt = @@current_pdpt
     # store it at the kernel offset
-    @@pml4_table.value.pdpt[1] = @@kernel_pdpt.address | PT_MASK
+    @@pml4_table.value.pdpt[1] = @@current_pdpt.address | PT_MASK
 
     # identity map the physical memory on the higher half
     if Cpuid.has_feature?(Cpuid::FeaturesExtendedEdx::PDPE1GB)
@@ -176,7 +213,6 @@ module Paging
     FrameAllocator.is_paging_setup = true
     new_addr = @@current_pdpt.address | PTR_IDENTITY_MASK
     @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new new_addr
-    @@kernel_pdpt = @@current_pdpt
 
     # enable paging
     flush
@@ -386,12 +422,12 @@ module Paging
     _, dir_idx, table_idx, page_idx = page_layer_indexes(virt_addr)
 
     # directory
-    if @@kernel_pdpt.value.dirs[dir_idx] == 0
+    if @@current_pdpt.value.dirs[dir_idx] == 0
       pd = Pointer(PageStructs::PageDirectory).pmalloc_a
       paddr = pd.address | PT_MASK
-      @@kernel_pdpt.value.dirs[dir_idx] = paddr
+      @@current_pdpt.value.dirs[dir_idx] = paddr
     else
-      pd = Pointer(PageStructs::PageDirectory).new(t_addr @@kernel_pdpt.value.dirs[dir_idx])
+      pd = Pointer(PageStructs::PageDirectory).new(t_addr @@current_pdpt.value.dirs[dir_idx])
     end
 
     # table
