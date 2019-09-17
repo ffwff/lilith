@@ -2,16 +2,9 @@
 #include <canvas.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/gfx.h>
-#include <sys/ioctl.h>
 
 #include "gui.h"
 #include "priv/gwidget-impl.h"
-
-#include <font8x8_basic.h>
-
-#define FONT_WIDTH 8
-#define FONT_HEIGHT 8
 
 #define LINE_BUFFER_LEN 128
 
