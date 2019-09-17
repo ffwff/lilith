@@ -1,13 +1,16 @@
 PREFIX ?= /usr
 INCLUDEDIR ?= $(PREFIX)/include
 LIBDIR ?= $(PREFIX)/lib
-DEFAULT: canvas.a
+DEFAULT: libgui.a
 .PHONY: install clean
 
-%.o: %.c
-	$(CC) -g -O2 -Wall $(CFLAGS) -c $^ -o $@
+.build:
+	mkdir -p $@
 
-libgui.a: $(patsubst %.c, %.o, $(wildcard ./*.c))
+.build/%.o: %.c .build
+	$(CC) -g -O2 -Wall $(CFLAGS) -c $< -o $@
+
+libgui.a: $(patsubst %.c, .build/%.o, $(wildcard ./*.c))
 	ar rcs $@ $^
 
 install: $(wildcard ./gui/*.h) libgui.a
@@ -16,4 +19,4 @@ install: $(wildcard ./gui/*.h) libgui.a
 	cp libgui.a $(LIBDIR)
 
 clean:
-	rm -f *.a *.o
+	rm -f .build/*.o *.a

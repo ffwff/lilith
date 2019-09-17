@@ -78,8 +78,6 @@ int cterm_app_redraw(struct g_application *app) {
         canvas_ctx_draw_text(ctx, x_title, 10, title);
     }
     
-    // calculate root
-    
     return 0;
 }
 
