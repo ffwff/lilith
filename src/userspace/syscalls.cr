@@ -242,7 +242,8 @@ module Syscall
       if vfs_node.nil?
         sysret(SYSCALL_ERR)
       else
-        sysret(pudata.install_fd(vfs_node.not_nil!))
+        sysret(pudata.install_fd(vfs_node.not_nil!,
+          FileDescriptor::Attributes.new(arg(2).to_i32)))
       end
     when SC_CREATE
       path = try(checked_slice(arg(0), arg(1)))
@@ -250,7 +251,8 @@ module Syscall
       if vfs_node.nil?
         sysret(SYSCALL_ERR)
       else
-        sysret(pudata.install_fd(vfs_node.not_nil!))
+        sysret(pudata.install_fd(vfs_node.not_nil!,
+          FileDescriptor::Attributes::Read | FileDescriptor::Attributes::Write))
       end
     when SC_CLOSE
       if pudata.close_fd(arg(0).to_i32)
@@ -270,6 +272,8 @@ module Syscall
       fd = try(pudata.get_fd(arg(0).to_i32))
       if arg(2) == 0u64
         sysret(0)
+      elsif !fd.attrs.includes?(FileDescriptor::Attributes::Read)
+        sysret(SYSCALL_ERR)
       end
       str = try(checked_slice(arg(1), arg(2)))
       result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
@@ -292,6 +296,8 @@ module Syscall
       fd = try(pudata.get_fd(arg(0).to_i32))
       if arg(2) == 0u64
         sysret(0)
+      elsif !fd.attrs.includes?(FileDescriptor::Attributes::Write)
+        sysret(SYSCALL_ERR)
       end
       str = try(checked_slice(arg(1), arg(2)))
       result = fd.not_nil!.node.not_nil!.write(str, fd.offset, process)

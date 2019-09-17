@@ -5,6 +5,13 @@ STDERR = 2
 
 FILE_BUFFER_SZ = 256
 
+O_RDONLY = (1 << 0)
+O_WRONLY = (1 << 1)
+O_RDWR   = (O_RDONLY | O_WRONLY)
+O_CREAT  = (1 << 2)
+O_TRUNC  = (1 << 3)
+O_APPEND = (1 << 4)
+
 class FileBuffer
 
   @buffer = Pointer(UInt8).null
@@ -110,6 +117,20 @@ class File
       end
       mode += 1
     end
+  end
+  
+  def self.open_mode(mode : LibC::String)
+    retval = 0
+    until mode.value == 0
+      ch = mode.value.unsafe_chr
+      if ch == 'r'
+        retval |= O_RDONLY
+      elsif ch == 'w'
+        retval |= O_WRONLY
+      end
+      mode += 1
+    end
+    retval
   end
 
   def _finalize
@@ -303,7 +324,7 @@ end
 # file operations
 fun fopen(file : LibC::String, mode : LibC::String) : Void*
   # TODO: mode
-  fd = _open(file, 0)
+  fd = _open(file, File.open_mode(mode))
   if fd.to_u32 == SYSCALL_ERR
     return Pointer(Void).null
   end
