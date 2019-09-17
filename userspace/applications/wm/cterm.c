@@ -15,8 +15,6 @@
 #define FONT_WIDTH 8
 #define FONT_HEIGHT 8
 
-extern char font8x8_basic[128][8];
-
 static void canvas_ctx_draw_character(struct canvas_ctx *ctx, int xs, int ys, const char ch) {
     char *bitmap = font8x8_basic[(int)ch];
     if(canvas_ctx_get_format(ctx) != LIBCANVAS_FORMAT_RGB24)
@@ -65,13 +63,6 @@ int cterm_app_redraw(struct g_application *app) {
     unsigned int height = g_application_height(app);
 
     // window decorations
-    canvas_ctx_fill_rect(ctx, 0, 0,
-        width, height,
-        canvas_color_rgb(0x32, 0x36, 0x39));
-    canvas_ctx_stroke_rect(ctx, 0, 0,
-        width - 1, height - 1,
-        canvas_color_rgb(0x20, 0x21, 0x24));
-
     {
         const char *title = "Terminal";
         int x_title = (width - strlen(title) * FONT_WIDTH) / 2;
@@ -97,6 +88,10 @@ int main(int argc, char **argv) {
     struct g_application *app = g_application_create(INIT_WIDTH, INIT_HEIGHT);
     g_application_set_userdata(app, &state);
     g_application_set_redraw_cb(app, cterm_app_redraw);
+    
+    struct g_decoration *dec = g_decoration_create();
+    g_widget_move_resize((struct g_widget *)dec, 0, 0, INIT_WIDTH, INIT_HEIGHT);
+    g_application_add_widget(app, (struct g_widget *)dec);
     
     struct g_termbox *tb = g_termbox_create();
     const int title_height = 20;
