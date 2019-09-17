@@ -182,6 +182,22 @@ static int __printf(nputs_fn_t nputs_fn, void *userptr,
                     }
                     break;
                 }
+                case 'p': {
+                    format++;
+
+                    const char *ptr_begin = "0x";
+                    if (!(retval = nputs_fn(ptr_begin, strlen(ptr_begin), userptr)))
+                        return written;
+                    written += retval;
+
+                    unsigned long num = (unsigned long)va_arg(args, void*);
+                    int length = __printf_uitoa(num, 16, __itoa_buf);
+                    if (!(retval = nputs_fn(__itoa_buf, length, userptr)))
+                        return written;
+                    written += retval;
+
+                    break;
+                }
                 default: {
                     fputs("unsupported format: ", stderr);
                     fputc(*format, stderr);
