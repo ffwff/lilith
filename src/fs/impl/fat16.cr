@@ -471,10 +471,11 @@ class Fat16FS < VFS
           when ElfReader::Result
             retval = retval.as(ElfReader::Result)
             pid = Multiprocessing::Process
-              .spawn_user_4gb_drv(
+              .spawn_user_drv(
                 retval.initial_ip,
                 retval.heap_start,
-                msg.udata.not_nil!)
+                msg.udata.not_nil!,
+                retval.mmap_list)
             unless msg.process.nil?
               msg.unawait(pid)
             end
