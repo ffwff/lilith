@@ -42,10 +42,16 @@ module Syscall
 
   def lock
     Idt.status_mask = true
+    if Multiprocessing.current_process.not_nil!.kernel_process?
+      DriverThread.unlock
+    end
   end
 
   def unlock
     Idt.status_mask = false
+    if Multiprocessing.current_process.not_nil!.kernel_process?
+      DriverThread.lock
+    end
   end
 
   # splits a path into segments separated by /
