@@ -1,5 +1,6 @@
 require "./file_descriptor.cr"
 require "./mmap_list.cr"
+require "./driver_thread.cr"
 
 private lib Kernel
   fun ksyscall_switch(frame : IdtData::Registers*) : NoReturn
@@ -280,6 +281,7 @@ module Multiprocessing
       Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(@phys_pg_struct)
       Paging.flush
       if kernel_process?
+        DriverThread.lock
         Kernel.ksyscall_switch(@frame.not_nil!.to_unsafe)
       else
         new_frame
@@ -691,8 +693,12 @@ module Multiprocessing
     unless next_process.fxsave_region.null?
       memcpy Multiprocessing.fxsave_region, next_process.fxsave_region, FXSAVE_SIZE
     end
+    
+    # lock kernel subsytems for driver threads
+    if next_process.kernel_process?
+      DriverThread.lock
+    end
 
-    # Serial.puts next_process.status, '\n'
     next_process
   end
 
