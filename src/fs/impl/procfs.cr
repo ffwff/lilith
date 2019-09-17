@@ -69,8 +69,8 @@ class ProcFSProcessNode < VFSNode
   def initialize(@process : Multiprocessing::Process, @parent : ProcFSNode, @fs : ProcFS,
 				 @prev_node : ProcFSProcessNode? = nil,
 				 @next_node : ProcFSProcessNode? = nil)
-	@name = @process.pid.to_gcstr
-	add_child(ProcFSProcessStatusNode.new(self, @fs))
+    @name = @process.pid.to_gcstr
+    add_child(ProcFSProcessStatusNode.new(self, @fs))
   end
   
   def open(path)
@@ -101,7 +101,7 @@ end
 class ProcFSProcessStatusNode < VFSNode
   getter fs
   def name
-	ProcFSStrings.status
+    ProcFSStrings.status
   end
   
   @next_node : VFSNode? = nil

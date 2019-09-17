@@ -163,11 +163,11 @@ module Multiprocessing
       end
 
       # file descriptors
-      def install_fd(node : VFSNode) : Int32
+      def install_fd(node : VFSNode, attrs) : Int32
         i = 0
         while i < @fds.size
           if @fds[i].nil?
-            @fds[i] = FileDescriptor.new(i, node)
+            @fds[i] = FileDescriptor.new(i, node, attrs)
             return i
           end
           i += 1
@@ -387,7 +387,7 @@ module Multiprocessing
           .new(Paging.mt_addr(process.phys_pg_struct))
 
         512.times do |dir_idx|
-          # copy the lower pdpt over
+          # move the pdpt over and zero out the source
           new_pdpt.value.dirs[dir_idx] = old_pdpt.value.dirs[dir_idx]
           old_pdpt.value.dirs[dir_idx] = 0u64
         end

@@ -40,6 +40,13 @@ struct Int
   def to_ulonglong
     self.to_u64
   end
+  
+  def <<(other)
+    self.unsafe_shl other
+  end
+  def >>(other)
+    self.unsafe_shr other
+  end
 end
 
 # Object
