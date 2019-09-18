@@ -15,29 +15,6 @@
 #define FONT_WIDTH 8
 #define FONT_HEIGHT 8
 
-static void canvas_ctx_draw_character(struct canvas_ctx *ctx, int xs, int ys, const char ch) {
-    char *bitmap = font8x8_basic[(int)ch];
-    if(canvas_ctx_get_format(ctx) != LIBCANVAS_FORMAT_RGB24)
-        return;
-    unsigned long *data = (unsigned long *)canvas_ctx_get_surface(ctx);
-    for (int x = 0; x < FONT_WIDTH; x++) {
-        for (int y = 0; y < FONT_HEIGHT; y++) {
-            if (bitmap[y] & 1 << x) {
-                data[(ys + y) * canvas_ctx_get_width(ctx) + (xs + x)] = 0xffffffff;
-            }
-        }
-    }
-}
-
-static void canvas_ctx_draw_text(struct canvas_ctx *ctx, int xs, int ys, const char *s) {
-    int x = xs, y = ys;
-    while(*s) {
-        canvas_ctx_draw_character(ctx, x, y, *s);
-        x += FONT_WIDTH;
-        s++;
-    }
-}
-
 /* WINDOW DRAWING */
 
 #define LINE_BUFFER_LEN 128
@@ -63,11 +40,13 @@ int cterm_app_redraw(struct g_application *app) {
     unsigned int height = g_application_height(app);
 
     // window decorations
+    #if 0
     {
         const char *title = "Terminal";
         int x_title = (width - strlen(title) * FONT_WIDTH) / 2;
         canvas_ctx_draw_text(ctx, x_title, 10, title);
     }
+    #endif
     
     return 0;
 }
@@ -90,6 +69,7 @@ int main(int argc, char **argv) {
     g_application_set_redraw_cb(app, cterm_app_redraw);
     
     struct g_decoration *dec = g_decoration_create();
+    g_decoration_set_text(dec, "Terminal");
     g_widget_move_resize((struct g_widget *)dec, 0, 0, INIT_WIDTH, INIT_HEIGHT);
     g_application_add_widget(app, (struct g_widget *)dec);
     

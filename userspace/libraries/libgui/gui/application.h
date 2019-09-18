@@ -19,10 +19,13 @@ static inline void g_application_add_widget(struct g_application *app, struct g_
 }
 
 struct canvas_ctx *g_application_ctx(struct g_application *app);
-unsigned int g_application_x(struct g_application *app);
-unsigned int g_application_y(struct g_application *app);
-unsigned int g_application_width(struct g_application *app);
-unsigned int g_application_height(struct g_application *app);
+int g_application_x(struct g_application *app);
+int g_application_y(struct g_application *app);
+int g_application_width(struct g_application *app);
+int g_application_height(struct g_application *app);
+void g_application_resize(struct g_application *app, int width, int height);
+
+int g_application_screen_size(struct g_application *app, int *width, int *height);
 
 void *g_application_userdata(struct g_application *app);
 void g_application_set_userdata(struct g_application *app, void *ptr);
