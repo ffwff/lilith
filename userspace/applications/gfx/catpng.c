@@ -50,6 +50,8 @@ int main(int argc, char **argv) {
      color_type == PNG_COLOR_TYPE_GRAY_ALPHA)
     png_set_gray_to_rgb(png_ptr);
 
+  png_set_bgr(png_ptr);
+
   png_read_update_info(png_ptr, info_ptr);
 
   // png_bytep *row_pointers = (png_bytep*)malloc(sizeof(png_bytep) * height);

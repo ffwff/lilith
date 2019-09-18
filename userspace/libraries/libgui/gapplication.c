@@ -35,6 +35,7 @@ struct g_application *g_application_create(int width, int height) {
   app->ctx = canvas_ctx_create(app->sprite.width,
                  app->sprite.height,
                  LIBCANVAS_FORMAT_RGB24);
+  app->sprite.source = (unsigned long *)canvas_ctx_get_surface(app->ctx);
   g_widget_array_init(&app->widgets);
 
   if(!app->ctx) {
@@ -56,7 +57,6 @@ void g_application_destroy(struct g_application *app) {
 }
 
 int g_application_redraw(struct g_application *app) {
-  app->sprite.source = (unsigned long *)canvas_ctx_get_surface(app->ctx);
   int needs_redraw = 0;
   if (app->redraw_cb) {
     if (app->redraw_cb(app))
@@ -194,20 +194,41 @@ struct canvas_ctx *g_application_ctx(struct g_application *app) {
   return app->ctx;
 }
 
-unsigned int g_application_x(struct g_application *app) {
+int g_application_x(struct g_application *app) {
   return app->sprite.x;
 }
 
-unsigned int g_application_y(struct g_application *app) {
+int g_application_y(struct g_application *app) {
   return app->sprite.y;
 }
 
-unsigned int g_application_width(struct g_application *app) {
+int g_application_width(struct g_application *app) {
   return app->sprite.width;
 }
 
-unsigned int g_application_height(struct g_application *app) {
+int g_application_height(struct g_application *app) {
   return app->sprite.height;
+}
+
+void g_application_resize(struct g_application *app, int width, int height) {
+  canvas_ctx_resize_buffer(app->ctx, width, height);
+  app->sprite.source = (unsigned long *)canvas_ctx_get_surface(app->ctx);
+  app->sprite.width = width;
+  app->sprite.height = height;
+}
+
+// screen
+
+int g_application_screen_size(struct g_application *app, int *width, int *height) {
+  struct winsize ws;
+  int retval = ioctl(app->fb_fd, TIOCGWINSZ, &ws);
+  if(retval == 0) {
+    if(width)
+      *width = (int)ws.ws_col;
+    if(height)
+      *height = (int)ws.ws_row;
+  }
+  return retval;
 }
 
 // properties
