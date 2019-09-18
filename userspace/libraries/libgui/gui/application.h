@@ -13,7 +13,10 @@ void g_application_destroy(struct g_application *);
 int g_application_redraw(struct g_application *app);
 int g_application_run(struct g_application *app);
 
-void g_application_add_widget(struct g_application *app, struct g_widget *widget);
+struct g_widget_array *g_application_widgets(struct g_application *app);
+static inline void g_application_add_widget(struct g_application *app, struct g_widget *widget) {
+  g_widget_array_push(g_application_widgets(app), widget);
+}
 
 struct canvas_ctx *g_application_ctx(struct g_application *app);
 unsigned int g_application_x(struct g_application *app);
