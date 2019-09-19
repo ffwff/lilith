@@ -4,7 +4,6 @@
 
 typedef unsigned long mode_t;
 typedef unsigned long off_t;
-typedef unsigned long useconds_t;
 
 int open(char *device, int flags, ...);
 int create(char *device);
@@ -15,6 +14,8 @@ int ftruncate(int fd, off_t length);
 int _ioctl(int fd, int request, unsigned int arg);
 int waitfd(int *fds, size_t nfds, useconds_t timeout);
 int remove(char *device);
+
+time_t _sys_time();
 
 typedef long pid_t;
 void _exit();

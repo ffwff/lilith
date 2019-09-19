@@ -47,6 +47,12 @@ struct Int
   def >>(other)
     self.unsafe_shr other
   end
+  def %(other)
+    self.unsafe_mod other
+  end
+  def ===(other)
+    self == other
+  end
 end
 
 # Object

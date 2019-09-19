@@ -2,10 +2,6 @@
 
 #include <stddef.h>
 
-typedef unsigned long time_t;
-typedef unsigned long suseconds_t;
-typedef unsigned long clock_t;
-
 time_t time(time_t *tloc);
 
 struct timeval {
@@ -26,6 +22,8 @@ struct tm {
     int tm_isdst;
 };
 struct tm *gmtime(const time_t *timep);
+struct tm *localtime(const time_t *timep);
+
 time_t mktime(struct tm *tm);
 size_t strftime(char *s, size_t max, const char *format,
                        const struct tm *tm);
