@@ -87,6 +87,9 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
       Console.text_mode = false
     end
   end
+  
+  # time
+  Time.stamp = RTC.unix
 
   # initial rootfs
   Multiprocessing.procfs = ProcFS.new

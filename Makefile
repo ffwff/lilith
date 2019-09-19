@@ -30,7 +30,7 @@ QEMUFLAGS += \
 	-m 512M \
 	-serial stdio \
 	-no-shutdown -no-reboot \
-	-vga std
+	-vga std -rtc base=localtime
 
 ifeq ($(KVM),1)
 	QEMUFLAGS += -enable-kvm
