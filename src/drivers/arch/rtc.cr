@@ -9,8 +9,8 @@ module RTC
   SECS_HOUR   = SECS_MINUTE * 60
   SECS_DAY    = SECS_HOUR   * 24
 
-  private def secs_of_years(years)
-    days = 0
+  private def secs_of_years(years) : UInt64
+    days = 0u64
     while years >= UNIX_YEAR
       days += 365
       if years % 4 == 0
@@ -27,8 +27,8 @@ module RTC
     days * SECS_DAY
   end
   
-  private def secs_of_month(months, year)
-    days = 0
+  private def secs_of_month(months, year) : UInt64
+    days = 0u64
     while months > 0
       case months
       when 11; days += 30
