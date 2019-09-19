@@ -469,6 +469,10 @@ module Multiprocessing
       @prev_process = nil
       @next_process = nil
       @status = Status::Removed
+      # remove from procfs
+      if Multiprocessing.procfs
+        Multiprocessing.procfs.not_nil!.root.not_nil!.remove_for_process(self)
+      end
     end
 
     # write address to page without switching tlb to the process' pdpt

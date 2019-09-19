@@ -38,20 +38,39 @@ class ProcFSNode < VFSNode
   end
   
   def create_for_process(process)
-	add_child(ProcFSProcessNode.new(process, self, @fs))
+    add_child(ProcFSProcessNode.new(process, self, @fs))
   end
 
-  private def add_child(child : ProcFSProcessNode)
-    if @first_child.nil?
-      # first node
-      child.next_node = nil
-      @first_child = child
-    else
-      # middle node
-      child.next_node = @first_child
-      @first_child = child
+  def remove_for_process(process)
+    node = @first_child
+    while !node.nil?
+      if node.not_nil!.process == process
+        remove_child(node)
+        return
+      end
+      node = node.next_node
     end
-    child
+  end
+
+  private def add_child(node : ProcFSProcessNode)
+    node.next_node = @first_child
+    @first_child = node
+    unless @first_child.nil?
+      @first_child.not_nil!.prev_node = node
+    end
+    node
+  end
+  
+  private def remove_child(node : ProcFSProcessNode)
+    if node == @first_child
+      @first_child = node.next_node
+    end
+    unless node.prev_node.nil?
+      node.prev_node.not_nil!.next_node = node.next_node
+    end
+    unless node.next_node.nil?
+      node.next_node.not_nil!.prev_node = node.prev_node
+    end
   end
 
 end
