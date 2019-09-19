@@ -18,3 +18,8 @@ typedef unsigned char wchar_t;
 #define offsetof(s,memb) \
     ((size_t)((char *)&((s *)0)->memb - (char *)0))
 #endif
+
+typedef unsigned long long time_t;
+typedef unsigned long long suseconds_t;
+typedef unsigned long useconds_t;
+typedef unsigned long clock_t;

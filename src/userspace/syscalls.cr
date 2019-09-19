@@ -487,7 +487,8 @@ module Syscall
       # end
       if pid <= 0
         # wait for any child process
-        panic "unimplemented"
+        Serial.puts "waitpid: pid <= 0 unimplemented"
+        sysret(SYSCALL_ERR)
       else # pid > 0
         cprocess = nil
         Multiprocessing.each do |proc|
@@ -506,7 +507,10 @@ module Syscall
         end
       end
     when SC_TIME
-      # TODO
+      lo = Time.stamp & 0xFFFF_FFFF
+      hi = Time.stamp >> 32
+      fv.rbx = hi
+      sysret(lo)
     when SC_SLEEP
       timeout = fv.rbx.to_u32
       if timeout == 0
