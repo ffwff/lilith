@@ -181,6 +181,8 @@ int g_application_run(struct g_application *app) {
     wmc_wait_atom(&app->wmc_conn);
   }
   
+  g_application_destroy(app);
+  
   return 0;
 }
 

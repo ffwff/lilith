@@ -505,6 +505,8 @@ module Syscall
           Multiprocessing.switch_process(frame)
         end
       end
+    when SC_TIME
+      # TODO
     when SC_SLEEP
       timeout = fv.rbx.to_u32
       if timeout == 0
