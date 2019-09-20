@@ -339,6 +339,10 @@ private class Fat16Node < VFSNode
   def load_entry(entry)
     return if !entry_exists? entry
     return if entry_volume_label? entry
+    unless 0x20 <= entry.name[0] && entry.name[0] <= 0x7e
+      # FIXME: the driver sometimes reads garbage entries
+      return
+    end
     if entry_file? entry
       load_file_entry entry
     elsif entry_dir? entry
