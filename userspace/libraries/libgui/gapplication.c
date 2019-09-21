@@ -50,6 +50,10 @@ struct g_application *g_application_create(int width, int height) {
   return app;
 }
 
+void g_application_set_window_properties(struct g_application *app, unsigned int properties) {
+  app->wm_properties = properties;
+}
+
 void g_application_destroy(struct g_application *app) {
   close(app->fb_fd);
   wmc_connection_deinit(&app->wmc_conn);
@@ -87,7 +91,7 @@ static int g_application_on_key(struct g_application *app, int ch) {
 }
 
 int g_application_run(struct g_application *app) {
-  wmc_connection_obtain(&app->wmc_conn, ATOM_MOUSE_EVENT_MASK | ATOM_KEYBOARD_EVENT_MASK);
+  wmc_connection_obtain(&app->wmc_conn, ATOM_MOUSE_EVENT_MASK | ATOM_KEYBOARD_EVENT_MASK, app->wm_properties);
 
   // event loop
   int mouse_drag = 0;
@@ -138,6 +142,11 @@ int g_application_run(struct g_application *app) {
                      atom.mouse_event.x,
                      atom.mouse_event.y) ||
           mouse_drag)) {
+          if((app->wm_properties & WM_PROPERTY_ROOT) != 0) {
+            mouse_drag = 1;
+            mouse_resize = 1;
+            goto wait;
+          }
           mouse_drag = 1;
           if(is_coord_in_bottom_right_corner(&app->sprite,
             atom.mouse_event.x,

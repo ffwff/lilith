@@ -11,7 +11,8 @@ libwmc.a: wmc.o
 	ar rcs $@ $^
 
 install: wm.h wmc.h libwmc.a
-	cp wm.h wmc.h $(INCLUDEDIR)
+	mkdir -p $(INCLUDEDIR)/wm
+	cp wm.h wmc.h $(INCLUDEDIR)/wm
 	cp libwmc.a $(LIBDIR)
 
 clean:

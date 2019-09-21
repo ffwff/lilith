@@ -1,3 +1,5 @@
+#include "wm.h"
+#define LIBWM_IMPLEMENTATION
 #include "wmc.h"
 
 int wmc_connection_init(struct wmc_connection *conn) {
@@ -18,10 +20,11 @@ void wmc_connection_deinit(struct wmc_connection *conn) {
     close(conn->win_fd_s);
 }
 
-void wmc_connection_obtain(struct wmc_connection *conn, unsigned int event_mask) {
+void wmc_connection_obtain(struct wmc_connection *conn, unsigned int event_mask, unsigned int properties) {
     struct wm_connection_request conn_req = {
       .pid = getpid(),
       .event_mask = event_mask,
+      .properties = properties,
     };
     write(conn->wm_control_fd, (char *)&conn_req, sizeof(struct wm_connection_request));
     while(1) {

@@ -68,22 +68,31 @@ static void g_termbox_advance(struct g_widget *widget) {
 
 static void g_termbox_add_character(struct g_widget *widget, char ch) {
   struct g_termbox_data *data = (struct g_termbox_data *)widget->widget_data;
-    if(ch == '\n') {
-        g_termbox_newline(widget);
-    } else {
-        data->buffer[data->cy * data->cwidth + data->cx] = ch;
-        canvas_ctx_draw_character(widget->ctx,
-                data->cx * FONT_WIDTH,
-                data->cy * FONT_HEIGHT,
-                ch);
-        g_termbox_advance(widget);
+  if(ch == '\b') {
+    if(data->cx > 0) {
+      data->buffer[data->cy * data->cwidth + data->cx] = 0;
+      data->cx--;
     }
+  } else if(ch == '\n') {
+    g_termbox_newline(widget);
+  } else {
+    data->buffer[data->cy * data->cwidth + data->cx] = ch;
+    canvas_ctx_draw_character(widget->ctx,
+            data->cx * FONT_WIDTH,
+            data->cy * FONT_HEIGHT,
+            ch);
+    g_termbox_advance(widget);
+  }
 }
 
 static void g_termbox_type(struct g_widget *widget, int ch) {
   struct g_termbox_data *data = (struct g_termbox_data *)widget->widget_data;
     g_termbox_add_character(widget, ch);
-    if(ch == '\n' || data->line_buffer_len == LINE_BUFFER_LEN - 2) {
+    if(ch == '\b') {
+      if(data->line_buffer_len > 0) {
+        data->line_buffer[data->line_buffer_len--] = 0;
+      }
+    } else if(ch == '\n' || data->line_buffer_len == LINE_BUFFER_LEN - 2) {
         data->line_buffer[data->line_buffer_len++] = '\n';
         write(data->in_fd, data->line_buffer, data->line_buffer_len);
         data->line_buffer_len = 0;
