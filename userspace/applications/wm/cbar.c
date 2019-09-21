@@ -5,6 +5,7 @@
 #include <sys/ioctl.h>
 #include <sys/pipes.h>
 #include <syscalls.h>
+#include <time.h>
 
 #include <wm/wmc.h>
 #include <gui.h>
@@ -28,7 +29,11 @@ static int bar_redraw(struct g_application *app) {
   canvas_ctx_draw_text(ctx, 5, text_y, "lilith");
   
   char time_str[256];
-  int time_len = snprintf(time_str, sizeof(time_str) - 1, "00:00:00 AM");
+  struct tm *timeinfo;
+  time_t now = _sys_time();
+  timeinfo = localtime(&now);
+  int time_len = strftime(time_str, sizeof(time_str), "%d/%m/%Y %H:%M:%S", timeinfo);
+
   int time_x = g_application_width(app) - time_len * FONT_WIDTH - 5;
   canvas_ctx_draw_text(ctx, time_x, text_y, time_str);
 

@@ -22,4 +22,45 @@ diff -u a/build/config.sub b/build/config.sub
  	      | -*vms* | -sco* | -esix* | -isc* | -aix* | -cnk* | -sunos | -sunos[34]*\
  	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
  	      | -sym* | -kopensolaris* | -plan9* \
-
+diff -u a/src/cairo-path-stroke-polygon.c b/src/cairo-path-stroke-polygon.c
+--- a/src/cairo-path-stroke-polygon.c	2018-08-17 08:10:53.000000000 +0700
++++ b/src/cairo-path-stroke-polygon.c	2019-09-21 16:09:20.804159623 +0700
+@@ -820,7 +820,7 @@
+     add_cap (stroker, face, c);
+ }
+ 
+-static inline double
++static double __attribute__((optimize("O0")))
+ normalize_slope (double *dx, double *dy)
+ {
+     double dx0 = *dx, dy0 = *dy;
+diff -u a/src/cairo-tor-scan-converter.c b/src/cairo-tor-scan-converter.c
+--- a/src/cairo-tor-scan-converter.c	2018-10-17 00:03:07.000000000 +0700
++++ b/src/cairo-tor-scan-converter.c	2019-09-21 16:09:10.193896097 +0700
+@@ -791,7 +791,7 @@
+  * This function depends on being called with all edges from the
+  * active list in the order they appear on the list (i.e. with
+  * non-decreasing x-coordinate.)  */
+-static void
++static void __attribute__((optimize("O0")))
+ cell_list_render_edge(struct cell_list *cells,
+ 		      struct edge *edge,
+ 		      int sign)
+@@ -1462,7 +1462,7 @@
+     (out) = tmp__;						\
+ } while (0)
+ 
+-inline static void
++inline static void __attribute__((optimize("00")))
+ polygon_add_edge (struct polygon *polygon,
+ 		  const cairo_edge_t *edge)
+ {
+@@ -1713,7 +1713,7 @@
+ }
+ 
+ 
+-I void
++I void __attribute__((optimize("O0")))
+ glitter_scan_converter_render(glitter_scan_converter_t *converter,
+ 			      unsigned int winding_mask,
+ 			      int antialias,
