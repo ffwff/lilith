@@ -254,7 +254,6 @@ module ElfReader
       # pad heap offset
       ret_heap_start += 0x2000
       # allocate the stack
-      Paging.alloc_page_pg_drv(Multiprocessing::USER_STACK_INITIAL - 0x1000 * 4, true, true, 4)
       Result.new(ret_initial_ip, ret_heap_start, mmap_list)
     else
       result

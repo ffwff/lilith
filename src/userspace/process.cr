@@ -382,7 +382,6 @@ module Multiprocessing
       Multiprocessing::Process.new(udata.argv[0].not_nil!, udata) do |process|
         process.initial_ip = initial_ip
 
-        # TODO: move this
         new_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
           .new(Paging.mt_addr(process.phys_pg_struct))
 
@@ -403,8 +402,15 @@ module Multiprocessing
           udata.mmap_list.add(region_start, region_size, mmap_node.attrs)
         end
         
+        # heap
         udata.mmap_heap = udata.mmap_list.add(heap_start, 0,
           MemMapNode::Attributes::Read | MemMapNode::Attributes::Write).not_nil!
+        
+        # stack
+        stack = Paging.alloc_page_pg(Multiprocessing::USER_STACK_INITIAL - 0x1000 * 4, true, true, 4)
+        zero_page Pointer(UInt8).new(stack), 4
+        udata.mmap_list.add(Multiprocessing::USER_STACK_INITIAL - 0x1000 * 4, 0x1000u64 * 4,
+          MemMapNode::Attributes::Read | MemMapNode::Attributes::Write)
 
         # argv
         argv_builder = ArgvBuilder.new process
