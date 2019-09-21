@@ -6,7 +6,11 @@
 struct wm_connection_request {
     pid_t pid;
     unsigned int event_mask;
+    unsigned int properties;
 };
+
+#define WM_PROPERTY_NO_FOCUS   (1 << 0)
+#define WM_PROPERTY_ROOT       (1 << 1)
 
 /* Atoms */
 

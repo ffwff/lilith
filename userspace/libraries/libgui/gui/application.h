@@ -9,6 +9,7 @@ typedef int (*g_mouse_cb)(struct g_application *app,
   unsigned int modifiers);
 
 struct g_application *g_application_create(int width, int height);
+void g_application_set_window_properties(struct g_application *, unsigned int properties);
 void g_application_destroy(struct g_application *);
 int g_application_redraw(struct g_application *app);
 int g_application_run(struct g_application *app);

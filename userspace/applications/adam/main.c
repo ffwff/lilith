@@ -57,6 +57,7 @@ int main(int argc, char **argv) {
         }
         argv[idx] = NULL;
         if(strcmp(argv[idx - 1], "&") == 0) {
+          argv[idx - 1] = NULL;
           spawn_process(buf, argv, 0);
         } else {
           spawn_process(buf, argv, 1);
