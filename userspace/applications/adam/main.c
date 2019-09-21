@@ -43,7 +43,8 @@ int main(int argc, char **argv) {
     char *tok = strtok(buf, " ");
     if (tok != NULL) {
       if(strcmp(tok, "cd") == NULL) {
-        chdir(strtok(NULL, ""));
+        char *tok = strtok(NULL, "\n");
+        chdir(tok);
       } else {
         const int MAX_ARGS = 256;
         char **argv = malloc(MAX_ARGS * sizeof(char *));
