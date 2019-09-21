@@ -34,7 +34,7 @@ private class FbdevFSNode < VFSNode
     FbdevState.lock do |state|
       byte_size = state.buffer.size * sizeof(UInt32)
       if offset > byte_size
-        size = VFS_ERR
+        size = VFS_EOF
       else
         size = min(slice.size, byte_size - offset)
         byte_buffer = state.buffer.to_unsafe.as(UInt8*) + offset
@@ -50,7 +50,7 @@ private class FbdevFSNode < VFSNode
     FbdevState.lock do |state|
       byte_size = state.buffer.size * sizeof(UInt32)
       if offset > byte_size
-        size = VFS_ERR
+        size = VFS_EOF
       else
         size = min(slice.size, byte_size - offset)
         byte_buffer = state.buffer.to_unsafe.as(UInt8*) + offset

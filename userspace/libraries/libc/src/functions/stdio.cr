@@ -1,4 +1,4 @@
-EOF = -1
+EOF = -4
 STDIN  = 0
 STDOUT = 1
 STDERR = 2
@@ -198,7 +198,10 @@ class File
     return str unless @status.includes?(Status::Read)
     if @buffering == Buffering::Unbuffered
       idx = read @fd, str, size
-      if idx == SYSCALL_ERR
+      if idx == EOF
+        @status |= Status::EOF
+        LibC::String.null
+      elsif idx == SYSCALL_ERR
         # TODO
         abort
       end
@@ -215,7 +218,10 @@ class File
     return -1 unless @status.includes?(Status::Read)
     if @buffering == Buffering::Unbuffered
       retval = 0
-      read @fd, pointerof(retval).as(LibC::String), 1
+      if read(@fd, pointerof(retval).as(LibC::String), 1) == EOF
+        @status |= Status::EOF
+        return EOF
+      end
       retval
     else
       abort
@@ -230,7 +236,7 @@ class File
   end
 
   GETLINE_INITIAL = 128u32
-  def getline(lineptr : LibC::String*, n : LibC::SizeT*)
+  def getline(lineptr : LibC::String*, n : LibC::SizeT*) : LibC::SSizeT
     if lineptr.value.null? && n.value == 0
       n.value = GETLINE_INITIAL
       lineptr.value = LibC::String.malloc(n.value)
@@ -239,8 +245,12 @@ class File
     line_size = n.value
     i = 0
     while i < line_size
-      if (ch = fgetc) == -1
-        return -1
+      if (ch = fgetc) == EOF
+        if i == 0
+          return EOF
+        else
+          return i
+        end
       end
       if i == line_size - 2
         line_size *= 2
@@ -265,7 +275,15 @@ class File
   def fread(ptr, len)
     return 0u32 unless @status.includes?(Status::Read)
     if @buffering == Buffering::Unbuffered
-      read(@fd, ptr.as(LibC::String), len.to_int).to_u32
+      retval = read(@fd, ptr.as(LibC::String), len.to_int)
+      if retval < 0
+        if retval == EOF
+          @status |= Status::EOF
+        end
+        0u32
+      else
+        retval.to_u32
+      end
     else
       abort
       0u32

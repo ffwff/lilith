@@ -71,7 +71,7 @@ char * tmpnam (char * str);
 #define SEEK_CUR 1
 #define SEEK_END 2
 
-#define EOF (char)-1
+#define EOF (char)-4
 
 #define BUFSIZ 256
 

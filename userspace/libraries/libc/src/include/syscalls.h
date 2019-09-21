@@ -2,14 +2,14 @@
 
 #include <stddef.h>
 
-typedef unsigned long mode_t;
+typedef unsigned int mode_t;
 typedef unsigned long off_t;
 
 int open(char *device, int flags, ...);
 int create(char *device);
 int close(int fd);
-long write(int fd, void *str, size_t len);
-long read(int fd, char *str, size_t len);
+ssize_t write(int fd, const void *str, size_t len);
+ssize_t read(int fd, void *str, size_t len);
 int ftruncate(int fd, off_t length);
 int _ioctl(int fd, int request, unsigned int arg);
 int waitfd(int *fds, size_t nfds, useconds_t timeout);
@@ -17,7 +17,7 @@ int remove(char *device);
 
 time_t _sys_time();
 
-typedef long pid_t;
+typedef int pid_t;
 void _exit();
 
 struct startup_info {
