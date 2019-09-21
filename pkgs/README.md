@@ -32,7 +32,7 @@ Lilith's package manager.
 
  * **libcairo**: cairo graphics library
 
-   runs but diagonal lines can't be drawn and built-in fonts don't work
+   runs but needs some deoptimization hacks to work correctly
  * **libgc**: garbage collector library
 
    compiles but doesn't work
