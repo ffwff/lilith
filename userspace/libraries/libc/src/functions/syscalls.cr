@@ -163,7 +163,7 @@ fun getcwd(str : LibC::String, len : LibC::Int) : LibC::Int
 end
 
 fun chdir(str : LibC::String) : LibC::Int
-  __lilith_syscall(SC_GETCWD, str, strlen(str)).to_int
+  __lilith_syscall(SC_CHDIR, str, strlen(str)).to_int
 end
 
 # malloc
