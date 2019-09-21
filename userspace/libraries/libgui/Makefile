@@ -8,7 +8,7 @@ DEFAULT: libgui.a
 	mkdir -p $@
 
 .build/%.o: %.c .build
-	$(CC) -g -O2 -Wall $(CFLAGS) -c $< -o $@
+	$(CC) -g -O2 -Wall -Werror $(CFLAGS) -c $< -o $@
 
 libgui.a: $(patsubst %.c, .build/%.o, $(wildcard ./*.c))
 	ar rcs $@ $^

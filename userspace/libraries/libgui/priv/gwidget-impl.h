@@ -1,10 +1,10 @@
 #pragma once
 
-typedef int (*g_widget_redraw_fn)(struct g_widget *widget,
+typedef void (*g_widget_redraw_fn)(struct g_widget *widget,
                                   struct g_application *app);
 typedef void (*g_widget_resize_fn)(struct g_widget *widget, int w, int h);
 typedef void (*g_widget_deinit_fn)(struct g_widget *widget);
-typedef int (*g_widget_on_key_fn)(struct g_widget *widget, int ch);
+typedef void (*g_widget_on_key_fn)(struct g_widget *widget, int ch);
 
 struct g_widget {
   unsigned int x, y, width, height, z_index;

@@ -64,7 +64,8 @@ int g_application_redraw(struct g_application *app) {
   }
   for(size_t i = 0; i < app->widgets.len; i++) {
     struct g_widget *widget = app->widgets.data[i];
-    if(widget->redraw_fn(widget, app)) {
+    widget->redraw_fn(widget, app);
+    if(widget->ctx) {
       canvas_ctx_bitblit(app->ctx, widget->ctx, widget->x, widget->y);
       needs_redraw = 1;
     }
