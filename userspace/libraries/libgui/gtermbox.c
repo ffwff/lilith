@@ -103,7 +103,7 @@ static int g_termbox_read_buf(struct g_widget *widget) {
     return retval;
 }
 
-static int g_termbox_redraw(struct g_widget *widget, struct g_application *app) {
+static void g_termbox_redraw(struct g_widget *widget, struct g_application *app) {
   g_widget_init_ctx(widget);
 
   canvas_ctx_fill_rect(widget->ctx, 0, 0,
@@ -123,13 +123,10 @@ static int g_termbox_redraw(struct g_widget *widget, struct g_application *app) 
         data->buffer[y * data->cwidth + x]);
     }
   }
-
-  return 1;
 }
 
-static int g_termbox_on_key(struct g_widget *widget, int ch) {
+static void g_termbox_on_key(struct g_widget *widget, int ch) {
   g_termbox_type(widget, ch);
-  return 1;
 }
 
 struct g_termbox *g_termbox_create() {

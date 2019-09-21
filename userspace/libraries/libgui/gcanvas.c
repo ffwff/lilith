@@ -6,8 +6,7 @@
 #include "gui.h"
 #include "priv/gwidget-impl.h"
 
-static int g_canvas_redraw_stub(struct g_widget *widget, struct g_application *app) {
-  return 0;
+static void g_canvas_redraw_stub(struct g_widget *widget, struct g_application *app) {
 }
 
 struct g_canvas *g_canvas_create() {

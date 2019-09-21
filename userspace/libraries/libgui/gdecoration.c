@@ -12,7 +12,7 @@ struct g_decoration_data {
   struct canvas_ctx *title_ctx;
 };
 
-static int g_decoration_redraw(struct g_widget *widget, struct g_application *app) {
+static void g_decoration_redraw(struct g_widget *widget, struct g_application *app) {
   g_widget_init_ctx(widget);
   
   canvas_ctx_fill_rect(widget->ctx, 0, 0,
@@ -27,8 +27,6 @@ static int g_decoration_redraw(struct g_widget *widget, struct g_application *ap
     int x = (widget->width - canvas_ctx_get_width(data->title_ctx)) / 2;
     canvas_ctx_bitblit(widget->ctx, data->title_ctx, x, 5);
   }
-  
-  return 1;
 }
 
 struct g_decoration *g_decoration_create() {

@@ -34,23 +34,6 @@ void cterm_init(struct cterm_state *state) {
     state->out_fd = create(path);
 }
 
-int cterm_app_redraw(struct g_application *app) {
-    struct canvas_ctx *ctx = g_application_ctx(app);
-    unsigned int width = g_application_width(app);
-    unsigned int height = g_application_height(app);
-
-    // window decorations
-    #if 0
-    {
-        const char *title = "Terminal";
-        int x_title = (width - strlen(title) * FONT_WIDTH) / 2;
-        canvas_ctx_draw_text(ctx, x_title, 10, title);
-    }
-    #endif
-    
-    return 0;
-}
-
 int main(int argc, char **argv) {
     struct cterm_state state = { 0 };
     cterm_init(&state);
@@ -66,7 +49,6 @@ int main(int argc, char **argv) {
 
     struct g_application *app = g_application_create(INIT_WIDTH, INIT_HEIGHT);
     g_application_set_userdata(app, &state);
-    g_application_set_redraw_cb(app, cterm_app_redraw);
     
     struct g_decoration *dec = g_decoration_create();
     g_decoration_set_text(dec, "Terminal");
