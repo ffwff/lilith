@@ -114,3 +114,4 @@ VFS_OK              = 0
 VFS_ERR             = -1
 VFS_WAIT            = -2
 VFS_WAIT_NO_ENQUEUE = -3
+VFS_EOF             = -4

@@ -289,7 +289,9 @@ module Syscall
         process.status = Multiprocessing::Process::Status::WaitIo
         Multiprocessing.switch_process(frame)
       else
-        fd.offset += result
+        if result > 0
+          fd.offset += result
+        end
         sysret(result)
       end
     when SC_WRITE
@@ -313,7 +315,9 @@ module Syscall
         process.status = Multiprocessing::Process::Status::WaitIo
         return Multiprocessing.switch_process(frame)
       else
-        fd.offset += result
+        if result > 0
+          fd.offset += result
+        end
         sysret(result)
       end
     when SC_TRUNCATE
