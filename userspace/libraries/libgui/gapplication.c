@@ -8,7 +8,7 @@
 #include "priv/gwidget-impl.h"
 
 // application
-struct g_application *g_application_create(int width, int height) {
+struct g_application *g_application_create(int width, int height, int alpha) {
   struct g_application *app = malloc(sizeof(struct g_application));
   if(!app) {
     return 0;
@@ -30,11 +30,11 @@ struct g_application *g_application_create(int width, int height) {
     .y = 0,
     .width  = width,
     .height = height,
-    .type = GFX_BITBLIT_SURFACE
+    .type = alpha ? GFX_BITBLIT_SURFACE_ALPHA : GFX_BITBLIT_SURFACE
   };
   app->ctx = canvas_ctx_create(app->sprite.width,
                  app->sprite.height,
-                 LIBCANVAS_FORMAT_RGB24);
+                 alpha ? LIBCANVAS_FORMAT_ARGB32 : LIBCANVAS_FORMAT_RGB24);
   app->sprite.source = (unsigned long *)canvas_ctx_get_surface(app->ctx);
   g_widget_array_init(&app->widgets);
 

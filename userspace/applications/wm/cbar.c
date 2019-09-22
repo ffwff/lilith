@@ -41,7 +41,7 @@ static int bar_redraw(struct g_application *app) {
 }
 
 int main(int argc, char **argv) {
-  struct g_application *app = g_application_create(1, 1);
+  struct g_application *app = g_application_create(1, 1, 0);
   int width, height = 20;
   g_application_screen_size(app, &width, 0);
   g_application_resize(app, width, height);

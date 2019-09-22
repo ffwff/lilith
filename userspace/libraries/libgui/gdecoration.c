@@ -17,7 +17,7 @@ static void g_decoration_redraw(struct g_widget *widget, struct g_application *a
   
   canvas_ctx_fill_rect(widget->ctx, 0, 0,
     widget->width, widget->height,
-    canvas_color_rgb(0x32, 0x36, 0x39));
+    canvas_color_rgba(0x32, 0x36, 0x39, 0x7f));
   canvas_ctx_stroke_rect(widget->ctx, 0, 0,
     widget->width - 1, widget->height - 1,
     canvas_color_rgb(0xff, 0xff, 0xff));
