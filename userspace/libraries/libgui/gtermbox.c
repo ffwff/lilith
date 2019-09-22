@@ -81,6 +81,11 @@ static void g_termbox_add_character(struct g_widget *widget, char ch) {
   if(ch == '\b') {
     if(data->cx > 0) {
       data->buffer[data->cy * data->cwidth + data->cx] = 0;
+      canvas_ctx_fill_rect(widget->ctx,
+        data->cx * FONT_WIDTH,
+        data->cy * FONT_HEIGHT,
+        FONT_WIDTH, FONT_HEIGHT,
+        canvas_color_rgb(0, 0, 0));
       data->cx--;
     }
   } else if(ch == '\n') {
@@ -97,16 +102,18 @@ static void g_termbox_add_character(struct g_widget *widget, char ch) {
 
 static void g_termbox_type(struct g_widget *widget, int ch) {
   struct g_termbox_data *data = (struct g_termbox_data *)widget->widget_data;
-  g_termbox_add_character(widget, ch);
   if(ch == '\b') {
     if(data->line_buffer_len > 0) {
+      g_termbox_add_character(widget, ch);
       data->line_buffer[data->line_buffer_len--] = 0;
     }
   } else if(ch == '\n' || data->line_buffer_len == LINE_BUFFER_LEN - 2) {
+    g_termbox_add_character(widget, ch);
     data->line_buffer[data->line_buffer_len++] = '\n';
     write(data->in_fd, data->line_buffer, data->line_buffer_len);
     data->line_buffer_len = 0;
   } else {
+    g_termbox_add_character(widget, ch);
     data->line_buffer[data->line_buffer_len++] = ch;
   }
 }

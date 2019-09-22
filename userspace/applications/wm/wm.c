@@ -142,14 +142,14 @@ struct wm_window *wm_add_win_prog(struct wm_state *state, int mfd, int sfd,
                                   struct wm_window *win) {
   if(win == 0) {
     win = wm_add_window(state);
+    win->z_index = 1;
+    state->focused_wid = win->wid;
   } else {
     memset(win, 0, sizeof(struct wm_window));
   }
-  win->z_index = 1;
   win->type = WM_WINDOW_PROG;
   win->as.prog.mfd = mfd;
   win->as.prog.sfd = sfd;
-  state->focused_wid = win->wid;
   return win;
 }
 
@@ -373,7 +373,7 @@ int main(int argc, char **argv) {
         if(mouse_atom.mouse_event.type == WM_MOUSE_PRESS) {
           int old_wid = wm.focused_wid;
           struct wm_window *focused_win = NULL;
-          for(int i = wm.nwindows; i >= 0; i--) {
+          for(int i = wm.nwindows - 1; i >= 0; i--) {
             if (wm.windows[i].z_index > 0 && wm.windows[i].type == WM_WINDOW_PROG) {
               if(point_in_win_prog(&wm.windows[i].as.prog, sprite->x, sprite->y) && !focused_win) {
                 wm.focused_wid = wm.windows[i].wid;
