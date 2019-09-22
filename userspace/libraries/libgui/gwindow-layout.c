@@ -27,17 +27,21 @@ static void g_window_layout_redraw(struct g_widget *widget, struct g_application
   
   if(data->main_widget && data->main_widget->redraw_fn) {
     data->main_widget->redraw_fn(data->main_widget, app);
-    canvas_ctx_bitblit(app->ctx, data->main_widget->ctx,
-            data->main_widget->x, data->main_widget->y);
+    if(data->main_widget->ctx) {
+      canvas_ctx_bitblit(app->ctx, data->main_widget->ctx,
+              data->main_widget->x, data->main_widget->y);
+    }
   }
 }
 
 static void g_window_layout_resize(struct g_widget *widget, int w, int h) {
   const int title_height = 20;
+  const int inner_border = 5;
   struct g_window_layout_data *data = (struct g_window_layout_data *)widget->widget_data;
   g_widget_move_resize((struct g_widget *)data->decoration, 0, 0, w, h);
   if(data->main_widget) {
-    g_widget_move_resize(data->main_widget, 1, title_height, w - 2, h - title_height - 1);
+    g_widget_move_resize(data->main_widget, inner_border, title_height,
+      w - inner_border * 2, h - title_height - inner_border);
   }
 }
 

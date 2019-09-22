@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
     char *spawn_argv[] = {"/hd0/main", NULL};
     spawnxv(&s_info, "/hd0/main", (char **)spawn_argv);
 
-    struct g_application *app = g_application_create(INIT_WIDTH, INIT_HEIGHT);
+    struct g_application *app = g_application_create(INIT_WIDTH, INIT_HEIGHT, 1);
     g_application_set_userdata(app, &state);
     
     struct g_termbox *tb = g_termbox_create();
