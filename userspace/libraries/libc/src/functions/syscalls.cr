@@ -127,7 +127,7 @@ fun raise(sig : LibC::Int) : LibC::Int
   -1
 end
 
-fun getpid : LibC::Int
+fun getpid : LibC::Pid
   __lilith_syscall(SC_GETPID, 0).to_int
 end
 

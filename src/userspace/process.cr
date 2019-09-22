@@ -172,7 +172,8 @@ module Multiprocessing
           end
           i += 1
         end
-        -1
+        @fds.push(FileDescriptor.new(i, node, attrs))
+        @fds.size.to_i32 - 1
       end
 
       def get_fd(i : Int32) : FileDescriptor?
