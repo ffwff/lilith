@@ -10,4 +10,5 @@
 
 #include "gui/termbox.h"
 #include "gui/decoration.h"
+#include "gui/window-layout.h"
 #include "gui/canvas.h"

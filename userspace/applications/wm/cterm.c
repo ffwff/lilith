@@ -50,17 +50,14 @@ int main(int argc, char **argv) {
     struct g_application *app = g_application_create(INIT_WIDTH, INIT_HEIGHT);
     g_application_set_userdata(app, &state);
     
-    struct g_decoration *dec = g_decoration_create();
-    g_decoration_set_text(dec, "Terminal");
-    g_widget_move_resize((struct g_widget *)dec, 0, 0, INIT_WIDTH, INIT_HEIGHT);
-    g_application_add_widget(app, (struct g_widget *)dec);
-    
     struct g_termbox *tb = g_termbox_create();
-    const int title_height = 20;
-    g_widget_move_resize((struct g_widget *)tb, 0, title_height, INIT_WIDTH, INIT_HEIGHT - title_height);
     g_termbox_bind_in_fd(tb, state.in_fd);
     g_termbox_bind_out_fd(tb, state.out_fd);
-    g_application_add_widget(app, (struct g_widget *)tb);
+    
+    struct g_window_layout *wlayout = g_window_layout_create((struct g_widget *)tb);
+    g_widget_move_resize((struct g_widget *)wlayout, 0, 0, INIT_WIDTH, INIT_HEIGHT);
+    g_decoration_set_text(g_window_layout_decoration(wlayout), "Terminal");
+    g_application_add_widget(app, (struct g_widget *)wlayout);
 
     return g_application_run(app);
 }

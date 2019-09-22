@@ -28,7 +28,7 @@ unsigned int g_widget_width(struct g_widget *widget) {
 unsigned int g_widget_height(struct g_widget *widget) {
   return widget->height;
 }
-unsigned int g_widget_z_index(struct g_widget *widget) {
+int g_widget_z_index(struct g_widget *widget) {
   return widget->z_index;
 }
 
@@ -52,7 +52,7 @@ void g_widget_set_height(struct g_widget *widget, unsigned val) {
     widget->resize_fn(widget, widget->width, widget->height);
   }
 }
-void g_widget_set_z_index(struct g_widget *widget, unsigned val) {
+void g_widget_set_z_index(struct g_widget *widget, int val) {
   widget->z_index = val;
 }
 void g_widget_move_resize(struct g_widget *widget, unsigned int x,
