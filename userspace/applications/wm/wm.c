@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -80,9 +81,11 @@ struct wm_state {
 };
 
 struct wm_window_prog {
+  pid_t pid;
   int mfd, sfd;
   unsigned int event_mask;
   unsigned int x, y, width, height;
+  int pad; // FIXME: doesn't work without this
 };
 
 struct wm_window_sprite {
@@ -92,6 +95,7 @@ struct wm_window_sprite {
 enum wm_window_type {
   WM_WINDOW_PROG = 0,
   WM_WINDOW_SPRITE = 1,
+  WM_WINDOW_REMOVE = 2,
 };
 
 struct wm_window {
@@ -107,12 +111,14 @@ struct wm_window {
 
 /* IPC */
 
-int win_write_and_wait(struct wm_window_prog *prog,
+int win_write_and_wait(struct wm_window *win,
              struct wm_atom *write_atom,
              struct wm_atom *respond_atom) {
+  struct wm_window_prog *prog = &win->as.prog;
   ftruncate(prog->mfd, 0);
   write(prog->mfd, (char *)write_atom, sizeof(struct wm_atom));
   if (waitfd(&prog->sfd, 1, PACKET_TIMEOUT) < 0) {
+    // win->refresh_retries++;
     ftruncate(prog->sfd, 0);
     return 0;
   }
@@ -138,16 +144,31 @@ struct wm_window *wm_add_window(struct wm_state *state) {
   return win;
 }
 
-struct wm_window *wm_add_win_prog(struct wm_state *state, int mfd, int sfd,
+struct wm_window *wm_add_win_prog(struct wm_state *state,
+                                  pid_t pid, unsigned int event_mask,
                                   struct wm_window *win) {
+  char path[128] = { 0 };
+
+  snprintf(path, sizeof(path), "/pipes/wm:%d:m", pid);
+  int mfd = create(path);
+  if(mfd < 0) { return 0; }
+
+  snprintf(path, sizeof(path), "/pipes/wm:%d:s", pid);
+  int sfd = create(path);
+  if(sfd < 0) { close(mfd); return 0; }
+
   if(win == 0) {
     win = wm_add_window(state);
     win->z_index = 1;
     state->focused_wid = win->wid;
   } else {
-    memset(win, 0, sizeof(struct wm_window));
+    assert(win->type == WM_WINDOW_SPRITE);
+    memset(&win->as.prog, 0, sizeof(struct wm_window_prog));
+    win->drawn = 0;
   }
   win->type = WM_WINDOW_PROG;
+  win->as.prog.pid = pid;
+  win->as.prog.event_mask = event_mask;
   win->as.prog.mfd = mfd;
   win->as.prog.sfd = sfd;
   return win;
@@ -159,6 +180,29 @@ struct wm_window *wm_add_sprite(struct wm_state *state, struct wm_window_sprite 
   win->type = WM_WINDOW_SPRITE;
   win->as.sprite = *sprite;
   return win;
+}
+
+/* WINDOW REMOVE */
+void wm_mark_win_removed(struct wm_window *win) {
+  switch (win->type) {
+    case WM_WINDOW_PROG: {
+      struct wm_window_prog *prog = &win->as.prog;
+      
+      close(prog->mfd);
+      close(prog->sfd);
+
+      char path[128] = { 0 };
+
+      snprintf(path, sizeof(path), "/pipes/wm:%d:m", prog->pid);
+      remove(path);
+
+      snprintf(path, sizeof(path), "/pipes/wm:%d:s", prog->pid);
+      remove(path);
+
+      break;
+    }
+  }
+  win->type = WM_WINDOW_REMOVE;
 }
 
 /* IMPL */
@@ -196,29 +240,21 @@ void wm_add_queue(struct wm_state *state, struct wm_atom *atom) {
 /* CONNECTIONS */
 
 int wm_handle_connection_request(struct wm_state *state, struct wm_connection_request *conn_req) {
-  char path[128] = { 0 };
-
-  snprintf(path, sizeof(path), "/pipes/wm:%d:m", conn_req->pid);
-  int mfd = create(path);
-  if(mfd < 0) { return 0; }
-
-  snprintf(path, sizeof(path), "/pipes/wm:%d:s", conn_req->pid);
-  int sfd = create(path);
-  if(sfd < 0) { close(mfd); return 0; }
-
-  struct wm_window *win;
+  struct wm_window *win = 0;
   if((conn_req->properties & WM_PROPERTY_ROOT) != 0) {
     if(state->windows[0].type == WM_WINDOW_SPRITE) {
-      win = wm_add_win_prog(state, mfd, sfd, &state->windows[0]);
+      win = wm_add_win_prog(state, conn_req->pid, conn_req->event_mask, &state->windows[0]);
     } else {
       abort(); // TODO
       return 1;
     }
   } else {
-    win = wm_add_win_prog(state, mfd, sfd, 0);
+    win = wm_add_win_prog(state, conn_req->pid, conn_req->event_mask, 0);
   }
-  win->as.prog.event_mask = conn_req->event_mask;
 
+  if(!win) {
+    return 0;
+  }
   wm_sort_windows_by_z(state);
   return 1;
 }
@@ -423,7 +459,7 @@ int main(int argc, char **argv) {
           if(wm.focused_wid == win->wid) {
             for(size_t i = 0; i < wm.queue_len; i++) {
               if((win->as.prog.event_mask & (1 << wm.queue[i].type)) != 0) {
-                win_write_and_wait(&win->as.prog, &wm.queue[i], &respond_atom);
+                win_write_and_wait(win, &wm.queue[i], &respond_atom);
               }
             }
           }
@@ -433,7 +469,7 @@ int main(int argc, char **argv) {
             .type = ATOM_REDRAW_TYPE,
             .redraw.force_redraw = wm.needs_redraw,
           };
-          retval = win_write_and_wait(&win->as.prog, &redraw_atom, &respond_atom);
+          retval = win_write_and_wait(win, &redraw_atom, &respond_atom);
 
           if (retval == sizeof(struct wm_atom)) {
             win_copy_refresh_atom(&win->as.prog, &respond_atom);
@@ -453,7 +489,7 @@ int main(int argc, char **argv) {
                       break;
                     switch (win->type) {
                       case WM_WINDOW_PROG: {
-                        retval = win_write_and_wait(&win->as.prog, &redraw_atom, &respond_atom);
+                        retval = win_write_and_wait(win, &redraw_atom, &respond_atom);
                         if (retval == sizeof(struct wm_atom)) {
                           win_copy_refresh_atom(&win->as.prog, &respond_atom);
                         }
