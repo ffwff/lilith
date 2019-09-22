@@ -8,6 +8,7 @@ struct g_application {
   struct canvas_ctx *ctx;
     
   struct g_widget_array widgets;
+  struct g_widget *main_widget;
 
   // callbacks
   g_redraw_cb redraw_cb;

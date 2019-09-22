@@ -19,6 +19,9 @@ static inline void g_application_add_widget(struct g_application *app, struct g_
   g_widget_array_push(g_application_widgets(app), widget);
 }
 
+void g_application_set_main_widget(struct g_application *app, struct g_widget *widget);
+struct g_widget *g_application_main_widget(struct g_application *app);
+
 struct canvas_ctx *g_application_ctx(struct g_application *app);
 int g_application_x(struct g_application *app);
 int g_application_y(struct g_application *app);

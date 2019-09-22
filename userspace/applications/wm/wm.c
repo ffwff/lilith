@@ -50,8 +50,8 @@ static void panic(const char *s) {
 
 #define min(x, y) ((x)<(y)?(x):(y))
 
-#define PACKET_TIMEOUT 100000
 #define FRAME_WAIT 10000
+#define PACKET_TIMEOUT FRAME_WAIT*5
 
 /* WM State */
 
@@ -374,7 +374,7 @@ int main(int argc, char **argv) {
           int old_wid = wm.focused_wid;
           struct wm_window *focused_win = NULL;
           for(int i = wm.nwindows; i >= 0; i--) {
-            if (wm.windows[i].z_index != 0 && wm.windows[i].type == WM_WINDOW_PROG) {
+            if (wm.windows[i].z_index > 0 && wm.windows[i].type == WM_WINDOW_PROG) {
               if(point_in_win_prog(&wm.windows[i].as.prog, sprite->x, sprite->y) && !focused_win) {
                 wm.focused_wid = wm.windows[i].wid;
                 focused_win = &wm.windows[i];

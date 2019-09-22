@@ -61,6 +61,9 @@ void g_widget_move_resize(struct g_widget *widget, unsigned int x,
   widget->y = y;
   widget->width = width;
   widget->height = height;
+  if(widget->ctx) {
+    canvas_ctx_resize_buffer(widget->ctx, width, height);
+  }
   if(widget->resize_fn) {
     widget->resize_fn(widget, widget->width, widget->height);
   }

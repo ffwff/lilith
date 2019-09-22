@@ -53,27 +53,27 @@ static void g_termbox_newline(struct g_widget *widget) {
   struct g_termbox_data *data = (struct g_termbox_data *)widget->widget_data;
   data->cx = 0;
   if(data->cy == data->cheight - 1) {
-      // scroll
-      for(int y = 0; y < data->cheight - 1; y++) {
-          for(int x = 0; x < data->cwidth; x++) {
-              data->buffer[y * data->cwidth + x]
-                  = data->buffer[(y + 1) * data->cwidth + x];
-          }
-      }
+    // scroll
+    for(int y = 0; y < data->cheight - 1; y++) {
       for(int x = 0; x < data->cwidth; x++) {
-          data->buffer[(data->cheight - 1) * data->cwidth + x] = 0;
+        data->buffer[y * data->cwidth + x]
+                = data->buffer[(y + 1) * data->cwidth + x];
       }
+    }
+    for(int x = 0; x < data->cwidth; x++) {
+      data->buffer[(data->cheight - 1) * data->cwidth + x] = 0;
+    }
   } else {
-      data->cy++;
+    data->cy++;
   }
 }
 
 static void g_termbox_advance(struct g_widget *widget) {
   struct g_termbox_data *data = (struct g_termbox_data *)widget->widget_data;
-    data->cx++;
-    if(data->cx == data->cwidth) {
-        g_termbox_newline(widget);
-    }
+  data->cx++;
+  if(data->cx == data->cwidth) {
+    g_termbox_newline(widget);
+  }
 }
 
 static void g_termbox_add_character(struct g_widget *widget, char ch) {
@@ -97,29 +97,29 @@ static void g_termbox_add_character(struct g_widget *widget, char ch) {
 
 static void g_termbox_type(struct g_widget *widget, int ch) {
   struct g_termbox_data *data = (struct g_termbox_data *)widget->widget_data;
-    g_termbox_add_character(widget, ch);
-    if(ch == '\b') {
-      if(data->line_buffer_len > 0) {
-        data->line_buffer[data->line_buffer_len--] = 0;
-      }
-    } else if(ch == '\n' || data->line_buffer_len == LINE_BUFFER_LEN - 2) {
-        data->line_buffer[data->line_buffer_len++] = '\n';
-        write(data->in_fd, data->line_buffer, data->line_buffer_len);
-        data->line_buffer_len = 0;
-    } else {
-        data->line_buffer[data->line_buffer_len++] = ch;
+  g_termbox_add_character(widget, ch);
+  if(ch == '\b') {
+    if(data->line_buffer_len > 0) {
+      data->line_buffer[data->line_buffer_len--] = 0;
     }
+  } else if(ch == '\n' || data->line_buffer_len == LINE_BUFFER_LEN - 2) {
+    data->line_buffer[data->line_buffer_len++] = '\n';
+    write(data->in_fd, data->line_buffer, data->line_buffer_len);
+    data->line_buffer_len = 0;
+  } else {
+    data->line_buffer[data->line_buffer_len++] = ch;
+  }
 }
 
 static int g_termbox_read_buf(struct g_widget *widget) {
   struct g_termbox_data *data = (struct g_termbox_data *)widget->widget_data;
-    char buf[4096];
-    int retval = read(data->out_fd, buf, sizeof(buf));
-    if(retval <= 0) return retval;
-    for(int i = 0; i < retval; i++) {
-        g_termbox_add_character(widget, buf[i]);
-    }
-    return retval;
+  char buf[4096];
+  int retval = read(data->out_fd, buf, sizeof(buf));
+  if(retval <= 0) return retval;
+  for(int i = 0; i < retval; i++) {
+    g_termbox_add_character(widget, buf[i]);
+  }
+  return retval;
 }
 
 static void g_termbox_redraw(struct g_widget *widget, struct g_application *app) {
