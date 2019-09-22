@@ -22,6 +22,16 @@ struct g_termbox_data {
 };
 
 static void g_termbox_deinit(struct g_widget *widget) {
+  struct g_termbox_data *data = (struct g_termbox_data *)widget->widget_data;
+  if(data->buffer) {
+    free(data);
+  }
+  if(data->in_fd > 0) {
+    close(data->in_fd);
+  }
+  if(data->out_fd > 0) {
+    close(data->in_fd);
+  }
   free(widget->widget_data);
 }
 

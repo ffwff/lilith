@@ -7,7 +7,8 @@ typedef void (*g_widget_deinit_fn)(struct g_widget *widget);
 typedef void (*g_widget_on_key_fn)(struct g_widget *widget, int ch);
 
 struct g_widget {
-  unsigned int x, y, width, height, z_index;
+  unsigned int x, y, width, height;
+  int z_index;
   struct canvas_ctx *ctx;
   
   void *widget_data;
