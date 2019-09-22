@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
     struct g_window_layout *wlayout = g_window_layout_create((struct g_widget *)tb);
     g_widget_move_resize((struct g_widget *)wlayout, 0, 0, INIT_WIDTH, INIT_HEIGHT);
     g_decoration_set_text(g_window_layout_decoration(wlayout), "Terminal");
-    g_application_add_widget(app, (struct g_widget *)wlayout);
+    g_application_set_main_widget(app, (struct g_widget *)wlayout);
 
     return g_application_run(app);
 }

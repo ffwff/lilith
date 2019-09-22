@@ -66,12 +66,17 @@ int g_application_redraw(struct g_application *app) {
     if (app->redraw_cb(app))
       needs_redraw = 1;
   }
-  for(size_t i = 0; i < app->widgets.len; i++) {
-    struct g_widget *widget = app->widgets.data[i];
-    widget->redraw_fn(widget, app);
-    if(widget->ctx) {
-      canvas_ctx_bitblit(app->ctx, widget->ctx, widget->x, widget->y);
-      needs_redraw = 1;
+  if(app->main_widget) {
+    app->main_widget->redraw_fn(app->main_widget, app);
+    needs_redraw = 1;
+  } else {
+    for(size_t i = 0; i < app->widgets.len; i++) {
+      struct g_widget *widget = app->widgets.data[i];
+      widget->redraw_fn(widget, app);
+      if(widget->ctx) {
+        canvas_ctx_bitblit(app->ctx, widget->ctx, widget->x, widget->y);
+        needs_redraw = 1;
+      }
     }
   }
   return needs_redraw;
@@ -81,10 +86,14 @@ static int g_application_on_key(struct g_application *app, int ch) {
   if (app->key_cb) {
     app->key_cb(app, ch);
   }
-  for(size_t i = 0; i < app->widgets.len; i++) {
-    struct g_widget *widget = app->widgets.data[i];
-    if(widget->on_key_fn) {
-      widget->on_key_fn(widget, ch);
+  if(app->main_widget) {
+    app->main_widget->on_key_fn(app->main_widget, ch);
+  } else {
+    for(size_t i = 0; i < app->widgets.len; i++) {
+      struct g_widget *widget = app->widgets.data[i];
+      if(widget->on_key_fn) {
+        widget->on_key_fn(widget, ch);
+      }
     }
   }
   return 1;
@@ -153,9 +162,9 @@ int g_application_run(struct g_application *app) {
             atom.mouse_event.y) || mouse_resize) {
             // resize
             mouse_resize = 1;
-            app->sprite.width += atom.mouse_event.delta_x;
-            app->sprite.height += atom.mouse_event.delta_y;
-            canvas_ctx_resize_buffer(app->ctx, app->sprite.width, app->sprite.height);
+            g_application_resize(app,
+                            app->sprite.width + atom.mouse_event.delta_x,
+                            app->sprite.height + atom.mouse_event.delta_y);
             needs_redraw = g_application_redraw(app);
           } else {
             if(!(atom.mouse_event.delta_x < 0 && app->sprite.x < -atom.mouse_event.delta_x))
@@ -196,6 +205,14 @@ int g_application_run(struct g_application *app) {
   return 0;
 }
 
+void g_application_set_main_widget(struct g_application *app, struct g_widget *widget) {
+  app->main_widget = widget;
+}
+
+struct g_widget *g_application_main_widget(struct g_application *app) {
+  return app->main_widget;
+}
+
 // getters
 
 struct g_widget_array *g_application_widgets(struct g_application *app) {
@@ -227,6 +244,9 @@ void g_application_resize(struct g_application *app, int width, int height) {
   app->sprite.source = (unsigned long *)canvas_ctx_get_surface(app->ctx);
   app->sprite.width = width;
   app->sprite.height = height;
+  if(app->main_widget) {
+    g_widget_move_resize(app->main_widget, 0, 0, width, height);
+  }
 }
 
 // screen

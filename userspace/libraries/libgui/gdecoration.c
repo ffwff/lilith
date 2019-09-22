@@ -20,7 +20,7 @@ static void g_decoration_redraw(struct g_widget *widget, struct g_application *a
     canvas_color_rgb(0x32, 0x36, 0x39));
   canvas_ctx_stroke_rect(widget->ctx, 0, 0,
     widget->width - 1, widget->height - 1,
-    canvas_color_rgb(0x20, 0x21, 0x24));
+    canvas_color_rgb(0xff, 0xff, 0xff));
   
   struct g_decoration_data *data = (struct g_decoration_data *)widget->widget_data;
   if(data->title_ctx) {
