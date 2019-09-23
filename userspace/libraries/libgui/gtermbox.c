@@ -47,6 +47,7 @@ static void g_termbox_resize(struct g_widget *widget, int w, int h) {
     }
     data->buffer_len = new_len;
   }
+  widget->needs_redraw = 1;
 }
 
 static void g_termbox_newline(struct g_widget *widget) {
@@ -123,25 +124,28 @@ static int g_termbox_read_buf(struct g_widget *widget) {
   char buf[4096];
   int retval = read(data->out_fd, buf, sizeof(buf));
   if(retval <= 0) return retval;
+  widget->needs_redraw = 1;
   for(int i = 0; i < retval; i++) {
     g_termbox_add_character(widget, buf[i]);
   }
   return retval;
 }
 
-static void g_termbox_redraw(struct g_widget *widget, struct g_application *app) {
+static int g_termbox_redraw(struct g_widget *widget, struct g_application *app) {
   g_widget_init_ctx(widget);
+
+  struct g_termbox_data *data = (struct g_termbox_data *)widget->widget_data;
+  if(data->out_fd != -1) {
+    g_termbox_read_buf(widget);
+  }
+
+  if(!widget->needs_redraw)
+    return 0;
 
   canvas_ctx_fill_rect(widget->ctx, 0, 0,
         widget->width, widget->height,
         canvas_color_rgb(0, 0, 0));
-        
-  struct g_termbox_data *data = (struct g_termbox_data *)widget->widget_data;
 
-  if(data->out_fd != -1) {
-    g_termbox_read_buf(widget);
-  }
-  
   for(int y = 0; y < data->cheight; y++) {
     for(int x = 0; x < data->cwidth; x++) {
       canvas_ctx_draw_character(widget->ctx,
@@ -149,9 +153,13 @@ static void g_termbox_redraw(struct g_widget *widget, struct g_application *app)
         data->buffer[y * data->cwidth + x]);
     }
   }
+  
+  widget->needs_redraw = 0;
+  return 1;
 }
 
 static void g_termbox_on_key(struct g_widget *widget, int ch) {
+  widget->needs_redraw = 1;
   g_termbox_type(widget, ch);
 }
 
@@ -165,6 +173,7 @@ struct g_termbox *g_termbox_create() {
   data->out_fd = -1;
   
   termbox->widget_data = data;
+  termbox->needs_redraw = 1;
   termbox->deinit_fn = g_termbox_deinit;
   termbox->resize_fn = g_termbox_resize;
   termbox->redraw_fn = g_termbox_redraw;

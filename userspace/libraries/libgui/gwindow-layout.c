@@ -18,26 +18,33 @@ static void g_window_layout_deinit(struct g_widget *widget) {
   free(data);
 }
 
-static void g_window_layout_redraw(struct g_widget *widget, struct g_application *app) {
+static int g_window_layout_redraw(struct g_widget *widget, struct g_application *app) {
   struct g_window_layout_data *data = (struct g_window_layout_data *)widget->widget_data;
   
   struct g_widget *decoration = (struct g_widget *)data->decoration;
-  decoration->redraw_fn(decoration, app);
-  canvas_ctx_bitblit(app->ctx, decoration->ctx, decoration->x, decoration->y);
-  
+
+  int drawn = 0;
+
+  if((drawn = decoration->redraw_fn(decoration, app))) {
+    canvas_ctx_bitblit(app->ctx, decoration->ctx, decoration->x, decoration->y);
+  }
+    
   if(data->main_widget && data->main_widget->redraw_fn) {
-    data->main_widget->redraw_fn(data->main_widget, app);
-    if(data->main_widget->ctx) {
-      canvas_ctx_bitblit(app->ctx, data->main_widget->ctx,
-              data->main_widget->x, data->main_widget->y);
+    if ((drawn = data->main_widget->redraw_fn(data->main_widget, app))) {
+      if(data->main_widget->ctx) {
+        canvas_ctx_bitblit(app->ctx, data->main_widget->ctx,
+                data->main_widget->x, data->main_widget->y);
+      }
     }
   }
+    
+  return drawn;
 }
 
 static void g_window_layout_resize(struct g_widget *widget, int w, int h) {
-  const int title_height = 20;
-  const int inner_border = 5;
   struct g_window_layout_data *data = (struct g_window_layout_data *)widget->widget_data;
+  const int inner_border = 5;
+  const int title_height = g_decoration_height(data->decoration) + inner_border;
   g_widget_move_resize((struct g_widget *)data->decoration, 0, 0, w, h);
   if(data->main_widget) {
     g_widget_move_resize(data->main_widget, inner_border, title_height,

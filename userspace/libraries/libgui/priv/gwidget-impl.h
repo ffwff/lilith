@@ -1,6 +1,6 @@
 #pragma once
 
-typedef void (*g_widget_redraw_fn)(struct g_widget *widget,
+typedef int (*g_widget_redraw_fn)(struct g_widget *widget,
                                   struct g_application *app);
 typedef void (*g_widget_resize_fn)(struct g_widget *widget, int w, int h);
 typedef void (*g_widget_deinit_fn)(struct g_widget *widget);
@@ -10,6 +10,8 @@ struct g_widget {
   unsigned int x, y, width, height;
   int z_index;
   struct canvas_ctx *ctx;
+  
+  int needs_redraw;
   
   void *widget_data;
   g_widget_deinit_fn deinit_fn;
