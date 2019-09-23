@@ -38,9 +38,9 @@ static void filter_data_with_alpha(struct fbdev_bitblit *sprite) {
     unsigned char b = data[i + 2];
     unsigned char a = data[i + 3];
     // premultiply by alpha / 0xff
-    data[i + 0] = (b * a) >> 8;
-    data[i + 1] = (g * a) >> 8;
-    data[i + 2] = (r * a) >> 8;
+    data[i + 0] = ((int)b * (int)a) / 0xff;
+    data[i + 1] = ((int)g * (int)a) / 0xff;
+    data[i + 2] = ((int)r * (int)a) / 0xff;
   }
 }
 
@@ -344,8 +344,10 @@ int main(int argc, char **argv) {
   wm.needs_redraw = 1;
 
   // sample win
-  char *spawn_argv[] = {"desktop", NULL};
-  spawnv("desktop", (char **)spawn_argv);
+  //char *spawn_argv[] = {"desktop", NULL};
+  //spawnv("desktop", (char **)spawn_argv);
+  char *spawn_argv[] = {"cterm", NULL};
+  spawnv("cterm", (char **)spawn_argv);
 
   while(1) {
     {

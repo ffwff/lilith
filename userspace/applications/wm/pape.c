@@ -11,6 +11,8 @@
 #include <gui.h>
 #include <png.h>
 
+#define min(x,y) ((x)<(y)?(x):(y))
+
 struct pape_state {
   int drawn;
   int width, height;
@@ -82,10 +84,11 @@ static int pape_redraw(struct g_application *app) {
   struct pape_state *state = (struct pape_state *)g_application_userdata(app);
   
   const int width = canvas_ctx_get_width(ctx);
+  const int max_height = canvas_ctx_get_height(ctx);
   
   if(!state->drawn) {
     unsigned char *dst = canvas_ctx_get_surface(ctx);
-    for(int y = 0; y < state->height; y++) {
+    for(int y = 0; y < min(state->height, max_height); y++) {
       png_read_row(state->png_ptr, state->row, 0);
       memcpy(&dst[y * width * 4], state->row, state->width * 4);
     }
