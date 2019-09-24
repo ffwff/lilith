@@ -37,6 +37,7 @@ struct g_application *g_application_create(int width, int height, int alpha) {
                  alpha ? LIBCANVAS_FORMAT_ARGB32 : LIBCANVAS_FORMAT_RGB24);
   app->sprite.source = (unsigned long *)canvas_ctx_get_surface(app->ctx);
   g_widget_array_init(&app->widgets);
+  app->event_mask = ATOM_MOUSE_EVENT_MASK | ATOM_KEYBOARD_EVENT_MASK;
 
   if(!app->ctx) {
     close(app->fb_fd);
@@ -99,7 +100,7 @@ static int g_application_on_key(struct g_application *app, int ch) {
 }
 
 int g_application_run(struct g_application *app) {
-  wmc_connection_obtain(&app->wmc_conn, ATOM_MOUSE_EVENT_MASK | ATOM_KEYBOARD_EVENT_MASK, app->wm_properties);
+  wmc_connection_obtain(&app->wmc_conn, app->event_mask, app->wm_properties);
 
   // event loop
   int mouse_drag = 0;
@@ -212,6 +213,10 @@ struct g_widget *g_application_main_widget(struct g_application *app) {
   return app->main_widget;
 }
 
+unsigned int g_application_event_mask(struct g_application *app) {
+  return app->event_mask;
+}
+
 // getters
 
 struct g_widget_array *g_application_widgets(struct g_application *app) {
@@ -246,6 +251,10 @@ void g_application_resize(struct g_application *app, int width, int height) {
   if(app->main_widget) {
     g_widget_move_resize(app->main_widget, 0, 0, width, height);
   }
+}
+
+void g_application_set_event_mask(struct g_application *app, unsigned int event_mask) {
+  app->event_mask = event_mask;
 }
 
 // screen
