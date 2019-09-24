@@ -22,7 +22,7 @@
 
 struct fm_state {
   char path[128];
-  struct dirent files[256];
+  struct dirent *files;
   int nfiles;
 };
 
@@ -34,11 +34,14 @@ static void fm_init(struct fm_state *state) {
   getcwd(state->path, sizeof(state->path));
 
   DIR *d = opendir(state->path);
+  state->files = realloc(state->files, sizeof(struct dirent));
   state->files[0] = up_dir;
   state->nfiles = 1;
   struct dirent *dir;
   while ((dir = readdir(d)) != NULL) {
-    state->files[state->nfiles++] = *dir;
+    int idx = state->nfiles++;
+    state->files = realloc(state->files, sizeof(struct dirent) * state->nfiles);
+    state->files[idx] = *dir;
   }
   closedir(d);
 }

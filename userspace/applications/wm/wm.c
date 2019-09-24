@@ -343,11 +343,11 @@ int main(int argc, char **argv) {
 
   wm.needs_redraw = 1;
 
-  // sample win
-  //char *spawn_argv[] = {"desktop", NULL};
-  //spawnv("desktop", (char **)spawn_argv);
-  char *spawn_argv[] = {"cterm", NULL};
-  spawnv("cterm", (char **)spawn_argv);
+  // spawn desktop
+  {
+    char *spawn_argv[] = {"desktop", NULL};
+    spawnv("desktop", (char **)spawn_argv);
+  }
 
   while(1) {
     {

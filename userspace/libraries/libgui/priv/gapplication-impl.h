@@ -3,6 +3,7 @@
 struct g_application {
   int fb_fd;
   struct wmc_connection wmc_conn;
+  unsigned int event_mask;
   unsigned int wm_properties;
   struct fbdev_bitblit sprite;
   struct canvas_ctx *ctx;

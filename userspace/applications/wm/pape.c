@@ -109,6 +109,7 @@ int main(int argc, char **argv) {
   pape_init_img(&state, argv[1]);
   
   struct g_application *app = g_application_create(1, 1, 0);
+  g_application_set_event_mask(app, 0);
   g_application_set_window_properties(app, WM_PROPERTY_ROOT);
   g_application_set_userdata(app, &state);
   int width, height;

@@ -36,3 +36,6 @@ void g_application_set_userdata(struct g_application *app, void *ptr);
 
 void g_application_set_redraw_cb(struct g_application *app, g_redraw_cb cb);
 void g_application_set_key_cb(struct g_application *app, g_key_cb cb);
+
+unsigned int g_application_event_mask(struct g_application *app);
+void g_application_set_event_mask(struct g_application *app, unsigned int event_mask);
