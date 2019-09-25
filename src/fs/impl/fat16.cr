@@ -317,7 +317,8 @@ private class Fat16Node < VFSNode
     end
   end
 
-  def create(name : Slice) : VFSNode?
+  def create(name : Slice,
+             process : Multiprocessing::Process? = nil) : VFSNode?
     nil
   end
 

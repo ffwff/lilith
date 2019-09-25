@@ -2,11 +2,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include <syscalls.h>
 #include <sys/gfx.h>
 #include <sys/ioctl.h>
 #include <sys/mouse.h>
 #include <sys/kbd.h>
-#include <syscalls.h>
+#include <sys/pipes.h>
 
 #include <wm/wm.h>
 
@@ -116,14 +118,14 @@ int win_write_and_wait(struct wm_window *win,
              struct wm_atom *respond_atom) {
   struct wm_window_prog *prog = &win->as.prog;
   ftruncate(prog->mfd, 0);
-  write(prog->mfd, (char *)write_atom, sizeof(struct wm_atom));
+  write(prog->mfd, write_atom, sizeof(struct wm_atom));
   if (waitfd(&prog->sfd, 1, PACKET_TIMEOUT) < 0) {
     // win->refresh_retries++;
     ftruncate(prog->sfd, 0);
     return 0;
   }
   // respond received
-  return read(prog->sfd, (char *)respond_atom, sizeof(struct wm_atom));
+  return read(prog->sfd, respond_atom, sizeof(struct wm_atom));
 }
 
 void win_copy_refresh_atom(struct wm_window_prog *prog, struct wm_atom *atom) {
@@ -149,12 +151,12 @@ struct wm_window *wm_add_win_prog(struct wm_state *state,
                                   struct wm_window *win) {
   char path[128] = { 0 };
 
-  snprintf(path, sizeof(path), "/pipes/wm:%d:m", pid);
-  int mfd = create(path);
+  snprintf(path, sizeof(path), "wm:%d:m", pid);
+  int mfd = mkppipe(path, PIPE_S_RD | PIPE_M_WR, pid);
   if(mfd < 0) { return 0; }
 
-  snprintf(path, sizeof(path), "/pipes/wm:%d:s", pid);
-  int sfd = create(path);
+  snprintf(path, sizeof(path), "wm:%d:s", pid);
+  int sfd = mkppipe(path, PIPE_M_RD | PIPE_S_WR, pid);
   if(sfd < 0) { close(mfd); return 0; }
 
   if(win == 0) {
@@ -337,7 +339,7 @@ int main(int argc, char **argv) {
   ioctl(STDOUT_FILENO, TIOCGSTATE, 0);
 
   // control pipe
-  wm.control_fd = create("/pipes/wm");
+  wm.control_fd = mkfpipe("wm", PIPE_M_RD | PIPE_G_WR);
 
   wm_build_waitfds(&wm);
 
@@ -345,8 +347,8 @@ int main(int argc, char **argv) {
 
   // spawn desktop
   {
-    char *spawn_argv[] = {"desktop", NULL};
-    spawnv("desktop", (char **)spawn_argv);
+    char *spawn_argv[] = {"cterm", NULL};
+    spawnv("cterm", (char **)spawn_argv);
   }
 
   while(1) {
@@ -354,7 +356,7 @@ int main(int argc, char **argv) {
       // control pipe
       struct wm_connection_request conn_req = { 0 };
       while(
-        read(wm.control_fd, (char *)&conn_req, sizeof(struct wm_connection_request))
+        read(wm.control_fd, &conn_req, sizeof(struct wm_connection_request))
           == sizeof(struct wm_connection_request)
       ) {
         if (wm_handle_connection_request(&wm, &conn_req)) {
@@ -366,7 +368,7 @@ int main(int argc, char **argv) {
     if (select_fd == wm.mouse_fd) {
       // mouse
       struct mouse_packet mouse_packet;
-      read(wm.mouse_fd, (char *)&mouse_packet, sizeof(mouse_packet));
+      read(wm.mouse_fd, &mouse_packet, sizeof(mouse_packet));
 
       unsigned int speed = __builtin_ffs(mouse_packet.x + mouse_packet.y);
       struct fbdev_bitblit *sprite = &wm.mouse_win->as.sprite.sprite;
@@ -433,7 +435,7 @@ int main(int argc, char **argv) {
     } else if (select_fd == wm.kbd_fd) {
       // keyboard
       struct keyboard_packet keyboard_packet = { 0 };
-      read(wm.kbd_fd, (char *)&keyboard_packet, sizeof(keyboard_packet));
+      read(wm.kbd_fd, &keyboard_packet, sizeof(keyboard_packet));
       if(keyboard_packet.ch) {
         struct wm_atom keyboard_atom = { 0 };
         keyboard_atom.type = ATOM_KEYBOARD_EVENT_TYPE;

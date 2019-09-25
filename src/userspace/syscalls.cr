@@ -77,7 +77,8 @@ module Syscall
   end
 
   # parses a path and returns the corresponding vfs node
-  private def parse_path_into_vfs(path, cw_node = nil, create = false)
+  private def parse_path_into_vfs(path, cw_node = nil, create = false,
+                             process : Multiprocessing::Process? = nil)
     vfs_node : VFSNode? = nil
     return nil if path.size < 1
     if path[0] != '/'.ord
@@ -101,7 +102,7 @@ module Syscall
       else
         cur_node = vfs_node.open(segment)
         if cur_node.nil? && create
-          cur_node = vfs_node.create(segment)
+          cur_node = vfs_node.create(segment, process)
         end
         return if cur_node.nil?
         vfs_node = cur_node
@@ -247,7 +248,11 @@ module Syscall
       end
     when SC_CREATE
       path = try(checked_slice(arg(0), arg(1)))
-      vfs_node = parse_path_into_vfs path, pudata.cwd_node, true
+      path.each do |ch|
+        Serial.puts ch.unsafe_chr
+      end
+      Serial.puts '\n'
+      vfs_node = parse_path_into_vfs path, pudata.cwd_node, true, process
       if vfs_node.nil?
         sysret(SYSCALL_ERR)
       else
@@ -343,7 +348,7 @@ module Syscall
       end
     when SC_IOCTL
       fd = try(pudata.get_fd(arg(0).to_i32))
-      sysret(fd.node.not_nil!.ioctl(arg(1).to_i32, arg(2).to_u32))
+      sysret(fd.node.not_nil!.ioctl(arg(1).to_i32, arg(2).to_u32, process))
     when SC_WAITFD
       fds = try(checked_slice(Int32, arg(0), arg(1).to_i32))
       timeout = arg(2).to_u32

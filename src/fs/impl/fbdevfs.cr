@@ -61,7 +61,8 @@ private class FbdevFSNode < VFSNode
     size
   end
 
-  def ioctl(request : Int32, data : UInt32) : Int32
+  def ioctl(request : Int32, data : UInt32,
+            process : Multiprocessing::Process? = nil) : Int32
     case request
     when SC_IOCTL_TIOCGWINSZ
       unless (ptr = checked_pointer(IoctlData::Winsize, data)).nil?

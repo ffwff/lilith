@@ -10,11 +10,11 @@ private class PipeFSRoot < VFSNode
     end
   end
 
-  def create(name : Slice) : VFSNode?
+  def create(name : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
     each_child do |node|
       return if node.name == name
     end
-    node = PipeFSNode.new(GcString.new(name), self, fs)
+    node = PipeFSNode.new(GcString.new(name), process.not_nil!.pid, self, fs)
     node.next_node = @first_child
     unless @first_child.nil?
       @first_child.not_nil!.prev_node = node
@@ -56,8 +56,8 @@ private class PipeFSNode < VFSNode
   @prev_node : PipeFSNode? = nil
   property prev_node
 
-  def initialize(@name : GcString, @parent : PipeFSRoot, @fs : PipeFS)
-    Serial.puts "mk ", @name, '\n'
+  def initialize(@name : GcString, @m_pid, @parent : PipeFSRoot, @fs : PipeFS)
+    # Serial.puts "mk ", @name, '\n'
   end
 
   @buffer = Pointer(UInt8).null
@@ -67,9 +67,18 @@ private class PipeFSNode < VFSNode
   @[Flags]
   enum Flags : UInt32
     WaitRead = 1 << 0
+    M_Read   = 1 << 1
+    S_Read   = 1 << 2
+    M_Write  = 1 << 3
+    S_Write  = 1 << 4
+    G_Read   = 1 << 5
+    G_Write  = 1 << 6
+    Removed  = 1 << 7
   end
   
   @flags = Flags::None
+  @m_pid = 0
+  @s_pid = 0
   
   @queue : VFSQueue? = nil
 
@@ -77,6 +86,7 @@ private class PipeFSNode < VFSNode
     FrameAllocator.declaim_addr(@buffer.address & ~PTR_IDENTITY_MASK)
     @buffer = Pointer(UInt8).null
     @parent.remove self
+    @flags |= Flags::Removed
     VFS_OK
   end
 
@@ -94,7 +104,20 @@ private class PipeFSNode < VFSNode
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
-    # Serial.puts "read pipe ", @name, " ", process.not_nil!.pid, '\n'
+    return -1 if @flags.includes?(Flags::Removed)
+  
+    process = process.not_nil!
+    # Serial.puts "rd from ", process.pid, "(", @m_pid, ",", @s_pid, ")", "\n"
+    unless @flags.includes?(Flags::G_Read)
+      if process.pid == @m_pid
+        return 0 unless @flags.includes?(Flags::M_Read)
+      elsif process.pid == @s_pid
+        return 0 unless @flags.includes?(Flags::S_Read)
+      else
+        return 0
+      end
+    end
+
     init_buffer
     if @buffer_pos == 0
       if @flags.includes?(Flags::WaitRead)
@@ -117,7 +140,20 @@ private class PipeFSNode < VFSNode
 
   def write(slice : Slice, offset : UInt32,
             process : Multiprocessing::Process? = nil) : Int32
-    # Serial.puts "write ", @name, " ", process.not_nil!.pid, '\n'
+  return -1 if @flags.includes?(Flags::Removed)
+
+    process = process.not_nil!
+    # Serial.puts "wr from ", process.pid, "(", @m_pid, ",", @s_pid, ")", "\n"
+    unless @flags.includes?(Flags::G_Write)
+      if process.pid == @m_pid
+        return 0 unless @flags.includes?(Flags::M_Write)
+      elsif process.pid == @s_pid
+        return 0 unless @flags.includes?(Flags::S_Write)
+      else
+        return 0
+      end
+    end
+
     init_buffer
     if @buffer_pos == BUFFER_CAPACITY
       0
@@ -155,11 +191,15 @@ private class PipeFSNode < VFSNode
     @buffer_pos > 0
   end
   
-  def ioctl(request : Int32, data : UInt32) : Int32
+  def ioctl(request : Int32, data : UInt32,
+            process : Multiprocessing::Process? = nil) : Int32
+    return -1 unless process.not_nil!.pid == @m_pid
     case request
-    when SC_IOCTL_PIPE_CONFIGURE
+    when SC_IOCTL_PIPE_CONF_FLAGS
       @flags = Flags.new(data)
       0
+    when SC_IOCTL_PIPE_CONF_PID
+      @s_pid = data.to_i32
     else
       -1
     end

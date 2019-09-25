@@ -53,6 +53,14 @@ struct Int
   def ===(other)
     self == other
   end
+  
+  def times(&block)
+    i = 0
+    while i < self
+      yield i
+      i += 1
+    end
+  end
 end
 
 # Object

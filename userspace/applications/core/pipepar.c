@@ -8,20 +8,25 @@ char *str = "hello";
 char *str1 = "goodbye";
 
 int main(int argc, char **argv) {
-    int fd = create("/pipes/example");
+    int fd = mkfpipe("example", PIPE_WAIT_READ | PIPE_M_WR | PIPE_G_RD);
+    if(fd < 0) {
+        printf("unable to open pipe!\n");
+        return 1;
+    }
+    
     printf("sending \"%s\"...\n", str);
-
-    ioctl(fd, PIPE_CONFIGURE, PIPE_WAIT_READ);
-
     write(fd, str, strlen(str));
 
     printf("spawning child\n");
     char *sargv[2] = { "pipechd", NULL };
-    spawnv("pipechd", (char**)sargv);
+    pid_t pid = spawnv("pipechd", (char**)sargv);
 
     sleep(1);
     printf("sending \"%s\"...\n", str1);
     write(fd, str1, strlen(str1));
+    
+    waitpid(pid, 0, 0);
+    remove("/pipes/example");
 
     return 0;
 }
