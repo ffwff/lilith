@@ -24,6 +24,9 @@ struct fm_state {
   char path[128];
   struct dirent *files;
   int nfiles;
+
+  int needs_redraw;
+  int selected_idx;
 };
 
 static struct dirent up_dir = {
@@ -32,9 +35,13 @@ static struct dirent up_dir = {
 
 static void fm_init(struct fm_state *state) {
   getcwd(state->path, sizeof(state->path));
+  state->needs_redraw = 1;
+  state->selected_idx = 0;
 
   DIR *d = opendir(state->path);
-  state->files = realloc(state->files, sizeof(struct dirent));
+  if(state->files)
+    free(state->files);
+  state->files = malloc(sizeof(struct dirent));
   state->files[0] = up_dir;
   state->nfiles = 1;
   struct dirent *dir;
@@ -47,34 +54,51 @@ static void fm_init(struct fm_state *state) {
 }
 
 static int fm_redraw(struct g_widget *widget, struct g_application *app) {
-  if(g_widget_needs_redraw(widget)) {
+  struct fm_state *state = g_application_userdata(app);
+  if(state->needs_redraw) {
     struct g_canvas *canvas = (struct g_canvas *)widget;
     struct canvas_ctx *ctx = g_canvas_ctx(canvas);
-    
-    struct fm_state *state = g_application_userdata(app);
     
     canvas_ctx_fill_rect(ctx, 0, 0,
       g_widget_width(widget), g_widget_height(widget),
       canvas_color_rgb(0x0, 0x0, 0x0));
+      
+    canvas_ctx_fill_rect(ctx,
+      0, state->selected_idx * FONT_HEIGHT,
+      g_widget_width(widget), FONT_HEIGHT,
+      canvas_color_rgb(0x0, 0x0, 0xff));
     
     for(int i = 0; i < state->nfiles; i++) {
       canvas_ctx_draw_text(ctx, 0, i * FONT_HEIGHT, state->files[i].d_name);
     }
-    
-    g_widget_set_needs_redraw(widget, 0);
+
     return 1;
   }
   
   return 0;
 }
 
+static void fm_mouse(struct g_widget *widget, int type,
+                     unsigned int x, unsigned int y,
+                     int delta_x, int delta_y) {
+  struct g_canvas *canvas = (struct g_canvas *)widget;
+  struct fm_state *state = g_canvas_userdata(canvas);
+  int idx = y / FONT_HEIGHT;
+  if (idx < state->nfiles) {
+    state->selected_idx = idx;
+    if(type == WM_MOUSE_PRESS) {
+      chdir(state->files[idx].d_name);
+      fm_init(state);
+    }
+  }
+}
+
 static int address_redraw(struct g_widget *widget, struct g_application *app) {
-  if(g_widget_needs_redraw(widget)) {
+  struct fm_state *state = g_application_userdata(app);
+  if(state->needs_redraw) {
     struct g_canvas *canvas = (struct g_canvas *)widget;
     struct canvas_ctx *ctx = g_canvas_ctx(canvas);
-    
-    struct fm_state *state = g_application_userdata(app);
-    
+
     canvas_ctx_fill_rect(ctx, 0, 0,
       g_widget_width(widget), g_widget_height(widget),
       canvas_color_rgb(0x0, 0x0, 0x0));
@@ -100,7 +124,9 @@ int main(int argc, char **argv) {
   g_canvas_set_redraw_fn(address_widget, address_redraw);
   
   struct g_canvas *main_widget = g_canvas_create();
+  g_canvas_set_userdata(main_widget, &state);
   g_canvas_set_redraw_fn(main_widget, fm_redraw);
+  g_canvas_set_on_mouse_fn(main_widget, fm_mouse);
 
   struct g_window_layout *wlayout = g_window_layout_create((struct g_widget *)main_widget);
   g_widget_move_resize((struct g_widget *)wlayout, 0, 0, INIT_WIDTH, INIT_HEIGHT);

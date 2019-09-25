@@ -77,7 +77,11 @@ struct g_decoration *g_decoration_create() {
 void g_decoration_set_text(struct g_decoration *dec, const char *str) {
   struct g_widget *decoration = (struct g_widget *)dec;
   struct g_decoration_data *data = (struct g_decoration_data *)decoration->widget_data;
+
+  if(data->title)
+    free(data->title);
   data->title = strdup(str);
+
   int length = strlen(str);
   int width = length * FONT_WIDTH;
   if(data->title_ctx && canvas_ctx_get_width(data->title_ctx) != width) {
@@ -86,6 +90,7 @@ void g_decoration_set_text(struct g_decoration *dec, const char *str) {
     data->title_ctx = canvas_ctx_create(width, FONT_HEIGHT,
               LIBCANVAS_FORMAT_RGB24);
   }
+
   for(int i = 0; i < length; i++) {
     canvas_ctx_draw_character(data->title_ctx, i * FONT_WIDTH, 0, str[i]);
   }

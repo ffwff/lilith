@@ -47,6 +47,7 @@ struct g_application *g_application_create(int width, int height, int alpha) {
   }
   app->redraw_cb = 0;
   app->key_cb = 0;
+  app->mouse_cb = 0;
   app->userdata = 0;
   return app;
 }
@@ -82,7 +83,7 @@ int g_application_redraw(struct g_application *app) {
   return needs_redraw;
 }
 
-static int g_application_on_key(struct g_application *app, int ch) {
+static void g_application_on_key(struct g_application *app, int ch) {
   if (app->key_cb) {
     app->key_cb(app, ch);
   }
@@ -96,7 +97,29 @@ static int g_application_on_key(struct g_application *app, int ch) {
       }
     }
   }
-  return 1;
+}
+
+static void g_application_on_mouse(struct g_application *app, int type,
+                                  unsigned int x, unsigned int y,
+                                  int delta_x, int delta_y) {
+  unsigned int tx = x - app->sprite.x;
+  unsigned int ty = y - app->sprite.y;
+  if (app->mouse_cb) {
+    app->mouse_cb(app,
+      tx, ty, delta_x, delta_y);
+  }
+  if(app->main_widget) {
+    app->main_widget->on_mouse_fn(app->main_widget, type,
+        tx, ty, delta_x, delta_y);
+  } else {
+    for(size_t i = 0; i < app->widgets.len; i++) {
+      struct g_widget *widget = app->widgets.data[i];
+      if(widget->on_mouse_fn) {
+        widget->on_mouse_fn(widget, type,
+          tx, ty, delta_x, delta_y);
+      }
+    }
+  }
 }
 
 int g_application_run(struct g_application *app) {
@@ -176,6 +199,12 @@ int g_application_run(struct g_application *app) {
           mouse_drag = 0;
           mouse_resize = 0;
         }
+
+        g_application_on_mouse(app, atom.mouse_event.type,
+                               atom.mouse_event.x,
+                               atom.mouse_event.y,
+                               atom.mouse_event.delta_x,
+                               atom.mouse_event.delta_y);
         needs_redraw = 1;
 
         struct wm_atom respond_atom = {
@@ -289,4 +318,8 @@ void g_application_set_redraw_cb(struct g_application *app, g_redraw_cb cb) {
 
 void g_application_set_key_cb(struct g_application *app, g_key_cb cb) {
   app->key_cb = cb;
+}
+
+void g_application_set_mouse_cb(struct g_application *app, g_mouse_cb cb) {
+  app->mouse_cb = cb;
 }

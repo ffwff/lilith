@@ -248,10 +248,6 @@ module Syscall
       end
     when SC_CREATE
       path = try(checked_slice(arg(0), arg(1)))
-      path.each do |ch|
-        Serial.puts ch.unsafe_chr
-      end
-      Serial.puts '\n'
       vfs_node = parse_path_into_vfs path, pudata.cwd_node, true, process
       if vfs_node.nil?
         sysret(SYSCALL_ERR)
