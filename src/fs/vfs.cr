@@ -30,9 +30,9 @@ abstract class VFSNode
 
   def open(path : Slice) : VFSNode?
   end
-  def create(name : Slice) : VFSNode?
+  def create(name : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
   end
-  def remove : Int32
+  def remove(process : Multiprocessing::Process? = nil) : Int32
     VFS_ERR
   end
   def read(slice : Slice(UInt8), offset : UInt32,
@@ -52,7 +52,8 @@ abstract class VFSNode
     -1
   end
 
-  def ioctl(request : Int32, data : UInt32) : Int32
+  def ioctl(request : Int32, data : UInt32,
+            process : Multiprocessing::Process? = nil) : Int32
     -1
   end
 

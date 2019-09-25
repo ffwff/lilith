@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 #include <sys/gfx.h>
 #include <sys/ioctl.h>
 #include <sys/pipes.h>
@@ -17,8 +18,6 @@
 
 /* WINDOW DRAWING */
 
-#define LINE_BUFFER_LEN 128
-
 struct cterm_state {
   int in_fd, out_fd;
 };
@@ -26,12 +25,11 @@ struct cterm_state {
 void cterm_init(struct cterm_state *state) {
   char path[128] = { 0 };
 
-  snprintf(path, sizeof(path), "/pipes/cterm:%d:in", getpid());
-  state->in_fd = create(path);
-  ioctl(state->in_fd, PIPE_CONFIGURE, PIPE_WAIT_READ);
+  snprintf(path, sizeof(path), "cterm:%d:in", getpid());
+  state->in_fd = mkfpipe(path, PIPE_WAIT_READ | PIPE_G_RD | PIPE_G_WR);
 
-  snprintf(path, sizeof(path), "/pipes/cterm:%d:out", getpid());
-  state->out_fd = create(path);
+  snprintf(path, sizeof(path), "cterm:%d:out", getpid());
+  state->out_fd = mkfpipe(path, PIPE_G_RD | PIPE_G_WR);
 }
 
 int main(int argc, char **argv) {
