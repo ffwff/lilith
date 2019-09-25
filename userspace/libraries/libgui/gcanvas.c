@@ -17,11 +17,25 @@ struct g_canvas *g_canvas_create() {
   return (struct g_canvas *)canvas;
 }
 
+// getters
 struct canvas_ctx *g_canvas_ctx(struct g_canvas *canvas) {
   g_widget_init_ctx((struct g_widget *)canvas);
   return ((struct g_widget *)canvas)->ctx;
 }
 
+void *g_canvas_userdata(struct g_canvas *canvas) {
+  return ((struct g_widget *)canvas)->widget_data;
+}
+
+// setters
+void g_canvas_set_userdata(struct g_canvas *canvas, void *userdata) {
+  ((struct g_widget *)canvas)->widget_data = userdata;
+}
+
 void g_canvas_set_redraw_fn(struct g_canvas *canvas, g_canvas_redraw_fn fn) {
   ((struct g_widget *)canvas)->redraw_fn = fn;
+}
+
+void g_canvas_set_on_mouse_fn(struct g_canvas *canvas, g_canvas_on_mouse_fn fn) {
+ ((struct g_widget *)canvas)->on_mouse_fn = fn;
 }

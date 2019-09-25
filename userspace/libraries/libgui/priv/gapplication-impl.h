@@ -14,6 +14,7 @@ struct g_application {
   // callbacks
   g_redraw_cb redraw_cb;
   g_key_cb key_cb;
+  g_mouse_cb mouse_cb;
     
   void *userdata;
 };

@@ -59,6 +59,19 @@ static void g_window_layout_on_key(struct g_widget *widget, int ch) {
   }
 }
 
+static void g_window_layout_on_mouse(struct g_widget *widget, int type,
+                                     unsigned int x, unsigned int y,
+                                     int delta_x, int delta_y) {
+  struct g_window_layout_data *data = (struct g_window_layout_data *)widget->widget_data;
+  if(data->main_widget && data->main_widget->on_mouse_fn) {
+    if(is_coord_in_widget(data->main_widget, x, y)) {
+      TRANSLATE_ABS_COORDS_TO_WIDGET(data->main_widget)
+      data->main_widget->on_mouse_fn(data->main_widget, type,
+                                     tx, ty, delta_x, delta_y);
+    }
+  }
+}
+
 struct g_window_layout *g_window_layout_create(struct g_widget *main_widget) {
   struct g_widget *layout = calloc(1, sizeof(struct g_widget));
   if(!layout) return 0;
@@ -76,6 +89,7 @@ struct g_window_layout *g_window_layout_create(struct g_widget *main_widget) {
   layout->redraw_fn = g_window_layout_redraw;
   layout->resize_fn = g_window_layout_resize;
   layout->on_key_fn = g_window_layout_on_key;
+  layout->on_mouse_fn = g_window_layout_on_mouse;
   return (struct g_window_layout *)layout;
 }
 
