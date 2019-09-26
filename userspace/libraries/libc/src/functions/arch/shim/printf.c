@@ -173,6 +173,8 @@ static int __printf(nputs_fn_t nputs_fn, void *userptr,
                             break;
                         }
                         HANDLE_INT_FORMAT('d', 10)
+                        HANDLE_INT_FORMAT('x', 16)
+                        HANDLE_INT_FORMAT('o', 8)
                         default: {
                             fputs("unsupported long format: ", stderr);
                             fputc(*format, stderr);

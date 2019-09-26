@@ -12,8 +12,9 @@ build() {
     fi
     pushd .
         cd $build_dir/freetype-$version
-        CFLAGS="-I$opt_toolsdir/include -L$opt_toolsdir/lib" \
-            ./configure --prefix="$opt_toolsdir" --host=$opt_arch
+        CFLAGS="-I$opt_toolsdir/include -L$opt_toolsdir/lib -g -DFT_DEBUG_LEVEL_TRACE" \
+            ./configure --prefix="$opt_toolsdir" --host=$opt_arch \
+                --with-zlib=no --with-png=no --with-harfbuzz=no --with-bzip2=no
         make install -j`nproc`
     popd
 }

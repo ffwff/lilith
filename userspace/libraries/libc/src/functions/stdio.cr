@@ -305,6 +305,10 @@ class File
     @wbuffer.flush(@fd, false)
     @rbuffer.flush(@fd, false)
   end
+  
+  def ftell
+    lseek(@fd, 0, SC_SEEK_CUR)
+  end
 
 end
 
@@ -389,14 +393,12 @@ fun fseek(stream : Void*, offset : LibC::Int, whence : LibC::Int) : LibC::Int
   stream.as(File).fseek(offset, whence)
 end
 
-fun rewind(stream : Void*, offset : LibC::Int, whence : LibC::Int) : LibC::Int
+fun rewind(stream : Void*, offset : LibC::Int, whence : LibC::Int)
   stream.as(File).fseek(SC_SEEK_SET, 0)
 end
 
-fun ftell(stream : Void*) : LibC::Int
-  # TODO
-  abort
-  0
+fun ftell(stream : Void*) : LibC::Long
+  stream.as(File).ftell.to_long
 end
 
 fun fgetpos(stream : Void*, pos : Void*) : LibC::Int

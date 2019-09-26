@@ -13,6 +13,9 @@ build() {
     ${opt_arch}-gcc -g -o $build_dir/catpng $script_dir/catpng.c -I$opt_toolsdir/include -L$opt_toolsdir/lib -lpng -lz -lm
     # ${opt_arch}-gcc -O2 -o $build_dir/canvdem $script_dir/canvdem.c -I$opt_toolsdir/include
     ${opt_arch}-gcc -g -o $build_dir/cairodem $script_dir/cairodem.c -I$opt_toolsdir/include -L$opt_toolsdir/lib -lcairo -lpixman-1 -lm
+    ${opt_arch}-gcc -g -o $build_dir/ftdem $script_dir/ftdem.c -I$opt_toolsdir/include \
+        -I$opt_toolsdir/include/freetype2 -L$opt_toolsdir/lib \
+        -lfreetype -lz -lm
 }
 
 install() {
