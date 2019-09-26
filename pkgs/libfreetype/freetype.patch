@@ -1,0 +1,11 @@
+diff -u a/builds/unix/config.sub b/builds/unix/config.sub
+--- a/builds/unix/config.sub	2019-03-15 14:01:22.000000000 +0700
++++ b/builds/unix/config.sub	2019-09-26 13:08:36.679303277 +0700
+@@ -1338,7 +1338,7 @@
+ 	# The portable systems comes first.
+ 	# Each alternative MUST end in a * to match a version number.
+ 	# sysv* is not here because it comes later, after sysvr4.
+-	gnu* | bsd* | mach* | minix* | genix* | ultrix* | irix* \
++	gnu* | bsd* | mach* | minix* | genix* | ultrix* | irix* | lilith* \
+ 	     | *vms* | esix* | aix* | cnk* | sunos | sunos[34]*\
+ 	     | hpux* | unos* | osf* | luna* | dgux* | auroraux* | solaris* \
