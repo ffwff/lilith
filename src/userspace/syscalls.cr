@@ -326,8 +326,8 @@ module Syscall
       fv.rax = fd.node.not_nil!.truncate(arg(1).to_i32)
     when SC_SEEK
       fd = try(pudata.get_fd(arg(0).to_i32))  
-      whence = arg(1)
-      offset = arg(2).to_i32
+      offset = arg(1).to_i32
+      whence = arg(2).to_i32
 
       case whence
       when SC_SEEK_SET

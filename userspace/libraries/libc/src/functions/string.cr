@@ -145,6 +145,17 @@ fun strchr(str : LibC::String, c : LibC::Int) : LibC::String
   str
 end
 
+fun strrchr(str : LibC::String, c : LibC::Int) : LibC::String
+  retval = LibC::String.null
+  until str.value == 0
+    if str.value == c.to_u8
+      retval = str
+    end
+    str += 1
+  end
+  retval
+end
+
 # pbrk
 fun strpbrk(s1 : LibC::String, s2 : LibC::String) : LibC::String
   until s1.value == 0
