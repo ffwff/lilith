@@ -28,6 +28,14 @@ private class FbdevFSNode < VFSNode
 
   def initialize(@fs : FbdevFS)
   end
+  
+  def size
+    byte_size = 0
+    FbdevState.lock do |state|
+      byte_size = state.buffer.size
+    end
+    byte_size
+  end
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
@@ -167,6 +175,22 @@ private class FbdevFSNode < VFSNode
     else
       -1
     end
+  end
+  
+  def mmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
+    npages = node.size / 0x1000
+    FbdevState.lock do |state|
+      phys_address = state.buffer.to_unsafe.address & ~PTR_IDENTITY_MASK
+      Paging.alloc_page_pg node.addr, true, true, npages, phys_address
+    end
+    VFS_OK
+  end
+
+  def munmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
+    node.each_page do |page|
+      Paging.remove_page(page)
+    end
+    VFS_OK
   end
 
 end

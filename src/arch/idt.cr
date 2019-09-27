@@ -220,7 +220,7 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
         Idt.lock do
           stack_address = Paging.t_addr(faulting_address)
           process.udata.not_nil!.mmap_list.add(stack_address, 0x1000,
-            MemMapNode::Attributes::Read | MemMapNode::Attributes::Write)
+            MemMapNode::Attributes::Read | MemMapNode::Attributes::Write | MemMapNode::Attributes::Stack)
 
           addr = Paging.alloc_page_pg(stack_address, true, true)
           zero_page Pointer(UInt8).new(addr)

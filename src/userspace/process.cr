@@ -411,7 +411,7 @@ module Multiprocessing
         stack = Paging.alloc_page_pg(Multiprocessing::USER_STACK_INITIAL - 0x1000 * 4, true, true, 4)
         zero_page Pointer(UInt8).new(stack), 4
         udata.mmap_list.add(Multiprocessing::USER_STACK_INITIAL - 0x1000 * 4, 0x1000u64 * 4,
-          MemMapNode::Attributes::Read | MemMapNode::Attributes::Write)
+          MemMapNode::Attributes::Read | MemMapNode::Attributes::Write | MemMapNode::Attributes::Stack)
 
         # argv
         argv_builder = ArgvBuilder.new process
@@ -466,6 +466,14 @@ module Multiprocessing
         Multiprocessing.last_process = @prev_process
       else
         @next_process.not_nil!.prev_process = @prev_process
+      end
+      # cleanup memory mapped regions
+      if @udata
+        udata.mmap_list.each do |node|
+          if node.attr.includes?(MemMapNode::Attributes::SharedMem)
+            node.shm_node.not_nil!.munmap(node, self)
+          end
+        end
       end
       # cleanup manually allocated fxsave region
       @fxsave_region.mfree
