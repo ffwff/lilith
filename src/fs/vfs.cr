@@ -43,18 +43,18 @@ abstract class VFSNode
             process : Multiprocessing::Process? = nil) : Int32
     VFS_ERR
   end
-
   def spawn(udata : Multiprocessing::Process::UserData) : Int32
     VFS_ERR
   end
-
   def truncate(size : Int32) : Int32
-    -1
+    VFS_ERR
   end
-
   def ioctl(request : Int32, data : UInt32,
             process : Multiprocessing::Process? = nil) : Int32
-    -1
+    VFS_ERR
+  end
+  def mmap(start : Pointer(Void), size : UInt32, process : Multiprocessing::Process) : Int32
+    VFS_ERR
   end
 
   def available? : Bool
