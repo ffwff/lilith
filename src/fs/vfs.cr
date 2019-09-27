@@ -53,7 +53,10 @@ abstract class VFSNode
             process : Multiprocessing::Process? = nil) : Int32
     VFS_ERR
   end
-  def mmap(start : Pointer(Void), size : UInt32, process : Multiprocessing::Process) : Int32
+  def mmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
+    VFS_ERR
+  end
+  def munmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
     VFS_ERR
   end
 

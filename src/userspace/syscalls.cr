@@ -325,7 +325,7 @@ module Syscall
       fd = try(pudata.get_fd(arg(0).to_i32))
       fv.rax = fd.node.not_nil!.truncate(arg(1).to_i32)
     when SC_SEEK
-      fd = try(pudata.get_fd(arg(0).to_i32))  
+      fd = try(pudata.get_fd(arg(0).to_i32))
       offset = arg(1).to_i32
       whence = arg(2).to_i32
 
@@ -593,6 +593,29 @@ module Syscall
         panic "decreasing heap not implemented"
       end
       fv.rax = mmap_heap.addr
+    when SC_MMAP
+      # TODO
+      fd = try(pudata.get_fd(arg(0).to_i32))
+      size = arg(1).to_u64
+      if size > fd.node.not_nil!.size
+        size = Paging.aligned fd.node.not_nil!.size.to_u64
+      end
+      # must be page aligned
+      if (size & 0xfff != 0)
+        sysret(SYSCALL_ERR)
+      end
+      mmap_node = pudata.mmap_list.space_for_mmap size, MemMapNode::Attributes::SharedMem
+      if mmap_node
+        if (retval = fd.node.not_nil!.mmap(mmap_node, process)) == VFS_OK
+          mmap_node.shm_node = fd.node
+          sysret(mmap_node.addr)
+        else
+          pudata.mmap_list.remove mmap_node
+          sysret(retval)
+        end
+      else
+        sysret(SYSCALL_ERR)
+      end
     else
       sysret(SYSCALL_ERR)
     end

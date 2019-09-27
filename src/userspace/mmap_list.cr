@@ -5,6 +5,16 @@ class MemMapNode
     Read
     Write
     Execute
+    Stack
+    SharedMem
+  end
+  
+  def combinable_attrs(attr)
+    if @attr.includes?(Attributes::SharedMem) || 
+       attr.includes?(Attributes::SharedMem)
+      return false
+    end
+    true
   end
 
   @next_node : MemMapNode? = nil
@@ -14,12 +24,23 @@ class MemMapNode
   property prev_node
 
   property addr, attr, size
+  
+  @shm_node : VFSNode? = nil
+  property shm_node
 
   def initialize(@addr : UInt64, @size : UInt64, @attr : Attributes = Attributes::None)
   end
 
   def end_addr
     @addr + @size
+  end
+  
+  def each_page(&block)
+    i = 0
+    while i < @size
+      yield @addr + i
+      i += 0x1000
+    end
   end
 
   def to_s(io)
@@ -51,9 +72,9 @@ class MemMapList
       end
       current = current.not_nil!
 
-      combine_with_prev = current.attr == attr && current.end_addr == addr
+      combine_with_prev = current.combinable_attrs(attr) && current.end_addr == addr
       combine_with_next = !current.next_node.nil? &&
-          current.next_node.not_nil!.attr == attr &&
+          current.next_node.not_nil!.combinable_attrs(attr) &&
           end_addr == current.next_node.not_nil!.addr
 
       # combine if 2 nodes represent a continuous region
@@ -79,7 +100,7 @@ class MemMapList
         node.next_node = current.next_node
         current.next_node = node
         if node.next_node.nil?
-          @last_node = node.next_node
+          @last_node = node
         end
         return node
       end
@@ -90,12 +111,70 @@ class MemMapList
   def remove(addr, size)
     panic "unimplemented"
   end
+  
+  def remove(node : MemMapNode)
+    if node.prev_node
+      node.prev_node.not_nil!.next_node = node.next_node
+    end
+    if node.next_node
+      node.next_node.not_nil!.prev_node = node.prev_node
+    end
+  end
+  
+  def space_for_mmap(size : UInt64, attr)
+    # look backwards from the stack
+    reverse_each do |node|
+      return if node.prev_node.nil?
+      prev_node = node.prev_node.not_nil!
 
-  def to_s(io)
+      # don't allocate in the middle of the stack
+      next if node.attr.includes?(MemMapNode::Attributes::Stack) && 
+              prev_node.attr.includes?(MemMapNode::Attributes::Stack)
+
+      start_addr = prev_node.end_addr
+      end_addr = node.addr
+      if end_addr > Multiprocessing::USER_STACK_BOTTOM_MAX
+        end_addr = Multiprocessing::USER_STACK_BOTTOM_MAX - 0x1000
+      end
+      mmap_size = end_addr - start_addr
+
+      if mmap_size < size
+        next
+      elsif mmap_size > size
+        # shrink to fit
+        mmap_size = size
+        start_addr = end_addr - mmap_size
+      end
+      
+      new_node = MemMapNode.new(start_addr, size, attr)
+      prev_node.next_node = new_node
+      new_node.prev_node = prev_node
+      node.prev_node = new_node
+      new_node.next_node = node
+      
+      return new_node
+    end
+  end
+  
+  def reverse_each(&block)
+    node = @last_node
+    until node == @first_node
+      yield node.not_nil!
+      node = node.not_nil!.prev_node
+    end
+  end
+  
+  def each(&block)
     node = @first_node
     while !node.nil?
-      io.puts node, '\n'
+      yield node.not_nil!
       node = node.not_nil!.next_node
+    end
+  end
+
+  def to_s(io)
+    each do |node|
+      io.puts node, '\n'
     end
   end
 end

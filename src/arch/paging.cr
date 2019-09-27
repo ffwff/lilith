@@ -324,25 +324,24 @@ module Paging
     retval
   end
 
-  def free_page_pg(virt_addr_start : UInt64, npages : USize = 1)
-    panic "unimpl1"
-    {% if false %}
-    Idt.disable
-    disable
+  def remove_page(virt_addr : UInt64)
+    pdpt_idx, dir_idx, table_idx, page_idx = page_layer_indexes(virt_addr)
 
-    virt_addr_end = virt_addr_start + npages * 0x1000
-    virt_addr = virt_addr_start
+    pml4_table = Pointer(PageStructs::PML4Table).new(mt_addr @@pml4_table.address)
 
-    while virt_addr < virt_addr_end
-      address = free_page virt_addr
-      idx = frame_index_for_address address
-      declaim_frame idx
-      virt_addr += 0x1000
-    end
+    return false if pml4_table.value.pdpt[pdpt_idx] == 0u64
+    pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+        .new(mt_addr pml4_table.value.pdpt[pdpt_idx])
 
-    enable
-    Idt.enable
-    {% end %}
+    return false if pdpt.value.dirs[dir_idx] == 0u64
+    pd = Pointer(PageStructs::PageDirectory).new(mt_addr pdpt.value.dirs[dir_idx])
+
+    return false if pd.value.tables[table_idx] == 0u64
+    pt = Pointer(PageStructs::PageTable).new(mt_addr pd.value.tables[table_idx])
+    
+    pt.value.pages[page_idx] = 0u64
+
+    true
   end
 
   # (de)allocate page directories for processes

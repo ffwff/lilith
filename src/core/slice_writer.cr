@@ -35,6 +35,12 @@ class SliceWriter
     end
   end
   
+  def puts(*args)
+    args.each do |arg|
+      arg.to_s self
+    end
+  end
+  
   def <<(other)
     other.to_s self
     @offset != @slice.size

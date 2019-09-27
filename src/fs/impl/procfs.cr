@@ -8,14 +8,18 @@ private module ProcFSStrings
   end
   
   STATUS = "status"
+  MMAP = "mmap"
+
   sgetter(status)
+  sgetter(mmap)
   
   @@initialized = false
 
   def lazy_init
     return if @@initialized
-	@@status = GcString.new(STATUS)
-	@@initialized = true
+    @@status = GcString.new(STATUS)
+    @@mmap = GcString.new(MMAP)
+    @@initialized = true
   end
 
 end
@@ -90,6 +94,9 @@ class ProcFSProcessNode < VFSNode
 				 @next_node : ProcFSProcessNode? = nil)
     @name = @process.pid.to_gcstr
     add_child(ProcFSProcessStatusNode.new(self, @fs))
+    unless @process.kernel_process?
+      add_child(ProcFSProcessMmapNode.new(self, @fs))
+    end
   end
   
   def open(path)
@@ -131,17 +138,43 @@ class ProcFSProcessStatusNode < VFSNode
   
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
-   writer = SliceWriter.new(slice, offset.to_i32)
-   pp = @parent.process
+    writer = SliceWriter.new(slice, offset.to_i32)
+    pp = @parent.process
      
-   SliceWriter.fwrite? writer, "Name: "
-   SliceWriter.fwrite? writer, pp.name.not_nil!
-   SliceWriter.fwrite? writer, "\n"
-   SliceWriter.fwrite? writer, "State: "
-   SliceWriter.fwrite? writer, pp.status
-   SliceWriter.fwrite? writer, "\n"
+    SliceWriter.fwrite? writer, "Name: "
+    SliceWriter.fwrite? writer, pp.name.not_nil!
+    SliceWriter.fwrite? writer, "\n"
+    SliceWriter.fwrite? writer, "State: "
+    SliceWriter.fwrite? writer, pp.status
+    SliceWriter.fwrite? writer, "\n"
      
-   writer.offset
+    writer.offset
+  end
+end
+
+class ProcFSProcessMmapNode < VFSNode
+  getter fs
+  def name
+    ProcFSStrings.mmap
+  end
+  
+  @next_node : VFSNode? = nil
+  property next_node
+
+  def initialize(@parent : ProcFSProcessNode, @fs : ProcFS)
+  end
+  
+  def read(slice : Slice, offset : UInt32,
+           process : Multiprocessing::Process? = nil) : Int32
+    writer = SliceWriter.new(slice, offset.to_i32)
+    pp = @parent.process
+   
+    pp.udata.mmap_list.each do |node|
+      SliceWriter.fwrite? writer, node
+      SliceWriter.fwrite? writer, "\n"
+    end
+
+    writer.offset
   end
 end
 
