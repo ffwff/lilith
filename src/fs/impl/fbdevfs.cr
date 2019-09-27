@@ -13,8 +13,8 @@ private lib FbdevFSData
   end
 
   enum FbType : Int32
-    Surface = 0
-    Color = 1
+    Surface      = 0
+    Color        = 1
     SurfaceAlpha = 2
   end
 end
@@ -60,6 +60,14 @@ private class FbdevFSNode < VFSNode
     end
     size
   end
+  
+  private def get_byte_buffer(state, target_buffer)
+    if target_buffer == FbdevFSData::TargetBuffer::Back
+      state.back_buffer.to_unsafe.as(UInt8*)
+    else
+      state.buffer.to_unsafe.as(UInt8*)
+    end
+  end
 
   def ioctl(request : Int32, data : UInt32,
             process : Multiprocessing::Process? = nil) : Int32
@@ -84,11 +92,7 @@ private class FbdevFSNode < VFSNode
 
       if arg.type == FbdevFSData::FbType::Color
         FbdevState.lock do |state|
-          if arg.target_buffer == FbdevFSData::TargetBuffer::Back
-            byte_buffer = state.back_buffer.to_unsafe.as(UInt8*)
-          else
-            byte_buffer = state.buffer.to_unsafe.as(UInt8*)
-          end
+          byte_buffer = get_byte_buffer state, arg.target_buffer
           if  arg.x == 0 && arg.y == 0 &&
               arg.width == state.width && arg.height == state.height
             copy_size = state.width.to_usize * state.height.to_usize
@@ -108,17 +112,14 @@ private class FbdevFSNode < VFSNode
 
       # blit
       FbdevState.lock do |state|
-        if arg.target_buffer == FbdevFSData::TargetBuffer::Back
-          byte_buffer = state.back_buffer.to_unsafe.as(UInt8*)
-        else
-          byte_buffer = state.buffer.to_unsafe.as(UInt8*)
-        end
+        byte_buffer = get_byte_buffer state, arg.target_buffer
         if  arg.x == 0 && arg.y == 0 &&
             arg.width == state.width && arg.height == state.height
-          if arg.type == FbdevFSData::FbType::SurfaceAlpha
+          case arg.type
+          when FbdevFSData::FbType::SurfaceAlpha
             copy_size = state.width * state.height
             Kernel.kalpha_blend(byte_buffer, source, copy_size.to_usize)
-          else
+          when FbdevFSData::FbType::Surface
             copy_size = state.width * state.height * sizeof(UInt32)
             memcpy(byte_buffer, source, copy_size.to_usize)
           end
@@ -134,14 +135,15 @@ private class FbdevFSNode < VFSNode
           end
 
           unless arg.x > state.width || arg.y > state.height
-            if arg.type == FbdevFSData::FbType::SurfaceAlpha
+            case arg.type
+            when FbdevFSData::FbType::SurfaceAlpha
               height.times do |y|
                 fb_offset = (arg.y + y) * state.width * sizeof(UInt32) + arg.x * sizeof(UInt32)
                 copy_offset = y * arg.width * sizeof(UInt32)
                 copy_size = width / sizeof(UInt32)
                 Kernel.kalpha_blend(byte_buffer + fb_offset, source + copy_offset, copy_size.to_usize)
               end
-            else
+            when FbdevFSData::FbType::Surface
               height.times do |y|
                 fb_offset = (arg.y + y) * state.width * sizeof(UInt32) + arg.x * sizeof(UInt32)
                 copy_offset = y * arg.width * sizeof(UInt32)

@@ -83,6 +83,7 @@ private class PipeFSNode < VFSNode
   @queue : VFSQueue? = nil
 
   def remove : Int32
+    return VFS_ERR if @flags.includes?(Flags::Removed)
     FrameAllocator.declaim_addr(@buffer.address & ~PTR_IDENTITY_MASK)
     @buffer = Pointer(UInt8).null
     @parent.remove self
@@ -104,7 +105,7 @@ private class PipeFSNode < VFSNode
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
-    return -1 if @flags.includes?(Flags::Removed)
+    return VFS_EOF if @flags.includes?(Flags::Removed)
   
     process = process.not_nil!
     # Serial.puts "rd from ", process.pid, "(", @m_pid, ",", @s_pid, ")", "\n"
@@ -140,7 +141,7 @@ private class PipeFSNode < VFSNode
 
   def write(slice : Slice, offset : UInt32,
             process : Multiprocessing::Process? = nil) : Int32
-  return -1 if @flags.includes?(Flags::Removed)
+    return VFS_EOF if @flags.includes?(Flags::Removed)
 
     process = process.not_nil!
     # Serial.puts "wr from ", process.pid, "(", @m_pid, ",", @s_pid, ")", "\n"

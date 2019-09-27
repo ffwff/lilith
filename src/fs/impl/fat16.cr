@@ -317,11 +317,6 @@ private class Fat16Node < VFSNode
     end
   end
 
-  def create(name : Slice,
-             process : Multiprocessing::Process? = nil) : VFSNode?
-    nil
-  end
-
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
     if offset >= @size
