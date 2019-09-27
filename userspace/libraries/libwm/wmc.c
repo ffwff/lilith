@@ -78,3 +78,9 @@ int wmc_recv_atom(struct wmc_connection *conn, struct wm_atom *atom) {
 int wmc_wait_atom(struct wmc_connection *conn) {
   return waitfd(&conn->win_fd_m, 1, (useconds_t)-1);
 }
+
+int wmc_open_bitmap(struct wmc_connection *conn) {
+  char path[128];
+  snprintf(path, sizeof(path), "/tmp/wm:%d:bm", getpid());
+  return open(path, O_RDWR);
+}

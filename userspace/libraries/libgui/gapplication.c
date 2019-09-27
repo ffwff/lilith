@@ -13,34 +13,27 @@ struct g_application *g_application_create(int width, int height, int alpha) {
   if(!app) {
     return 0;
   }
-  app->fb_fd = open("/fb0", O_RDWR);
-  if(app->fb_fd < 0) {
-    free(app);
-    return 0;
-  }
+  app->bitmapfd = -1;
 	if(!wmc_connection_init(&app->wmc_conn)) {
-    close(app->fb_fd);
     free(app);
     return 0;
   }
-  app->sprite = (struct fbdev_bitblit){
-    .target_buffer = GFX_BACK_BUFFER,
+  app->sprite = (struct g_application_sprite){
     .source = 0,
     .x = 0,
     .y = 0,
     .width  = width,
-    .height = height,
-    .type = alpha ? GFX_BITBLIT_SURFACE_ALPHA : GFX_BITBLIT_SURFACE
+    .height = height
   };
   app->ctx = canvas_ctx_create(app->sprite.width,
                  app->sprite.height,
                  alpha ? LIBCANVAS_FORMAT_ARGB32 : LIBCANVAS_FORMAT_RGB24);
-  app->sprite.source = (unsigned long *)canvas_ctx_get_surface(app->ctx);
+  app->sprite.source = (unsigned int *)canvas_ctx_get_surface(app->ctx);
   g_widget_array_init(&app->widgets);
   app->event_mask = ATOM_MOUSE_EVENT_MASK | ATOM_KEYBOARD_EVENT_MASK;
 
   if(!app->ctx) {
-    close(app->fb_fd);
+    // close(app->fb_fd);
     wmc_connection_deinit(&app->wmc_conn);
     free(app);
     return 0;
@@ -57,7 +50,7 @@ void g_application_set_window_properties(struct g_application *app, unsigned int
 }
 
 void g_application_destroy(struct g_application *app) {
-  close(app->fb_fd);
+  // close(app->fb_fd);
   wmc_connection_deinit(&app->wmc_conn);
   free(app);
 }
@@ -125,6 +118,25 @@ static void g_application_on_mouse(struct g_application *app, int type,
 int g_application_run(struct g_application *app) {
   wmc_connection_obtain(&app->wmc_conn, app->event_mask, app->wm_properties);
 
+  // obtain a window
+  {
+    struct wm_atom obtain_atom = {
+      .type = ATOM_WIN_CREATE_TYPE,
+      .win_create = (struct wm_atom_win_create) {
+        .width = app->sprite.width,
+        .height = app->sprite.height,
+      }
+    };
+    struct wm_atom atom;
+    wmc_send_atom(&app->wmc_conn, &obtain_atom);
+    wmc_wait_atom(&app->wmc_conn);
+    if(wmc_recv_atom(&app->wmc_conn, &atom) < 0) {
+      printf("unable to obtain window\n");
+      return -1;
+    }
+    app->bitmapfd = wmc_open_bitmap(&app->wmc_conn);
+  }
+
   // event loop
   int mouse_drag = 0;
   int mouse_resize = 0;
@@ -139,19 +151,15 @@ int g_application_run(struct g_application *app) {
       case ATOM_REDRAW_TYPE: {
         struct wm_atom respond_atom = {
           .type = ATOM_WIN_REFRESH_TYPE,
-          .win_refresh = (struct wm_atom_win_refresh){
-            .did_redraw = 0,
-            .x = app->sprite.x,
-            .y = app->sprite.y,
-            .width = app->sprite.width,
-            .height = app->sprite.height,
-          }
+          .win_refresh.did_redraw = 0,
         };
         needs_redraw = g_application_redraw(app);
         if (needs_redraw || atom.redraw.force_redraw) {
           needs_redraw = 0;
           respond_atom.win_refresh.did_redraw = 1;
-          ioctl(app->fb_fd, GFX_BITBLIT, &app->sprite);
+          size_t sz = app->sprite.width * app->sprite.height * 4;
+          lseek(app->bitmapfd, 0, SEEK_SET);
+          write(app->bitmapfd, app->sprite.source, sz);
         }
         wmc_send_atom(&app->wmc_conn, &respond_atom);
         break;
@@ -190,10 +198,25 @@ int g_application_run(struct g_application *app) {
                             app->sprite.height + atom.mouse_event.delta_y);
             needs_redraw = g_application_redraw(app);
           } else {
-            if(!(atom.mouse_event.delta_x < 0 && app->sprite.x < -atom.mouse_event.delta_x))
+            int changed = 0;
+            if(!(atom.mouse_event.delta_x < 0 && app->sprite.x < -atom.mouse_event.delta_x)) {
               app->sprite.x += atom.mouse_event.delta_x;
-            if(!(atom.mouse_event.delta_y < 0 && app->sprite.y < -atom.mouse_event.delta_y))
+              changed = 1;
+            }
+            if(!(atom.mouse_event.delta_y < 0 && app->sprite.y < -atom.mouse_event.delta_y)) {
               app->sprite.y += atom.mouse_event.delta_y;
+              changed = 1;
+            }
+            if(changed) {
+              struct wm_atom respond_atom = {
+                .type = ATOM_MOVE_TYPE,
+                .move = (struct wm_atom_move) {
+                  .x = app->sprite.x,
+                  .y = app->sprite.y,
+                }
+              };
+              wmc_send_atom(&app->wmc_conn, &respond_atom);
+            }
           }
         } else if (atom.mouse_event.type == WM_MOUSE_RELEASE && mouse_drag) {
           mouse_drag = 0;
@@ -274,7 +297,7 @@ int g_application_height(struct g_application *app) {
 
 void g_application_resize(struct g_application *app, int width, int height) {
   canvas_ctx_resize_buffer(app->ctx, width, height);
-  app->sprite.source = (unsigned long *)canvas_ctx_get_surface(app->ctx);
+  app->sprite.source = (unsigned int *)canvas_ctx_get_surface(app->ctx);
   app->sprite.width = width;
   app->sprite.height = height;
   if(app->main_widget) {
@@ -289,14 +312,17 @@ void g_application_set_event_mask(struct g_application *app, unsigned int event_
 // screen
 
 int g_application_screen_size(struct g_application *app, int *width, int *height) {
+  // FIXME: expose display information through window manager
   struct winsize ws;
-  int retval = ioctl(app->fb_fd, TIOCGWINSZ, &ws);
+  int fb_fd = open("/fb0", O_RDWR);
+  int retval = ioctl(fb_fd, TIOCGWINSZ, &ws);
   if(retval == 0) {
     if(width)
       *width = (int)ws.ws_col;
     if(height)
       *height = (int)ws.ws_row;
   }
+  close(fb_fd);
   return retval;
 }
 

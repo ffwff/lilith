@@ -18,3 +18,4 @@ void wmc_connection_obtain(struct wmc_connection *conn,
 int wmc_send_atom(struct wmc_connection *conn, struct wm_atom *atom);
 int wmc_recv_atom(struct wmc_connection *conn, struct wm_atom *atom);
 int wmc_wait_atom(struct wmc_connection *conn);
+int wmc_open_bitmap(struct wmc_connection *conn);
