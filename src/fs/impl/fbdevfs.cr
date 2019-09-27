@@ -32,7 +32,7 @@ private class FbdevFSNode < VFSNode
   def size
     byte_size = 0
     FbdevState.lock do |state|
-      byte_size = state.buffer.size
+      byte_size = state.buffer.size * sizeof(UInt32)
     end
     byte_size
   end
@@ -176,7 +176,7 @@ private class FbdevFSNode < VFSNode
       -1
     end
   end
-  
+
   def mmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
     npages = node.size / 0x1000
     FbdevState.lock do |state|

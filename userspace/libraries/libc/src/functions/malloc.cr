@@ -87,7 +87,7 @@ module Malloc
   # chains a header to the free list
   private def chain_header(hdr : Data::Header*)
     hdr.value.next_header = @@first_free_header
-    if !@@first_free_header.null?
+    unless @@first_free_header.null?
       @@first_free_header.value.prev_header = hdr
     end
     @@first_free_header = hdr

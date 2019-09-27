@@ -14,6 +14,11 @@ struct wm_connection_request {
 
 /* Atoms */
 
+// Create
+struct wm_atom_win_create {
+    unsigned int width, height;
+};
+
 // Move
 
 struct wm_atom_move {
@@ -37,7 +42,6 @@ struct wm_atom_respond {
 
 struct wm_atom_win_refresh {
     int did_redraw;
-    unsigned int width, height, x, y;
 };
 
 // Mouse event
@@ -59,6 +63,12 @@ struct wm_atom_keyboard_event {
     int modifiers;
 };
 
+// Query
+
+struct wm_atom_screen_query {
+    unsigned int width, height;
+};
+
 struct wm_atom {
     int type;
     union {
@@ -68,6 +78,8 @@ struct wm_atom {
         struct wm_atom_mouse_event mouse_event;
         struct wm_atom_keyboard_event keyboard_event;
         struct wm_atom_win_refresh win_refresh;
+        struct wm_atom_win_create win_create;
+        struct wm_atom_screen_query screen_query;
     };
 };
 
@@ -77,13 +89,16 @@ struct wm_atom {
 #define ATOM_MOUSE_EVENT_TYPE      3
 #define ATOM_KEYBOARD_EVENT_TYPE   4
 #define ATOM_WIN_REFRESH_TYPE      5
+#define ATOM_WIN_CREATE_TYPE       6
+#define ATOM_SCREEN_QUERY_TYPE     7
 
-#define ATOM_REDRAW_MASK          (1 << ATOM_REDRAW_TYPE)
-#define ATOM_RESPOND_MASK         (1 << ATOM_RESPOND_TYPE)
-#define ATOM_MOVE_MASK            (1 << ATOM_MOVE_TYPE)
-#define ATOM_MOUSE_EVENT_MASK     (1 << ATOM_MOUSE_EVENT_TYPE)
-#define ATOM_KEYBOARD_EVENT_MASK  (1 << ATOM_KEYBOARD_EVENT_TYPE)
-#define ATOM_WIN_REFRESH_MASK     (1 << ATOM_WIN_REFRESH_TYPE)
+#define ATOM_REDRAW_MASK            (1 << ATOM_REDRAW_TYPE)
+#define ATOM_RESPOND_MASK           (1 << ATOM_RESPOND_TYPE)
+#define ATOM_MOVE_MASK              (1 << ATOM_MOVE_TYPE)
+#define ATOM_MOUSE_EVENT_MASK       (1 << ATOM_MOUSE_EVENT_TYPE)
+#define ATOM_KEYBOARD_EVENT_MASK    (1 << ATOM_KEYBOARD_EVENT_TYPE)
+#define ATOM_WIN_REFRESH_MASK       (1 << ATOM_WIN_REFRESH_TYPE)
+#define ATOM_SCREEN_QUERY_TYPE_MASK (1 << ATOM_SCREEN_QUERY_TYPE)
 
 static inline int wm_atom_eq(struct wm_atom *a, struct wm_atom *b) {
     if(a->type != b->type)

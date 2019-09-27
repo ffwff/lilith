@@ -598,10 +598,13 @@ module Syscall
       fd = try(pudata.get_fd(arg(0).to_i32))
       size = arg(1).to_u64
       if size > fd.node.not_nil!.size
-        size = Paging.aligned fd.node.not_nil!.size.to_u64
+        size = fd.node.not_nil!.size.to_u64
+        if (size & 0xfff) != 0
+          size = (size & 0xFFFF_F000) + 0x1000
+        end
       end
       # must be page aligned
-      if (size & 0xfff != 0)
+      if (size & 0xfff) != 0
         sysret(SYSCALL_ERR)
       end
       mmap_node = pudata.mmap_list.space_for_mmap size, MemMapNode::Attributes::SharedMem
@@ -611,7 +614,7 @@ module Syscall
           sysret(mmap_node.addr)
         else
           pudata.mmap_list.remove mmap_node
-          sysret(retval)
+          sysret(0)
         end
       else
         sysret(SYSCALL_ERR)

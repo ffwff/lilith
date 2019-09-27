@@ -2,8 +2,8 @@
 
 struct fbdev_bitblit {
     int target_buffer;
-    unsigned long *source;
-    unsigned long x, y, width, height;
+    unsigned int *source;
+    unsigned int x, y, width, height;
     int type;
 } __attribute__((packed));
 

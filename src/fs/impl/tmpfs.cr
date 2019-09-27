@@ -48,7 +48,7 @@ private class TmpFSRoot < VFSNode
 end
 
 private class TmpFSNode < VFSNode
-  getter name, fs
+  getter name, size, fs
 
   @next_node : TmpFSNode? = nil
   property next_node
@@ -63,6 +63,7 @@ private class TmpFSNode < VFSNode
 
   def remove : Int32
     return VFS_ERR if @removed
+    return VFS_ERR if @mmap_count > 0
 
     @npages.times do |i|
       FrameAllocator.declaim_addr(@pages[i].address & ~PTR_IDENTITY_MASK)
@@ -79,8 +80,11 @@ private class TmpFSNode < VFSNode
   @size = 0
   
   private def init_pages(npages)
-    if npages > @npages
+    if @npages == 0
       @pages = Pointer(Pointer(UInt8)).malloc npages
+      Serial.puts @pages, '\n'
+    else
+      panic "unimplemented" if npages > @npages
     end
     # Serial.puts @pages, '\n'
     @npages = npages
@@ -131,7 +135,6 @@ private class TmpFSNode < VFSNode
   
   def truncate(size : Int32) : Int32
     new_npages = size.div_ceil 0x1000
-    # Serial.puts "npages: ", new_npages, "\n"
     if size > @size
       @size = size
       init_pages new_npages
@@ -144,6 +147,27 @@ private class TmpFSNode < VFSNode
       end
     end
     @size
+  end
+  
+  @mmap_count = 0
+
+  def mmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
+    @mmap_count += 1
+    Serial.puts "size: ", node.size, '\n'
+    npages = min(node.size / 0x1000, @npages)
+    npages.times do |i|
+      phys = @pages[i].address & ~PTR_IDENTITY_MASK
+      Paging.alloc_page_pg(node.addr + i * 0x1000, true, true, 1, phys)
+    end
+    VFS_OK
+  end
+
+  def munmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
+    @mmap_count -= 1
+    node.each_page do |page|
+      Paging.remove_page(page)
+    end
+    VFS_OK
   end
 end
 
