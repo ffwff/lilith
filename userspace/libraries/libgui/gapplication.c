@@ -130,26 +130,39 @@ int g_application_run(struct g_application *app) {
         .alpha = app->sprite.alpha,
       }
     };
-    struct wm_atom atom;
-    wmc_send_atom(&app->wmc_conn, &obtain_atom);
-    wmc_wait_atom(&app->wmc_conn);
-    if(wmc_recv_atom(&app->wmc_conn, &atom) == sizeof(struct wm_atom)) {
-      if(atom.type == ATOM_RESPOND_TYPE && atom.respond.retval == 1) {
-        struct wm_atom respond_atom = {
-          .type = ATOM_RESPOND_TYPE,
-          .respond.retval = 1,
-        };
-        wmc_send_atom(&app->wmc_conn, &respond_atom);
+    int retries = 0;
+    const int max_retries = 3;
+    while (retries < max_retries) {
+      struct wm_atom atom;
+      wmc_send_atom(&app->wmc_conn, &obtain_atom);
+      wmc_wait_atom(&app->wmc_conn);
+      if(wmc_recv_atom(&app->wmc_conn, &atom) == sizeof(struct wm_atom)) {
+        if(atom.type == ATOM_RESPOND_TYPE && atom.respond.retval == 1) {
+          struct wm_atom respond_atom = {
+            .type = ATOM_RESPOND_TYPE,
+            .respond.retval = 1,
+          };
+          wmc_send_atom(&app->wmc_conn, &respond_atom);
+        } else {
+          printf("unable to obtain window\n");
+          retries++;
+          continue;
+        }
       } else {
-        printf("unable to obtain window\n");
-        return -1;
+        printf("unable to receive packet\n");
+        retries++;
+        continue;
       }
-    } else {
-      printf("unable to receive packet\n");
+      app->bitmapfd = wmc_open_bitmap(&app->wmc_conn);
+      app->bitmap = mmap(app->bitmapfd, (size_t)-1);
+      if(app->bitmap >= 0) {
+        break;
+      }
+    }
+    if(app->bitmap < 0) {
+      printf("unable to obtain window after %d attempts\n", retries);
       return -1;
     }
-    app->bitmapfd = wmc_open_bitmap(&app->wmc_conn);
-    app->bitmap = mmap(app->bitmapfd, (size_t)-1);
   }
 
   // event loop

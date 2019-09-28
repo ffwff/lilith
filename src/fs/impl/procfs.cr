@@ -46,6 +46,7 @@ class ProcFSNode < VFSNode
   end
 
   def remove_for_process(process)
+    Serial.puts process.pid, '\n'
     node = @first_child
     while !node.nil?
       if node.not_nil!.process == process
@@ -58,10 +59,10 @@ class ProcFSNode < VFSNode
 
   private def add_child(node : ProcFSProcessNode)
     node.next_node = @first_child
-    @first_child = node
     unless @first_child.nil?
       @first_child.not_nil!.prev_node = node
     end
+    @first_child = node
     node
   end
   
@@ -75,6 +76,8 @@ class ProcFSNode < VFSNode
     unless node.next_node.nil?
       node.next_node.not_nil!.prev_node = node.prev_node
     end
+    node.prev_node = nil
+    node.next_node = nil
   end
 
 end
