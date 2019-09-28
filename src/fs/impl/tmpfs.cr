@@ -1,3 +1,16 @@
+private lib TmpFSData
+  
+  # FIXME: this is unportable for non 64-bit architectures
+  MAX_FRAMES = (0x1000 - 8 * 3) / 8
+  struct TmpFSPage
+    prev_page : TmpFSPage*
+    next_page : TmpFSPage*
+    allocated_frames : Int64
+    frames : (UInt8*)[MAX_FRAMES]
+  end
+
+end
+
 private class TmpFSRoot < VFSNode
   getter fs
   
@@ -60,83 +73,78 @@ private class TmpFSNode < VFSNode
   end
 
   @removed = false
-
-  def remove : Int32
-    return VFS_ERR if @removed
-    return VFS_ERR if @mmap_count > 0
-
-    @npages.times do |i|
-      FrameAllocator.declaim_addr(@pages[i].address & ~PTR_IDENTITY_MASK)
-    end
-    free_page_table @pages, @npages
-    @pages = Pointer(Pointer(UInt8)).null
-    
-    @parent.remove self
-    @removed = true
-    VFS_OK
-  end
-  
-  # maximum pages which can be allocated using the heap allocator
-  MAX_ALLOC_PAGES = 1024 / 4
-  
-  # maximum size of a temp file
-  MAX_SIZE = 0x1000 * (0x1000 / sizeof(UInt8*))
-  
-  @pages = Pointer(Pointer(UInt8)).null
+  @first_page = Pointer(TmpFSData::TmpFSPage).null
+  @last_page = Pointer(TmpFSData::TmpFSPage).null
   @npages = 0
   @size = 0
   
-  private def alloc_page_table(npages)
-    if npages > MAX_ALLOC_PAGES
+  # page operations
+  
+  private def append_frame
+    if @first_page.null?
+      pframe = FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK
+      @first_page = @last_page = Pointer(TmpFSData::TmpFSPage).new pframe
+      zero_page @first_page.as(UInt8*)
+    elsif @last_page.value.allocated_frames == TmpFSData::MAX_FRAMES
       frame = FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK
-      Pointer(Pointer(UInt8)).new frame
-    else
-      Pointer(Pointer(UInt8)).mmalloc npages
+      page = Pointer(TmpFSData::TmpFSPage).new frame
+      zero_page page.as(UInt8*)
+      page.value.prev_page = @last_page
+      @last_page.value.next_page = page
+      @last_page = page
     end
-  end
-  
-  private def free_page_table(pages, npages)
-    if npages > MAX_ALLOC_PAGES
-      phys = pages.address & ~PTR_IDENTITY_MASK
-      FrameAllocator.declaim_addr phys
-    else
-      pages.mfree
-    end
-  end
-  
-  private def init_pages(npages)
-    if @npages == 0
-      # allocate new buffer for page table
-      @pages = alloc_page_table npages
-      @npages = npages
-      @npages.times do |i|
-        frame = FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK
-        @pages[i] = Pointer(UInt8).new(frame)
-        zero_page @pages[i]
-      end
-    elsif npages > @npages
-      new_table_size = npages * sizeof(UInt8*)
     
-      # reallocate if on heap
-      if @npages < MAX_ALLOC_PAGES &&
-         KernelArena.block_size_for_ptr(@pages) < new_table_size
-        new_pages = alloc_page_table(npages)
-        memcpy(new_pages.as(UInt8*), @pages.as(UInt8*), @npages.to_u64 * sizeof(UInt8*))
-        free_page_table(@pages, @npages)
-        @pages = new_pages
-      end
-      
-      # create new pages
-      i = npages
-      while i < @npages
-        frame = FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK
-        @pages[i] = Pointer(UInt8).new(frame)
-        zero_page @pages[i]
-        i += 1
-      end
-      
-      @npages = npages
+    Serial.puts @last_page, '\n'
+
+    frame = FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK
+    len = @last_page.value.allocated_frames
+    @last_page.value.frames[len] = Pointer(UInt8).new frame
+    @last_page.value.allocated_frames = len + 1
+  end
+
+  private def pop_frame
+    if @last_page.value.allocated_frames == 0
+      prev = @last_page.value.prev_page
+      FrameAllocator.declaim_addr(@last_page.address & ~PTR_IDENTITY_MASK)
+      @last_page = prev
+    else
+      nlen = @last_page.value.allocated_frames - 1
+      @last_page.value.allocated_frames = nlen
+      frame = @last_page.value.frames[nlen]
+      FrameAllocator.declaim_addr(frame.address & ~PTR_IDENTITY_MASK)
+      @last_page.value.frames[nlen] = Pointer(UInt8).null
     end
+  end
+
+  private def each_frame(&block)
+    page = @first_page
+    while !page.null?
+      page.value.allocated_frames.times do |i|
+        yield page.value.frames[i]
+      end
+      page = page.value.next_page
+    end
+  end
+  
+  # file operations
+
+  def remove : Int32
+    return VFS_ERR if @removed || @mmap_count > 0
+
+    page = @first_page
+    while !page.null?
+      page.value.allocated_frames.times do |i|
+        frame = page.value.frames[i]
+        FrameAllocator.declaim_addr(frame.address & ~PTR_IDENTITY_MASK)
+      end
+      next_page = page.value.next_page
+      FrameAllocator.declaim_addr(page.address & ~PTR_IDENTITY_MASK)
+      page = next_page
+    end
+
+    @parent.remove self
+    @removed = true
+    VFS_OK
   end
 
   def read(slice : Slice(UInt8), offset : UInt32,
@@ -144,14 +152,18 @@ private class TmpFSNode < VFSNode
     return VFS_ERR if @removed
     return VFS_EOF if offset >= @size
 
-    remaining = min(slice.size, @size)
-    npages = remaining.div_ceil 0x1000
     foffset = 0
-    npages.times do |i|
-      copy_sz = min(remaining, 0x1000)
-      memcpy slice.to_unsafe + foffset, @pages[i], copy_sz.to_u64
-      remaining -= copy_sz
-      foffset += copy_sz
+    remaining = min(slice.size, @size)
+    each_frame do |frame|
+      if offset > 0x1000
+        offset -= 0x1000
+      elsif offset >= 0
+        copy_sz = min(0x1000u64 - offset.to_u64, remaining.to_u64)
+        memcpy slice.to_unsafe + foffset, frame + offset.to_u64, copy_sz
+        foffset += copy_sz
+        remaining -= copy_sz
+        offset = 0u32
+      end
     end
     foffset
   end
@@ -165,32 +177,36 @@ private class TmpFSNode < VFSNode
       truncate(@size.to_i32 + offset.to_i32 + slice.size.to_i32)
     end
 
-    remaining = min(slice.size, @size)
-    npages = remaining.div_ceil 0x1000
     foffset = 0
-    npages.times do |i|
-      copy_sz = min(remaining, 0x1000)
-      memcpy @pages[i], slice.to_unsafe + foffset, copy_sz.to_u64
-      remaining -= copy_sz
-      foffset += copy_sz
+    remaining = min(slice.size, @size)
+    each_frame do |frame|
+      if offset > 0x1000
+        offset -= 0x1000
+      elsif offset >= 0
+        copy_sz = min(0x1000u64 - offset.to_u64, remaining.to_u64)
+        memcpy frame + offset.to_u64, slice.to_unsafe + foffset, copy_sz
+        foffset += copy_sz
+        remaining -= copy_sz
+        offset = 0u32
+      end
     end
     foffset
   end
   
   def truncate(size : Int32) : Int32
-    return @size if size > MAX_SIZE
-    Serial.puts "trunc: ", size, ' ', MAX_SIZE, '\n'
+    Serial.puts "trunc: ", size, '\n'
     new_npages = size.div_ceil 0x1000
     if size > @size
       @size = size
-      init_pages new_npages
-      Serial.puts @pages, '\n'
+      while @npages < new_npages
+        append_frame
+        @npages += 1
+      end
     elsif size < @size
       @size = size
-      while new_npages < @npages
-        FrameAllocator.declaim_addr(@pages[new_npages].address & ~PTR_IDENTITY_MASK)
-        @pages[new_npages] = Pointer(UInt8).null
-        new_npages += 1
+      while @npages > new_npages
+        pop_frame
+        @npages -= 1
       end
     end
     @size
@@ -202,9 +218,12 @@ private class TmpFSNode < VFSNode
     @mmap_count += 1
     Serial.puts "mmap size: ", node.size, '/', size, '\n'
     npages = min(node.size / 0x1000, @npages)
-    npages.times do |i|
-      phys = @pages[i].address & ~PTR_IDENTITY_MASK
+    i = 0
+    each_frame do |frame|
+      break if i == npages
+      phys = frame.address & ~PTR_IDENTITY_MASK
       Paging.alloc_page_pg(node.addr + i * 0x1000, true, true, 1, phys)
+      i += 1
     end
     VFS_OK
   end
