@@ -3,10 +3,13 @@
 struct g_application_sprite {
   unsigned int x, y, width, height;
   unsigned int *source;
+  int alpha;
 };
 
 struct g_application {
   int bitmapfd;
+  void *bitmap;
+  
   struct wmc_connection wmc_conn;
   unsigned int event_mask;
   unsigned int wm_properties;
