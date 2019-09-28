@@ -1,3 +1,4 @@
+#include <string.h>
 #include <wm/wmc.h>
 #include <canvas.h>
 #include <sys/gfx.h>
@@ -130,11 +131,12 @@ int g_application_run(struct g_application *app) {
     struct wm_atom atom;
     wmc_send_atom(&app->wmc_conn, &obtain_atom);
     wmc_wait_atom(&app->wmc_conn);
-    if(wmc_recv_atom(&app->wmc_conn, &atom) < 0) {
+    if(wmc_recv_atom(&app->wmc_conn, &atom) != sizeof(struct wm_atom)) {
       printf("unable to obtain window\n");
       return -1;
     }
     app->bitmapfd = wmc_open_bitmap(&app->wmc_conn);
+    app->bitmap = mmap(app->bitmapfd, (size_t)-1);
   }
 
   // event loop
@@ -158,8 +160,7 @@ int g_application_run(struct g_application *app) {
           needs_redraw = 0;
           respond_atom.win_refresh.did_redraw = 1;
           size_t sz = app->sprite.width * app->sprite.height * 4;
-          lseek(app->bitmapfd, 0, SEEK_SET);
-          write(app->bitmapfd, app->sprite.source, sz);
+          memcpy(app->bitmap, app->sprite.source, sz);
         }
         wmc_send_atom(&app->wmc_conn, &respond_atom);
         break;

@@ -68,6 +68,7 @@ private class TmpFSNode < VFSNode
     @npages.times do |i|
       FrameAllocator.declaim_addr(@pages[i].address & ~PTR_IDENTITY_MASK)
     end
+    free_page_table @pages, @npages
     @pages = Pointer(Pointer(UInt8)).null
     
     @parent.remove self
@@ -75,23 +76,66 @@ private class TmpFSNode < VFSNode
     VFS_OK
   end
   
+  # maximum pages which can be allocated using the heap allocator
+  MAX_ALLOC_PAGES = 1024 / 4
+  
+  # maximum size of a temp file
+  MAX_SIZE = 0x1000 * (0x1000 / sizeof(UInt8*))
+  
   @pages = Pointer(Pointer(UInt8)).null
   @npages = 0
   @size = 0
   
+  private def alloc_page_table(npages)
+    if npages > MAX_ALLOC_PAGES
+      frame = FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK
+      Pointer(Pointer(UInt8)).new frame
+    else
+      Pointer(Pointer(UInt8)).mmalloc npages
+    end
+  end
+  
+  private def free_page_table(pages, npages)
+    if npages > MAX_ALLOC_PAGES
+      phys = pages.address & ~PTR_IDENTITY_MASK
+      FrameAllocator.declaim_addr phys
+    else
+      pages.mfree
+    end
+  end
+  
   private def init_pages(npages)
     if @npages == 0
-      @pages = Pointer(Pointer(UInt8)).malloc npages
-      Serial.puts @pages, '\n'
-    else
-      panic "unimplemented" if npages > @npages
-    end
-    # Serial.puts @pages, '\n'
-    @npages = npages
-    @npages.times do |i|
-      frame = FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK
-      @pages[i] = Pointer(UInt8).new(frame)
-      zero_page @pages[i]
+      # allocate new buffer for page table
+      @pages = alloc_page_table npages
+      @npages = npages
+      @npages.times do |i|
+        frame = FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK
+        @pages[i] = Pointer(UInt8).new(frame)
+        zero_page @pages[i]
+      end
+    elsif npages > @npages
+      new_table_size = npages * sizeof(UInt8*)
+    
+      # reallocate if on heap
+      if @npages < MAX_ALLOC_PAGES &&
+         KernelArena.block_size_for_ptr(@pages) < new_table_size
+        new_pages = alloc_page_table(npages)
+        memcpy(new_pages.as(UInt8*), @pages.as(UInt8*), @npages.to_u64 * sizeof(UInt8*))
+        free_page_table(@pages, @npages)
+        @pages = new_pages
+      end
+      
+      # create new pages
+      i = npages
+      while i < @npages
+        frame = FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK
+        @pages[i] = Pointer(UInt8).new(frame)
+        zero_page @pages[i]
+        i += 1
+      end
+      
+      @npages = npages
     end
   end
 
@@ -134,10 +178,13 @@ private class TmpFSNode < VFSNode
   end
   
   def truncate(size : Int32) : Int32
+    return @size if size > MAX_SIZE
+    Serial.puts "trunc: ", size, ' ', MAX_SIZE, '\n'
     new_npages = size.div_ceil 0x1000
     if size > @size
       @size = size
       init_pages new_npages
+      Serial.puts @pages, '\n'
     elsif size < @size
       @size = size
       while new_npages < @npages
@@ -153,7 +200,7 @@ private class TmpFSNode < VFSNode
 
   def mmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
     @mmap_count += 1
-    Serial.puts "size: ", node.size, '\n'
+    Serial.puts "mmap size: ", node.size, '/', size, '\n'
     npages = min(node.size / 0x1000, @npages)
     npages.times do |i|
       phys = @pages[i].address & ~PTR_IDENTITY_MASK
