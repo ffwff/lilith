@@ -7,7 +7,7 @@ _download() {
 build() {
     _download https://raw.githubusercontent.com/dhepper/font8x8/master/font8x8_basic.h "$build_dir/font8x8_basic.h"
 
-    ${opt_arch}-gcc -g -o $build_dir/wm $script_dir/wm.c -I$opt_toolsdir/include -L$opt_toolsdir/lib -lm -msse2
+    ${opt_arch}-gcc -O2 -g -o $build_dir/wm $script_dir/wm.c -I$opt_toolsdir/include -L$opt_toolsdir/lib -lm -msse2
     ${opt_arch}-gcc -g -o $build_dir/desktop $script_dir/desktop.c -I$opt_toolsdir/include -L$opt_toolsdir/lib
     ${opt_arch}-gcc -g -o $build_dir/cterm $script_dir/cterm.c -I$opt_toolsdir/include -L$opt_toolsdir/lib -lm -lgui -lcanvas -lwmc -msse2
     ${opt_arch}-gcc -g -o $build_dir/cbar $script_dir/cbar.c -I$opt_toolsdir/include -L$opt_toolsdir/lib -lm -lgui -lcanvas -lwmc -msse2

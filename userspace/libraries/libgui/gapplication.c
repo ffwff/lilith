@@ -24,7 +24,8 @@ struct g_application *g_application_create(int width, int height, int alpha) {
     .x = 0,
     .y = 0,
     .width  = width,
-    .height = height
+    .height = height,
+    .alpha = alpha,
   };
   app->ctx = canvas_ctx_create(app->sprite.width,
                  app->sprite.height,
@@ -126,13 +127,25 @@ int g_application_run(struct g_application *app) {
       .win_create = (struct wm_atom_win_create) {
         .width = app->sprite.width,
         .height = app->sprite.height,
+        .alpha = app->sprite.alpha,
       }
     };
     struct wm_atom atom;
     wmc_send_atom(&app->wmc_conn, &obtain_atom);
     wmc_wait_atom(&app->wmc_conn);
-    if(wmc_recv_atom(&app->wmc_conn, &atom) != sizeof(struct wm_atom)) {
-      printf("unable to obtain window\n");
+    if(wmc_recv_atom(&app->wmc_conn, &atom) == sizeof(struct wm_atom)) {
+      if(atom.type == ATOM_RESPOND_TYPE && atom.respond.retval == 1) {
+        struct wm_atom respond_atom = {
+          .type = ATOM_RESPOND_TYPE,
+          .respond.retval = 1,
+        };
+        wmc_send_atom(&app->wmc_conn, &respond_atom);
+      } else {
+        printf("unable to obtain window\n");
+        return -1;
+      }
+    } else {
+      printf("unable to receive packet\n");
       return -1;
     }
     app->bitmapfd = wmc_open_bitmap(&app->wmc_conn);

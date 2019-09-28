@@ -93,8 +93,6 @@ private class TmpFSNode < VFSNode
       @last_page.value.next_page = page
       @last_page = page
     end
-    
-    Serial.puts @last_page, '\n'
 
     frame = FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK
     len = @last_page.value.allocated_frames

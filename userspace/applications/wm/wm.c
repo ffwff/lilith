@@ -21,35 +21,6 @@
 const int channels = 4;
 #define CURSOR_FILE "/hd0/share/cursors/cursor.png"
 
-#if 0
-static void filter_data(struct fbdev_bitblit *sprite) {
-  unsigned char *data = (unsigned char *)sprite->source;
-  for (unsigned long i = 0; i < (sprite->width * sprite->height * 4); i += 4) {
-    unsigned char r = data[i + 0];
-    unsigned char g = data[i + 1];
-    unsigned char b = data[i + 2];
-    data[i + 0] = b;
-    data[i + 1] = g;
-    data[i + 2] = r;
-    data[i + 3] = 0;
-  }
-}
-
-static void filter_data_with_alpha(struct fbdev_bitblit *sprite) {
-  unsigned char *data = (unsigned char *)sprite->source;
-  for (unsigned long i = 0; i < (sprite->width * sprite->height * 4); i += 4) {
-    unsigned char r = data[i + 0];
-    unsigned char g = data[i + 1];
-    unsigned char b = data[i + 2];
-    unsigned char a = data[i + 3];
-    // premultiply by alpha / 0xff
-    data[i + 0] = ((int)b * (int)a) / 0xff;
-    data[i + 1] = ((int)g * (int)a) / 0xff;
-    data[i + 2] = ((int)r * (int)a) / 0xff;
-  }
-}
-#endif
-
 static void panic(const char *s) {
   puts(s);
   exit(1);
@@ -96,6 +67,7 @@ struct wm_window_prog {
   int mfd, sfd, bitmapfd;
   unsigned int event_mask;
   unsigned int x, y, width, height;
+  int alpha;
 };
 
 enum wm_sprite_type {
@@ -150,24 +122,43 @@ void wm_handle_atom(struct wm_state *state,
   switch(atom->type) {
     case ATOM_WIN_CREATE_TYPE: {
       if (prog->bitmap) return;
+      struct wm_atom respond_atom;
 
       char path[128];
       snprintf(path, sizeof(path), "/tmp/wm:%d:bm", prog->pid);
       prog->bitmapfd = create(path);
+      
+      if (prog->bitmapfd < 0) {
+        prog->bitmapfd = -1;
+        struct wm_atom write_atom = {
+          .type = ATOM_RESPOND_TYPE,
+          .respond.retval = 0,
+        };
+        win_write_and_wait(win, &write_atom, &respond_atom);
+        return;
+      }
 
       size_t size = atom->win_create.width * atom->win_create.height * 4;
       ftruncate(prog->bitmapfd, size);
       prog->bitmap = mmap(prog->bitmapfd, (size_t)-1);
+      
+      struct wm_atom write_atom = {
+        .type = ATOM_RESPOND_TYPE,
+        .respond.retval = 1,
+      };
+      win_write_and_wait(win, &write_atom, &respond_atom);
 
       prog->x = 0;
       prog->y = 0;
       prog->width = atom->win_create.width;
       prog->height = atom->win_create.height;
+      prog->alpha = atom->win_create.alpha;
       break;
     }
     case ATOM_MOVE_TYPE: {
       prog->x = atom->move.x;
       prog->y = atom->move.y;
+      state->needs_redraw = 1;
       break;
     }
     default:
@@ -389,9 +380,6 @@ static __m128i alpha_blend_array(__m128i dst, __m128i src) {
   // shift
   g = _mm_slli_epi16(g, 8);
 
-  // __m128i new_dst = _mm_or_si128(rb, g);
-  // new_dst = _mm
-
   return _mm_or_si128(rb, g);
 }
 
@@ -408,11 +396,22 @@ void wm_bitblt_prog(struct wm_state *state, struct wm_window_prog *prog) {
     return;
   unsigned char *src = (unsigned char *)prog->bitmap;
   unsigned char *dst = (unsigned char *)state->backbuffer;
-  for(unsigned int y = 0; y < prog->height; y++) {
-    size_t fb_offset = ((prog->y + y) * state->ws.ws_col + prog->x) * 4;
-    size_t src_offset = y * prog->width * 4;
-    size_t copy_size = prog->width * 4;
-    memcpy(&dst[fb_offset], &src[src_offset], copy_size);
+  if(prog->alpha) {
+    for(unsigned int y = 0; y < prog->height; y++) {
+      size_t fb_offset = ((prog->y + y) * state->ws.ws_col + prog->x) * 4;
+      size_t src_offset = y * prog->width * 4;
+      size_t copy_size = prog->width / 4;
+      alpha_blend(&dst[fb_offset],
+                  &src[src_offset], copy_size);
+    }
+  } else {
+    for(unsigned int y = 0; y < prog->height; y++) {
+      size_t fb_offset = ((prog->y + y) * state->ws.ws_col + prog->x) * 4;
+      size_t src_offset = y * prog->width * 4;
+      size_t copy_size = prog->width * 4;
+      memcpy(&dst[fb_offset],
+             &src[src_offset], copy_size);
+    }
   }
 }
 
@@ -484,7 +483,6 @@ int main(int argc, char **argv) {
     if (!mouse_spr.source.buffer) panic("can't load mouse_spr");
     mouse_spr.width = w;
     mouse_spr.height = h;
-    // filter_data_with_alpha(&mouse_spr);
 
     wm.mouse_win = wm_add_sprite(&wm, &mouse_spr);
     wm.mouse_win->z_index = (unsigned int)-1;
@@ -509,8 +507,8 @@ int main(int argc, char **argv) {
 
   // spawn desktop
   {
-    char *spawn_argv[] = {"cterm", NULL};
-    spawnv("cterm", (char **)spawn_argv);
+    char *spawn_argv[] = {"desktop", NULL};
+    spawnv("desktop", (char **)spawn_argv);
   }
 
   while(1) {
@@ -654,17 +652,28 @@ int main(int argc, char **argv) {
               wm_handle_atom(&wm, win, &respond_atom);
             }
           }
-          
-          wm_bitblt_prog(&wm, &win->as.prog);
+
           break;
         }
         case WM_WINDOW_SPRITE: {
-          wm_bitblt_sprite(&wm, &win->as.sprite);
           break;
         }
       }
     }
     if (wm.needs_redraw) {
+      for (int i = 0; i < wm.nwindows; i++) {
+        struct wm_window *win = &wm.windows[i];
+        switch (win->type) {
+          case WM_WINDOW_PROG: {
+            wm_bitblt_prog(&wm, &win->as.prog);
+            break;
+          }
+          case WM_WINDOW_SPRITE: {
+            wm_bitblt_sprite(&wm, &win->as.sprite);
+            break;
+          }
+        }
+      }
       memcpy(wm.framebuffer, wm.backbuffer, ws.ws_row * ws.ws_col * 4);
       wm.needs_redraw = 0;
     }
