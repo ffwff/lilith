@@ -17,6 +17,7 @@ struct wm_connection_request {
 // Create
 struct wm_atom_win_create {
     unsigned int width, height;
+    int alpha;
 };
 
 // Move
