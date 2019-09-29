@@ -21,3 +21,6 @@ void g_widget_resize(struct g_widget *widget, int width, int height);
 
 int g_widget_needs_redraw(struct g_widget *widget);
 void g_widget_set_needs_redraw(struct g_widget *widget, int needs_redraw);
+
+struct g_application *g_widget_application(struct g_widget *widget);
+

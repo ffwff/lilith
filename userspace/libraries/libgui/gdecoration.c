@@ -11,16 +11,17 @@ struct g_decoration_data {
   char *title;
   struct canvas_ctx *title_ctx;
   struct g_widget *widget;
+  int close_x, close_y, close_w, close_h;
 };
 
-static int g_decoration_redraw(struct g_widget *widget, struct g_application *app) {
+static int g_decoration_redraw(struct g_widget *widget) {
   g_widget_init_ctx(widget);
 
   struct g_decoration_data *data = (struct g_decoration_data *)widget->widget_data;
   
   // main widget
   if(data->widget) {
-    if(data->widget->redraw_fn(data->widget, app))
+    if(data->widget->redraw_fn(data->widget))
       widget->needs_redraw = 1;
   }
   
@@ -31,6 +32,10 @@ static int g_decoration_redraw(struct g_widget *widget, struct g_application *ap
     canvas_ctx_stroke_rect(widget->ctx, 0, 0,
       widget->width - 1, widget->height - 1,
       canvas_color_rgb(0xff, 0xff, 0xff));
+      
+    canvas_ctx_fill_rect(widget->ctx, data->close_x, data->close_y,
+          data->close_w, data->close_h,
+          canvas_color_rgb(0xff,0,0));
     
     if(data->title_ctx) {
       int x = (widget->width - canvas_ctx_get_width(data->title_ctx)) / 2;
@@ -56,9 +61,27 @@ static void g_decoration_resize(struct g_widget *widget, int width, int height) 
   if(data->widget) {
     data->widget->needs_redraw = 1;
   }
+  data->close_w = 15;
+  data->close_h = 15;
+  data->close_x = widget->width - data->close_w - 5;
+  data->close_y = 0;
 }
 
-struct g_decoration *g_decoration_create() {
+static int g_decoration_on_mouse(struct g_widget *widget, int type,
+                                     unsigned int x, unsigned int y,
+                                     int delta_x, int delta_y) {
+  struct g_decoration_data *data = (struct g_decoration_data *)widget->widget_data;
+  if(type == WM_MOUSE_PRESS) {
+    if(data->close_x <= x && x <= (data->close_x + data->close_w) &&
+       data->close_y <= y && y <= (data->close_y + data->close_h)) {
+      g_application_close(widget->app);
+      return 1;
+    }
+  }
+  return 0;
+}
+
+struct g_decoration *g_decoration_create(struct g_application *app) {
   struct g_widget *decoration = calloc(1, sizeof(struct g_widget));
   if(!decoration) return 0;
   
@@ -67,10 +90,12 @@ struct g_decoration *g_decoration_create() {
   data->title = 0;
   data->widget = 0;
   
+  decoration->app = app;
   decoration->widget_data = data;
   decoration->needs_redraw = 1;
   decoration->redraw_fn = g_decoration_redraw;
   decoration->resize_fn = g_decoration_resize;
+  decoration->on_mouse_fn = g_decoration_on_mouse;
   return (struct g_decoration *)decoration;
 }
 

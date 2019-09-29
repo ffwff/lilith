@@ -118,6 +118,10 @@ fun mmap(fd : LibC::Int, size : LibC::SizeT) : Void*
   Pointer(Void).new(__lilith_syscall(SC_MMAP, fd.to_u32, size.to_u32).to_u64)
 end
 
+fun munmap(addr : Void*)
+  __lilith_syscall(SC_MUNMAP, addr.address.to_u32)
+end
+
 fun lilith_readdir(fd : LibC::Int, direntp : Void*) : LibC::Int
   __lilith_syscall(SC_READDIR, fd, direntp).to_int
 end

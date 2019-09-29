@@ -131,7 +131,7 @@ static int g_termbox_read_buf(struct g_widget *widget) {
   return retval;
 }
 
-static int g_termbox_redraw(struct g_widget *widget, struct g_application *app) {
+static int g_termbox_redraw(struct g_widget *widget) {
   g_widget_init_ctx(widget);
 
   struct g_termbox_data *data = (struct g_termbox_data *)widget->widget_data;

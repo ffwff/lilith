@@ -52,9 +52,26 @@ void g_application_set_window_properties(struct g_application *app, unsigned int
 }
 
 void g_application_destroy(struct g_application *app) {
-  // close(app->fb_fd);
+  munmap(app->bitmap);
+  close(app->bitmapfd);
+  
+  struct wm_atom close_atom = {
+    .type = ATOM_WIN_CLOSE_TYPE
+  };
+  int retries = 0;
+  const int max_retries = 3;
+  struct wm_atom atom;
+  while (wmc_recv_atom(&app->wmc_conn, &atom) >= 0 && retries < max_retries) {
+    wmc_send_atom(&app->wmc_conn, &close_atom);
+    wmc_wait_atom(&app->wmc_conn);
+    retries++;
+  }
   wmc_connection_deinit(&app->wmc_conn);
   free(app);
+}
+
+void g_application_close(struct g_application *app) {
+  app->running = 0;
 }
 
 int g_application_redraw(struct g_application *app) {
@@ -64,12 +81,12 @@ int g_application_redraw(struct g_application *app) {
       needs_redraw = 1;
   }
   if(app->main_widget) {
-    if(app->main_widget->redraw_fn(app->main_widget, app))
+    if(app->main_widget->redraw_fn(app->main_widget))
       needs_redraw = 1;
   } else {
     for(size_t i = 0; i < app->widgets.len; i++) {
       struct g_widget *widget = app->widgets.data[i];
-      if(widget->redraw_fn(widget, app)) {
+      if(widget->redraw_fn(widget)) {
         canvas_ctx_bitblit(app->ctx, widget->ctx, widget->x, widget->y);
         needs_redraw = 1;
       }
@@ -94,27 +111,30 @@ static void g_application_on_key(struct g_application *app, int ch) {
   }
 }
 
-static void g_application_on_mouse(struct g_application *app, int type,
+static int g_application_on_mouse(struct g_application *app, int type,
                                   unsigned int x, unsigned int y,
                                   int delta_x, int delta_y) {
   unsigned int tx = x - app->sprite.x;
   unsigned int ty = y - app->sprite.y;
+  int retval = 0;
   if (app->mouse_cb) {
-    app->mouse_cb(app,
-      tx, ty, delta_x, delta_y);
+    if (app->mouse_cb(app, tx, ty, delta_x, delta_y))
+      retval = 1;
   }
   if(app->main_widget) {
-    app->main_widget->on_mouse_fn(app->main_widget, type,
-        tx, ty, delta_x, delta_y);
+    if(app->main_widget->on_mouse_fn(app->main_widget, type,
+        tx, ty, delta_x, delta_y))
+      retval = 1;
   } else {
     for(size_t i = 0; i < app->widgets.len; i++) {
       struct g_widget *widget = app->widgets.data[i];
       if(widget->on_mouse_fn) {
-        widget->on_mouse_fn(widget, type,
-          tx, ty, delta_x, delta_y);
+        if(widget->on_mouse_fn(widget, type, tx, ty, delta_x, delta_y))
+          retval = 1;
       }
     }
   }
+  return retval;
 }
 
 int g_application_run(struct g_application *app) {
@@ -168,11 +188,12 @@ int g_application_run(struct g_application *app) {
   // event loop
   int mouse_drag = 0;
   int mouse_resize = 0;
+  app->running = 1;
 
   struct wm_atom atom;
   int needs_redraw = 0;
   int retval = 0;
-  while ((retval = wmc_recv_atom(&app->wmc_conn, &atom)) >= 0) {
+  while ((retval = wmc_recv_atom(&app->wmc_conn, &atom)) >= 0 && app->running) {
     if(retval == 0)
       goto wait;
     switch (atom.type) {
@@ -209,11 +230,26 @@ int g_application_run(struct g_application *app) {
                      atom.mouse_event.x,
                      atom.mouse_event.y) ||
           mouse_drag)) {
+
           if((app->wm_properties & WM_PROPERTY_ROOT) != 0) {
-            mouse_drag = 1;
-            mouse_resize = 1;
+            mouse_drag = 0;
+            mouse_resize = 0;
             goto wait;
           }
+            
+          if(g_application_on_mouse(app, atom.mouse_event.type,
+                                 atom.mouse_event.x,
+                                 atom.mouse_event.y,
+                                 atom.mouse_event.delta_x,
+                                 atom.mouse_event.delta_y)) {
+            struct wm_atom respond_atom = {
+              .type = ATOM_RESPOND_TYPE,
+              .respond.retval = 0,
+            };
+            wmc_send_atom(&app->wmc_conn, &respond_atom);
+            goto wait;
+          }
+
           mouse_drag = 1;
           if(is_coord_in_bottom_right_corner(&app->sprite,
             atom.mouse_event.x,
@@ -250,11 +286,6 @@ int g_application_run(struct g_application *app) {
           mouse_resize = 0;
         }
 
-        g_application_on_mouse(app, atom.mouse_event.type,
-                               atom.mouse_event.x,
-                               atom.mouse_event.y,
-                               atom.mouse_event.delta_x,
-                               atom.mouse_event.delta_y);
         needs_redraw = 1;
 
         struct wm_atom respond_atom = {
@@ -286,6 +317,7 @@ int g_application_run(struct g_application *app) {
 
 void g_application_set_main_widget(struct g_application *app, struct g_widget *widget) {
   app->main_widget = widget;
+  app->main_widget->app = app;
 }
 
 struct g_widget *g_application_main_widget(struct g_application *app) {
@@ -294,6 +326,11 @@ struct g_widget *g_application_main_widget(struct g_application *app) {
 
 unsigned int g_application_event_mask(struct g_application *app) {
   return app->event_mask;
+}
+
+void g_application_add_widget(struct g_application *app, struct g_widget *widget) {
+  g_widget_array_push(g_application_widgets(app), widget);
+  widget->app = app;
 }
 
 // getters

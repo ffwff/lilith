@@ -594,7 +594,6 @@ module Syscall
       end
       fv.rax = mmap_heap.addr
     when SC_MMAP
-      # TODO
       fd = try(pudata.get_fd(arg(0).to_i32))
       size = arg(1).to_u64
       if size > fd.node.not_nil!.size
@@ -618,6 +617,16 @@ module Syscall
         end
       else
         sysret(SYSCALL_ERR)
+      end
+    when SC_MUNMAP
+      # TODO: support size argument
+      addr = arg(0)
+      pudata.mmap_list.each do |node|
+        if node.addr == addr && node.attr.includes?(MemMapNode::Attributes::SharedMem)
+          node.shm_node.not_nil!.munmap(node, process)
+          pudata.mmap_list.remove(node)
+          sysret(0)
+        end
       end
     else
       sysret(SYSCALL_ERR)

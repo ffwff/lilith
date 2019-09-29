@@ -14,6 +14,7 @@ int ftruncate(int fd, off_t length);
 int _ioctl(int fd, int request, unsigned int arg);
 int waitfd(int *fds, size_t nfds, useconds_t timeout);
 void *mmap(int fd, size_t size);
+void munmap(void *addr);
 int remove(char *device);
 
 time_t _sys_time();

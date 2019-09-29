@@ -189,6 +189,7 @@ private class PipeFSNode < VFSNode
   end
 
   def available?
+    return true if @flags.includes?(Flags::Removed)
     @buffer_pos > 0
   end
   

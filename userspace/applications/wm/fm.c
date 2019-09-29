@@ -53,8 +53,8 @@ static void fm_init(struct fm_state *state) {
   closedir(d);
 }
 
-static int fm_redraw(struct g_widget *widget, struct g_application *app) {
-  struct fm_state *state = g_application_userdata(app);
+static int fm_redraw(struct g_widget *widget) {
+  struct fm_state *state = g_application_userdata(g_widget_application(widget));
   if(state->needs_redraw) {
     struct g_canvas *canvas = (struct g_canvas *)widget;
     struct canvas_ctx *ctx = g_canvas_ctx(canvas);
@@ -78,23 +78,25 @@ static int fm_redraw(struct g_widget *widget, struct g_application *app) {
   return 0;
 }
 
-static void fm_mouse(struct g_widget *widget, int type,
+static int fm_mouse(struct g_widget *widget, int type,
                      unsigned int x, unsigned int y,
                      int delta_x, int delta_y) {
   struct g_canvas *canvas = (struct g_canvas *)widget;
-  struct fm_state *state = g_canvas_userdata(canvas);
+  struct fm_state *state = g_application_userdata(g_widget_application(widget));
   int idx = y / FONT_HEIGHT;
   if (idx < state->nfiles) {
     state->selected_idx = idx;
     if(type == WM_MOUSE_PRESS) {
       chdir(state->files[idx].d_name);
       fm_init(state);
+      return 1;
     }
   }
+  return 0;
 }
 
-static int address_redraw(struct g_widget *widget, struct g_application *app) {
-  struct fm_state *state = g_application_userdata(app);
+static int address_redraw(struct g_widget *widget) {
+  struct fm_state *state = g_application_userdata(g_widget_application(widget));
   if(state->needs_redraw) {
     struct g_canvas *canvas = (struct g_canvas *)widget;
     struct canvas_ctx *ctx = g_canvas_ctx(canvas);
@@ -119,16 +121,15 @@ int main(int argc, char **argv) {
   struct g_application *app = g_application_create(INIT_WIDTH, INIT_HEIGHT, 1);
   g_application_set_userdata(app, &state);
   
-  struct g_canvas *address_widget = g_canvas_create();
+  struct g_canvas *address_widget = g_canvas_create(app);
   g_widget_resize((struct g_widget *)address_widget, INIT_WIDTH - 10, 15);
   g_canvas_set_redraw_fn(address_widget, address_redraw);
   
-  struct g_canvas *main_widget = g_canvas_create();
-  g_canvas_set_userdata(main_widget, &state);
+  struct g_canvas *main_widget = g_canvas_create(app);
   g_canvas_set_redraw_fn(main_widget, fm_redraw);
   g_canvas_set_on_mouse_fn(main_widget, fm_mouse);
 
-  struct g_window_layout *wlayout = g_window_layout_create((struct g_widget *)main_widget);
+  struct g_window_layout *wlayout = g_window_layout_create(app, (struct g_widget *)main_widget);
   g_widget_move_resize((struct g_widget *)wlayout, 0, 0, INIT_WIDTH, INIT_HEIGHT);
   g_decoration_set_widget(g_window_layout_decoration(wlayout), (struct g_widget *)address_widget);
   g_decoration_set_text(g_window_layout_decoration(wlayout), "File Manager");

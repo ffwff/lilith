@@ -91,3 +91,7 @@ void g_widget_move_resize(struct g_widget *widget, int x, int y,
 void g_widget_set_needs_redraw(struct g_widget *widget, int needs_redraw) {
   widget->needs_redraw = needs_redraw;
 }
+
+struct g_application *g_widget_application(struct g_widget *widget) {
+  return widget->app;
+}

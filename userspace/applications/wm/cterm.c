@@ -48,11 +48,11 @@ int main(int argc, char **argv) {
   struct g_application *app = g_application_create(INIT_WIDTH, INIT_HEIGHT, 1);
   g_application_set_userdata(app, &state);
   
-  struct g_termbox *tb = g_termbox_create();
+  struct g_termbox *tb = g_termbox_create(app);
   g_termbox_bind_in_fd(tb, state.in_fd);
   g_termbox_bind_out_fd(tb, state.out_fd);
   
-  struct g_window_layout *wlayout = g_window_layout_create((struct g_widget *)tb);
+  struct g_window_layout *wlayout = g_window_layout_create(app, (struct g_widget *)tb);
   g_widget_move_resize((struct g_widget *)wlayout, 0, 0, INIT_WIDTH, INIT_HEIGHT);
   g_decoration_set_text(g_window_layout_decoration(wlayout), "Terminal");
   g_application_set_main_widget(app, (struct g_widget *)wlayout);

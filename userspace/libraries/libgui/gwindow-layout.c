@@ -18,21 +18,22 @@ static void g_window_layout_deinit(struct g_widget *widget) {
   free(data);
 }
 
-static int g_window_layout_redraw(struct g_widget *widget, struct g_application *app) {
+static int g_window_layout_redraw(struct g_widget *widget) {
   struct g_window_layout_data *data = (struct g_window_layout_data *)widget->widget_data;
   
   struct g_widget *decoration = (struct g_widget *)data->decoration;
 
   int drawn = 0;
 
-  if((drawn = decoration->redraw_fn(decoration, app))) {
-    canvas_ctx_bitblit(app->ctx, decoration->ctx, decoration->x, decoration->y);
+  if((drawn = decoration->redraw_fn(decoration))) {
+    canvas_ctx_bitblit(widget->app->ctx, decoration->ctx,
+                       decoration->x, decoration->y);
   }
     
   if(data->main_widget && data->main_widget->redraw_fn) {
-    if ((drawn = data->main_widget->redraw_fn(data->main_widget, app))) {
+    if ((drawn = data->main_widget->redraw_fn(data->main_widget))) {
       if(data->main_widget->ctx) {
-        canvas_ctx_bitblit(app->ctx, data->main_widget->ctx,
+        canvas_ctx_bitblit(widget->app->ctx, data->main_widget->ctx,
                 data->main_widget->x, data->main_widget->y);
       }
     }
@@ -59,31 +60,38 @@ static void g_window_layout_on_key(struct g_widget *widget, int ch) {
   }
 }
 
-static void g_window_layout_on_mouse(struct g_widget *widget, int type,
+static int g_window_layout_on_mouse(struct g_widget *widget, int type,
                                      unsigned int x, unsigned int y,
                                      int delta_x, int delta_y) {
   struct g_window_layout_data *data = (struct g_window_layout_data *)widget->widget_data;
+  struct g_widget *decoration = (struct g_widget *)data->decoration;
   if(data->main_widget && data->main_widget->on_mouse_fn) {
     if(is_coord_in_widget(data->main_widget, x, y)) {
       TRANSLATE_ABS_COORDS_TO_WIDGET(data->main_widget)
-      data->main_widget->on_mouse_fn(data->main_widget, type,
+      return data->main_widget->on_mouse_fn(data->main_widget, type,
                                      tx, ty, delta_x, delta_y);
     }
+  } else if(is_coord_in_widget(decoration, x, y)) {
+    TRANSLATE_ABS_COORDS_TO_WIDGET(decoration)
+    return decoration->on_mouse_fn(decoration, type,
+                            tx, ty, delta_x, delta_y);
   }
+  return 0;
 }
 
-struct g_window_layout *g_window_layout_create(struct g_widget *main_widget) {
+struct g_window_layout *g_window_layout_create(struct g_application *app, struct g_widget *main_widget) {
   struct g_widget *layout = calloc(1, sizeof(struct g_widget));
   if(!layout) return 0;
 
   struct g_window_layout_data *data = calloc(1, sizeof(struct g_window_layout_data));
   if(!data) return 0;
 
-  data->decoration = g_decoration_create();
+  data->decoration = g_decoration_create(app);
   data->main_widget = main_widget;
   
   layout->z_index = -1;
   layout->widget_data = data;
+  layout->app = app;
 
   layout->deinit_fn = g_window_layout_deinit;
   layout->redraw_fn = g_window_layout_redraw;
