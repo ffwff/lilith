@@ -15,8 +15,10 @@ require "./userspace/elf.cr"
 
 lib Kernel
   fun ksyscall_setup
+  fun ksetup_fxsave_region_base
 
   $fxsave_region_ptr : UInt8*
+  $fxsave_region_base_ptr : UInt8*
   $kernel_end : Void*
   $text_start : Void*; $text_end : Void*
   $data_start : Void*; $data_end : Void*
@@ -29,6 +31,8 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   end
 
   Multiprocessing.fxsave_region = Kernel.fxsave_region_ptr
+  Multiprocessing.fxsave_region_base = Kernel.fxsave_region_base_ptr
+  Kernel.ksetup_fxsave_region_base
 
   Console.puts "Booting lilith...\n"
 
