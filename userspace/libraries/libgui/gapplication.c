@@ -312,6 +312,8 @@ int g_application_run(struct g_application *app) {
   
   g_application_destroy(app);
   
+  if(app->close_cb)
+    return app->close_cb(app);
   return 0;
 }
 
@@ -412,4 +414,8 @@ void g_application_set_key_cb(struct g_application *app, g_key_cb cb) {
 
 void g_application_set_mouse_cb(struct g_application *app, g_mouse_cb cb) {
   app->mouse_cb = cb;
+}
+
+void g_application_set_close_cb(struct g_application *app, g_close_cb cb) {
+  app->close_cb = cb;
 }

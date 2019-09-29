@@ -712,7 +712,6 @@ module Multiprocessing
 
     # switch page directory
     if next_process.kernel_process?
-      breakpoint
       Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
         .new(next_process.phys_user_pg_struct)
       Paging.current_kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)

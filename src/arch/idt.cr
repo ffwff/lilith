@@ -179,7 +179,7 @@ end
 
 EX_PAGEFAULT = 14
 
-def dump_frame(frame : IdtData::ExceptionRegisters*)
+private def dump_frame(frame : IdtData::ExceptionRegisters*)
   {% for id in [
           "ds",
           "rbp", "rdi", "rsi",

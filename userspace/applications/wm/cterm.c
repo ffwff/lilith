@@ -32,6 +32,20 @@ void cterm_init(struct cterm_state *state) {
   state->out_fd = mkfpipe(path, PIPE_G_RD | PIPE_G_WR);
 }
 
+static int app_on_close(struct g_application *app) {
+  struct cterm_state *state = g_application_userdata(app);
+  close(state->in_fd);
+  close(state->out_fd);
+  
+  char path[128] = { 0 };
+  snprintf(path, sizeof(path), "/pipes/cterm:%d:in", getpid());
+  remove(path);
+  snprintf(path, sizeof(path), "/pipes/cterm:%d:out", getpid());
+  remove(path);
+  
+  return 0;
+}
+
 int main(int argc, char **argv) {
   struct cterm_state state = { 0 };
   cterm_init(&state);
@@ -56,6 +70,8 @@ int main(int argc, char **argv) {
   g_widget_move_resize((struct g_widget *)wlayout, 0, 0, INIT_WIDTH, INIT_HEIGHT);
   g_decoration_set_text(g_window_layout_decoration(wlayout), "Terminal");
   g_application_set_main_widget(app, (struct g_widget *)wlayout);
+  
+  g_application_set_close_cb(app, app_on_close);
 
   return g_application_run(app);
 }

@@ -84,6 +84,11 @@ private class PipeFSNode < VFSNode
 
   def remove : Int32
     return VFS_ERR if @flags.includes?(Flags::Removed)
+    if @queue
+      while (msg = @queue.not_nil!.dequeue)
+        msg.unawait 0
+      end
+    end
     FrameAllocator.declaim_addr(@buffer.address & ~PTR_IDENTITY_MASK)
     @buffer = Pointer(UInt8).null
     @parent.remove self
@@ -182,6 +187,7 @@ private class PipeFSNode < VFSNode
   end
 
   def truncate(size : Int32) : Int32
+    return 0 if @flags.includes?(Flags::Removed)
     if size < @buffer_pos
       @buffer_pos = size
     end
@@ -196,6 +202,7 @@ private class PipeFSNode < VFSNode
   def ioctl(request : Int32, data : UInt32,
             process : Multiprocessing::Process? = nil) : Int32
     return -1 unless process.not_nil!.pid == @m_pid
+    return -1 if @flags.includes?(Flags::Removed)
     case request
     when SC_IOCTL_PIPE_CONF_FLAGS
       @flags = Flags.new(data)

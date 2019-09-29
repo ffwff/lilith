@@ -234,7 +234,6 @@ module Syscall
       return Kernel.ksyscall_sc_ret_driver(frame)
     end
     pudata = process.udata
-    # Serial.puts "syscall ", fv.rax, " from ", process.pid, '\n'
     case fv.rax
     # files
     when SC_OPEN
@@ -314,7 +313,7 @@ module Syscall
           .enqueue(VFSMessage.new(VFSMessage::Type::Write,
             str, process, fd, vfs_node))
         process.status = Multiprocessing::Process::Status::WaitIo
-        return Multiprocessing.switch_process(frame)
+        Multiprocessing.switch_process(frame)
       else
         if result > 0
           fd.offset += result
