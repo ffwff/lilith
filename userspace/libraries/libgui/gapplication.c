@@ -203,7 +203,7 @@ int g_application_run(struct g_application *app) {
           .win_refresh.did_redraw = 0,
         };
         needs_redraw = g_application_redraw(app);
-        if (needs_redraw || atom.redraw.force_redraw) {
+        if (needs_redraw) {
           needs_redraw = 0;
           respond_atom.win_refresh.did_redraw = 1;
           size_t sz = app->sprite.width * app->sprite.height * 4;
