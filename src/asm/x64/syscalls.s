@@ -1,6 +1,8 @@
 DRIVER_CODE_SELECTOR = 0x29
 DRIVER_DATA_SELECTOR = 0x31
 
+USER_RFLAGS = 0x212
+
 .section .text
 .global ksyscall_setup
 ksyscall_setup:
@@ -42,6 +44,7 @@ ksyscall_setup:
 
 # sysenter instruction path
 .global ksyscall_stub
+.global xxxsysret
 ksyscall_stub:
     push $0 # rsp
     pusha64
@@ -57,6 +60,7 @@ ksyscall_stub:
     popa64
     mov %rcx, %rsp
     mov (%rsp), %rcx
+    mov $USER_RFLAGS, %r11
     sysret
 
 # syscall instruction path
@@ -79,6 +83,9 @@ ksyscall_stub_sc:
     cld
     mov %rsp, %rdi
     call ksyscall_handler
+
+
+
 ksyscall_sc_ret_driver:
     movabs $fxsave_region, %rax
     fxrstor (%rax)

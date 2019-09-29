@@ -62,6 +62,8 @@ struct wm_state {
   int window_closed;
 };
 
+#define MAX_PACKET_RETRIES 5
+
 struct wm_window_prog {
   pid_t pid;
   unsigned int *bitmap;
@@ -69,6 +71,7 @@ struct wm_window_prog {
   unsigned int event_mask;
   unsigned int x, y, width, height;
   int alpha;
+  int packet_retries;
 };
 
 enum wm_sprite_type {
@@ -110,9 +113,11 @@ int win_write_and_wait(struct wm_window *win,
   ftruncate(prog->mfd, 0);
   write(prog->mfd, write_atom, sizeof(struct wm_atom));
   if (waitfd(&prog->sfd, 1, PACKET_TIMEOUT) < 0) {
+    prog->packet_retries++;
     ftruncate(prog->sfd, 0);
     return 0;
   }
+  prog->packet_retries = 0;
   return read(prog->sfd, respond_atom, sizeof(struct wm_atom));
 }
 
@@ -534,8 +539,8 @@ int main(int argc, char **argv) {
 
   // spawn desktop
   {
-    char *spawn_argv[] = {"desktop", NULL};
-    spawnv("desktop", (char **)spawn_argv);
+    char *spawn_argv[] = {"cterm", NULL};
+    spawnv("cterm", (char **)spawn_argv);
   }
 
   while(1) {
@@ -663,6 +668,8 @@ int main(int argc, char **argv) {
               == sizeof(struct wm_atom)
           ) {
             wm_handle_atom(&wm, win, &req_atom);
+            if(win->type == WM_WINDOW_REMOVE)
+              goto next_win;
           }
 
           // request a redraw
@@ -680,6 +687,12 @@ int main(int argc, char **argv) {
               wm_handle_atom(&wm, win, &respond_atom);
             }
           }
+          
+          // remove if we are unable to send any packets
+          if(win->as.prog.packet_retries >= MAX_PACKET_RETRIES) {
+            wm_mark_win_removed(win);
+            wm.window_closed = 1;
+          }
 
           break;
         }
@@ -687,6 +700,7 @@ int main(int argc, char **argv) {
           break;
         }
       }
+    next_win: continue;
     }
     if (wm.window_closed == 1) {
       wm_remove_marked(&wm);

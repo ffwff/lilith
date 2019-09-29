@@ -82,7 +82,8 @@ int main(int argc, char **argv) {
     fflush(stdout);
 
     char buf[256]={0};
-    fgets(buf, sizeof(buf), stdin);
+    if(!fgets(buf, sizeof(buf), stdin))
+      return 0;
     buf[strlen(buf) - 1] = 0; // trim '\n'
 
     interpret_line(buf);

@@ -46,7 +46,6 @@ class ProcFSNode < VFSNode
   end
 
   def remove_for_process(process)
-    Serial.puts process.pid, '\n'
     node = @first_child
     while !node.nil?
       if node.not_nil!.process == process

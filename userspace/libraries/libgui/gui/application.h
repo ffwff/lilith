@@ -6,6 +6,7 @@ typedef int (*g_key_cb)(struct g_application *app, int ch);
 typedef int (*g_mouse_cb)(struct g_application *app,
   unsigned int x, unsigned int y,
   int delta_x, int delta_y);
+typedef int (*g_close_cb)(struct g_application *app);
 
 struct g_application *g_application_create(int width, int height, int alpha);
 void g_application_set_window_properties(struct g_application *, unsigned int properties);
@@ -35,6 +36,7 @@ void g_application_set_userdata(struct g_application *app, void *ptr);
 void g_application_set_redraw_cb(struct g_application *app, g_redraw_cb cb);
 void g_application_set_key_cb(struct g_application *app, g_key_cb cb);
 void g_application_set_mouse_cb(struct g_application *app, g_mouse_cb cb);
+void g_application_set_close_cb(struct g_application *app, g_close_cb cb);
 
 unsigned int g_application_event_mask(struct g_application *app);
 void g_application_set_event_mask(struct g_application *app, unsigned int event_mask);

@@ -128,8 +128,6 @@ private class TmpFSNode < VFSNode
 
   def remove : Int32
     return VFS_ERR if @removed || @mmap_count > 0
-    
-    Serial.puts "removing\n"
 
     page = @first_page
     while !page.null?

@@ -23,6 +23,7 @@ struct g_application {
   g_redraw_cb redraw_cb;
   g_key_cb key_cb;
   g_mouse_cb mouse_cb;
+  g_close_cb close_cb;
 
   void *userdata;
   int running;
