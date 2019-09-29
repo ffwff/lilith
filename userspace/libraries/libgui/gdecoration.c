@@ -39,7 +39,7 @@ static int g_decoration_redraw(struct g_widget *widget) {
     
     if(data->title_ctx) {
       int x = (widget->width - canvas_ctx_get_width(data->title_ctx)) / 2;
-      canvas_ctx_bitblit(widget->ctx, data->title_ctx, x, 5);
+      canvas_ctx_bitblit_mask(widget->ctx, data->title_ctx, x, 5, canvas_color_rgba(0,0,0,0));
     }
     
     if(data->widget) {
