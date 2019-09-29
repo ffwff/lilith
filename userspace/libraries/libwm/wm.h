@@ -66,10 +66,6 @@ struct wm_atom_keyboard_event {
 
 // Query
 
-struct wm_atom_screen_query {
-    unsigned int width, height;
-};
-
 struct wm_atom {
     int type;
     union {
@@ -80,7 +76,6 @@ struct wm_atom {
         struct wm_atom_keyboard_event keyboard_event;
         struct wm_atom_win_refresh win_refresh;
         struct wm_atom_win_create win_create;
-        struct wm_atom_screen_query screen_query;
     };
 };
 
@@ -91,7 +86,7 @@ struct wm_atom {
 #define ATOM_KEYBOARD_EVENT_TYPE   4
 #define ATOM_WIN_REFRESH_TYPE      5
 #define ATOM_WIN_CREATE_TYPE       6
-#define ATOM_SCREEN_QUERY_TYPE     7
+#define ATOM_WIN_CLOSE_TYPE        7
 
 #define ATOM_REDRAW_MASK            (1 << ATOM_REDRAW_TYPE)
 #define ATOM_RESPOND_MASK           (1 << ATOM_RESPOND_TYPE)

@@ -115,9 +115,13 @@ class MemMapList
   def remove(node : MemMapNode)
     if node.prev_node
       node.prev_node.not_nil!.next_node = node.next_node
+    else
+      @first_node = node.next_node
     end
     if node.next_node
       node.next_node.not_nil!.prev_node = node.prev_node
+    else
+      @last_node = node.prev_node
     end
   end
   

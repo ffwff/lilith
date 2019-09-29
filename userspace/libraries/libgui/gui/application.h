@@ -10,13 +10,12 @@ typedef int (*g_mouse_cb)(struct g_application *app,
 struct g_application *g_application_create(int width, int height, int alpha);
 void g_application_set_window_properties(struct g_application *, unsigned int properties);
 void g_application_destroy(struct g_application *);
+void g_application_close(struct g_application *);
 int g_application_redraw(struct g_application *app);
 int g_application_run(struct g_application *app);
 
 struct g_widget_array *g_application_widgets(struct g_application *app);
-static inline void g_application_add_widget(struct g_application *app, struct g_widget *widget) {
-  g_widget_array_push(g_application_widgets(app), widget);
-}
+void g_application_add_widget(struct g_application *app, struct g_widget *widget);
 
 void g_application_set_main_widget(struct g_application *app, struct g_widget *widget);
 struct g_widget *g_application_main_widget(struct g_application *app);

@@ -6,12 +6,13 @@
 #include "gui.h"
 #include "priv/gwidget-impl.h"
 
-static int g_canvas_redraw_stub(struct g_widget *widget, struct g_application *app) {
+static int g_canvas_redraw_stub(struct g_widget *widget) {
   return 0;
 }
 
-struct g_canvas *g_canvas_create() {
+struct g_canvas *g_canvas_create(struct g_application *app) {
   struct g_widget *canvas = calloc(1, sizeof(struct g_widget));
+  canvas->app = app;
   canvas->needs_redraw = 1;
   canvas->redraw_fn = g_canvas_redraw_stub;
   return (struct g_canvas *)canvas;

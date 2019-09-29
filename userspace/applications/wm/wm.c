@@ -59,6 +59,7 @@ struct wm_state {
   int focused_wid;
   int waitfds[WAITFD_LEN];
   size_t waitfds_len;
+  int window_closed;
 };
 
 struct wm_window_prog {
@@ -112,10 +113,10 @@ int win_write_and_wait(struct wm_window *win,
     ftruncate(prog->sfd, 0);
     return 0;
   }
-  // respond received
   return read(prog->sfd, respond_atom, sizeof(struct wm_atom));
 }
 
+void wm_mark_win_removed(struct wm_window *win);
 void wm_handle_atom(struct wm_state *state, 
         struct wm_window *win, struct wm_atom *atom) {
   struct wm_window_prog *prog = &win->as.prog;
@@ -159,6 +160,11 @@ void wm_handle_atom(struct wm_state *state,
       prog->x = atom->move.x;
       prog->y = atom->move.y;
       state->needs_redraw = 1;
+      break;
+    }
+    case ATOM_WIN_CLOSE_TYPE: {
+      wm_mark_win_removed(win);
+      state->window_closed = 1;
       break;
     }
     default:
@@ -237,6 +243,9 @@ void wm_mark_win_removed(struct wm_window *win) {
 
       snprintf(path, sizeof(path), "/pipes/wm:%d:s", prog->pid);
       remove(path);
+      
+      munmap(prog->bitmap);
+      close(prog->bitmapfd);
 
       break;
     }
@@ -244,10 +253,28 @@ void wm_mark_win_removed(struct wm_window *win) {
   win->type = WM_WINDOW_REMOVE;
 }
 
+void wm_sort_windows_by_z(struct wm_state *state);
+void wm_remove_marked(struct wm_state *state) {
+  wm_sort_windows_by_z(state);
+  for (int i = 0; i < state->nwindows; i++) {
+    struct wm_window *win = &state->windows[i];
+    if(win->type == WM_WINDOW_REMOVE) {
+      state->nwindows = i;
+      return;
+    }
+  }
+}
+
 /* IMPL */
 
 int wm_sort_windows_by_z_compar(const void *av, const void *bv) {
   const struct wm_window *a = av, *b = bv;
+  if (a->type == WM_WINDOW_REMOVE || b->type == WM_WINDOW_REMOVE) {
+    // place removed windows on the tail of the array
+    if(a->type == WM_WINDOW_REMOVE && b->type != WM_WINDOW_REMOVE) return 1;
+    else if(a->type == b->type) return 0;
+    return -1;
+  }
   if (a->z_index < b->z_index) return -1;
   else if(a->z_index == b->z_index) return 0;
   return 1;
@@ -512,6 +539,7 @@ int main(int argc, char **argv) {
   }
 
   while(1) {
+    wm.window_closed = 0;
     {
       // control pipe
       struct wm_connection_request conn_req = { 0 };
@@ -659,6 +687,9 @@ int main(int argc, char **argv) {
           break;
         }
       }
+    }
+    if (wm.window_closed == 1) {
+      wm_remove_marked(&wm);
     }
     if (wm.needs_redraw) {
       for (int i = 0; i < wm.nwindows; i++) {

@@ -1,13 +1,12 @@
 #pragma once
 
-typedef int (*g_widget_redraw_fn)(struct g_widget *widget,
-                                  struct g_application *app);
+typedef int (*g_widget_redraw_fn)(struct g_widget *widget);
 typedef void (*g_widget_resize_fn)(struct g_widget *widget, int w, int h);
 typedef void (*g_widget_deinit_fn)(struct g_widget *widget);
 typedef void (*g_widget_on_key_fn)(struct g_widget *widget, int ch);
-typedef void (*g_widget_on_mouse_fn)(struct g_widget *widget, int type,
-                                     unsigned int x, unsigned int y,
-                                     int delta_x, int delta_y);
+typedef int (*g_widget_on_mouse_fn)(struct g_widget *widget, int type,
+                                    unsigned int x, unsigned int y,
+                                    int delta_x, int delta_y);
 
 struct g_widget {
   unsigned int x, y, width, height;
@@ -15,6 +14,7 @@ struct g_widget {
   struct canvas_ctx *ctx;
   
   int needs_redraw;
+  struct g_application *app;
   
   void *widget_data;
   g_widget_deinit_fn deinit_fn;
