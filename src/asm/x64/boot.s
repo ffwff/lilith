@@ -45,19 +45,32 @@ _start_main:
 .global no_opt
 no_opt: ret
 
+.global ksetup_fxsave_region_base
+ksetup_fxsave_region_base:
+    movabs $fxsave_region_base, %rax
+    fxrstor (%rax) # load with zeroes
+    fninit
+    fxsave (%rax)
+    ret
+
 # -- data
 .section .data
 .global fxsave_region_ptr
 .global stack_start
 .global stack_end
+.global fxsave_region_base_ptr
 fxsave_region_ptr:
     .quad fxsave_region
+fxsave_region_base_ptr:
+    .quad fxsave_region_base
 stack_start:
     .quad stack_bottom
 stack_end:
     .quad stack_top
 .align 16
 fxsave_region:
+    .skip 512
+fxsave_region_base:
     .skip 512
 .include "../extern/fonts.s"
 

@@ -7,11 +7,9 @@ lib LibC
 end
 
 fun _start(argc : LibC::Int, argv : UInt8**)
-  asm("fninit" ::: "volatile")
   LibC._init
   Stdio.init
-  LibC.main argc, argv
-  exit 0
+  exit LibC.main(argc, argv)
 end
 
 fun exit(status : LibC::Int)

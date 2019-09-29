@@ -70,11 +70,7 @@ private class FbdevFSNode < VFSNode
   end
   
   private def get_byte_buffer(state, target_buffer)
-    if target_buffer == FbdevFSData::TargetBuffer::Back
-      state.back_buffer.to_unsafe.as(UInt8*)
-    else
-      state.buffer.to_unsafe.as(UInt8*)
-    end
+    state.buffer.to_unsafe.as(UInt8*)
   end
 
   def ioctl(request : Int32, data : UInt32,
@@ -165,12 +161,6 @@ private class FbdevFSNode < VFSNode
 
       0
     when SC_IOCTL_GFX_SWAPBUF
-      # blit
-      FbdevState.lock do |state|
-        back_buffer = state.back_buffer.to_unsafe.as(UInt8*)
-        buffer = state.buffer.to_unsafe.as(UInt8*)
-        memcpy(buffer, back_buffer, state.buffer.size.to_usize * sizeof(UInt32))
-      end
       0
     else
       -1

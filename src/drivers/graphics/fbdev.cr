@@ -138,10 +138,6 @@ extend self
     @@buffer
   end
 
-  def back_buffer
-    Slice(UInt32).null
-  end
-
   def init_device(@@width, @@height, ptr)
     @@cwidth = (@@width / FB_ASCII_FONT_WIDTH) - 1
     @@cheight = (@@height / FB_ASCII_FONT_HEIGHT) - 1

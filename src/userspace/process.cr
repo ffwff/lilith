@@ -49,12 +49,19 @@ module Multiprocessing
   @@n_process = 0
   mod_property n_process
   @@fxsave_region = Pointer(UInt8).null
+  @@fxsave_region_base = Pointer(UInt8).null
 
-  def fxsave_region
+  protected def fxsave_region
     @@fxsave_region
   end
 
   def fxsave_region=(@@fxsave_region); end
+
+  protected def fxsave_region_base
+    @@fxsave_region_base
+  end
+
+  def fxsave_region_base=(@@fxsave_region_base); end
 
   @@procfs : ProcFS? = nil
 
@@ -234,7 +241,7 @@ module Multiprocessing
 
       if @pid != 0
         @fxsave_region = Pointer(UInt8).mmalloc(FXSAVE_SIZE)
-        memset(@fxsave_region, 0x0, FXSAVE_SIZE)
+        memcpy(@fxsave_region, Multiprocessing.fxsave_region_base, FXSAVE_SIZE)
       end
 
       # create vmm map and save old vmm map
