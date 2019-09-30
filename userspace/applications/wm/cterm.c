@@ -20,6 +20,7 @@
 
 struct cterm_state {
   int in_fd, out_fd;
+  pid_t pid;
 };
 
 void cterm_init(struct cterm_state *state) {
@@ -42,6 +43,9 @@ static int app_on_close(struct g_application *app) {
   remove(path);
   snprintf(path, sizeof(path), "/pipes/cterm:%d:out", getpid());
   remove(path);
+
+  snprintf(path, sizeof(path), "/proc/%d", state->pid);
+  remove(path);
   
   return 0;
 }
@@ -57,7 +61,7 @@ int main(int argc, char **argv) {
     .stderr = state.out_fd,
   };
   char *spawn_argv[] = {"/hd0/main", NULL};
-  spawnxv(&s_info, "/hd0/main", (char **)spawn_argv);
+  state.pid = spawnxv(&s_info, "/hd0/main", (char **)spawn_argv);
 
   struct g_application *app = g_application_create(INIT_WIDTH, INIT_HEIGHT, 1);
   g_application_set_userdata(app, &state);

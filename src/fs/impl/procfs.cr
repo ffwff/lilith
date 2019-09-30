@@ -65,7 +65,7 @@ class ProcFSNode < VFSNode
     node
   end
   
-  private def remove_child(node : ProcFSProcessNode)
+  def remove_child(node : ProcFSProcessNode)
     if node == @first_child
       @first_child = node.next_node
     end
@@ -99,6 +99,13 @@ class ProcFSProcessNode < VFSNode
     unless @process.kernel_process?
       add_child(ProcFSProcessMmapNode.new(self, @fs))
     end
+  end
+  
+  def remove : Int32
+    return VFS_ERR if @process.status == Multiprocessing::Process::Status::Removed
+    @process.remove false
+    @parent.remove_child self
+    VFS_OK
   end
   
   def open(path)
