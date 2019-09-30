@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
     if(!fgets(buf, sizeof(buf), stdin))
       return 0;
     if(buf[0] == 0)
-      return 0;
+      continue;
     buf[strlen(buf) - 1] = 0; // trim '\n'
 
     interpret_line(buf);

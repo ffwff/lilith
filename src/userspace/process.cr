@@ -466,7 +466,7 @@ module Multiprocessing
     end
 
     # deinitialize
-    def remove
+    def remove(remove_proc? = true)
       Multiprocessing.n_process -= 1
       @prev_process.not_nil!.next_process = @next_process
       if @next_process.nil?
@@ -492,7 +492,7 @@ module Multiprocessing
       @next_process = nil
       @status = Status::Removed
       # remove from procfs
-      if Multiprocessing.procfs
+      if !Multiprocessing.procfs.nil? && remove_proc?
         Multiprocessing.procfs.not_nil!.root.not_nil!.remove_for_process(self)
       end
     end

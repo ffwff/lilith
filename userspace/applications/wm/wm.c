@@ -423,24 +423,57 @@ void alpha_blend(unsigned char *dst, const unsigned char *src, size_t size) {
   }
 }
 
+static inline void
+clamp_position_to_screen(struct wm_state *state,
+                         unsigned int x, unsigned int y,
+                         unsigned int w, unsigned int h,
+                         unsigned int *dx, unsigned int *dy,
+                         unsigned int *dw, unsigned int *dh) {
+  *dx = x;
+  *dy = y;
+  if(y + h > state->ws.ws_row) {
+    if(state->ws.ws_row < y) { // state->ws.ws_row - y < 0
+      *dh = 0;
+    } else {
+      *dh = state->ws.ws_row - y;
+    }
+  } else {
+    *dh = h;
+  }
+  if(x + w > state->ws.ws_col) {
+    if(state->ws.ws_col < x) { // state->ws.ws_col - x < 0
+      *dw = 0;
+    } else {
+      *dw = state->ws.ws_col - x;
+    }
+  } else {
+    *dw = w;
+  }
+}
+
 void wm_bitblt_prog(struct wm_state *state, struct wm_window_prog *prog) {
   if(!prog->bitmap)
     return;
   unsigned char *src = (unsigned char *)prog->bitmap;
   unsigned char *dst = (unsigned char *)state->backbuffer;
+  unsigned int sx, sy, sw, sh;
+  clamp_position_to_screen(state,
+                           prog->x, prog->y,
+                           prog->width, prog->height,
+                           &sx, &sy, &sw, &sh);
   if(prog->alpha) {
-    for(unsigned int y = 0; y < prog->height; y++) {
-      size_t fb_offset = ((prog->y + y) * state->ws.ws_col + prog->x) * 4;
-      size_t src_offset = y * prog->width * 4;
-      size_t copy_size = prog->width / 4;
+    for(unsigned int y = 0; y < sh; y++) {
+      size_t fb_offset = ((sy + y) * state->ws.ws_col + sx) * 4;
+      size_t src_offset = y * sw * 4;
+      size_t copy_size = sw / 4;
       alpha_blend(&dst[fb_offset],
                   &src[src_offset], copy_size);
     }
   } else {
     for(unsigned int y = 0; y < prog->height; y++) {
-      size_t fb_offset = ((prog->y + y) * state->ws.ws_col + prog->x) * 4;
-      size_t src_offset = y * prog->width * 4;
-      size_t copy_size = prog->width * 4;
+      size_t fb_offset = ((sy + y) * state->ws.ws_col + sx) * 4;
+      size_t src_offset = y * sw * 4;
+      size_t copy_size = sw * 4;
       memcpy(&dst[fb_offset],
              &src[src_offset], copy_size);
     }
@@ -459,10 +492,15 @@ void wm_bitblt_sprite(struct wm_state *state, struct wm_window_sprite *sprite) {
     case WM_SPRITE_SURFACE_ALPHA: {
       unsigned char *src = (unsigned char *)sprite->source.buffer;
       unsigned char *dst = (unsigned char *)state->backbuffer;
-      for (unsigned int y = 0; y < sprite->height; y++) {
-        size_t fb_offset = ((sprite->y + y) * state->ws.ws_col + sprite->x) * 4;
-        size_t src_offset = y * sprite->width * 4;
-        size_t copy_size = sprite->width / 4;
+      unsigned int sx, sy, sw, sh;
+      clamp_position_to_screen(state,
+                               sprite->x, sprite->y,
+                               sprite->width, sprite->height,
+                               &sx, &sy, &sw, &sh);
+      for (unsigned int y = 0; y < sh; y++) {
+        size_t fb_offset = ((sy + y) * state->ws.ws_col + sx) * 4;
+        size_t src_offset = y * sw * 4;
+        size_t copy_size = sw / 4;
         alpha_blend(&dst[fb_offset],
                     &src[src_offset], copy_size);
       }
