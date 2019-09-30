@@ -17,5 +17,5 @@ void wmc_connection_obtain(struct wmc_connection *conn,
 			unsigned int event_mask, unsigned int properties);
 int wmc_send_atom(struct wmc_connection *conn, struct wm_atom *atom);
 int wmc_recv_atom(struct wmc_connection *conn, struct wm_atom *atom);
-int wmc_wait_atom(struct wmc_connection *conn);
+int wmc_wait_atom(struct wmc_connection *conn, useconds_t timeout);
 int wmc_open_bitmap(struct wmc_connection *conn);
