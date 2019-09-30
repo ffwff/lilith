@@ -75,8 +75,8 @@ int wmc_recv_atom(struct wmc_connection *conn, struct wm_atom *atom) {
   return read(conn->win_fd_m, (char *)atom, sizeof(struct wm_atom));
 }
 
-int wmc_wait_atom(struct wmc_connection *conn) {
-  return waitfd(&conn->win_fd_m, 1, (useconds_t)-1);
+int wmc_wait_atom(struct wmc_connection *conn, useconds_t timeout) {
+  return waitfd(&conn->win_fd_m, 1, timeout);
 }
 
 int wmc_open_bitmap(struct wmc_connection *conn) {
