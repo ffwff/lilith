@@ -29,7 +29,7 @@ static void panic(const char *s) {
 #define min(x, y) ((x)<(y)?(x):(y))
 
 #define FRAME_WAIT 10000
-#define PACKET_TIMEOUT FRAME_WAIT*5
+#define PACKET_TIMEOUT 1
 
 /* WM State */
 
@@ -62,7 +62,7 @@ struct wm_state {
   int window_closed;
 };
 
-#define MAX_PACKET_RETRIES 5
+#define MAX_PACKET_RETRIES 24
 
 struct wm_window_prog {
   pid_t pid;
@@ -110,15 +110,21 @@ int win_write_and_wait(struct wm_window *win,
              struct wm_atom *write_atom,
              struct wm_atom *respond_atom) {
   struct wm_window_prog *prog = &win->as.prog;
-  ftruncate(prog->mfd, 0);
-  write(prog->mfd, write_atom, sizeof(struct wm_atom));
+  if(write(prog->mfd, write_atom, sizeof(struct wm_atom)) == 0) {
+    // truncate and retry
+    ftruncate(prog->mfd, 0);
+    write(prog->mfd, write_atom, sizeof(struct wm_atom));
+  }
   if (waitfd(&prog->sfd, 1, PACKET_TIMEOUT) < 0) {
     prog->packet_retries++;
     ftruncate(prog->sfd, 0);
     return 0;
   }
-  prog->packet_retries = 0;
-  return read(prog->sfd, respond_atom, sizeof(struct wm_atom));
+  int retval = read(prog->sfd, respond_atom, sizeof(struct wm_atom));
+  if(retval > 0) {
+    prog->packet_retries = 0;
+  }
+  return retval;
 }
 
 void wm_mark_win_removed(struct wm_window *win);
@@ -318,7 +324,7 @@ int wm_handle_connection_request(struct wm_state *state, struct wm_connection_re
     if(state->windows[0].type == WM_WINDOW_SPRITE) {
       win = wm_add_win_prog(state, conn_req->pid, conn_req->event_mask, &state->windows[0]);
     } else {
-      abort(); // TODO
+      // TODO
       return 1;
     }
   } else {
@@ -464,7 +470,7 @@ void wm_bitblt_prog(struct wm_state *state, struct wm_window_prog *prog) {
   if(prog->alpha) {
     for(unsigned int y = 0; y < sh; y++) {
       size_t fb_offset = ((sy + y) * state->ws.ws_col + sx) * 4;
-      size_t src_offset = y * sw * 4;
+      size_t src_offset = y * prog->width * 4;
       size_t copy_size = sw / 4;
       alpha_blend(&dst[fb_offset],
                   &src[src_offset], copy_size);
@@ -472,7 +478,7 @@ void wm_bitblt_prog(struct wm_state *state, struct wm_window_prog *prog) {
   } else {
     for(unsigned int y = 0; y < prog->height; y++) {
       size_t fb_offset = ((sy + y) * state->ws.ws_col + sx) * 4;
-      size_t src_offset = y * sw * 4;
+      size_t src_offset = y * prog->width * 4;
       size_t copy_size = sw * 4;
       memcpy(&dst[fb_offset],
              &src[src_offset], copy_size);
@@ -499,7 +505,7 @@ void wm_bitblt_sprite(struct wm_state *state, struct wm_window_sprite *sprite) {
                                &sx, &sy, &sw, &sh);
       for (unsigned int y = 0; y < sh; y++) {
         size_t fb_offset = ((sy + y) * state->ws.ws_col + sx) * 4;
-        size_t src_offset = y * sw * 4;
+        size_t src_offset = y * sprite->width * 4;
         size_t copy_size = sw / 4;
         alpha_blend(&dst[fb_offset],
                     &src[src_offset], copy_size);
@@ -711,18 +717,23 @@ int main(int argc, char **argv) {
           }
 
           // request a redraw
-          struct wm_atom redraw_atom = {
-            .type = ATOM_REDRAW_TYPE,
-            .redraw.force_redraw = wm.needs_redraw,
-          };
-          retval = win_write_and_wait(win, &redraw_atom, &respond_atom);
+          if(win->as.prog.bitmapfd != -1) {
+            struct wm_atom redraw_atom = {
+              .type = ATOM_REDRAW_TYPE,
+              .redraw.force_redraw = wm.needs_redraw,
+            };
+            retval = win_write_and_wait(win, &redraw_atom, &respond_atom);
 
-          if (retval == sizeof(struct wm_atom)) {
-            if(respond_atom.type == ATOM_WIN_REFRESH_TYPE) {
-              if(respond_atom.win_refresh.did_redraw)
-                wm.needs_redraw = 1;
+            if (retval == sizeof(struct wm_atom)) {
+              win->as.prog.packet_retries = 0;
+              if(respond_atom.type == ATOM_WIN_REFRESH_TYPE) {
+                if(respond_atom.win_refresh.did_redraw)
+                  wm.needs_redraw = 1;
+              } else {
+                wm_handle_atom(&wm, win, &respond_atom);
+              }
             } else {
-              wm_handle_atom(&wm, win, &respond_atom);
+              win->as.prog.packet_retries++;
             }
           }
           
