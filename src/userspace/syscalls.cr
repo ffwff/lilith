@@ -414,6 +414,7 @@ module Syscall
       sysret(process.pid)
     when SC_SPAWN
       path = try(checked_slice(arg(0), arg(1)))
+      sysret(SYSCALL_ERR) if path.size < 1
       startup_info = checked_pointer(SyscallData::SpawnStartupInfo32, arg(2))
       argv = try(checked_pointer(UInt32, arg(3)))
 
