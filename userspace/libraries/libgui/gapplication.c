@@ -43,6 +43,8 @@ struct g_application *g_application_create(int width, int height, int alpha) {
   app->redraw_cb = 0;
   app->key_cb = 0;
   app->mouse_cb = 0;
+  app->timeout_cb = 0;
+  app->usec_timeout = (useconds_t)-1;
   app->userdata = 0;
   return app;
 }
@@ -59,11 +61,11 @@ void g_application_destroy(struct g_application *app) {
     .type = ATOM_WIN_CLOSE_TYPE
   };
   int retries = 0;
-  const int max_retries = 3;
+  const int max_retries = 5;
   struct wm_atom atom;
   while (wmc_recv_atom(&app->wmc_conn, &atom) >= 0 && retries < max_retries) {
     wmc_send_atom(&app->wmc_conn, &close_atom);
-    wmc_wait_atom(&app->wmc_conn);
+    wmc_wait_atom(&app->wmc_conn, (useconds_t)-1);
     retries++;
   }
   wmc_connection_deinit(&app->wmc_conn);
@@ -155,7 +157,7 @@ int g_application_run(struct g_application *app) {
     while (retries < max_retries) {
       struct wm_atom atom;
       wmc_send_atom(&app->wmc_conn, &obtain_atom);
-      wmc_wait_atom(&app->wmc_conn);
+      wmc_wait_atom(&app->wmc_conn, app->usec_timeout);
       if(wmc_recv_atom(&app->wmc_conn, &atom) == sizeof(struct wm_atom)) {
         if(atom.type == ATOM_RESPOND_TYPE && atom.respond.retval == 1) {
           struct wm_atom respond_atom = {
@@ -307,7 +309,9 @@ int g_application_run(struct g_application *app) {
       }
     }
   wait:
-    wmc_wait_atom(&app->wmc_conn);
+    if(app->timeout_cb)
+      app->timeout_cb(app);
+    wmc_wait_atom(&app->wmc_conn, app->usec_timeout);
   }
   
   g_application_destroy(app);
@@ -418,4 +422,9 @@ void g_application_set_mouse_cb(struct g_application *app, g_mouse_cb cb) {
 
 void g_application_set_close_cb(struct g_application *app, g_close_cb cb) {
   app->close_cb = cb;
+}
+
+void g_application_set_timeout_cb(struct g_application *app, useconds_t usec, g_timeout_cb cb) {
+  app->usec_timeout = usec;
+  app->timeout_cb = cb;
 }

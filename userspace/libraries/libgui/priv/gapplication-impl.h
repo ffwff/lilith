@@ -24,6 +24,8 @@ struct g_application {
   g_key_cb key_cb;
   g_mouse_cb mouse_cb;
   g_close_cb close_cb;
+  g_timeout_cb timeout_cb;
+  useconds_t usec_timeout;
 
   void *userdata;
   int running;

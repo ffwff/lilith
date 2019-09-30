@@ -62,7 +62,7 @@ struct wm_state {
   int window_closed;
 };
 
-#define MAX_PACKET_RETRIES 24
+#define MAX_PACKET_RETRIES 64
 
 struct wm_window_prog {
   pid_t pid;

@@ -2,6 +2,7 @@
 
 struct g_application;
 typedef int (*g_redraw_cb)(struct g_application *app);
+typedef void (*g_timeout_cb)(struct g_application *app);
 typedef int (*g_key_cb)(struct g_application *app, int ch);
 typedef int (*g_mouse_cb)(struct g_application *app,
   unsigned int x, unsigned int y,
@@ -37,6 +38,10 @@ void g_application_set_redraw_cb(struct g_application *app, g_redraw_cb cb);
 void g_application_set_key_cb(struct g_application *app, g_key_cb cb);
 void g_application_set_mouse_cb(struct g_application *app, g_mouse_cb cb);
 void g_application_set_close_cb(struct g_application *app, g_close_cb cb);
+void g_application_set_timeout_cb(struct g_application *app, useconds_t usec, g_timeout_cb cb);
+static inline void g_application_clear_timeout(struct g_application *app) {
+  g_application_set_timeout_cb(app, (useconds_t)-1, 0);
+}
 
 unsigned int g_application_event_mask(struct g_application *app);
 void g_application_set_event_mask(struct g_application *app, unsigned int event_mask);

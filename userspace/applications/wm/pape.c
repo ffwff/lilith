@@ -14,6 +14,7 @@
 #define min(x,y) ((x)<(y)?(x):(y))
 
 struct pape_state {
+  int drawn_rows;
   int drawn;
   int width, height;
   png_structp png_ptr;
@@ -22,6 +23,7 @@ struct pape_state {
 };
 
 static void pape_init(struct pape_state *state) {
+  state->drawn_rows = 0;
   state->drawn = 0;
   state->width = 0;
   state->height = 0;
@@ -79,23 +81,32 @@ static void pape_init_img(struct pape_state *state, char *path) {
   png_read_update_info(png_ptr, info_ptr);
 }
 
-static int pape_redraw(struct g_application *app) {
+static void pape_redraw(struct g_application *app) {
   struct canvas_ctx *ctx = g_application_ctx(app);
   struct pape_state *state = (struct pape_state *)g_application_userdata(app);
   
   const int width = canvas_ctx_get_width(ctx);
   const int max_height = canvas_ctx_get_height(ctx);
+  const int height = min(state->height, max_height);
   
-  if(!state->drawn) {
+  if(state->drawn_rows < height) {
     unsigned char *dst = canvas_ctx_get_surface(ctx);
-    for(int y = 0; y < min(state->height, max_height); y++) {
-      png_read_row(state->png_ptr, state->row, 0);
-      memcpy(&dst[y * width * 4], state->row, state->width * 4);
-    }
+    png_read_row(state->png_ptr, state->row, 0);
+    memcpy(&dst[state->drawn_rows * width * 4], state->row, state->width * 4);
+    state->drawn_rows++;
+  } else if (state->drawn_rows == height) {
+    g_application_clear_timeout(app);
     state->drawn = 1;
   }
+}
 
-  return 1;
+static int window_redraw(struct g_application *app) {
+  struct pape_state *state = (struct pape_state *)g_application_userdata(app);
+  if(state->drawn) {
+    state->drawn = 0;
+    return 1;
+  }
+  return 0;
 }
 
 int main(int argc, char **argv) {
@@ -109,6 +120,7 @@ int main(int argc, char **argv) {
   pape_init_img(&state, argv[1]);
   
   struct g_application *app = g_application_create(1, 1, 0);
+  g_application_set_timeout_cb(app, 0, pape_redraw);
   g_application_set_event_mask(app, 0);
   g_application_set_window_properties(app, WM_PROPERTY_ROOT);
   g_application_set_userdata(app, &state);
@@ -116,6 +128,6 @@ int main(int argc, char **argv) {
   g_application_screen_size(app, &width, &height);
   g_application_resize(app, width, height);
   
-  g_application_set_redraw_cb(app, pape_redraw);
+  g_application_set_redraw_cb(app, window_redraw);
   return g_application_run(app);
 }
