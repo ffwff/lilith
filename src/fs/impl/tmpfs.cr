@@ -201,6 +201,10 @@ private class TmpFSNode < VFSNode
         @npages += 1
       end
     elsif size < @size
+      if @mmap_count > 0
+        Serial.puts "pipefs: can't truncate if mmapd"
+        return @size
+      end
       @size = size
       while @npages > new_npages
         pop_frame
