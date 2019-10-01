@@ -62,7 +62,7 @@ struct wm_state {
   int window_closed;
 };
 
-#define MAX_PACKET_RETRIES 64
+#define MAX_PACKET_RETRIES 1024
 
 struct wm_window_prog {
   pid_t pid;
@@ -170,6 +170,24 @@ void wm_handle_atom(struct wm_state *state,
     case ATOM_MOVE_TYPE: {
       prog->x = atom->move.x;
       prog->y = atom->move.y;
+      state->needs_redraw = 1;
+      break;
+    }
+    case ATOM_RESIZE_TYPE: {
+      struct wm_atom respond_atom;
+      if(prog->bitmapfd == -1) {
+        return;
+      }
+      if(prog->bitmap) {
+        munmap(prog->bitmap);
+      }
+
+      size_t size = atom->resize.width * atom->resize.height * 4;
+      ftruncate(prog->bitmapfd, size);
+      prog->bitmap = mmap(prog->bitmapfd, (size_t)-1);
+
+      prog->width = atom->resize.width;
+      prog->height = atom->resize.height;
       state->needs_redraw = 1;
       break;
     }
@@ -583,8 +601,8 @@ int main(int argc, char **argv) {
 
   // spawn desktop
   {
-    char *spawn_argv[] = {"desktop", NULL};
-    spawnv("desktop", (char **)spawn_argv);
+    char *spawn_argv[] = {"cterm", NULL};
+    spawnv("cterm", (char **)spawn_argv);
   }
 
   while(1) {

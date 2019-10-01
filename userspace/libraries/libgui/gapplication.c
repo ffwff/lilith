@@ -261,7 +261,6 @@ int g_application_run(struct g_application *app) {
             g_application_resize(app,
                             app->sprite.width + atom.mouse_event.delta_x,
                             app->sprite.height + atom.mouse_event.delta_y);
-            needs_redraw = g_application_redraw(app);
           } else {
             int changed = 0;
             if(!(atom.mouse_event.delta_x < 0 && app->sprite.x < -atom.mouse_event.delta_x)) {
@@ -366,13 +365,37 @@ int g_application_height(struct g_application *app) {
 }
 
 void g_application_resize(struct g_application *app, int width, int height) {
-  canvas_ctx_resize_buffer(app->ctx, width, height);
-  app->sprite.source = (unsigned int *)canvas_ctx_get_surface(app->ctx);
-  app->sprite.width = width;
-  app->sprite.height = height;
-  if(app->main_widget) {
-    g_widget_move_resize(app->main_widget, 0, 0, width, height);
+  munmap(app->bitmap);
+
+  struct wm_atom resize_atom = {
+    .type = ATOM_RESIZE_TYPE,
+    .resize = (struct wm_atom_resize){
+      .width = width,
+      .height = height,
+    },
+  };
+  int retries = 0;
+  const int max_retries = 5;
+  while (retries < max_retries) {
+    wmc_send_atom(&app->wmc_conn, &resize_atom);
+    wmc_wait_atom(&app->wmc_conn, (useconds_t)-1);
+    
+    size_t expected_size = width * height * 4;
+    size_t seek_size = lseek(app->bitmapfd, 0, SEEK_END);
+    if(seek_size == expected_size) {
+      app->bitmap = mmap(app->bitmapfd, (size_t)-1);
+      canvas_ctx_resize_buffer(app->ctx, width, height);
+      app->sprite.source = (unsigned int *)canvas_ctx_get_surface(app->ctx);
+      app->sprite.width = width;
+      app->sprite.height = height;
+      if(app->main_widget) {
+        g_widget_move_resize(app->main_widget, 0, 0, width, height);
+      }
+      return;
+    }
+    retries++;
   }
+  app->bitmap = mmap(app->bitmapfd, (size_t)-1);
 }
 
 void g_application_set_event_mask(struct g_application *app, unsigned int event_mask) {
