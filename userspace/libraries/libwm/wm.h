@@ -4,10 +4,10 @@
 
 /* Connection request */
 struct wm_connection_request {
-    pid_t pid;
-    unsigned int event_mask;
-    unsigned int properties;
-};
+  pid_t pid;
+  unsigned int event_mask;
+  unsigned int properties;
+} __attribute__((packed));
 
 #define WM_PROPERTY_NO_FOCUS   (1 << 0)
 #define WM_PROPERTY_ROOT       (1 << 1)
@@ -16,68 +16,74 @@ struct wm_connection_request {
 
 // Create
 struct wm_atom_win_create {
-    unsigned int width, height;
-    int alpha;
-};
+  unsigned int width, height;
+  int alpha;
+} __attribute__((packed));
 
 // Move
 
 struct wm_atom_move {
-    unsigned int x;
-    unsigned int y;
-};
+  unsigned int x, y;
+} __attribute__((packed));
+
+// Resize
+
+struct wm_atom_resize {
+  unsigned int width, height;
+} __attribute__((packed));
 
 // Redraw
 
 struct wm_atom_redraw {
-    int force_redraw;
-};
+  int force_redraw;
+} __attribute__((packed));
 
 // Response
 
 struct wm_atom_respond {
-    int retval;
-};
+  int retval;
+} __attribute__((packed));
 
 // Refresh
 
 struct wm_atom_win_refresh {
-    int did_redraw;
-};
+  int did_redraw;
+} __attribute__((packed));
 
 // Mouse event
 enum wm_atom_mouse_event_type {
-    WM_MOUSE_RELEASE = 0,
-    WM_MOUSE_PRESS = 1,
+  WM_MOUSE_RELEASE = 0,
+  WM_MOUSE_PRESS = 1,
 };
 
 struct wm_atom_mouse_event {
-    enum wm_atom_mouse_event_type type;
-    unsigned int x, y;
-    int delta_x, delta_y;
-};
+  enum wm_atom_mouse_event_type type;
+  unsigned int x, y;
+  int delta_x, delta_y;
+} __attribute__((packed));
 
 // Keyboard event
 
 struct wm_atom_keyboard_event {
-    int ch;
-    int modifiers;
-};
+  int ch;
+  int modifiers;
+} __attribute__((packed));
 
 // Query
 
 struct wm_atom {
-    int type;
-    union {
-        struct wm_atom_redraw redraw;
-        struct wm_atom_move move;
-        struct wm_atom_respond respond;
-        struct wm_atom_mouse_event mouse_event;
-        struct wm_atom_keyboard_event keyboard_event;
-        struct wm_atom_win_refresh win_refresh;
-        struct wm_atom_win_create win_create;
-    };
-};
+  int type;
+  union {
+      struct wm_atom_redraw redraw;
+      struct wm_atom_move move;
+      struct wm_atom_resize resize;
+      struct wm_atom_respond respond;
+      struct wm_atom_mouse_event mouse_event;
+      struct wm_atom_keyboard_event keyboard_event;
+      struct wm_atom_win_refresh win_refresh;
+      struct wm_atom_win_create win_create;
+  };
+} __attribute__((packed));
 
 #define ATOM_REDRAW_TYPE           0
 #define ATOM_RESPOND_TYPE          1
@@ -87,6 +93,7 @@ struct wm_atom {
 #define ATOM_WIN_REFRESH_TYPE      5
 #define ATOM_WIN_CREATE_TYPE       6
 #define ATOM_WIN_CLOSE_TYPE        7
+#define ATOM_RESIZE_TYPE           8
 
 #define ATOM_REDRAW_MASK            (1 << ATOM_REDRAW_TYPE)
 #define ATOM_RESPOND_MASK           (1 << ATOM_RESPOND_TYPE)
@@ -97,24 +104,24 @@ struct wm_atom {
 #define ATOM_SCREEN_QUERY_TYPE_MASK (1 << ATOM_SCREEN_QUERY_TYPE)
 
 static inline int wm_atom_eq(struct wm_atom *a, struct wm_atom *b) {
-    if(a->type != b->type)
-        return 0;
-    switch(a->type) {
-        case ATOM_REDRAW_TYPE: {
-            return 1;
-        }
-        case ATOM_RESPOND_TYPE: {
-            return a->respond.retval == b->respond.retval;
-        }
-        case ATOM_MOVE_TYPE: {
-            return a->move.x == b->move.x &&
-                   a->move.y == b->move.y;
-        }
-        case ATOM_MOUSE_EVENT_TYPE: {
-            return a->mouse_event.type == b->mouse_event.type &&
-                   a->mouse_event.x == b->mouse_event.x &&
-                   a->mouse_event.y == b->mouse_event.y;
-        }
+  if(a->type != b->type)
+      return 0;
+  switch(a->type) {
+    case ATOM_REDRAW_TYPE: {
+      return 1;
     }
-    return 0;
+    case ATOM_RESPOND_TYPE: {
+      return a->respond.retval == b->respond.retval;
+    }
+    case ATOM_MOVE_TYPE: {
+      return a->move.x == b->move.x &&
+             a->move.y == b->move.y;
+    }
+    case ATOM_MOUSE_EVENT_TYPE: {
+      return a->mouse_event.type == b->mouse_event.type &&
+             a->mouse_event.x == b->mouse_event.x &&
+             a->mouse_event.y == b->mouse_event.y;
+    }
+  }
+  return 0;
 }
