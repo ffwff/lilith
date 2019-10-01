@@ -365,6 +365,16 @@ int g_application_height(struct g_application *app) {
 }
 
 void g_application_resize(struct g_application *app, int width, int height) {
+  if(!app->bitmap) {
+    canvas_ctx_resize_buffer(app->ctx, width, height);
+    app->sprite.source = (unsigned int *)canvas_ctx_get_surface(app->ctx);
+    app->sprite.width = width;
+    app->sprite.height = height;
+    if(app->main_widget) {
+      g_widget_move_resize(app->main_widget, 0, 0, width, height);
+    }
+    return;
+  }
   munmap(app->bitmap);
 
   struct wm_atom resize_atom = {
