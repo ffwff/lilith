@@ -232,8 +232,7 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
     end
   else
     dump_frame(frame)
-    while true
-    end
-    # panic "unhandled cpu exception: ", frame.value.int_no, ' ', errcode, '\n'
+    Serial.puts "unhandled cpu exception: ", frame.value.int_no, ' ', errcode, '\n'
+    while true; end
   end
 end
