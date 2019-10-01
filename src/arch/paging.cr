@@ -340,6 +340,7 @@ module Paging
     pt = Pointer(PageStructs::PageTable).new(mt_addr pd.value.tables[table_idx])
     
     pt.value.pages[page_idx] = 0u64
+    asm("invlpg ($0)" :: "r"(virt_addr) : "memory")
 
     true
   end
