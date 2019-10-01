@@ -1,8 +1,6 @@
 DRIVER_CODE_SELECTOR = 0x29
 DRIVER_DATA_SELECTOR = 0x31
 
-USER_RFLAGS = 0x212
-
 .section .text
 .global ksyscall_setup
 ksyscall_setup:
