@@ -530,14 +530,16 @@ module Multiprocessing
     def to_s(io)
       io.puts "Process {\n"
       io.puts " pid: ", @pid, ", \n"
-      io.puts " status: ", @status, ", \n"
+      io.puts " name: ", @name, ", \n"
+      io.puts " status: ", @sched_data.not_nil!.status, ", \n"
       io.puts " initial_sp: ", Pointer(Void).new(@initial_sp), ", \n"
       io.puts " initial_ip: ", Pointer(Void).new(@initial_ip), ", \n"
       io.puts "}"
     end
 
     protected def unawait
-      @status = Multiprocessing::Scheduler::ProcessData::Status::Normal
+      @sched_data.not_nil!.status =
+        Multiprocessing::Scheduler::ProcessData::Status::Normal
       @udata.not_nil!.wait_object = nil
       @udata.not_nil!.wait_usecs = 0u32
     end
