@@ -312,7 +312,7 @@ module Gc
   end
 
   def unsafe_malloc(size : USize, atomic = false)
-    DriverThread.assert_unlocked
+    Multiprocessing::DriverThread.assert_unlocked
 
     if @@enabled
       @@cycles_per_alloc.times do |i|

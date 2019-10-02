@@ -144,7 +144,7 @@ module KernelArena
 
   # manual functions
   def malloc(sz : USize) : USize
-    DriverThread.assert_unlocked
+    Multiprocessing::DriverThread.assert_unlocked
     
     panic "only supports sizes of <= 1024" if sz > 1024
     pool_size = max(32u64, sz.nearest_power_of_2.to_usize)
