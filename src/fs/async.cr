@@ -165,7 +165,7 @@ class VFSQueue
       @last_msg.get.not_nil!.next_msg.set(msg)
       @last_msg.set(msg)
     end
-    unless @wake_process.nil?
+    if @wake_process
       @wake_process.not_nil!.sched_data.status =
         Multiprocessing::Scheduler::ProcessData::Status::Normal
     end

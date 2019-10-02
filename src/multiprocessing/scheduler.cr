@@ -28,7 +28,12 @@ module Multiprocessing
         Sleep
       end
       @status = Status::Normal
-      property status
+      getter status
+      
+      def status=(s)
+        breakpoint if process.pid == 4 && s == Status::WaitIo
+        @status = s
+      end
     
       def initialize(@process : Multiprocessing::Process)
       end
@@ -67,10 +72,14 @@ module Multiprocessing
       if data.prev_data
         data.prev_data.not_nil!.next_data = data.next_data
       end
+      if data.process == @@current_process
+        get_next_process
+      end
     end
 
     private def can_switch(data)
       process = data.process
+      Serial.puts "next_process: ", process, '\n'
       case data.status
       when ProcessData::Status::Normal
         true
@@ -157,11 +166,11 @@ module Multiprocessing
       if cur.nil?
         cur = @@first_data
         while !cur.nil? && !can_switch(cur.not_nil!)
-          cur = cur.not_nil!.next_data
+          cur = cur.next_data
           break if cur == sched_data.prev_data
         end
       end
-      if cur
+      unless cur.nil?
         @@current_process = cur.not_nil!.process
       end
     end
@@ -174,10 +183,14 @@ module Multiprocessing
         current_process.sched_data.status = ProcessData::Status::Normal
       end
 
+      Serial.puts Multiprocessing.pids, "-------------\n"
+      # breakpoint if Multiprocessing.pids == 5
       next_process = get_next_process
+      Serial.puts "curr process: ", next_process, '\n'
       
       if next_process.nil?
         # halt the processor in pid 0
+        @@current_process = @@first_data.not_nil!.process
         rsp = Gdt.stack
         asm("mov $0, %rsp
              mov %rsp, %rbp
