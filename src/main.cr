@@ -9,9 +9,7 @@ require "./arch/paging.cr"
 require "./arch/multiboot.cr"
 require "./arch/cpuid.cr"
 require "./alloc/*"
-require "./userspace/syscalls.cr"
-require "./userspace/process.cr"
-require "./userspace/elf.cr"
+require "./multiprocessing/*"
 
 lib Kernel
   fun ksyscall_setup
@@ -72,12 +70,6 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Gdt.stack = Kernel.stack_end
   Gdt.flush_tss
   Kernel.ksyscall_setup
-
-  idle_process = Multiprocessing::Process.new(nil) do |process|
-    process.initial_sp = Kernel.stack_end.address
-    process.initial_ip = 0u64
-    true
-  end
 
   # hardware
   # pci

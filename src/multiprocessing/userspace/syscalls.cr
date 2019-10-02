@@ -42,15 +42,15 @@ module Syscall
 
   def lock
     Idt.status_mask = true
-    if Multiprocessing.current_process.not_nil!.kernel_process?
-      DriverThread.unlock
+    if Multiprocessing::Scheduler.current_process.not_nil!.kernel_process?
+      Multiprocessing::DriverThread.unlock
     end
   end
 
   def unlock
     Idt.status_mask = false
-    if Multiprocessing.current_process.not_nil!.kernel_process?
-      DriverThread.lock
+    if Multiprocessing::Scheduler.current_process.not_nil!.kernel_process?
+      Multiprocessing::DriverThread.lock
     end
   end
 
@@ -205,7 +205,7 @@ module Syscall
 
   @[AlwaysInline]
   def handler(frame : SyscallData::Registers*)
-    process = Multiprocessing.current_process.not_nil!
+    process = Multiprocessing::Scheduler.current_process.not_nil!
     if process.kernel_process?
       case fv.rax
       when SC_MMAP_DRV
@@ -225,8 +225,8 @@ module Syscall
         process = Multiprocessing::Process.spawn_user(initial_ip, heap_start, udata, mmap_list)
         fv.rax = process.pid
       when SC_SLEEP
-        process.status = Multiprocessing::Process::Status::WaitIo
-        Multiprocessing.switch_process(frame)
+        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
+        Multiprocessing::Scheduler.switch_process(frame)
       else
         sysret(SYSCALL_ERR)
       end
@@ -279,15 +279,15 @@ module Syscall
       result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
       case result
       when VFS_WAIT_NO_ENQUEUE
-        process.status = Multiprocessing::Process::Status::WaitIo
-        Multiprocessing.switch_process(frame)
+        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
+        Multiprocessing::Scheduler.switch_process(frame)
       when VFS_WAIT
         vfs_node = fd.not_nil!.node.not_nil!
         vfs_node.fs.queue.not_nil!
           .enqueue(VFSMessage.new(VFSMessage::Type::Read,
             str, process, fd, vfs_node))
-        process.status = Multiprocessing::Process::Status::WaitIo
-        Multiprocessing.switch_process(frame)
+        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
+        Multiprocessing::Scheduler.switch_process(frame)
       else
         if result > 0
           fd.offset += result
@@ -305,15 +305,15 @@ module Syscall
       result = fd.not_nil!.node.not_nil!.write(str, fd.offset, process)
       case result
       when VFS_WAIT_NO_ENQUEUE
-        process.status = Multiprocessing::Process::Status::WaitIo
-        Multiprocessing.switch_process(frame)
+        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
+        Multiprocessing::Scheduler.switch_process(frame)
       when VFS_WAIT
         vfs_node = fd.not_nil!.node.not_nil!
         vfs_node.fs.queue.not_nil!
           .enqueue(VFSMessage.new(VFSMessage::Type::Write,
             str, process, fd, vfs_node))
-        process.status = Multiprocessing::Process::Status::WaitIo
-        Multiprocessing.switch_process(frame)
+        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
+        Multiprocessing::Scheduler.switch_process(frame)
       else
         if result > 0
           fd.offset += result
@@ -352,10 +352,10 @@ module Syscall
         sysret(0)
       elsif fds.size == 1
         fd = try(pudata.get_fd(fds[0]))
-        process.status = Multiprocessing::Process::Status::WaitFd
+        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
         pudata.wait_object = fd
         pudata.wait_usecs = timeout
-        Multiprocessing.switch_process(frame)
+        Multiprocessing::Scheduler.switch_process(frame)
       end
       
       waitfds = GcArray(FileDescriptor).new 0
@@ -367,10 +367,10 @@ module Syscall
         waitfds.push fd
       end
       
-      process.status = Multiprocessing::Process::Status::WaitFd
+      process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
       pudata.wait_object = waitfds
       pudata.wait_usecs = timeout
-      Multiprocessing.switch_process(frame)
+      Multiprocessing::Scheduler.switch_process(frame)
     # directories
     when SC_READDIR
       fd = try(pudata.get_fd(arg(0).to_i32))
@@ -479,8 +479,8 @@ module Syscall
         when VFS_WAIT
           vfs_node.fs.queue.not_nil!
             .enqueue(VFSMessage.new(udata, vfs_node, process))
-          process.status = Multiprocessing::Process::Status::WaitIo
-          Multiprocessing.switch_process(frame)
+          process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
+          Multiprocessing::Scheduler.switch_process(frame)
         else
           sysret(retval)
         end
@@ -506,9 +506,9 @@ module Syscall
           sysret(SYSCALL_ERR)
         else
           fv.rax = pid
-          process.status = Multiprocessing::Process::Status::WaitProcess
+          process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitProcess
           pudata.wait_object = cprocess
-          Multiprocessing.switch_process(frame)
+          Multiprocessing::Scheduler.switch_process(frame)
         end
       end
     when SC_TIME
@@ -521,18 +521,18 @@ module Syscall
       if timeout == 0
         return
       elsif timeout == 0xFFFF_FFFFu32
-        process.status = Multiprocessing::Process::Status::WaitIo
+        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
       else
-        process.status = Multiprocessing::Process::Status::Sleep
+        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::Sleep
         pudata.wait_usecs = timeout
       end
-      Multiprocessing.switch_process(frame)
+      Multiprocessing::Scheduler.switch_process(frame)
     when SC_GETENV
       # TODO
     when SC_SETENV
       # TODO
     when SC_EXIT
-      Multiprocessing.switch_process_and_terminate
+      Multiprocessing::Scheduler.switch_process_and_terminate
     # working directory
     when SC_GETCWD
       str = try(checked_slice(arg(0), arg(1)))

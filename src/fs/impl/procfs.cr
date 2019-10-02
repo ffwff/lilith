@@ -102,7 +102,7 @@ class ProcFSProcessNode < VFSNode
   end
   
   def remove : Int32
-    return VFS_ERR if @process.status == Multiprocessing::Process::Status::Removed
+    return VFS_ERR if @process.removed?
     @process.remove false
     @parent.remove_child self
     VFS_OK
@@ -154,7 +154,7 @@ class ProcFSProcessStatusNode < VFSNode
     SliceWriter.fwrite? writer, pp.name.not_nil!
     SliceWriter.fwrite? writer, "\n"
     SliceWriter.fwrite? writer, "State: "
-    SliceWriter.fwrite? writer, pp.status
+    SliceWriter.fwrite? writer, pp.sched_data.status
     SliceWriter.fwrite? writer, "\n"
      
     writer.offset

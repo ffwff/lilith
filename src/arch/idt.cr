@@ -95,7 +95,7 @@ module Idt
 
     # cpu exception handlers
     {% for i in 0..31 %}
-      init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
+      # init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
     {% end %}
 
     # hw interrupts
@@ -171,9 +171,9 @@ fun kirq_handler(frame : IdtData::Registers*)
     end
   end
 
-  if frame.value.int_no == 0 && Multiprocessing.n_process > 1
+  if frame.value.int_no == 0
     # preemptive multitasking...
-    Multiprocessing.switch_process(frame)
+    Multiprocessing::Scheduler.switch_process(frame)
   end
 end
 
@@ -198,6 +198,7 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
   errcode = frame.value.errcode
   case frame.value.int_no
   when EX_PAGEFAULT
+  {% if false %}
     faulting_address = 0u64
     asm("mov %cr2, $0" : "=r"(faulting_address) :: "volatile")
 
@@ -230,6 +231,7 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
         Multiprocessing.switch_process_and_terminate
       end
     end
+  {% end %}
   else
     dump_frame(frame)
     Serial.puts "unhandled cpu exception: ", frame.value.int_no, ' ', errcode, '\n'
