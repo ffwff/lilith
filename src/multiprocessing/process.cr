@@ -534,6 +534,9 @@ module Multiprocessing
       io.puts " status: ", @sched_data.not_nil!.status, ", \n"
       io.puts " initial_sp: ", Pointer(Void).new(@initial_sp), ", \n"
       io.puts " initial_ip: ", Pointer(Void).new(@initial_ip), ", \n"
+      if @frame
+        io.puts " ip: ", Pointer(Void).new(@frame.not_nil!.to_unsafe.value.rip), ", \n"
+      end
       io.puts "}"
     end
 
