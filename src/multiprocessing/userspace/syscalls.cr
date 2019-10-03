@@ -206,6 +206,7 @@ module Syscall
   @[AlwaysInline]
   def handler(frame : SyscallData::Registers*)
     process = Multiprocessing::Scheduler.current_process.not_nil!
+    # Serial.puts "syscall ", fv.rax, " from ", Multiprocessing::Scheduler.current_process.not_nil!.pid, "\n"
     if process.kernel_process?
       case fv.rax
       when SC_MMAP_DRV
