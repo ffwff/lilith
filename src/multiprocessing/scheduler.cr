@@ -229,7 +229,7 @@ module Multiprocessing
       if @@current_process.nil?
         @@current_process = get_next_process
         if @@current_process.nil?
-          halt_processor_on_context_switch
+          halt_processor
         end
         next_process = @@current_process.not_nil!
         context_switch_to_process(next_process)
