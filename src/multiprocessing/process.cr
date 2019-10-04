@@ -1,5 +1,4 @@
-require "./file_descriptor.cr"
-require "./mmap_list.cr"
+require "./userspace/*"
 require "./driver_thread.cr"
 
 private lib Kernel
@@ -31,20 +30,12 @@ module Multiprocessing
 
   FXSAVE_SIZE = 512u64
 
-  @@current_process : Process? = nil
-
-  def current_process
-    @@current_process
-  end
-
-  def current_process=(@@current_process); end
-
   @@first_process : Process? = nil
   mod_property first_process
   @@last_process : Process? = nil
   mod_property last_process
 
-  @@pids = 0
+  @@pids = 1
   mod_property pids
   @@n_process = 0
   mod_property n_process
@@ -104,20 +95,11 @@ module Multiprocessing
     # FIXME: fxsave_region is manually allocated to save memory
     @fxsave_region = Pointer(UInt8).null
     getter fxsave_region
-
-    # status
-    enum Status
-      Removed
-      Normal
-      Running
-      WaitIo
-      WaitProcess
-      WaitFd
-      Sleep
+    
+    @sched_data : Scheduler::ProcessData? = nil
+    def sched_data
+      @sched_data.not_nil!
     end
-
-    @status = Status::Normal
-    property status
 
     # user-mode process data
     class UserData
@@ -239,27 +221,21 @@ module Multiprocessing
 
       Idt.disable
 
-      if @pid != 0
-        @fxsave_region = Pointer(UInt8).mmalloc(FXSAVE_SIZE)
-        memcpy(@fxsave_region, Multiprocessing.fxsave_region_base, FXSAVE_SIZE)
-      end
+      @fxsave_region = Pointer(UInt8).mmalloc(FXSAVE_SIZE)
+      memcpy(@fxsave_region, Multiprocessing.fxsave_region_base, FXSAVE_SIZE)
 
       # create vmm map and save old vmm map
       last_pg_struct = Pointer(PageStructs::PageDirectoryPointerTable).null
-      if @pid != 0
-        page_struct = Paging.alloc_process_pdpt
-        if kernel_process?
-          last_pg_struct = Paging.current_kernel_pdpt
-          Paging.current_kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_struct
-        else
-          last_pg_struct = Paging.current_pdpt
-          Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_struct
-        end
-        Paging.flush
-        @phys_pg_struct = page_struct
+      page_struct = Paging.alloc_process_pdpt
+      if kernel_process?
+        last_pg_struct = Paging.current_kernel_pdpt
+        Paging.current_kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_struct
       else
-        @phys_pg_struct = 0u64
+        last_pg_struct = Paging.current_pdpt
+        Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_struct
       end
+      Paging.flush
+      @phys_pg_struct = page_struct
 
       # setup process
       unless yield self
@@ -301,12 +277,15 @@ module Multiprocessing
       if Multiprocessing.procfs
         Multiprocessing.procfs.not_nil!.root.not_nil!.create_for_process(self)
       end
+      
+      # append to scheduler
+      @sched_data = Scheduler.append_process self
 
       Idt.enable
     end
 
     def initial_switch
-      Multiprocessing.current_process = self
+      Multiprocessing::Scheduler.current_process = self
       panic "page dir is nil" if @phys_pg_struct == 0
       if kernel_process?
         DriverThread.lock
@@ -467,6 +446,7 @@ module Multiprocessing
 
     # deinitialize
     def remove(remove_proc? = true)
+      Serial.puts "remove ", @pid, '\n'
       Multiprocessing.n_process -= 1
       @prev_process.not_nil!.next_process = @next_process
       if @next_process.nil?
@@ -490,11 +470,17 @@ module Multiprocessing
       @frame = nil
       @prev_process = nil
       @next_process = nil
-      @status = Status::Removed
+      # remove from scheduler
+      Scheduler.remove_process self
+      @sched_data = nil
       # remove from procfs
       if !Multiprocessing.procfs.nil? && remove_proc?
         Multiprocessing.procfs.not_nil!.root.not_nil!.remove_for_process(self)
       end
+    end
+    
+    def removed?
+      @sched_data.nil?
     end
 
     # write address to page without switching tlb to the process' pdpt
@@ -545,122 +531,21 @@ module Multiprocessing
     def to_s(io)
       io.puts "Process {\n"
       io.puts " pid: ", @pid, ", \n"
-      io.puts " status: ", @status, ", \n"
+      io.puts " name: ", @name, ", \n"
+      io.puts " status: ", @sched_data.not_nil!.status, ", \n"
       io.puts " initial_sp: ", Pointer(Void).new(@initial_sp), ", \n"
       io.puts " initial_ip: ", Pointer(Void).new(@initial_ip), ", \n"
+      if @frame
+        io.puts " ip: ", Pointer(Void).new(@frame.not_nil!.to_unsafe.value.rip), ", \n"
+      end
       io.puts "}"
     end
 
     protected def unawait
-      @status = Multiprocessing::Process::Status::Normal
+      @sched_data.not_nil!.status =
+        Multiprocessing::Scheduler::ProcessData::Status::Normal
       @udata.not_nil!.wait_object = nil
       @udata.not_nil!.wait_usecs = 0u32
-    end
-  end
-
-  private def can_switch(process)
-    case process.status
-    when Multiprocessing::Process::Status::Normal
-      true
-    when Multiprocessing::Process::Status::Removed
-      false
-    when Multiprocessing::Process::Status::WaitIo
-      false
-    when Multiprocessing::Process::Status::WaitProcess
-      wait_object = process.udata.wait_object
-      case wait_object
-      when Process
-        if wait_object.as(Process).status == Multiprocessing::Process::Status::Removed
-          process.unawait
-          true
-        end
-        false
-      when Nil
-        process.unawait
-        true
-      end
-    when Multiprocessing::Process::Status::WaitFd
-      wait_object = process.udata.wait_object
-      case wait_object
-      when GcArray(FileDescriptor)
-        if process.udata.wait_usecs != 0xFFFF_FFFFu32
-          if process.udata.wait_usecs <= Pit::USECS_PER_TICK
-            process.frame.not_nil!.to_unsafe.value.rax = 0
-            process.unawait
-            return true
-          else
-            process.udata.wait_usecs -= Pit::USECS_PER_TICK
-          end
-        end
-        fds = wait_object.as(GcArray(FileDescriptor))
-        fds.each do |fd|
-          fd = fd.not_nil!
-          if fd.node.not_nil!.available?
-            process.frame.not_nil!.to_unsafe.value.rax = fd.idx
-            process.unawait
-            return true
-          end
-        end
-        false
-      when FileDescriptor
-        if process.udata.wait_usecs != 0xFFFF_FFFFu32
-          if process.udata.wait_usecs <= Pit::USECS_PER_TICK
-            process.frame.not_nil!.to_unsafe.value.rax = 0
-            process.unawait
-            return true
-          else
-            process.udata.wait_usecs -= Pit::USECS_PER_TICK
-          end
-        end
-        fd = wait_object.as(FileDescriptor)
-        if fd.node.not_nil!.available?
-          process.frame.not_nil!.to_unsafe.value.rax = fd.idx
-          process.unawait
-          true
-        else
-          false
-        end
-      when Nil
-        process.unawait
-        true
-      end
-    when Multiprocessing::Process::Status::Sleep
-      if process.udata.wait_usecs <= Pit::USECS_PER_TICK
-        process.unawait
-        true
-      else
-        process.udata.wait_usecs -= Pit::USECS_PER_TICK
-        false
-      end
-    end
-  end
-
-  # round robin scheduling algorithm
-  def next_process : Process?
-    if @@current_process.nil?
-      return @@current_process = @@first_process
-    end
-    process = @@current_process.not_nil!
-    # look from middle to end
-    cur = process.next_process
-    while !cur.nil? && !can_switch(cur.not_nil!)
-      cur = cur.next_process
-    end
-    @@current_process = cur
-    # look from start to middle
-    if @@current_process.nil?
-      cur = @@first_process.not_nil!.next_process
-      while !cur.nil? && !can_switch(cur.not_nil!)
-        cur = cur.not_nil!.next_process
-        break if cur == process.prev_process
-      end
-      @@current_process = cur
-    end
-    if @@current_process.nil? || !can_switch(@@current_process.not_nil!)
-      # no tasks left, use idle
-      @@current_process = @@first_process
-    else
-      @@current_process
     end
   end
 
@@ -672,91 +557,6 @@ module Multiprocessing
             : "{rax}"(SC_SLEEP)
             : "cc", "memory", "{rcx}", "{r11}", "{rdi}", "{rsi}")
     retval
-  end
-
-  # context switch
-  private def switch_process_save_and_load(remove = false, &block)
-    # get next process
-    current_process = Multiprocessing.current_process.not_nil!
-    if remove
-      current_process.status = Process::Status::Removed
-    elsif current_process.status == Process::Status::Running
-      current_process.status = Process::Status::Normal
-    end
-    next_process = Multiprocessing.next_process.not_nil!
-    next_process.status = Process::Status::Running
-    Multiprocessing.current_process = next_process
-    current_process.remove if remove
-
-    # save current process' state
-    if current_process.pid != 0 && !remove
-      yield current_process
-      unless current_process.fxsave_region.null?
-        memcpy current_process.fxsave_region, Multiprocessing.fxsave_region, FXSAVE_SIZE
-      end
-    end
-
-    if next_process.pid == 0
-      # halt the processor in pid 0
-      rsp = Gdt.stack
-      asm("mov $0, %rsp
-           mov %rsp, %rbp
-           sti" :: "r"(rsp) : "volatile", "{rsp}", "{rbp}")
-      while true
-        asm("hlt")
-      end
-    elsif next_process.frame.nil?
-      # create new frame if necessary
-      next_process.new_frame
-    end
-
-    # switch page directory
-    if next_process.kernel_process?
-      Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
-        .new(next_process.phys_user_pg_struct)
-      Paging.current_kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
-        .new(next_process.phys_pg_struct)
-    else
-      Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
-        .new(next_process.phys_pg_struct)
-    end
-    Paging.flush
-    if remove
-      Paging.free_process_pdpt(current_process.phys_pg_struct)
-    end
-
-    # restore fxsave
-    unless next_process.fxsave_region.null?
-      memcpy Multiprocessing.fxsave_region, next_process.fxsave_region, FXSAVE_SIZE
-    end
-
-    # lock kernel subsytems for driver threads
-    if next_process.kernel_process?
-      DriverThread.lock
-    end
-
-    next_process
-  end
-
-  def switch_process(frame : IdtData::Registers*)
-    current_process = switch_process_save_and_load do |process|
-      process.frame.not_nil!.to_unsafe.value = frame.value
-    end
-    frame.value = current_process.frame.not_nil!.to_unsafe.value
-  end
-
-  def switch_process(frame : SyscallData::Registers*)
-    current_process = switch_process_save_and_load do |process|
-      process.new_frame_from_syscall frame
-    end
-    Syscall.unlock
-    Kernel.ksyscall_switch(current_process.frame.not_nil!.to_unsafe)
-  end
-
-  def switch_process_and_terminate
-    current_process = switch_process_save_and_load(true) { }
-    Syscall.unlock
-    Kernel.ksyscall_switch(current_process.frame.not_nil!.to_unsafe)
   end
 
   # iteration

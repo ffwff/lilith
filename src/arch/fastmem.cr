@@ -1,4 +1,3 @@
-@[NoInline]
 def zero_page(mem : UInt8*, npages : USize = 1)
   return if npages == 0
   count = npages * 0x200

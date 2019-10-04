@@ -479,7 +479,7 @@ class Fat16FS < VFS
                 retval.heap_start,
                 msg.udata.not_nil!,
                 retval.mmap_list)
-            unless msg.process.nil?
+            if msg.process
               msg.unawait(pid)
             end
           else
