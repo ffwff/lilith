@@ -29,159 +29,188 @@ module Multiprocessing
       end
       @status = Status::Normal
       property status
+      
+      @queue_id = -1
+      property queue_id
 
-      def initialize(@process : Multiprocessing::Process)
+      def initialize(@queue_id, @process : Multiprocessing::Process)
+      end
+
+      def can_switch? : Bool
+        process = self.process
+        # Serial.puts "next_process: ", process, '\n'
+        case @status
+        when ProcessData::Status::Normal
+          true
+        when ProcessData::Status::WaitIo
+          false
+        when ProcessData::Status::WaitProcess
+          wait_object = process.udata.wait_object
+          case wait_object
+          when Process
+            if wait_object.as(Process).removed?
+              process.unawait
+              true
+            else
+              false
+            end
+          else
+            process.unawait
+            true
+          end
+        when ProcessData::Status::WaitFd
+          wait_object = process.udata.wait_object
+          case wait_object
+          when GcArray(FileDescriptor)
+            if process.udata.wait_usecs != 0xFFFF_FFFFu32
+              if process.udata.wait_usecs <= Pit::USECS_PER_TICK
+                process.frame.not_nil!.to_unsafe.value.rax = 0
+                process.unawait
+                return true
+              else
+                process.udata.wait_usecs -= Pit::USECS_PER_TICK
+              end
+            end
+            fds = wait_object.as(GcArray(FileDescriptor))
+            fds.each do |fd|
+              fd = fd.not_nil!
+              if fd.node.not_nil!.available?
+                process.frame.not_nil!.to_unsafe.value.rax = fd.idx
+                process.unawait
+                return true
+              end
+            end
+            false
+          when FileDescriptor
+            if process.udata.wait_usecs != 0xFFFF_FFFFu32
+              if process.udata.wait_usecs <= Pit::USECS_PER_TICK
+                process.frame.not_nil!.to_unsafe.value.rax = 0
+                process.unawait
+                return true
+              else
+                process.udata.wait_usecs -= Pit::USECS_PER_TICK
+              end
+            end
+            fd = wait_object.as(FileDescriptor)
+            if fd.node.not_nil!.available?
+              process.frame.not_nil!.to_unsafe.value.rax = fd.idx
+              process.unawait
+              true
+            else
+              false
+            end
+          else
+            process.unawait
+            true
+          end
+        when ProcessData::Status::Sleep
+          if process.udata.wait_usecs <= Pit::USECS_PER_TICK
+            process.unawait
+            true
+          else
+            process.udata.wait_usecs -= Pit::USECS_PER_TICK
+            false
+          end
+        else
+          false
+        end
+      end
+    end
+
+    struct Queue
+      @first_data : ProcessData? = nil
+      @last_data : ProcessData? = nil
+      property first_data, last_data
+      
+      getter queue_id
+
+      def initialize(@queue_id : Int32)
+      end
+      
+      def append_process_data(data : ProcessData)
+        if @first_data.nil?
+          @first_data = @last_data = data
+        else
+          @last_data.not_nil!.next_data = data
+          data.prev_data = @last_data
+          @last_data = data
+        end
+      end
+
+      def remove_process_data(data : ProcessData)
+        return false if data.queue_id != @queue_id
+        if @first_data == data
+          @first_data = data.next_data
+        end
+        if @last_data == data
+          @last_data = data.prev_data
+        end
+        if data.next_data
+          data.next_data.not_nil!.prev_data = data.prev_data
+        end
+        if data.prev_data
+          data.prev_data.not_nil!.next_data = data.next_data
+        end
+        data.prev_data = nil
+        data.next_data = nil
+        true
+      end
+      
+      def next_process(current_process : Process? = nil) : Process?
+        if current_process.nil?
+          sched_data = @first_data.not_nil!
+          cur = sched_data
+        else
+          sched_data = current_process.not_nil!.sched_data
+          return nil if sched_data.queue_id != @queue_id
+          cur = sched_data.next_data
+        end
+        # look from middle to end
+        while !cur.nil? && !cur.not_nil!.can_switch?
+          cur = cur.next_data
+        end
+        # look from start to middle
+        if cur.nil?
+          cur = @first_data
+          while !cur.nil? && !cur.not_nil!.can_switch?
+            cur = cur.next_data
+            break if cur == sched_data.prev_data
+          end
+          if cur && !cur.not_nil!.can_switch?
+            cur = nil
+          end
+        end
+        unless cur.nil?
+          panic "status != Status::Normal" if cur.status != ProcessData::Status::Normal
+          cur.process
+        else
+          nil
+        end
       end
     end
     
-    @@first_data : ProcessData? = nil
-    @@last_data : ProcessData? = nil
+    @@queue = Queue.new 0
+
+    def append_process(process : Process)
+      sched_data = ProcessData.new(@@queue.queue_id, process)
+      @@queue.append_process_data sched_data
+      sched_data
+    end
+
+    def remove_process(process : Process)
+      sched_data = process.sched_data
+      case sched_data.queue_id
+      when 0
+        @@queue.remove_process_data sched_data
+      else
+        panic "unknown queue_id: ", sched_data.queue_id
+      end
+    end
+
     @@current_process : Multiprocessing::Process? = nil
     
     def current_process
       @@current_process
-    end
-
-    protected def append_process(process : Process)
-      sched_data = ProcessData.new(process)
-      if @@first_data.nil?
-        @@first_data = @@last_data = sched_data
-      else
-        @@last_data.not_nil!.next_data = sched_data
-        sched_data.prev_data = @@last_data
-        @@last_data = sched_data
-      end
-      sched_data
-    end
-    
-    protected def remove_process(data : ProcessData)
-      if @@first_data == data
-        @@first_data = data.next_data
-      end
-      if @@last_data == data
-        @@last_data = data.prev_data
-      end
-      if data.next_data
-        data.next_data.not_nil!.prev_data = data.prev_data
-      end
-      if data.prev_data
-        data.prev_data.not_nil!.next_data = data.next_data
-      end
-      if data.process == @@current_process
-        get_next_process
-      end
-    end
-
-    private def can_switch(data) : Bool
-      process = data.process
-      # Serial.puts "next_process: ", process, '\n'
-      case data.status
-      when ProcessData::Status::Normal
-        true
-      when ProcessData::Status::WaitIo
-        false
-      when ProcessData::Status::WaitProcess
-        wait_object = process.udata.wait_object
-        case wait_object
-        when Process
-          if wait_object.as(Process).removed?
-            process.unawait
-            true
-          else
-            false
-          end
-        else
-          process.unawait
-          true
-        end
-      when ProcessData::Status::WaitFd
-        wait_object = process.udata.wait_object
-        case wait_object
-        when GcArray(FileDescriptor)
-          if process.udata.wait_usecs != 0xFFFF_FFFFu32
-            if process.udata.wait_usecs <= Pit::USECS_PER_TICK
-              process.frame.not_nil!.to_unsafe.value.rax = 0
-              process.unawait
-              return true
-            else
-              process.udata.wait_usecs -= Pit::USECS_PER_TICK
-            end
-          end
-          fds = wait_object.as(GcArray(FileDescriptor))
-          fds.each do |fd|
-            fd = fd.not_nil!
-            if fd.node.not_nil!.available?
-              process.frame.not_nil!.to_unsafe.value.rax = fd.idx
-              process.unawait
-              return true
-            end
-          end
-          false
-        when FileDescriptor
-          if process.udata.wait_usecs != 0xFFFF_FFFFu32
-            if process.udata.wait_usecs <= Pit::USECS_PER_TICK
-              process.frame.not_nil!.to_unsafe.value.rax = 0
-              process.unawait
-              return true
-            else
-              process.udata.wait_usecs -= Pit::USECS_PER_TICK
-            end
-          end
-          fd = wait_object.as(FileDescriptor)
-          if fd.node.not_nil!.available?
-            process.frame.not_nil!.to_unsafe.value.rax = fd.idx
-            process.unawait
-            true
-          else
-            false
-          end
-        else
-          process.unawait
-          true
-        end
-      when ProcessData::Status::Sleep
-        if process.udata.wait_usecs <= Pit::USECS_PER_TICK
-          process.unawait
-          true
-        else
-          process.udata.wait_usecs -= Pit::USECS_PER_TICK
-          false
-        end
-      else
-        false
-      end
-    end
-
-    # round robin scheduling algorithm
-    def get_next_process : Process?
-      if @@current_process.nil?
-        sched_data = @@first_data.not_nil!
-        cur = sched_data
-      else
-        sched_data = @@current_process.not_nil!.sched_data
-        cur = sched_data.next_data
-      end
-      # look from middle to end
-      while !cur.nil? && !can_switch(cur.not_nil!)
-        cur = cur.next_data
-      end
-      # look from start to middle
-      if cur.nil?
-        cur = @@first_data
-        while !cur.nil? && !can_switch(cur.not_nil!)
-          cur = cur.next_data
-          break if cur == sched_data.prev_data
-        end
-        if cur && !can_switch(cur.not_nil!)
-          cur = nil
-        end
-      end
-      unless cur.nil?
-        panic "status != Status::Normal" if cur.status != ProcessData::Status::Normal
-        @@current_process = cur.process
-      else
-        @@current_process = nil
-      end
     end
 
     private def context_switch_to_process(process : Multiprocessing::Process)
@@ -227,7 +256,7 @@ module Multiprocessing
     private def switch_process_save_and_load(remove = false, &block)
       # switching from idle process
       if @@current_process.nil?
-        @@current_process = get_next_process
+        @@current_process = @@queue.next_process
         if @@current_process.nil?
           halt_processor
         end
@@ -241,10 +270,12 @@ module Multiprocessing
       if current_process.sched_data.status == ProcessData::Status::Running
         current_process.sched_data.status = ProcessData::Status::Normal
       end
-      next_process = get_next_process
+      next_process = @@queue.next_process @@current_process
+      @@current_process = next_process
       
       # remove or save current process state
       if remove
+        panic "current_process == next_process" if current_process == next_process
         current_process.remove
       else
         yield current_process

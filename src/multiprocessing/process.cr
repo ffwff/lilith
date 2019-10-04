@@ -471,7 +471,7 @@ module Multiprocessing
       @prev_process = nil
       @next_process = nil
       # remove from scheduler
-      Scheduler.remove_process @sched_data.not_nil!
+      Scheduler.remove_process self
       @sched_data = nil
       # remove from procfs
       if !Multiprocessing.procfs.nil? && remove_proc?
