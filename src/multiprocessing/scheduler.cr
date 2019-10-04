@@ -13,9 +13,7 @@ module Multiprocessing
       @next_data : ProcessData? = nil
       @prev_data : ProcessData? = nil
       property next_data, prev_data
-      
-      @status = Status::Normal
-      
+
       getter process
 
       # status
@@ -26,9 +24,35 @@ module Multiprocessing
         WaitProcess
         WaitFd
         Sleep
+        Removed
       end
+      
+      private def wait_status?(status)
+        case status
+        when Status::WaitIo ||
+             Status::WaitProcess ||
+             Status::WaitFd ||
+             Status::Sleep
+          true
+        else
+          false
+        end
+      end
+      
       @status = Status::Normal
-      property status
+      getter status
+      def status=(s)
+        unless @next_data.nil? && @prev_data.nil?
+          if !wait_status?(@status) && wait_status?(s)
+            # transition to active state
+            Scheduler.move_to_io_queue self
+          elsif wait_status?(@status) && !wait_status?(s)
+            # transition to wait state
+            Scheduler.move_to_cpu_queue self
+          end
+        end
+        @status = s
+      end
       
       @queue_id = -1
       property queue_id
@@ -42,6 +66,8 @@ module Multiprocessing
         case @status
         when ProcessData::Status::Normal
           true
+        when ProcessData::Status::Removed
+          false
         when ProcessData::Status::WaitIo
           false
         when ProcessData::Status::WaitProcess
@@ -128,6 +154,10 @@ module Multiprocessing
       end
       
       def append_process_data(data : ProcessData)
+        if data.next_data || data.prev_data
+          panic "Scheduler::Queue: already in list!"
+        end
+        data.queue_id = @queue_id
         if @first_data.nil?
           @first_data = @last_data = data
         else
@@ -157,6 +187,7 @@ module Multiprocessing
       end
       
       def next_process(current_process : Process? = nil) : Process?
+        return nil if @first_data.nil?
         if current_process.nil?
           sched_data = @first_data.not_nil!
           cur = sched_data
@@ -189,21 +220,46 @@ module Multiprocessing
       end
     end
     
-    @@queue = Queue.new 0
+    @@cpu_queue = Queue.new 0
+    @@io_queue = Queue.new 1
 
     def append_process(process : Process)
-      sched_data = ProcessData.new(@@queue.queue_id, process)
-      @@queue.append_process_data sched_data
+      sched_data = ProcessData.new(@@cpu_queue.queue_id, process)
+      @@cpu_queue.append_process_data sched_data
       sched_data
     end
 
     def remove_process(process : Process)
       sched_data = process.sched_data
       case sched_data.queue_id
-      when 0
-        @@queue.remove_process_data sched_data
+      when @@cpu_queue.queue_id
+        @@cpu_queue.remove_process_data sched_data
+      when @@io_queue.queue_id
+        @@io_queue.remove_process_data sched_data
       else
         panic "unknown queue_id: ", sched_data.queue_id
+      end
+    end
+    
+    protected def move_to_cpu_queue(data : ProcessData)
+      unless @@io_queue.remove_process_data data
+        panic "data must be in io_queue"
+      end
+      @@cpu_queue.append_process_data data
+    end
+    
+    protected def move_to_io_queue(data : ProcessData)
+      unless @@cpu_queue.remove_process_data data
+        panic "data must be in cpu_queue"
+      end
+      @@io_queue.append_process_data data
+    end
+    
+    private def get_next_process
+      if (process = @@io_queue.next_process)
+        process
+      else
+        @@cpu_queue.next_process(@@current_process)
       end
     end
 
@@ -256,7 +312,7 @@ module Multiprocessing
     private def switch_process_save_and_load(remove = false, &block)
       # switching from idle process
       if @@current_process.nil?
-        @@current_process = @@queue.next_process
+        @@current_process = @@cpu_queue.next_process
         if @@current_process.nil?
           halt_processor
         end
@@ -265,17 +321,20 @@ module Multiprocessing
         return next_process
       end
     
-      # get next process and save current process
+      # set process' state to idle
       current_process = @@current_process.not_nil!
-      if current_process.sched_data.status == ProcessData::Status::Running
+      if remove
+        current_process.sched_data.status = ProcessData::Status::Removed
+      elsif current_process.sched_data.status == ProcessData::Status::Running
         current_process.sched_data.status = ProcessData::Status::Normal
       end
-      next_process = @@queue.next_process @@current_process
+      
+      # get next process
+      next_process = get_next_process
       @@current_process = next_process
       
       # remove or save current process state
       if remove
-        panic "current_process == next_process" if current_process == next_process
         current_process.remove
       else
         yield current_process
