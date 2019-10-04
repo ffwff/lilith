@@ -134,8 +134,8 @@ class VFSMessage
   end
 
   def unawait
-    return if @process.not_nil!.status == Multiprocessing::Process::Status::Normal
-    @process.not_nil!.status = Multiprocessing::Process::Status::Normal
+    return if @process.not_nil!.sched_data.status == Multiprocessing::Scheduler::ProcessData::Status::Normal
+    @process.not_nil!.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::Normal
     if @fd
       @fd.not_nil!.offset += @offset
     end
@@ -143,8 +143,8 @@ class VFSMessage
   end
   
   def unawait(retval)
-    return if @process.not_nil!.status == Multiprocessing::Process::Status::Normal
-    @process.not_nil!.status = Multiprocessing::Process::Status::Normal
+    return if @process.not_nil!.sched_data.status == Multiprocessing::Scheduler::ProcessData::Status::Normal
+    @process.not_nil!.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::Normal
     @process.not_nil!.frame.not_nil!.to_unsafe.value.rax = retval
   end
 end
@@ -165,8 +165,9 @@ class VFSQueue
       @last_msg.get.not_nil!.next_msg.set(msg)
       @last_msg.set(msg)
     end
-    unless @wake_process.nil?
-      @wake_process.not_nil!.status = Multiprocessing::Process::Status::Normal
+    if @wake_process
+      @wake_process.not_nil!.sched_data.status =
+        Multiprocessing::Scheduler::ProcessData::Status::Normal
     end
   end
 
