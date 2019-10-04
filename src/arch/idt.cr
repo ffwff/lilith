@@ -173,6 +173,15 @@ fun kirq_handler(frame : IdtData::Registers*)
 
   if frame.value.int_no == 0
     # preemptive multitasking...
+    if (current_process = Multiprocessing::Scheduler.current_process)
+      if current_process.sched_data.time_slice > 0
+        # FIXME: context_switch_to_process must be called or cpu won't
+        # have current process' context
+        current_process.sched_data.time_slice -= 1
+        Multiprocessing::Scheduler.context_switch_to_process(current_process)
+        return
+      end
+    end
     Multiprocessing::Scheduler.switch_process(frame)
   end
 end
