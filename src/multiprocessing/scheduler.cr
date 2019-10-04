@@ -7,7 +7,7 @@ module Multiprocessing
   module Scheduler
     extend self
 
-    def current_process=(@@current_process); end
+    NORMAL_TIME_SLICE = 1000u64 # 1ms
     
     class ProcessData
       @next_data : ProcessData? = nil
@@ -53,9 +53,14 @@ module Multiprocessing
         end
         @status = s
       end
-      
+
+      # which queue we're in
       @queue_id = -1
       property queue_id
+
+      # time for process to run in microseconds
+      @time_slice = NORMAL_TIME_SLICE
+      property time_slice
 
       def initialize(@queue_id, @process : Multiprocessing::Process)
       end
@@ -264,12 +269,13 @@ module Multiprocessing
     end
 
     @@current_process : Multiprocessing::Process? = nil
-    
     def current_process
       @@current_process
     end
+    def current_process=(@@current_process)
+    end
 
-    private def context_switch_to_process(process : Multiprocessing::Process)
+    def context_switch_to_process(process : Multiprocessing::Process)
       if process.frame.nil?
         # create new frame if necessary
         process.new_frame
@@ -320,9 +326,10 @@ module Multiprocessing
         context_switch_to_process(next_process)
         return next_process
       end
-    
-      # set process' state to idle
+
       current_process = @@current_process.not_nil!
+
+      # set process' state to idle
       if remove
         current_process.sched_data.status = ProcessData::Status::Removed
       elsif current_process.sched_data.status == ProcessData::Status::Running
@@ -348,6 +355,7 @@ module Multiprocessing
       end
 
       next_process = next_process.not_nil!
+      next_process.sched_data.time_slice = NORMAL_TIME_SLICE
       next_process.sched_data.status = ProcessData::Status::Running
       context_switch_to_process(next_process)
 
