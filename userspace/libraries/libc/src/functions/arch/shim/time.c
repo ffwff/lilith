@@ -24,9 +24,9 @@ size_t strftime(char *s, size_t max, const char *format,
         FORMAT('Y', "%d", tm->tm_year)
         FORMAT('m', "%d", tm->tm_mon)
         FORMAT('d', "%d", tm->tm_mday)
-        FORMAT('H', "%d", tm->tm_hour)
-        FORMAT('M', "%d", tm->tm_min)
-        FORMAT('S', "%d", tm->tm_sec)
+        FORMAT('H', "%02d", tm->tm_hour)
+        FORMAT('M', "%02d", tm->tm_min)
+        FORMAT('S', "%02d", tm->tm_sec)
         case '%': {
           i++;
           if(j == max)
