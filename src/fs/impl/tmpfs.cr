@@ -124,11 +124,15 @@ private class TmpFSNode < VFSNode
       page = page.value.next_page
     end
   end
-  
+
   # file operations
 
   def remove : Int32
-    return VFS_ERR if @removed || @mmap_count > 0
+    return VFS_ERR if @removed
+    if @mmap_count > 0
+      Serial.puts "tmpfs: can't remove if mmapd"
+      return VFS_ERR
+    end
 
     page = @first_page
     while !page.null?
@@ -203,7 +207,7 @@ private class TmpFSNode < VFSNode
       end
     elsif size < @size
       if @mmap_count > 0
-        Serial.puts "pipefs: can't truncate if mmapd"
+        Serial.puts "tmpfs: can't truncate if mmapd"
         return @size
       end
       @size = size
