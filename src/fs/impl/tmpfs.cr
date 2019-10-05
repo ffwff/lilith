@@ -95,22 +95,23 @@ private class TmpFSNode < VFSNode
     end
 
     frame = FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK
+    memset Pointer(UInt8).new(frame), 0, 0x1000
     len = @last_page.value.allocated_frames
     @last_page.value.frames[len] = Pointer(UInt8).new frame
     @last_page.value.allocated_frames = len + 1
   end
 
   private def pop_frame
+    nlen = @last_page.value.allocated_frames - 1
+    @last_page.value.allocated_frames = nlen
+    frame = @last_page.value.frames[nlen]
+    FrameAllocator.declaim_addr(frame.address & ~PTR_IDENTITY_MASK)
+    @last_page.value.frames[nlen] = Pointer(UInt8).null
+
     if @last_page.value.allocated_frames == 0
       prev = @last_page.value.prev_page
       FrameAllocator.declaim_addr(@last_page.address & ~PTR_IDENTITY_MASK)
       @last_page = prev
-    else
-      nlen = @last_page.value.allocated_frames - 1
-      @last_page.value.allocated_frames = nlen
-      frame = @last_page.value.frames[nlen]
-      FrameAllocator.declaim_addr(frame.address & ~PTR_IDENTITY_MASK)
-      @last_page.value.frames[nlen] = Pointer(UInt8).null
     end
   end
 
