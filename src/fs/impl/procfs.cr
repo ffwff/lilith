@@ -1,17 +1,16 @@
 private module ProcFSStrings
   extend self
   
-  private macro sgetter(name)
-	def {{ name }}
-	  @@{{ name }}.not_nil!
-	end
+  private macro string(name, value)
+    {{ name.name.upcase }} = {{ value }}
+    def {{ name }}
+      @@{{ name }}.not_nil!
+    end
   end
   
-  STATUS = "status"
-  MMAP = "mmap"
-
-  sgetter(status)
-  sgetter(mmap)
+  string(status, "status")
+  string(mmap, "mmap")
+  string(meminfo, "meminfo")
   
   @@initialized = false
 
@@ -19,6 +18,7 @@ private module ProcFSStrings
     return if @@initialized
     @@status = GcString.new(STATUS)
     @@mmap = GcString.new(MMAP)
+    @@meminfo = GcString.new(MEMINFO)
     @@initialized = true
   end
 
@@ -29,6 +29,7 @@ class ProcFSNode < VFSNode
   getter fs, raw_node, first_child
 
   def initialize(@fs : ProcFS)
+    add_child(ProcFSProcessNode.new(self, @fs))
   end
 
   def open(path)
@@ -78,9 +79,12 @@ class ProcFSNode < VFSNode
     node.prev_node = nil
     node.next_node = nil
   end
-
 end
 
+
+# process nodes
+
+# /proc/[pid]
 class ProcFSProcessNode < VFSNode
   @name : GcString? = nil
   getter name, fs
@@ -89,21 +93,30 @@ class ProcFSProcessNode < VFSNode
   @first_child : VFSNode? = nil
   getter first_child
   
-  getter process
+  def process
+    @process.not_nil!
+  end
 
-  def initialize(@process : Multiprocessing::Process, @parent : ProcFSNode, @fs : ProcFS,
+  def initialize(@process : Multiprocessing::Process?, @parent : ProcFSNode, @fs : ProcFS,
 				 @prev_node : ProcFSProcessNode? = nil,
 				 @next_node : ProcFSProcessNode? = nil)
-    @name = @process.pid.to_gcstr
+    @name = process.pid.to_gcstr
     add_child(ProcFSProcessStatusNode.new(self, @fs))
-    unless @process.kernel_process?
+    unless process.kernel_process?
       add_child(ProcFSProcessMmapNode.new(self, @fs))
     end
   end
   
+  def initialize(@parent : ProcFSNode, @fs : ProcFS,
+				 @prev_node : ProcFSProcessNode? = nil,
+				 @next_node : ProcFSProcessNode? = nil)
+    @name = GcString.new "kernel"
+    add_child(ProcFSMemInfoNode.new(self, @fs))
+  end
+  
   def remove : Int32
-    return VFS_ERR if @process.removed?
-    @process.remove false
+    return VFS_ERR if process.removed?
+    process.remove false
     @parent.remove_child self
     VFS_OK
   end
@@ -130,10 +143,10 @@ class ProcFSProcessNode < VFSNode
     end
     child
   end
-
 end
 
-class ProcFSProcessStatusNode < VFSNode
+# /proc/[pid]/status
+private class ProcFSProcessStatusNode < VFSNode
   getter fs
   def name
     ProcFSStrings.status
@@ -161,7 +174,8 @@ class ProcFSProcessStatusNode < VFSNode
   end
 end
 
-class ProcFSProcessMmapNode < VFSNode
+# /proc/[pid]/mmap
+private class ProcFSProcessMmapNode < VFSNode
   getter fs
   def name
     ProcFSStrings.mmap
@@ -182,6 +196,38 @@ class ProcFSProcessMmapNode < VFSNode
       SliceWriter.fwrite? writer, node
       SliceWriter.fwrite? writer, "\n"
     end
+
+    writer.offset
+  end
+end
+
+
+# kernel nodes
+
+# /proc/meminfo
+private class ProcFSMemInfoNode < VFSNode
+  getter fs
+  def name
+    ProcFSStrings.meminfo
+  end
+  
+  @next_node : VFSNode? = nil
+  property next_node
+
+  def initialize(@parent : ProcFSProcessNode, @fs : ProcFS)
+  end
+  
+  def read(slice : Slice, offset : UInt32,
+           process : Multiprocessing::Process? = nil) : Int32
+    writer = SliceWriter.new(slice, offset.to_i32)
+
+    SliceWriter.fwrite? writer, "MemTotal: "
+    SliceWriter.fwrite? writer, (Paging.usable_physical_memory / 1024)
+    SliceWriter.fwrite? writer, " kB\n"
+
+    SliceWriter.fwrite? writer, "MemUsed: "
+    SliceWriter.fwrite? writer, (FrameAllocator.used_blocks * (0x1000 / 1024))
+    SliceWriter.fwrite? writer, " kB\n"
 
     writer.offset
   end
