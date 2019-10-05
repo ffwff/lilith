@@ -276,6 +276,9 @@ void wm_mark_win_removed(struct wm_window *win) {
       munmap(prog->bitmap);
       close(prog->bitmapfd);
 
+      snprintf(path, sizeof(path), "/tmp/wm:%d:bm", prog->pid);
+      remove(path);
+
       break;
     }
   }
