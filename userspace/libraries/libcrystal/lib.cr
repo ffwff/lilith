@@ -1,5 +1,6 @@
-require "./sys/*"
+require "./core/object.cr"
 require "./core/*"
+require "./sys/*"
 require "./io/*"
 
 lib LibCrystalMain  

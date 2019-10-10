@@ -24,4 +24,11 @@ abstract class IO
     nil
   end
 
+  def print(*objects : _) : Nil
+    objects.each do |obj|
+      self << obj
+    end
+    nil
+  end
+
 end

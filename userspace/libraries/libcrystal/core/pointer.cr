@@ -18,4 +18,8 @@ struct Pointer(T)
   def +(other : Nil)
     self
   end
+
+  def self.malloc(size)
+    Gc.unsafe_malloc(size.to_u64).as(T*)
+  end
 end

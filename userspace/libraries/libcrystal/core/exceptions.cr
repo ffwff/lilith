@@ -12,5 +12,5 @@ def raise(*args)
 end
 
 macro unimplemented!(file = __FILE__, line = __LINE__)
-  abort "#{file}:#{line}: not implemented"
+  abort "not implemented"
 end
