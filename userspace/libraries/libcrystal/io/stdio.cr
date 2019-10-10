@@ -1,3 +1,5 @@
+require "./io.cr"
+
 class IO::FileDescriptor < IO
 
   def initialize(@fd : LibC::Int, blocking = false)

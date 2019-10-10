@@ -19,6 +19,10 @@ struct Int
     self.to_i32
   end
 
+  def to_uint
+    self.to_u32
+  end
+
   def to_usize
     self.to_u32
   end

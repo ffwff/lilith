@@ -4,44 +4,24 @@ struct Slice(T)
   def initialize(@buffer : Pointer(T), @size : Int32)
   end
 
-  def self.null
-    new Pointer(T).null, 0
-  end
-
-  def null?
-    @buffer.null?
-  end
-
-  def self.malloc(sz)
-    new Pointer(T).malloc(sz), sz
-  end
-
-  # manual malloc: this should only be used when the slice is
-  # to be cleaned up before the function returns
-  def self.mmalloc(sz)
-    new Pointer(T).mmalloc(sz), sz
-  end
-
-  def mfree
-    @buffer.mfree
-    @buffer = Pointer(T).null
-  end
-
-  @[NoInline]
   def [](idx : Int)
-    panic "Slice: out of range" if idx >= @size || idx < 0
+    abort "Slice: out of range" if idx >= @size || idx < 0
     @buffer[idx]
   end
 
-  @[NoInline]
   def []=(idx : Int, value : T)
-    panic "Slice: out of range" if idx >= @size || idx < 0
+    abort "Slice: out of range" if idx >= @size || idx < 0
     @buffer[idx] = value
   end
 
   def [](range : Range(Int, Int))
-    panic "Slice: out of range" if range.begin > range.end
+    abort "Slice: out of range" if range.begin > range.end || range.start + range.end >= @size
     Slice(T).new(@buffer + range.begin, range.size)
+  end
+
+  def [](start : Int, count : Int)
+    abort "Slice: out of range" if start + count >= @size
+    Slice(T).new(@buffer + start, count)
   end
 
   def to_unsafe
@@ -67,7 +47,7 @@ struct Slice(T)
   end
 
   def to_s(io)
-    io.puts "Slice(", @buffer, " ", @size, ")"
+    io.print "Slice(", @buffer, " ", @size, ")"
   end
 end
 

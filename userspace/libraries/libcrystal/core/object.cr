@@ -36,11 +36,11 @@ end
 
 struct Nil
   def not_nil!
-    panic "casting nil to not-nil!"
+    abort "casting nil to not-nil!"
   end
 
   def to_s(io)
-    io.puts "nil"
+    io.write "nil"
   end
 
   def ==(other)

@@ -91,7 +91,7 @@ index d28ed3dc4..0350f6a45 100644
        end
  
 +      # generate malloc types
-+      puts @malloc_types
++      # puts @malloc_types
 +      in_main do
 +        if (func = @malloc_offset_fun)
 +          context.fun = func
