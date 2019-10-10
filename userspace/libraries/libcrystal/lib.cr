@@ -2,6 +2,7 @@ require "./core/object.cr"
 require "./core/*"
 require "./sys/*"
 require "./io/*"
+require "./time/*"
 
 lib LibCrystalMain  
   fun __crystal_main(argc : Int32, argv : UInt8**)
