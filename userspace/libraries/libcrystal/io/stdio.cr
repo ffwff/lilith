@@ -23,3 +23,10 @@ def puts(*objects)
   end
   nil
 end
+
+def print(*objects)
+  objects.each do |obj|
+    STDOUT.print obj
+  end
+  nil
+end

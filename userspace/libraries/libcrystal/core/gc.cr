@@ -27,5 +27,4 @@ module Gc
   def unsafe_malloc(size : UInt64, atomic=false)
     LibC.malloc size.to_usize
   end
-
 end

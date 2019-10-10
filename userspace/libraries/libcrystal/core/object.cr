@@ -11,6 +11,13 @@ class Object
     {% end %}
   end
 
+  macro setter(*names)
+    {% for name in names %}
+    def {{ name.id }}=(@{{ name.id }})
+    end
+    {% end %}
+  end
+
   macro property(*names)
     {% for name in names %}
     def {{ name.id }}
