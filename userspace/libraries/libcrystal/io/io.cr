@@ -8,6 +8,10 @@ abstract class IO
     self
   end
 
+  def puts : Nil
+    self << '\n'
+  end
+
   def puts(obj) : Nil
     self << obj
     puts
