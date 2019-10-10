@@ -3,6 +3,12 @@ lib LibCrystal
   fun type_size="__crystal_malloc_type_size"(type_id : UInt32) : UInt32
 end
 
+lib LibC
+  fun malloc(size : LibC::SizeT) : Void*
+  fun realloc(size : LibC::SizeT) : Void*
+  fun free(ptr : Void*)
+end
+
 fun __crystal_malloc64(size : UInt64) : Void*
   Gc.unsafe_malloc size
 end
@@ -19,7 +25,7 @@ module Gc
   end
 
   def unsafe_malloc(size : UInt64, atomic=false)
-    Pointer(Void).null
+    LibC.malloc size.to_usize
   end
 
 end

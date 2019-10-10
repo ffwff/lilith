@@ -1,6 +1,7 @@
 struct Char
   def to_s(io)
-    io.putc self.ord.to_u8
+    c = self.ord.to_u8
+    io.write Bytes.new(pointerof(c), 1)
   end
 
   def ===(other)

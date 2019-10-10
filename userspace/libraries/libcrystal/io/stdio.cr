@@ -18,6 +18,8 @@ STDOUT = IO::FileDescriptor.new 1
 STDERR = IO::FileDescriptor.new 2
 
 def puts(*objects)
-  STDOUT.puts objects
+  objects.each do |obj|
+    STDOUT.puts obj
+  end
   nil
 end
