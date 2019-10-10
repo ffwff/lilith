@@ -1,5 +1,10 @@
+def abort
+  LibC.abort
+end
+
 def abort(str)
   # TODO
+  abort
 end
 
 def raise(*args)
