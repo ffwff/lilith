@@ -1,7 +1,22 @@
 #!/bin/sh
 
+# FIXME: script won't work unless cwd == directory containing the source file ($1)
+
 ARCH="i386-elf"
-crystal build "$1" --cross-compile --target $ARCH --prelude ./lib.cr || exit $?
+SCRIPT_PATH=`realpath --relative-to="$(dirname $1)" "$(dirname $(realpath $0))"`
+
 basename=`basename $1 .cr`
-$ARCH-lilith-gcc -o "$basename" "$basename.o" 
+if [[ "x$2" = "x" ]]; then
+  echo "output argument required"
+  exit 1
+else
+  output="$2"
+fi
+
+cleanup() {
+  exit $1
+}
+
+crystal build $1 --cross-compile --target $ARCH --prelude "$SCRIPT_PATH/lib.cr" || cleanup $?
+$ARCH-lilith-gcc -o $output "$basename.o" || cleanup $?
 rm "$basename.o"
