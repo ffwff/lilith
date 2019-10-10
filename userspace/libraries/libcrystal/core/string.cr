@@ -14,9 +14,13 @@ class String
     pointerof(@c)
   end
 
+  def byte_slice
+    Bytes.new(to_unsafe, bytesize)
+  end
+
   def each
     size.times do |i|
-      yield bytes[i], i
+      yield to_unsafe[i], i
     end
   end
 
@@ -25,9 +29,7 @@ class String
   end
 
   def to_s(io)
-    each do |char|
-      io.putc char
-    end
+    io.write byte_slice
   end
 
   def [](index : Int)

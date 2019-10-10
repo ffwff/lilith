@@ -54,8 +54,8 @@ module Gc
     @@cycles_per_alloc = max((@@last_sweep_tick - @@last_start_tick) >> 2, 1)
   end
 
-  def init(@@data_start : USize, @@data_end : USize,
-           @@stack_start : USize, @@stack_end : USize)
+  def init(@@data_start  : UInt64, @@data_end  : UInt64,
+           @@stack_start : UInt64, @@stack_end : UInt64)
     @@enabled = true
   end
 
@@ -311,7 +311,7 @@ module Gc
     end
   end
 
-  def unsafe_malloc(size : USize, atomic = false)
+  def unsafe_malloc(size : UInt64, atomic = false)
     Multiprocessing::DriverThread.assert_unlocked
 
     if @@enabled

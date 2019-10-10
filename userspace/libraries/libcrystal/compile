@@ -1,0 +1,7 @@
+#!/bin/sh
+
+ARCH="i386-elf"
+crystal build "$1" --cross-compile --target $ARCH --prelude ./lib.cr || exit $?
+basename=`basename $1 .cr`
+$ARCH-lilith-gcc -o "$basename" "$basename.o" 
+rm "$basename.o"
