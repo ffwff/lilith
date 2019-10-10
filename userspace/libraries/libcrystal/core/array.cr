@@ -45,4 +45,12 @@ class Array(T)
     @buffer[idx]
   end
 
+  def each
+    i = 0
+    while i < @size
+      yield to_unsafe[i]
+      i += 1
+    end
+  end
+
 end

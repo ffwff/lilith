@@ -61,10 +61,32 @@ class String
     Bytes.new(to_unsafe, bytesize)
   end
 
-  def each
+  private def each
     size.times do |i|
       yield to_unsafe[i], i
     end
+  end
+
+  def each_char(&block)
+    # FIXME: unicode chars
+    size.times do |i|
+      yield to_unsafe[i].unsafe_chr
+    end
+  end
+
+  def index(search)
+    each do |char, i|
+      return i if search == char
+    end
+    nil
+  end
+
+  def [](index : Int)
+    bytes[index]
+  end
+  
+  def ===(other)
+    self == other
   end
 
   def to_s
@@ -75,12 +97,25 @@ class String
     io.write byte_slice
   end
 
-  def [](index : Int)
-    bytes[index]
+  private INT_BASE = "0123456789abcdefghijklmnopqrstuvwxyz"
+  def to_i?(base : Int = 10)
+    retval = 0
+    self.each do |char|
+      unless (digit = INT_BASE.index char).nil?
+        retval = retval * base + digit
+      else
+        return nil
+      end
+    end
+    retval
   end
-  
-  def ===(other)
-    self == other
+
+  def to_i(base : Int = 10) : Int32
+    if (retval = to_i?(base))
+      retval
+    else
+      0
+    end
   end
 
 end

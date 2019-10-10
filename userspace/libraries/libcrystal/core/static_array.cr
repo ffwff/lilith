@@ -11,6 +11,10 @@ struct StaticArray(T, N)
     pointerof(@buffer)
   end
 
+  def to_slice
+    Slice(T).new(to_unsafe, N)
+  end
+
   def []=(index : Int, value : T)
     panic "setting out of bounds!" if index > N
     to_unsafe[index] = value
