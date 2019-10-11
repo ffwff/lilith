@@ -21,7 +21,7 @@ gcc:
 	patch -p1 < $(PWD)/patches/gcc.patch >/dev/null
 
 build_gcc: gcc
-	cd gcc && \
+	cd gcc && rm -rf build && \
 	mkdir -p build && cd build && \
 	../configure                  \
 		--target=i386-elf-lilith  \
@@ -42,7 +42,8 @@ build_gcc: gcc
 		--disable-libvtv          \
 		--disable-libstdcxx       \
 		--enable-languages=c && \
-	make -j$(NPROC)
+	make -j$(NPROC) && \
+	make install
 
 # libc
 build_libc: ../libc

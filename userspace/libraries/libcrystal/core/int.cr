@@ -96,17 +96,30 @@ struct Int
     end
   end
 
-  def to_usize
-    self.to_u64
-  end
-
-  def to_isize
-    self.to_i64
-  end
+  {% if flag?(:bits32) %}
+    def to_usize
+      self.to_u32
+    end
+    def to_isize
+      self.to_i32
+    end
+  {% else %}
+    def to_usize
+      self.to_u64
+    end
+    def to_isize
+      self.to_i64
+    end
+  {% end %}
 end
 
-alias ISize = Int64
-alias USize = UInt64
+{% if flag?(:bits32) %}
+  alias USize = UInt32
+  alias ISize = Int32
+{% else %}
+  alias USize = UInt64
+  alias ISize = Int64
+{% end %}
 
 struct Int8
   MIN = -128_i8

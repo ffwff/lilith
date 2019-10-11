@@ -3,6 +3,14 @@ struct Pointer(T)
     new 0u64
   end
 
+  def self.malloc(size)
+    Gc.unsafe_malloc(size.to_u64).as(T*)
+  end
+
+  def null?
+    self.address == 0u64
+  end
+
   def [](offset)
     (self + offset).value
   end
@@ -19,7 +27,4 @@ struct Pointer(T)
     self
   end
 
-  def self.malloc(size)
-    Gc.unsafe_malloc(size.to_u64).as(T*)
-  end
 end

@@ -59,15 +59,15 @@ module Gc
     @@enabled = true
   end
 
-  macro push(list, node)
+  private macro push(list, node)
     if {{ list }}.null?
       # first node
       {{ node }}.value.next_node = Pointer(Kernel::GcNode).null
       {{ list }} = {{ node }}
     else
-        # middle node
-        {{ node }}.value.next_node = {{ list }}
-        {{ list }} = {{ node }}
+      # middle node
+      {{ node }}.value.next_node = {{ list }}
+      {{ list }} = {{ node }}
     end
   end
 
@@ -77,7 +77,8 @@ module Gc
     # please set move_list=false when not scanning for root nodes
     i = start_addr
     fix_white = false
-    while i < end_addr - sizeof(Void*)
+    scan_end = end_addr - sizeof(Void*) + 1
+    until scan_end.to_usize == i.to_usize
       word = Pointer(USize).new(i.to_u64).value
       # subtract to get the pointer to the header
       word -= sizeof(Kernel::GcNode)
@@ -225,16 +226,22 @@ module Gc
             end
             # mark the header as gray
             header = Pointer(Kernel::GcNode).new(addr - sizeof(Kernel::GcNode))
-            debug_mark node, header
-            case header.value.magic
-            when GC_NODE_MAGIC
-              header.value.magic = GC_NODE_MAGIC_GRAY
-              fix_white = true
-            when GC_NODE_MAGIC_ATOMIC
-              header.value.magic = GC_NODE_MAGIC_GRAY_ATOMIC
-              fix_white = true
-            else
-              # this node is either gray or black
+            scan_node = @@first_white_node
+            while !scan_node.null?
+              if header.address == scan_node.address
+                case header.value.magic
+                when GC_NODE_MAGIC
+                  header.value.magic = GC_NODE_MAGIC_GRAY
+                  fix_white = true
+                when GC_NODE_MAGIC_ATOMIC
+                  header.value.magic = GC_NODE_MAGIC_GRAY_ATOMIC
+                  fix_white = true
+                else
+                  # this node is either gray or black
+                end
+                break
+              end
+              scan_node = scan_node.value.next_node
             end
           end
           pos += 1

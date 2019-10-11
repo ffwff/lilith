@@ -1,23 +1,40 @@
+GC_ARRAY_HEADER_TYPE = 0xFFFF_FFFF.to_usize
+GC_ARRAY_HEADER_SIZE = sizeof(USize) * 2
+
 class Array(T)
 
-  @size : Int32
   @capacity : Int32
-  getter size, capacity
-  protected setter size
+  getter capacity
+
+  def size
+    return 0 if @capacity == 0
+    @buffer[1].to_isize
+  end
+
+  protected def size=(new_size)
+    return if @capacity == 0
+    @buffer[1] = new_size.to_usize
+  end
+
+  private def malloc_size(new_size)
+    new_size.to_usize * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
+  end
 
   def initialize
     @size = 0
     @capacity = 0
-    @buffer = Pointer(T).null
+    @buffer = Pointer(USize).null
   end
 
   def initialize(initial_capacity)
     @size = 0
     @capacity = initial_capacity
     if initial_capacity > 0
-      @buffer = Pointer(T).malloc initial_capacity
+      @buffer = Pointer(USize).malloc malloc_size(initial_capacity)
+      @buffer[0] = GC_ARRAY_HEADER_TYPE
+      @buffer[1] = 0u32
     else
-      @buffer = Pointer(T).null
+      @buffer = Pointer(USize).null
     end
   end
 
@@ -37,12 +54,12 @@ class Array(T)
   end
 
   def to_unsafe
-    @buffer
+    (@buffer + 2).as(T*)
   end
 
   def [](idx : Int)
     # TODO: bounds checking
-    @buffer[idx]
+    to_unsafe[idx]
   end
 
   def each
@@ -54,3 +71,4 @@ class Array(T)
   end
 
 end
+
