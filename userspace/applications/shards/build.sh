@@ -1,10 +1,7 @@
 build() {
-  pushd .
-    cd $script_dir
-    for i in ./*.cr; do
-        ./compile $i $build_dir/$(basename $i .cr)
+    for i in $script_dir/*.cr; do
+        $script_dir/compile $i $build_dir/$(basename $i .cr)
     done
-  popd
 }
 
 install() {
