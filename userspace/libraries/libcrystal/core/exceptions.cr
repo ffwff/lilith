@@ -3,7 +3,7 @@ def abort
 end
 
 def abort(str)
-  # TODO
+  STDERR.puts str
   abort
 end
 

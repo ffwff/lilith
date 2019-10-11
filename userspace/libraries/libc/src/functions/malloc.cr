@@ -48,13 +48,20 @@ module Malloc
   MIN_ALLOC_DATA = sizeof(Data::Header) + MIN_ALLOC_SIZE + sizeof(Data::Footer)
 
   # start of the heap
-  @@heap_start = 0u32
+  @@heap_start : LibC::SizeT = 0.to_usize
   # end of the heap (must be page aligned)
-  @@heap_end = 0u32
+  @@heap_end : LibC::SizeT = 0.to_usize
   # placement address for allocating new headers
-  @@heap_placement = 0u32
+  @@heap_placement : LibC::SizeT = 0.to_usize
   # first header in free list
   @@first_free_header : Data::Header* = Pointer(Data::Header).null
+
+  def heap_start
+    @@heap_start
+  end
+  def heap_placement
+    @@heap_placement
+  end
 
   private def alloc_header(size : LibC::UInt) : Data::Header*
     total_size = sizeof(Data::Header) + size
@@ -409,4 +416,12 @@ end
 
 fun realloc(ptr : Void*, size : LibC::UInt) : Void*
   Malloc.realloc ptr, size
+end
+
+fun __libc_heap_start : Void*
+  Pointer(Void).new Malloc.heap_start.to_u64
+end
+
+fun __libc_heap_placement : Void*
+  Pointer(Void).new Malloc.heap_placement.to_u64
 end

@@ -56,7 +56,7 @@ int main(int argc, char **argv) {
   if (write(STDOUT_FILENO, NULL, 0) < 0)
     open("/con", O_WRONLY);
   if (write(STDERR_FILENO, NULL, 0) < 0)
-    open("/con", O_WRONLY);
+    open("/serial", O_WRONLY);
 
   if(argc == 2) {
     FILE *f = fopen(argv[1], "r");
