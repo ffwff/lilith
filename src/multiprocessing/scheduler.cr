@@ -351,6 +351,9 @@ module Multiprocessing
       end
 
       if next_process.nil?
+        if remove
+          Paging.free_process_pdpt(current_process.phys_pg_struct)
+        end
         halt_processor
       end
 
