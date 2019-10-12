@@ -16,7 +16,7 @@ struct pape_state {
   int width, height;
   png_structp png_ptr;
   png_infop info_ptr;
-  unsigned char *bg;
+  unsigned char *row;
 };
 
 static void pape_init(struct pape_state *state) {
@@ -44,7 +44,7 @@ static void pape_init_img(struct pape_state *state, char *path) {
   
   state->width = width;
   state->height = height;
-  state->bg = malloc(state->width * state->height * 4);
+  state->row = malloc(state->width * 4);
   
   // Read any color_type into 8bit depth, RGBA format.
   // See http://www.libpng.org/pub/png/libpng-manual.txt
@@ -75,10 +75,6 @@ static void pape_init_img(struct pape_state *state, char *path) {
   png_set_bgr(png_ptr);
 
   png_read_update_info(png_ptr, info_ptr);
-
-  for(int y = 0; y < state->height; y++) {
-    png_read_row(png_ptr, &state->bg[y * state->width * 4], 0);
-  }
 }
 
 static int pape_redraw(struct g_application *app) {
@@ -90,7 +86,8 @@ static int pape_redraw(struct g_application *app) {
   if(!state->drawn) {
     unsigned char *dst = canvas_ctx_get_surface(ctx);
     for(int y = 0; y < state->height; y++) {
-      memcpy(&dst[y * width * 4], &state->bg[y * state->width * 4], state->width * 4);
+      png_read_row(state->png_ptr, state->row, 0);
+      memcpy(&dst[y * width * 4], state->row, state->width * 4);
     }
     state->drawn = 1;
   }
@@ -99,14 +96,15 @@ static int pape_redraw(struct g_application *app) {
 }
 
 int main(int argc, char **argv) {
+  struct pape_state state = { 0 };
+  pape_init(&state);
+  
   if(argc != 2) {
     printf("usage: %s wallpaper\n", argv[0]);
     return 1;
   }
-  struct pape_state state = { 0 };
-  pape_init(&state);
   pape_init_img(&state, argv[1]);
-
+  
   struct g_application *app = g_application_create(1, 1, 0);
   g_application_set_window_properties(app, WM_PROPERTY_ROOT);
   g_application_set_userdata(app, &state);
