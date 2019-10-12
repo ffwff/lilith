@@ -235,7 +235,6 @@ module Gc
           if offsets & 1
             # lookup the buffer address in its offset
             addr = Pointer(USize).new(buffer_addr + pos * sizeof(Void*)).value.to_u64
-            # debug "pointer@", pos, " ", Pointer(Void).new(buffer_addr + pos * POINTER_SZ), " = ", Pointer(Void).new(addr), "\n"
             if addr == 0
               # must be a nil union, skip
               pos += 1
@@ -275,7 +274,7 @@ module Gc
       end
       node.value.next_node = @@first_black_node
       @@first_black_node = @@first_gray_node
-      @@first_gray_node = Pointer(Kernel::GcNode).null
+      @@first_gray_node = Pointer(LibCrystal::GcNode).null
       # some nodes in @@first_white_node are now gray
       if fix_white
         # debug "fix white nodes\n"
@@ -347,8 +346,7 @@ module Gc
     end
     # return
     ptr = Pointer(Void).new(header.address + sizeof(LibCrystal::GcNode))
-    # LibC.fprintf(LibC.stderr, "=> %p\n", ptr)
-    dump_nodes if @@enabled
+    # dump_nodes if @@enabled
     ptr
   end
 
