@@ -98,7 +98,7 @@ module Gc
               end
             end
             # add to gray list
-            debug_mark Pointer(Kernel::GcNode).new(i), node, false
+            # debug_mark Pointer(Kernel::GcNode).new(i), node, false
             case node.value.magic
             when GC_NODE_MAGIC
               node.value.magic = GC_NODE_MAGIC_GRAY
@@ -191,7 +191,7 @@ module Gc
             if addr >= KernelArena.start_addr && addr <= KernelArena.placement_addr
               # mark the header as gray
               header = Pointer(Kernel::GcNode).new(addr.to_u64 - sizeof(Kernel::GcNode))
-              debug_mark node, header
+              # debug_mark node, header
               case header.value.magic
               when GC_NODE_MAGIC
                 header.value.magic = GC_NODE_MAGIC_GRAY
@@ -369,21 +369,5 @@ module Gc
   private def debug(*args)
     return
     Serial.puts *args
-  end
-
-  private def debug_mark(parent : Kernel::GcNode*, child : Kernel::GcNode*, node? = true)
-    #cbody = child.as(UInt32*) + 2
-    #ctype_id = (child + 1).as(UInt32*)[0]
-    #if node?
-    #  pbody = parent.as(UInt32*) + 2
-    #  ptype_id = (parent + 1).as(UInt32*)[0]
-    #  #if ctype_id == GC_ARRAY_HEADER_TYPE
-    #    Serial.puts "mark ", parent, " (", ptype_id, "): ", child, '\n'
-    #  #end
-    #else
-    #  #if ctype_id == GC_ARRAY_HEADER_TYPE
-    #    Serial.puts "mark ", parent, ": ", child, '\n'
-    #  #end
-    #end
   end
 end
