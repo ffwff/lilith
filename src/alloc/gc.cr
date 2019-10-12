@@ -252,11 +252,11 @@ module Gc
 
       # nodes in @@first_gray_node are now black
       node = @@first_gray_node
-      while !node.null?
-        next_node = node.value.next_node
-        push(@@first_black_node, node)
-        node = next_node
+      while !node.value.next_node.null?
+        node = node.value.next_node
       end
+      node.value.next_node = @@first_black_node
+      @@first_black_node = @@first_gray_node
       @@first_gray_node = Pointer(Kernel::GcNode).null
       # some nodes in @@first_white_node are now gray
       if fix_white
