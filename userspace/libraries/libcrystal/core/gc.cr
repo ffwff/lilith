@@ -270,12 +270,12 @@ module Gc
 
       # nodes in @@first_gray_node are now black
       node = @@first_gray_node
-      while !node.null?
-        next_node = node.value.next_node
-        push(@@first_black_node, node)
-        node = next_node
+      while !node.value.next_node.null?
+        node = node.value.next_node
       end
-      @@first_gray_node = Pointer(LibCrystal::GcNode).null
+      node.value.next_node = @@first_black_node
+      @@first_black_node = @@first_gray_node
+      @@first_gray_node = Pointer(Kernel::GcNode).null
       # some nodes in @@first_white_node are now gray
       if fix_white
         # debug "fix white nodes\n"
@@ -358,21 +358,21 @@ module Gc
     while !node.null?
       body = node.as(USize*) + 2
       type_id = (node + 1).as(USize*)[0]
-      # LibC.fprintf(LibC.stderr, "%p (%d), ", body, type_id)
+      LibC.fprintf(LibC.stderr, "%p (%d), ", body, type_id)
       node = node.value.next_node
     end
   end
 
   def dump_nodes
-    # LibC.fprintf(LibC.stderr, "Gc {\n")
-    # LibC.fprintf(LibC.stderr, "  white_nodes: ")
+    LibC.fprintf(LibC.stderr, "Gc {\n")
+    LibC.fprintf(LibC.stderr, "  white_nodes: ")
     out_nodes(@@first_white_node)
-    # LibC.fprintf(LibC.stderr, "\n")
-    # LibC.fprintf(LibC.stderr, "  gray_nodes: ")
+    LibC.fprintf(LibC.stderr, "\n")
+    LibC.fprintf(LibC.stderr, "  gray_nodes: ")
     out_nodes(@@first_gray_node)
-    # LibC.fprintf(LibC.stderr, "\n")
-    # LibC.fprintf(LibC.stderr, "  black_nodes: ")
+    LibC.fprintf(LibC.stderr, "\n")
+    LibC.fprintf(LibC.stderr, "  black_nodes: ")
     out_nodes(@@first_black_node)
-    # LibC.fprintf(LibC.stderr, "\n}\n")
+    LibC.fprintf(LibC.stderr, "\n}\n")
  end
 end

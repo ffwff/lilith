@@ -16,7 +16,7 @@ cleanup() {
 }
 
 CRYSTAL_PATH="$SCRIPT_PATH" \
-  crystal build $1 --cross-compile --target $ARCH --prelude prelude || cleanup $?
+  crystal build $1 --cross-compile --target $ARCH --prelude prelude --release || cleanup $?
 $ARCH-lilith-gcc -o $output "$basename.o" || cleanup $?
 rm "$basename.o"
 cleanup 0
