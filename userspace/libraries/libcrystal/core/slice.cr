@@ -4,6 +4,10 @@ struct Slice(T)
   def initialize(@buffer : Pointer(T), @size : Int32)
   end
 
+  def self.empty
+    new Pointer(T).null, 0
+  end
+
   def [](idx : Int)
     abort "Slice: out of range" if idx >= @size || idx < 0
     @buffer[idx]
