@@ -322,7 +322,6 @@ module Gc
           next_node = node.value.next_node
           {% if flag?(:kernel) %}
             # HACK: do this or data corrupts
-            Serial.puts "free ", node, '\n'
             no_opt(node.address)
             KernelArena.free node.address
           {% else %}
@@ -358,9 +357,9 @@ module Gc
     {% end %}
 
     if @@enabled
-      #@@cycles_per_alloc.times do |i|
-      #  break if cycle == CycleType::Sweep
-      #end
+      @@cycles_per_alloc.times do |i|
+        break if cycle == CycleType::Sweep
+      end
     end
     size += sizeof(LibCrystal::GcNode)
     header = {% if flag?(:kernel) %}
