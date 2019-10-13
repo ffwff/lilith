@@ -16,12 +16,12 @@ struct StaticArray(T, N)
   end
 
   def []=(index : Int, value : T)
-    panic "setting out of bounds!" if index > N
+    abort "setting out of bounds!" if index > N
     to_unsafe[index] = value
   end
 
   def [](index : Int)
-    panic "accessing out of bounds!" if index > N
+    abort "accessing out of bounds!" if index > N
     to_unsafe[index]
   end
 

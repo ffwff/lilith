@@ -20,13 +20,11 @@ class Array(T)
   end
 
   def initialize
-    @size = 0
     @capacity = 0
     @buffer = Pointer(USize).null
   end
 
   def initialize(initial_capacity)
-    @size = 0
     @capacity = initial_capacity
     if initial_capacity > 0
       @buffer = Pointer(USize).malloc malloc_size(initial_capacity)
@@ -63,9 +61,18 @@ class Array(T)
 
   def each
     i = 0
-    while i < @size
+    while i < size
       yield to_unsafe[i]
       i += 1
     end
+  end
+
+  def to_s(io)
+    io << "["
+    each do |obj|
+      io << obj
+      io << ", "
+    end
+    io << "]"
   end
 end

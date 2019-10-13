@@ -75,16 +75,16 @@ struct Int
     n = self.abs
     i = 0
     while i < 128
-      s[i] = BASE.bytes[n % base]
+      s[i] = BASE.to_unsafe[n % base]
       i += 1
       break if (n /= base) == 0
     end
     if sign
-      yield '-'.ord.to_u8
+      yield '-'
     end
     i -= 1
     while true
-      yield s[i]
+      yield s[i].unsafe_chr
       break if i == 0
       i -= 1
     end
@@ -92,7 +92,7 @@ struct Int
 
   def to_s(io, base = 10)
     each_digit(base) do |ch|
-      io.putc ch
+      io << ch
     end
   end
 
