@@ -1,6 +1,8 @@
 require "./core/object.cr"
+require "./sys/types.cr"
 require "./core/*"
 require "./sys/*"
+require "./io/io.cr"
 require "./io/*"
 require "./time/*"
 
@@ -28,5 +30,6 @@ fun main(argc : LibC::Int, argv : UInt8**) : LibC::Int
            LibC._bss_end.address,
            stack_end)
   LibCrystalMain.__crystal_main(argc, argv)
+  STDOUT.flush
   0
 end
