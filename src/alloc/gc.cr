@@ -1,9 +1,27 @@
-require "./alloc.cr"
-require "./gc/*"
+{% if flag?(:kernel) %}
+  require "./alloc.cr"
+  require "./gc/*"
+{% else %}
+  lib LibC
+    fun malloc(size : LibC::SizeT) : Void*
+    fun free(data : Void*)
+
+    fun __libc_heap_start : Void*
+    fun __libc_heap_placement : Void*
+
+    fun fprintf(file : Void*, x0 : UInt8*, ...) : Int
+    $stderr : Void*
+  end
+{% end %}
 
 lib LibCrystal
   fun type_offsets = "__crystal_malloc_type_offsets"(type_id : UInt32) : UInt32
   fun type_size = "__crystal_malloc_type_size"(type_id : UInt32) : UInt32
+
+  struct GcNode
+    next_node : GcNode*
+    magic : USize
+  end
 end
 
 fun __crystal_malloc64(size : UInt64) : Void*
@@ -24,19 +42,12 @@ private GC_NODE_MAGIC_GRAY_ATOMIC = 0x45564103
 private GC_NODE_MAGIC_BLACK        = 0x45564104
 private GC_NODE_MAGIC_BLACK_ATOMIC = 0x45564105
 
-lib Kernel
-  struct GcNode
-    next_node : GcNode*
-    magic : USize
-  end
-end
-
 module Gc
   extend self
 
-  @@first_white_node = Pointer(Kernel::GcNode).null
-  @@first_gray_node = Pointer(Kernel::GcNode).null
-  @@first_black_node = Pointer(Kernel::GcNode).null
+  @@first_white_node = Pointer(LibCrystal::GcNode).null
+  @@first_gray_node = Pointer(LibCrystal::GcNode).null
+  @@first_black_node = Pointer(LibCrystal::GcNode).null
   @@enabled = false
   @@root_scanned = false
 
@@ -54,15 +65,23 @@ module Gc
     @@cycles_per_alloc = max((@@last_sweep_tick - @@last_start_tick) >> 2, 1)
   end
 
-  def init(@@data_start : UInt64, @@data_end : UInt64,
-           @@stack_start : UInt64, @@stack_end : UInt64)
-    @@enabled = true
-  end
+  {% if flag?(:kernel) %}
+    def _init(@@data_start : UInt64, @@data_end : UInt64,
+              @@stack_start : UInt64, @@stack_end : UInt64)
+      @@enabled = true
+    end
+  {% else %}
+    def _init(@@data_start : UInt64, @@data_end : UInt64,
+              @@bss_start : UInt64, @@bss_end : UInt64,
+              @@stack_end : UInt64)
+      @@enabled = true
+    end
+  {% end %}
 
   private macro push(list, node)
     if {{ list }}.null?
       # first node
-      {{ node }}.value.next_node = Pointer(Kernel::GcNode).null
+      {{ node }}.value.next_node = Pointer(LibCrystal::GcNode).null
       {{ list }} = {{ node }}
     else
       # middle node
@@ -72,19 +91,26 @@ module Gc
   end
 
   # gc algorithm
-  private def scan_region(start_addr, end_addr, move_list = true)
+  private def scan_region(start_addr : UInt64, end_addr : UInt64, move_list = true)
     # due to the way this rechains the linked list of white nodes
     # please set move_list=false when not scanning for root nodes
     i = start_addr
     fix_white = false
+
+    heap_start, heap_placement = {% if flag?(:kernel) %}
+                                   { KernelArena.start_addr, KernelArena.placement_addr }
+                                 {% else %}
+                                   { LibC.__libc_heap_start.address, LibC.__libc_heap_placement.address }
+                                 {% end %}
+
     scan_end = end_addr - sizeof(Void*) + 1
     until scan_end.to_usize == i.to_usize
-      word = Pointer(USize).new(i.to_u64).value
+      word = Pointer(USize).new(i).value
       # subtract to get the pointer to the header
-      word -= sizeof(Kernel::GcNode)
-      if word >= KernelArena.start_addr && word <= KernelArena.placement_addr
+      word -= sizeof(LibCrystal::GcNode)
+      if word >= heap_start && word <= heap_placement
         node = @@first_white_node
-        prev = Pointer(Kernel::GcNode).null
+        prev = Pointer(LibCrystal::GcNode).null
         found = false
         while !node.null?
           if node.address == word
@@ -98,7 +124,6 @@ module Gc
               end
             end
             # add to gray list
-            # debug_mark Pointer(Kernel::GcNode).new(i), node, false
             case node.value.magic
             when GC_NODE_MAGIC
               node.value.magic = GC_NODE_MAGIC_GRAY
@@ -124,7 +149,6 @@ module Gc
           prev = node
           node = node.value.next_node
         end
-        # debug Pointer(Void).new(word.to_u64), found ? " (found)" : "", "\n"
       end
       i += 1
     end
@@ -144,53 +168,61 @@ module Gc
       # we don't have any gray/black nodes at the beginning of a cycle
       # conservatively scan the stack for pointers
       scan_region @@data_start.not_nil!, @@data_end.not_nil!
+      {% unless flag?(:kernel) %}
+        # in the kernel, the data and bss section are fused
+        scan_region @@bss_start.not_nil!, @@bss_end.not_nil!
+      {% end %}
+
       stack_start = 0u64
-      asm("mov %rsp, $0" : "=r"(stack_start) :: "volatile")
-      if stack_start >= @@stack_start.not_nil! && stack_start <= @@stack_end.not_nil!
-        scan_region stack_start, @@stack_end.not_nil!
-      else
-        panic "stack scanning occurred in non-kernel code"
-      end
+      {% if flag?(:i686) %}
+        asm("mov %esp, $0" : "=r"(stack_start) :: "volatile")
+      {% else %}
+        asm("mov %rsp, $0" : "=r"(stack_start) :: "volatile")
+      {% end %}
+      scan_region stack_start, @@stack_end.not_nil!
+
       @@root_scanned = true
       @@last_start_tick = @@ticks
-
       return CycleType::Mark
     elsif !@@first_gray_node.null?
       # second stage of marking phase: precisely marking gray nodes
-      # new_first_gray_node = Pointer(Kernel::GcNode).null
-
       fix_white = false
       node = @@first_gray_node
       while !node.null?
-        debug "node: ", node, "\n"
         if node.value.magic == GC_NODE_MAGIC_GRAY_ATOMIC
           # skip atomic nodes
-          debug "skip\n"
           node.value.magic = GC_NODE_MAGIC_BLACK_ATOMIC
           node = node.value.next_node
           next
         end
 
-        debug "magic: ", node, node.value.magic, "\n"
+        # LibC.fprintf(LibC.stderr, "magic: %x\n", node.value.magic.to_u32)
         panic "invariance broken" if node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
 
         node.value.magic = GC_NODE_MAGIC_BLACK
 
-        buffer_addr = node.address + sizeof(Kernel::GcNode) + sizeof(Void*)
-        header_ptr = Pointer(USize).new(node.address + sizeof(Kernel::GcNode))
+        buffer_addr = node.address + sizeof(LibCrystal::GcNode) + sizeof(Void*)
+        header_ptr = Pointer(USize).new(node.address + sizeof(LibCrystal::GcNode))
         # get its type id
         type_id = header_ptr[0]
-        debug "type: ", type_id, "\n"
+        {% unless flag?(:kernel) %}
+          # we don't use heap-allocated String classes in kernel
+          # skip strings (for some reason strings aren't allocated atomically)
+          if type_id == String::TYPE_ID
+            node = node.value.next_node
+            next
+          end
+        {% end %}
         # handle gc array
         if type_id == GC_ARRAY_HEADER_TYPE
           len = header_ptr[1]
           i = 0
-          start = Pointer(USize).new(node.address + sizeof(Kernel::GcNode) + GC_ARRAY_HEADER_SIZE)
+          start = Pointer(USize).new(node.address + sizeof(LibCrystal::GcNode) + GC_ARRAY_HEADER_SIZE)
           while i < len
             addr = start[i]
-            if addr >= KernelArena.start_addr && addr <= KernelArena.placement_addr
+            if addr != 0
               # mark the header as gray
-              header = Pointer(Kernel::GcNode).new(addr.to_u64 - sizeof(Kernel::GcNode))
+              header = Pointer(LibCrystal::GcNode).new(addr.to_u64 - sizeof(LibCrystal::GcNode))
               # debug_mark node, header
               case header.value.magic
               when GC_NODE_MAGIC
@@ -210,23 +242,25 @@ module Gc
         end
         # lookup its offsets
         offsets = LibCrystal.type_offsets type_id
-        panic "zero offsets" if offsets == 0
+        if offsets == 0
+          # LibC.fprintf(LibC.stderr, "type_id doesn't have offset\n")
+          node = node.value.next_node
+          next
+        end
         # precisely scan the struct based on the offsets
         pos = 0
         while offsets != 0
           if offsets & 1
             # lookup the buffer address in its offset
-            addr = Pointer(USize).new(buffer_addr + pos * sizeof(Void*)).value
-            # debug "pointer@", pos, " ", Pointer(Void).new(buffer_addr + pos * POINTER_SZ), " = ", Pointer(Void).new(addr), "\n"
-            unless addr >= KernelArena.start_addr && addr <= KernelArena.placement_addr
+            addr = Pointer(USize).new(buffer_addr + pos * sizeof(Void*)).value.to_u64
+            if addr == 0
               # must be a nil union, skip
               pos += 1
               offsets >>= 1
               next
             end
-            # mark the header as gray
-            header = Pointer(Kernel::GcNode).new(addr - sizeof(Kernel::GcNode))
             scan_node = @@first_white_node
+            header = Pointer(LibCrystal::GcNode).new(addr - sizeof(LibCrystal::GcNode))
             while !scan_node.null?
               if header.address == scan_node.address
                 case header.value.magic
@@ -257,12 +291,11 @@ module Gc
       end
       node.value.next_node = @@first_black_node
       @@first_black_node = @@first_gray_node
-      @@first_gray_node = Pointer(Kernel::GcNode).null
+      @@first_gray_node = Pointer(LibCrystal::GcNode).null
       # some nodes in @@first_white_node are now gray
       if fix_white
-        debug "fix white nodes\n"
         node = @@first_white_node
-        new_first_white_node = Pointer(Kernel::GcNode).null
+        new_first_white_node = Pointer(LibCrystal::GcNode).null
         while !node.null?
           next_node = node.value.next_node
           if node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
@@ -281,18 +314,20 @@ module Gc
 
       if @@first_gray_node.null?
         # sweeping phase
-        debug "sweeping phase: ", self, "\n"
         @@last_sweep_tick = @@ticks
         calc_cycles_per_alloc
         node = @@first_white_node
         while !node.null?
           panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
-
-          # HACK: do this or data corrupts
-          no_opt(node.address)
-
           next_node = node.value.next_node
-          KernelArena.free node.address
+          {% if flag?(:kernel) %}
+            # HACK: do this or data corrupts
+            Serial.puts "free ", node, '\n'
+            no_opt(node.address)
+            KernelArena.free node.address
+          {% else %}
+            LibC.free node.as(Void*)
+          {% end %}
           node = next_node
         end
         @@first_white_node = @@first_black_node
@@ -308,9 +343,8 @@ module Gc
           end
           node = node.value.next_node
         end
-        @@first_black_node = Pointer(Kernel::GcNode).null
+        @@first_black_node = Pointer(LibCrystal::GcNode).null
         @@root_scanned = false
-        # begins a new cycle
         return CycleType::Sweep
       else
         return CycleType::Mark
@@ -319,15 +353,22 @@ module Gc
   end
 
   def unsafe_malloc(size : UInt64, atomic = false)
-    Multiprocessing::DriverThread.assert_unlocked
+    {% if flag?(:kernel) %}
+      Multiprocessing::DriverThread.assert_unlocked
+    {% end %}
 
     if @@enabled
-      @@cycles_per_alloc.times do |i|
-        break if cycle == CycleType::Sweep
-      end
+      #@@cycles_per_alloc.times do |i|
+      #  break if cycle == CycleType::Sweep
+      #end
     end
-    size += sizeof(Kernel::GcNode)
-    header = Pointer(Kernel::GcNode).new(KernelArena.malloc(size))
+    size += sizeof(LibCrystal::GcNode)
+    header = {% if flag?(:kernel) %}
+      Pointer(LibCrystal::GcNode).new(KernelArena.malloc(size))
+    {% else %}
+      LibC.malloc(size).as(LibCrystal::GcNode*)
+    {% end %}
+
     # move the barrier forwards by immediately graying out the header
     header.value.magic = atomic ? GC_NODE_MAGIC_GRAY_ATOMIC : GC_NODE_MAGIC_GRAY
     # append node to linked list
@@ -335,39 +376,64 @@ module Gc
       push(@@first_gray_node, header)
     end
     # return
-    ptr = Pointer(Void).new(header.address + sizeof(Kernel::GcNode))
-    debug self, '\n' if @@enabled
+    ptr = Pointer(Void).new(header.address + sizeof(LibCrystal::GcNode))
     ptr
   end
 
-  # printing
-  private def out_nodes(io, first_node)
-    node = first_node
-    while !node.null?
-      body = node.as(USize*) + 2
-      type_id = (node + 1).as(USize*)[0]
-      io.puts body, " (", type_id, ")"
-      io.puts ", " if !node.value.next_node.null?
-      node = node.value.next_node
+  {% unless flag?(:kernel) %}
+    private def panic(str)
+      abort str
     end
-  end
+  {% end %}
 
-  def to_s(io)
-    io.puts "Gc {\n"
-    io.puts "  white nodes: "
-    out_nodes(io, @@first_white_node)
-    io.puts "\n"
-    io.puts "  gray nodes: "
-    out_nodes(io, @@first_gray_node)
-    io.puts "\n"
-    io.puts "  black nodes: "
-    out_nodes(io, @@first_black_node)
-    io.puts "\n"
-    io.puts "}"
-  end
+  # printing
+  {% if flag?(:kernel) %}
+    private def out_nodes(io, first_node)
+      node = first_node
+      while !node.null?
+        body = node.as(USize*) + 2
+        type_id = (node + 1).as(USize*)[0]
+        io.puts body, " (", type_id, ")"
+        io.puts ", " if !node.value.next_node.null?
+        node = node.value.next_node
+      end
+    end
 
-  private def debug(*args)
-    return
-    Serial.puts *args
-  end
+    def to_s(io)
+      io.puts "Gc {\n"
+      io.puts "  white nodes: "
+      out_nodes(io, @@first_white_node)
+      io.puts "\n"
+      io.puts "  gray nodes: "
+      out_nodes(io, @@first_gray_node)
+      io.puts "\n"
+      io.puts "  black nodes: "
+      out_nodes(io, @@first_black_node)
+      io.puts "\n"
+      io.puts "}"
+    end
+  {% else %}
+    private def out_nodes(first_node)
+      node = first_node
+      while !node.null?
+        body = node.as(USize*) + 2
+        type_id = (node + 1).as(USize*)[0]
+        LibC.fprintf(LibC.stderr, "%p (%d), ", body, type_id)
+        node = node.value.next_node
+      end
+    end
+
+    def dump_nodes
+      LibC.fprintf(LibC.stderr, "Gc {\n")
+      LibC.fprintf(LibC.stderr, "  white_nodes: ")
+      out_nodes(@@first_white_node)
+      LibC.fprintf(LibC.stderr, "\n")
+      LibC.fprintf(LibC.stderr, "  gray_nodes: ")
+      out_nodes(@@first_gray_node)
+      LibC.fprintf(LibC.stderr, "\n")
+      LibC.fprintf(LibC.stderr, "  black_nodes: ")
+      out_nodes(@@first_black_node)
+      LibC.fprintf(LibC.stderr, "\n}\n")
+    end
+  {% end %}
 end
