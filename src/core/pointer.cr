@@ -2,10 +2,19 @@ module Pmalloc
   extend self
 
   @@addr = 0u64
-  def addr; @@addr; end
+
+  def addr
+    @@addr
+  end
+
   def addr=(@@addr); end
+
   @@start = 0u64
-  def start; @@start; end
+
+  def start
+    @@start
+  end
+
   def start=(@@start); end
 
   def alloc(size : USize)

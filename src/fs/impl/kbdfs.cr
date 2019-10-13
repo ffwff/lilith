@@ -14,7 +14,7 @@ class KbdFSNode < VFSNode
   end
 
   def open(path)
-  	node = @first_child
+    node = @first_child
     while !node.nil?
       if node.not_nil!.name == path
         return node
@@ -36,7 +36,7 @@ class KbdFSNode < VFSNode
   end
 
   def ioctl(request : Int32, data : UInt32,
-    process : Multiprocessing::Process? = nil) : Int32
+            process : Multiprocessing::Process? = nil) : Int32
     case request
     when SC_IOCTL_TCSAFLUSH
       data = checked_pointer(IoctlData::Termios, data)
@@ -61,7 +61,6 @@ class KbdFSNode < VFSNode
       -1
     end
   end
-
 end
 
 class KbdFSRawNode < VFSNode
@@ -92,7 +91,6 @@ class KbdFSRawNode < VFSNode
   def available?
     @packet_available
   end
-
 end
 
 class KbdFS < VFS
@@ -175,7 +173,7 @@ class KbdFS < VFS
         else
           msg.respond n
           if (msg.buffering == VFSNode::Buffering::LineBuffered && ch == '\n') ||
-              msg.finished?
+             msg.finished?
             msg.unawait
             false
           else
@@ -184,7 +182,6 @@ class KbdFS < VFS
         end
       end
     end
-
   end
 
   def on_key(key : Keyboard::SpecialKeys)
@@ -233,5 +230,4 @@ class KbdFS < VFS
     ch = @ansi_buf[@ansi_remaining]
     ch
   end
-
 end

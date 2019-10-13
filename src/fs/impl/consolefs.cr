@@ -50,9 +50,9 @@ class ConsoleFS < VFS
     # setup process-local variables
     @process = Multiprocessing::Process
       .spawn_kernel(GcString.new("[consolefs]"),
-					->(ptr : Void*) { ptr.as(ConsoleFS).process },
-                    self.as(Void*),
-                    stack_pages: 4) do |process|
+        ->(ptr : Void*) { ptr.as(ConsoleFS).process },
+        self.as(Void*),
+        stack_pages: 4) do |process|
     end
     @queue = VFSQueue.new(@process)
     @process_msg = nil
@@ -63,6 +63,7 @@ class ConsoleFS < VFS
 
   # process
   @process_msg : VFSMessage? = nil
+
   protected def process
     while true
       @process_msg = @queue.not_nil!.dequeue

@@ -79,7 +79,7 @@ private module Strtok
     end
     false
   end
-  
+
   def strtok_r(str : LibC::String, delim : LibC::String, saveptr : LibC::String*) : LibC::String
     arg_begin = str.null? ? saveptr.value : str
     return saveptr.value if str.null? && saveptr.value.null?
@@ -163,7 +163,7 @@ fun strpbrk(s1 : LibC::String, s2 : LibC::String) : LibC::String
     s1 += 1
   end
   LibC::String.null
-end 
+end
 
 # spn
 fun strspn(s1 : LibC::String, s2 : LibC::String) : LibC::SizeT
@@ -191,8 +191,8 @@ end
 fun memset(dst : UInt8*, c : LibC::UInt, n : LibC::SizeT) : Void*
   asm(
     "cld\nrep stosb"
-    :: "{al}"(c.to_u8), "{edi}"(dst), "{ecx}"(n)
-    : "volatile", "memory"
+          :: "{al}"(c.to_u8), "{edi}"(dst), "{ecx}"(n)
+          : "volatile", "memory"
   )
   dst.as(Void*)
 end
@@ -200,8 +200,8 @@ end
 fun memcpy(dst : UInt8*, src : UInt8*, n : LibC::SizeT) : Void*
   asm(
     "cld\nrep movsb"
-    :: "{edi}"(dst), "{esi}"(src), "{ecx}"(n)
-    : "volatile", "memory"
+          :: "{edi}"(dst), "{esi}"(src), "{ecx}"(n)
+          : "volatile", "memory"
   )
   dst.as(Void*)
 end

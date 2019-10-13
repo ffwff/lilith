@@ -164,7 +164,7 @@ private module Ata
     status = wait_ready bus
     if advanced
       if (status & SR_ERR) != 0 ||
-         (status & SR_DF)  != 0 ||
+         (status & SR_DF) != 0 ||
          (status & SR_DRQ) == 0
         return false
       end
@@ -197,8 +197,8 @@ private module Ata
     packet[1] = 0x0u8
     packet[2] = ((sector >> 24) & 0xFF).to_u8
     packet[3] = ((sector >> 16) & 0xFF).to_u8
-    packet[4] = ((sector >> 8)  & 0xFF).to_u8
-    packet[5] = ((sector >> 0)  & 0xFF).to_u8
+    packet[4] = ((sector >> 8) & 0xFF).to_u8
+    packet[5] = ((sector >> 0) & 0xFF).to_u8
     packet[6] = 0x0u8
     packet[7] = 0x0u8
     packet[8] = 0x0u8
@@ -352,6 +352,7 @@ class AtaDevice
   end
 
   @lock = Spinlock.new
+
   def read_sector(ptr, sector : UInt64)
     panic "can't access atapi" if @type == Type::Atapi
 

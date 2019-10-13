@@ -1,7 +1,7 @@
-EOF = -4
-STDIN  = 0
-STDOUT = 1
-STDERR = 2
+EOF    = -4
+STDIN  =  0
+STDOUT =  1
+STDERR =  2
 
 FILE_BUFFER_SZ = 256
 
@@ -13,7 +13,6 @@ O_TRUNC  = (1 << 3)
 O_APPEND = (1 << 4)
 
 class FileBuffer
-
   @buffer = Pointer(UInt8).null
   @pos = 0
 
@@ -77,11 +76,9 @@ class FileBuffer
     @pos += 1
     ch
   end
-
 end
 
 class File
-
   @[Flags]
   enum Status
     Read
@@ -118,7 +115,7 @@ class File
       mode += 1
     end
   end
-  
+
   def self.open_mode(mode : LibC::String)
     retval = 0
     until mode.value == 0
@@ -236,6 +233,7 @@ class File
   end
 
   GETLINE_INITIAL = 128u32
+
   def getline(lineptr : LibC::String*, n : LibC::SizeT*) : LibC::SSizeT
     if lineptr.value.null? && n.value == 0
       n.value = GETLINE_INITIAL
@@ -305,11 +303,10 @@ class File
     @wbuffer.flush(@fd, false)
     @rbuffer.flush(@fd, false)
   end
-  
+
   def ftell
     lseek(@fd, 0, SC_SEEK_CUR)
   end
-
 end
 
 lib LibC
@@ -321,16 +318,24 @@ end
 module Stdio
   extend self
 
-  @@stdin  = File.new STDIN , File::Status::Read , File::Buffering::Unbuffered
+  @@stdin = File.new STDIN, File::Status::Read, File::Buffering::Unbuffered
   @@stdout = File.new STDOUT, File::Status::Write, File::Buffering::LineBuffered
   @@stderr = File.new STDERR, File::Status::Write, File::Buffering::Unbuffered
 
-  def stdin; @@stdin; end
-  def stdout; @@stdout; end
-  def stderr; @@stderr; end
+  def stdin
+    @@stdin
+  end
+
+  def stdout
+    @@stdout
+  end
+
+  def stderr
+    @@stderr
+  end
 
   def init
-    LibC.stdin  = @@stdin.as(Void*)
+    LibC.stdin = @@stdin.as(Void*)
     LibC.stdout = @@stdout.as(Void*)
     LibC.stderr = @@stderr.as(Void*)
   end
@@ -340,7 +345,6 @@ module Stdio
     @@stdout.fflush
     @@stderr.fflush
   end
-
 end
 
 # file operations
@@ -433,7 +437,8 @@ fun ungetc(ch : LibC::Int, stream : Void*) : LibC::Int
   stream.as(File).ungetc ch
 end
 
-fun setvbuf(stream : Void*, buffer : LibC::String, mode : LibC::Int, size : LibC::SizeT) :: LibC::Int
+fun setvbuf(stream : Void*, buffer : LibC::String, mode : LibC::Int, size : LibC::SizeT)
+  ::LibC::Int
   # TODO
   abort
   0
@@ -454,7 +459,7 @@ fun fputs(str : LibC::String, stream : Void*) : LibC::Int
   stream.as(File).fputs str
 end
 
-fun fnputs(data : LibC::String, len : LibC::SizeT,  stream : Void*) : LibC::Int
+fun fnputs(data : LibC::String, len : LibC::SizeT, stream : Void*) : LibC::Int
   stream.as(File).fnputs data, len
 end
 

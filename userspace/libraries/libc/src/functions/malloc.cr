@@ -6,14 +6,13 @@ module Malloc
   MAGIC        = 0x1badc0fe
   MAGIC_FREE   = 0x2badc0fe
   FOOTER_MAGIC = 0x1badb011
-  ALLOC_UNIT   = 0x1000u32
+  ALLOC_UNIT   =  0x1000u32
 
   def unit_aligned(sz : LibC::UInt)
     (sz & 0xFFFF_F000) + 0x1000
   end
 
   lib Data
-
     struct Header
       # magic number for the header
       magic : LibC::UInt
@@ -32,13 +31,13 @@ module Malloc
       # corresponding header
       header : Header*
     end
-
   end
 
   # alignment
   private def align_up(x)
     x + (0x4 - 1) & -0x4
   end
+
   private def aligned?(x)
     (x & (0x4 - 1)) == 0
   end
@@ -59,6 +58,7 @@ module Malloc
   def heap_start
     @@heap_start
   end
+
   def heap_placement
     @@heap_placement
   end
@@ -211,7 +211,7 @@ module Malloc
   private def header_after(hdr : Data::Header*)
     Pointer(Data::Header)
       .new(hdr.address + sizeof(Data::Header) +
-          hdr.value.size + sizeof(Data::Footer))
+           hdr.value.size + sizeof(Data::Footer))
   end
 
   private def prev_block_hdr(hdr : Data::Header*)
@@ -221,7 +221,7 @@ module Malloc
                  footer_before(hdr).value.header
                end
     if !prev_hdr.null? &&
-        prev_hdr.value.magic != MAGIC && prev_hdr.value.magic != MAGIC_FREE
+       prev_hdr.value.magic != MAGIC && prev_hdr.value.magic != MAGIC_FREE
       Stdio.stderr.fputs "free: invalid magic number for prev_hdr"
       abort
     end
@@ -234,7 +234,7 @@ module Malloc
       next_hdr = Pointer(Data::Header).null
     end
     if !next_hdr.null? &&
-        next_hdr.value.magic != MAGIC && next_hdr.value.magic != MAGIC_FREE
+       next_hdr.value.magic != MAGIC && next_hdr.value.magic != MAGIC_FREE
       Stdio.stderr.fputs "free: invalid magic number for next_hdr\n"
       abort
     end
@@ -259,7 +259,7 @@ module Malloc
     new_hdr = Pointer(Data::Header).null
     new_ftr = Pointer(Data::Footer).null
     if !prev_hdr.null? && !next_hdr.null? &&
-        prev_hdr.value.magic == MAGIC_FREE && next_hdr.value.magic == MAGIC_FREE
+       prev_hdr.value.magic == MAGIC_FREE && next_hdr.value.magic == MAGIC_FREE
       # dbg "case 1\n"
       # case 1: prev is freed and next is freed
       unchain_header next_hdr
@@ -270,7 +270,7 @@ module Malloc
       new_ftr.value.header = new_hdr
       new_hdr.value.size = new_ftr.address - new_hdr.address - sizeof(Data::Header)
     elsif !prev_hdr.null? && !next_hdr.null? &&
-        prev_hdr.value.magic == MAGIC && next_hdr.value.magic == MAGIC_FREE
+          prev_hdr.value.magic == MAGIC && next_hdr.value.magic == MAGIC_FREE
       # dbg "case 2\n"
       # case 2: prev is allocated and next is freed
       unchain_header next_hdr
@@ -285,7 +285,7 @@ module Malloc
       hdr.value.magic = MAGIC_FREE
       chain_header hdr
     elsif !prev_hdr.null? && !next_hdr.null? &&
-       prev_hdr.value.magic == MAGIC_FREE && next_hdr.value.magic == MAGIC
+          prev_hdr.value.magic == MAGIC_FREE && next_hdr.value.magic == MAGIC
       # dbg "case 3\n"
       # case 3: prev is freed and next is allocated
       new_hdr = prev_hdr
@@ -295,12 +295,11 @@ module Malloc
       new_ftr.value.header = new_hdr
       new_hdr.value.size = new_ftr.address - new_hdr.address - sizeof(Data::Header)
     else
-      #dbg "case 4\n"
+      # dbg "case 4\n"
       # case 4: prev & next are allocated
       hdr.value.magic = MAGIC_FREE
       chain_header hdr
     end
-
   end
 
   def realloc(ptr : Void*, size : LibC::UInt) : Void*
@@ -331,7 +330,7 @@ module Malloc
       # |hdr|-----|ftr||hdr|----|ftr||hdr|-----|ftr|
       # ^ prev         ^ cur         ^ next    ^
       if !prev_hdr.null? && !next_hdr.null? &&
-          prev_hdr.value.magic == MAGIC && next_hdr.value.magic == MAGIC_FREE
+         prev_hdr.value.magic == MAGIC && next_hdr.value.magic == MAGIC_FREE
         # prioritise this case first because we wouldn't need to move memory
         # case 2: prev is allocated and next is freed
         new_size = footer_for_block(next_hdr).address - hdr.address - sizeof(Data::Header)
@@ -348,7 +347,7 @@ module Malloc
           return ptr
         end
       elsif !prev_hdr.null? && !next_hdr.null? &&
-        prev_hdr.value.magic == MAGIC_FREE && next_hdr.value.magic == MAGIC_FREE
+            prev_hdr.value.magic == MAGIC_FREE && next_hdr.value.magic == MAGIC_FREE
         # case 1: prev & next are freed
         new_size = footer_for_block(next_hdr).address - prev_hdr.address - sizeof(Data::Header)
         if new_size >= size
@@ -364,7 +363,7 @@ module Malloc
           new_ftr.value.header = new_hdr
         end
       elsif !prev_hdr.null? && !next_hdr.null? &&
-        prev_hdr.value.magic == MAGIC_FREE && next_hdr.value.magic == MAGIC
+            prev_hdr.value.magic == MAGIC_FREE && next_hdr.value.magic == MAGIC
         # case 1: prev is freed and next is allocated
         new_size = footer_for_block(hdr).address - prev_hdr.address - sizeof(Data::Header)
         if new_size >= size
@@ -396,7 +395,6 @@ module Malloc
       new_ptr
     end
   end
-
 end
 
 # c functions

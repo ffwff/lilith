@@ -1,7 +1,6 @@
 require "./output_driver.cr"
 
 private struct ConsoleInstance < OutputDriver
-
   @enabled = true
   property enabled
 
@@ -20,7 +19,7 @@ private struct ConsoleInstance < OutputDriver
     return unless @enabled
     device.putc ch
   end
-  
+
   def puts(args)
     return unless @enabled
     device.puts args
@@ -60,7 +59,6 @@ private struct ConsoleInstance < OutputDriver
       FbdevState.locked?
     end
   end
-
 end
 
 Console = ConsoleInstance.new

@@ -115,6 +115,7 @@ private class Fat16Node < VFSNode
   property name
 
   @first_child : Fat16Node? = nil
+
   def first_child
     if @directory && !@dir_populated
       @dir_populated = true
@@ -205,11 +206,11 @@ private class Fat16Node < VFSNode
 
     # setup
     fat_table = if allocator
-      sz = fs.fat_sector_size
-      Slice(UInt16).new(allocator.not_nil!.malloc(sz * sizeof(UInt16)).as(UInt16*), sz)
-    else
-      Slice(UInt16).mmalloc(fs.fat_sector_size)
-    end
+                  sz = fs.fat_sector_size
+                  Slice(UInt16).new(allocator.not_nil!.malloc(sz * sizeof(UInt16)).as(UInt16*), sz)
+                else
+                  Slice(UInt16).mmalloc(fs.fat_sector_size)
+                end
     fat_sector = read_fat_table fat_table, starting_cluster
 
     cluster = starting_cluster
@@ -227,11 +228,11 @@ private class Fat16Node < VFSNode
 
     # read file
     file_buffer = if allocator.nil?
-      Slice(UInt16).mmalloc(256)
-    else
-      sz = 256
-      Slice(UInt16).new(allocator.not_nil!.malloc(sz * sizeof(UInt16)).as(UInt16*), sz)
-    end 
+                    Slice(UInt16).mmalloc(256)
+                  else
+                    sz = 256
+                    Slice(UInt16).new(allocator.not_nil!.malloc(sz * sizeof(UInt16)).as(UInt16*), sz)
+                  end
     while remaining_bytes > 0 && cluster < 0xFFF8
       sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
       read_sector = 0
@@ -438,9 +439,9 @@ class Fat16FS < VFS
       StackAllocator.new(Pointer(Void).new(Multiprocessing::KERNEL_HEAP_INITIAL))
     @process = Multiprocessing::Process
       .spawn_kernel(GcString.new("[fat16fs]"),
-                    ->(ptr : Void*) { ptr.as(Fat16FS).process },
-                    self.as(Void*),
-                    stack_pages: 4) do |process|
+        ->(ptr : Void*) { ptr.as(Fat16FS).process },
+        self.as(Void*),
+        stack_pages: 4) do |process|
       Paging.alloc_page_pg(Multiprocessing::KERNEL_HEAP_INITIAL, true, false)
     end
 
@@ -452,6 +453,7 @@ class Fat16FS < VFS
 
   # process
   @process_msg : VFSMessage? = nil
+
   protected def process
     while true
       @process_msg = @queue.not_nil!.dequeue
@@ -460,8 +462,8 @@ class Fat16FS < VFS
         case msg.type
         when VFSMessage::Type::Read
           fat16_node.read(msg.slice_size,
-                          msg.file_offset,
-                          allocator: @process_allocator) do |ch|
+            msg.file_offset,
+            allocator: @process_allocator) do |ch|
             msg.respond(ch)
           end
           msg.unawait

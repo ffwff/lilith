@@ -1,5 +1,4 @@
 class Box(T)
-
   def initialize
     @object = uninitialized T
   end
@@ -13,5 +12,4 @@ class Box(T)
 
   def object=(@object)
   end
-
 end

@@ -63,12 +63,12 @@ class Mouse
 
   @[Flags]
   enum AttributeByte
-    LeftBtn = 1 << 0
-    RightBtn = 1 << 1
+    LeftBtn   = 1 << 0
+    RightBtn  = 1 << 1
     MiddleBtn = 1 << 2
     AlwaysOne = 1 << 3
-    XSign = 1 << 4
-    YSign = 1 << 5
+    XSign     = 1 << 4
+    YSign     = 1 << 5
     XOverflow = 1 << 6
     YOverflow = 1 << 7
   end
@@ -127,5 +127,4 @@ class Mouse
       end
     end
   end
-
 end

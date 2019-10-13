@@ -151,18 +151,33 @@ private module VgaStatePrivate
   @@cy = 0
   @@fg = VgaColor::White
   @@bg = VgaColor::Black
-  
-  def cx; @@cx; end
-  def cy; @@cy; end
-  def fg; @@fg; end
-  def bg; @@bg; end
-  
+
+  def cx
+    @@cx
+  end
+
+  def cy
+    @@cy
+  end
+
+  def fg
+    @@fg
+  end
+
+  def bg
+    @@bg
+  end
+
   def cx=(@@cx); end
+
   def cy=(@@cy); end
+
   def fg=(@@fg); end
+
   def bg=(@@bg); end
 
   @@ansi_handler = AnsiHandler.new
+
   def ansi_handler
     @@ansi_handler
   end
@@ -198,6 +213,7 @@ private module VgaStatePrivate
   end
 
   @@buffer = Pointer(UInt16).new(0xb8000u64 | PTR_IDENTITY_MASK)
+
   def buffer
     @@buffer
   end

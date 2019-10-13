@@ -1,5 +1,4 @@
 struct AnsiHandler
-
   enum State : Int32
     Default
     EscapeBegin
@@ -15,6 +14,7 @@ struct AnsiHandler
 
   struct CsiSequence
     getter type, arg_n, arg_m
+
     def initialize(@type : CsiSequenceType,
                    @arg_n : UInt16? = nil,
                    @arg_m : UInt16? = nil)
@@ -122,5 +122,4 @@ struct AnsiHandler
       end
     end
   end
-
 end

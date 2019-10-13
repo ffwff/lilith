@@ -7,15 +7,15 @@ lib LibC
   alias UInt = UInt32
   alias LongLong = Int64
   alias ULongLong = UInt64
-  
+
   {% if flag?(:bits32) %}
     alias SizeT = UInt32
-    alias SSizeT = Int32 
+    alias SSizeT = Int32
     alias Long = Int32
     alias ULong = UInt32
   {% else %}
     alias SizeT = UInt64
-    alias SSizeT = Int64 
+    alias SSizeT = Int64
     alias Long = Int64
     alias ULong = UInt64
   {% end %}
@@ -33,18 +33,23 @@ struct Int
   def to_int
     self.to_i32
   end
+
   def to_uint
     self.to_u32
   end
+
   def to_long
     self.to_i32
   end
+
   def to_ulong
     self.to_u32
   end
+
   def to_longlong
     self.to_i64
   end
+
   def to_ulonglong
     self.to_u64
   end
@@ -53,6 +58,7 @@ struct Int
     def to_usize
       self.to_u32
     end
+
     def to_isize
       self.to_i32
     end
@@ -60,6 +66,7 @@ struct Int
     def to_usize
       self.to_u64
     end
+
     def to_isize
       self.to_i64
     end
@@ -68,16 +75,19 @@ struct Int
   def <<(other)
     self.unsafe_shl other
   end
+
   def >>(other)
     self.unsafe_shr other
   end
+
   def %(other)
     self.unsafe_mod other
   end
+
   def ===(other)
     self == other
   end
-  
+
   def times(&block)
     i = 0
     while i < self
@@ -89,7 +99,6 @@ end
 
 # Object
 class Object
-
   def unsafe_as(type : T.class) forall T
     x = self
     pointerof(x).as(T*).value
@@ -104,7 +113,6 @@ class Object
     end
     {% end %}
   end
-
 end
 
 # Pointers

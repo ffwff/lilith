@@ -7,7 +7,7 @@ lib LibC
 end
 
 class String
-  TYPE_ID = "".crystal_type_id
+  TYPE_ID     = "".crystal_type_id
   HEADER_SIZE = sizeof({Int32, Int32, Int32})
 
   class Builder
@@ -84,7 +84,7 @@ class String
   def [](index : Int)
     bytes[index]
   end
-  
+
   def ===(other)
     self == other
   end
@@ -98,6 +98,7 @@ class String
   end
 
   private INT_BASE = "0123456789abcdefghijklmnopqrstuvwxyz"
+
   def to_i?(base : Int = 10)
     retval = 0
     self.each do |char|
@@ -117,5 +118,4 @@ class String
       0
     end
   end
-
 end

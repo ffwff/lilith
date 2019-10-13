@@ -18,13 +18,13 @@ private lib Kernel
 
   @[Packed]
   struct IdtEntry
-    offset_1  : UInt16 # offset bits 0..15
-    selector  : UInt16 # a code segment selector in GDT or LDT
-    ist       : UInt8
-    type_attr : UInt8  # type and attributes
-    offset_2  : UInt16 # offset bits 16..31
-    offset_3  : UInt32 # offset bits 32..63
-    zero      : UInt32
+    offset_1 : UInt16 # offset bits 0..15
+    selector : UInt16 # a code segment selector in GDT or LDT
+    ist : UInt8
+    type_attr : UInt8 # type and attributes
+    offset_2 : UInt16 # offset bits 16..31
+    offset_3 : UInt32 # offset bits 32..63
+    zero : UInt32
   end
 
   fun kload_idt(idtr : UInt32)
@@ -34,9 +34,9 @@ lib IdtData
   struct Registers
     # Pushed by pushad:
     ds,
-    rbp, rdi, rsi,
-    r15, r14, r13, r12, r11, r10, r9, r8,
-    rdx, rcx, rbx, rax : UInt64
+rbp, rdi, rsi,
+r15, r14, r13, r12, r11, r10, r9, r8,
+rdx, rcx, rbx, rax : UInt64
     # Interrupt number
     int_no : UInt64
     # Pushed by the processor automatically.
@@ -46,9 +46,9 @@ lib IdtData
   struct ExceptionRegisters
     # Pushed by pushad:
     ds,
-    rbp, rdi, rsi,
-    r15, r14, r13, r12, r11, r10, r9, r8,
-    rdx, rcx, rbx, rax : UInt64
+rbp, rdi, rsi,
+r15, r14, r13, r12, r11, r10, r9, r8,
+rdx, rcx, rbx, rax : UInt64
     # Interrupt number
     int_no, errcode : UInt64
     # Pushed by the processor automatically.
@@ -190,13 +190,13 @@ EX_PAGEFAULT = 14
 
 private def dump_frame(frame : IdtData::ExceptionRegisters*)
   {% for id in [
-          "ds",
-          "rbp", "rdi", "rsi",
-          "r15", "r14", "r13", "r12", "r11", "r10", "r9", "r8",
-          "rdx", "rcx", "rbx", "rax",
-          "int_no", "errcode",
-          "rip", "cs", "rflags", "userrsp", "ss",
-        ] %}
+                 "ds",
+                 "rbp", "rdi", "rsi",
+                 "r15", "r14", "r13", "r12", "r11", "r10", "r9", "r8",
+                 "rdx", "rcx", "rbx", "rax",
+                 "int_no", "errcode",
+                 "rip", "cs", "rflags", "userrsp", "ss",
+               ] %}
   Serial.puts {{ id }}, "="
   frame.value.{{ id.id }}.to_s Serial, 16
   Serial.puts "\n"
@@ -207,40 +207,40 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
   errcode = frame.value.errcode
   case frame.value.int_no
   when EX_PAGEFAULT
-  {% if false %}
-    faulting_address = 0u64
-    asm("mov %cr2, $0" : "=r"(faulting_address) :: "volatile")
+    {% if false %}
+      faulting_address = 0u64
+      asm("mov %cr2, $0" : "=r"(faulting_address) :: "volatile")
 
-    present  = (errcode & 0x1)  == 0
-    rw       = (errcode & 0x2)  != 0
-    user     = (errcode & 0x4)  != 0
-    reserved = (errcode & 0x8)  != 0
-    id       = (errcode & 0x10) != 0
+      present = (errcode & 0x1) == 0
+      rw = (errcode & 0x2) != 0
+      user = (errcode & 0x4) != 0
+      reserved = (errcode & 0x8) != 0
+      id = (errcode & 0x10) != 0
 
-    Serial.puts Pointer(Void).new(faulting_address), user, " ", Pointer(Void).new(frame.value.rip), "\n"
-    process = Multiprocessing.current_process.not_nil!
-    if process.kernel_process?
-      panic "segfault from kernel process"
-    elsif frame.value.rip > KERNEL_OFFSET
-      panic "segfault from kernel"
-    else
-      if faulting_address < Multiprocessing::USER_STACK_TOP &&
-         faulting_address > Multiprocessing::USER_STACK_BOTTOM_MAX
-        # stack page fault
-        Idt.lock do
-          stack_address = Paging.t_addr(faulting_address)
-          process.udata.not_nil!.mmap_list.add(stack_address, 0x1000,
-            MemMapNode::Attributes::Read | MemMapNode::Attributes::Write | MemMapNode::Attributes::Stack)
-
-          addr = Paging.alloc_page_pg(stack_address, true, true)
-          zero_page Pointer(UInt8).new(addr)
-        end
-        return
+      Serial.puts Pointer(Void).new(faulting_address), user, " ", Pointer(Void).new(frame.value.rip), "\n"
+      process = Multiprocessing.current_process.not_nil!
+      if process.kernel_process?
+        panic "segfault from kernel process"
+      elsif frame.value.rip > KERNEL_OFFSET
+        panic "segfault from kernel"
       else
-        Multiprocessing.switch_process_and_terminate
+        if faulting_address < Multiprocessing::USER_STACK_TOP &&
+           faulting_address > Multiprocessing::USER_STACK_BOTTOM_MAX
+          # stack page fault
+          Idt.lock do
+            stack_address = Paging.t_addr(faulting_address)
+            process.udata.not_nil!.mmap_list.add(stack_address, 0x1000,
+              MemMapNode::Attributes::Read | MemMapNode::Attributes::Write | MemMapNode::Attributes::Stack)
+
+            addr = Paging.alloc_page_pg(stack_address, true, true)
+            zero_page Pointer(UInt8).new(addr)
+          end
+          return
+        else
+          Multiprocessing.switch_process_and_terminate
+        end
       end
-    end
-  {% end %}
+    {% end %}
   else
     dump_frame(frame)
     Serial.puts "unhandled cpu exception: ", frame.value.int_no, ' ', errcode, '\n'

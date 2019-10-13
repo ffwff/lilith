@@ -22,14 +22,14 @@ lib PageStructs
 end
 
 PTR_IDENTITY_MASK = 0xFFFF_8000_0000_0000u64
-KERNEL_OFFSET     = 0x80_0000_0000u64
-PDPT_SIZE         = 0x80_0000_0000u64
+KERNEL_OFFSET     =        0x80_0000_0000u64
+PDPT_SIZE         =        0x80_0000_0000u64
 
 module Paging
   extend self
 
   KERNEL_PDPT_POINTER = 0xFFFF_8800_0000_0000u64
-  KERNEL_PDPT_IDX = page_layer_indexes(KERNEL_PDPT_POINTER)[0]
+  KERNEL_PDPT_IDX     = page_layer_indexes(KERNEL_PDPT_POINTER)[0]
 
   # present, us, rw, global
   # PT_MASK_GLOBAL = 0x107
@@ -43,6 +43,7 @@ module Paging
   PT_MASK = 0x7
 
   @@usable_physical_memory = 0u64
+
   def usable_physical_memory
     @@usable_physical_memory
   end
@@ -57,7 +58,7 @@ module Paging
     new_addr = @@current_pdpt.address & ~PTR_IDENTITY_MASK
     Pointer(PageStructs::PageDirectoryPointerTable).new(new_addr)
   end
-  
+
   # lower-half page directory pointer table for kernel processes
   def real_pdpt
     pml4_addr = @@pml4_table.address | PTR_IDENTITY_MASK
@@ -82,7 +83,7 @@ module Paging
       pml4_table.value.pdpt[0] = 0u64
       return
     end
-  
+
     new_addr = x.address | PTR_IDENTITY_MASK
     @@current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new new_addr
 
@@ -91,7 +92,7 @@ module Paging
     pml4_table = Pointer(PageStructs::PML4Table).new pml4_addr
     pml4_table.value.pdpt[0] = x.address | PT_MASK
   end
-  
+
   # map kernel page directory pointer table
   @[NoInline]
   def current_kernel_pdpt=(x)
@@ -112,7 +113,6 @@ module Paging
     stack_start : Void*, stack_end : Void*,
     mboot_header : Multiboot::MultibootInfo*
   )
-
     cur_mmap_addr = mboot_header.value.mmap_addr
     mmap_end_addr = cur_mmap_addr + mboot_header.value.mmap_length
 
@@ -223,17 +223,17 @@ module Paging
   end
 
   def page_layer_indexes(addr : UInt64)
-    pdpt_idx  = (addr >> 39) & (0x200 - 1)
-    dir_idx   = (addr >> 30) & (0x200 - 1)
+    pdpt_idx = (addr >> 39) & (0x200 - 1)
+    dir_idx = (addr >> 30) & (0x200 - 1)
     table_idx = (addr >> 21) & (0x200 - 1)
-    page_idx  = (addr >> 12) & (0x200 - 1)
+    page_idx = (addr >> 12) & (0x200 - 1)
     {pdpt_idx.to_i32, dir_idx.to_i32, table_idx.to_i32, page_idx.to_i32}
   end
 
   def indexes_to_address(dir_idx, table_idx, page_idx)
-    dir_idx.to_u64 * 0x4000_0000u64 + 
-    table_idx.to_u64 * 0x20_0000u64 +
-    page_idx.to_u64 * 0x1000u64
+    dir_idx.to_u64 * 0x4000_0000u64 +
+      table_idx.to_u64 * 0x20_0000u64 +
+      page_idx.to_u64 * 0x1000u64
   end
 
   # state
@@ -258,7 +258,7 @@ module Paging
     while virt_addr < virt_addr_end
       # allocate page frame
       pdpt_idx, dir_idx, table_idx, page_idx = page_layer_indexes(virt_addr)
-      
+
       if pml4_table.value.pdpt[pdpt_idx] == 0
         paddr = FrameAllocator.claim_with_addr | PT_MASK
         pml4_table.value.pdpt[pdpt_idx] = paddr
@@ -314,13 +314,13 @@ module Paging
                         npages : USize = 1) : UInt64
     retval = 0u64
     asm("syscall"
-        : "={rax}"(retval)
-        : "{rax}"(SC_MMAP_DRV),
-          "{rbx}"(virt_addr_start),
-          "{rdx}"(rw),
-          "{r8}"(user),
-          "{r9}"(npages),
-        : "cc", "memory", "{rcx}", "{r11}", "{rdi}", "{rsi}")
+            : "={rax}"(retval)
+            : "{rax}"(SC_MMAP_DRV),
+              "{rbx}"(virt_addr_start),
+              "{rdx}"(rw),
+              "{r8}"(user),
+              "{r9}"(npages)
+            : "cc", "memory", "{rcx}", "{r11}", "{rdi}", "{rsi}")
     retval
   end
 
@@ -331,14 +331,14 @@ module Paging
 
     return false if pml4_table.value.pdpt[pdpt_idx] == 0u64
     pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
-        .new(mt_addr pml4_table.value.pdpt[pdpt_idx])
+      .new(mt_addr pml4_table.value.pdpt[pdpt_idx])
 
     return false if pdpt.value.dirs[dir_idx] == 0u64
     pd = Pointer(PageStructs::PageDirectory).new(mt_addr pdpt.value.dirs[dir_idx])
 
     return false if pd.value.tables[table_idx] == 0u64
     pt = Pointer(PageStructs::PageTable).new(mt_addr pd.value.tables[table_idx])
-    
+
     pt.value.pages[page_idx] = 0u64
     asm("invlpg ($0)" :: "r"(virt_addr) : "memory")
 
@@ -390,7 +390,8 @@ module Paging
 
   # page creation
   PG_WRITE_BIT = 0x2u64
-  PG_USER_BIT = 0x4u64
+  PG_USER_BIT  = 0x4u64
+
   private def page_create(rw : Bool, user : Bool, phys : UInt64) : UInt64
     page = 0x1u64
     if rw
@@ -458,7 +459,7 @@ module Paging
 
     return false if pml4_table.value.pdpt[pdpt_idx] == 0u64
     pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
-        .new(mt_addr pml4_table.value.pdpt[pdpt_idx])
+      .new(mt_addr pml4_table.value.pdpt[pdpt_idx])
 
     return false if pdpt.value.dirs[dir_idx] == 0u64
     pd = Pointer(PageStructs::PageDirectory).new(mt_addr pdpt.value.dirs[dir_idx])

@@ -89,7 +89,7 @@ struct Int
       i -= 1
     end
   end
-  
+
   def to_s(io, base = 10)
     each_digit(base) do |ch|
       io.putc ch
@@ -100,6 +100,7 @@ struct Int
     def to_usize
       self.to_u32
     end
+
     def to_isize
       self.to_i32
     end
@@ -107,6 +108,7 @@ struct Int
     def to_usize
       self.to_u64
     end
+
     def to_isize
       self.to_i64
     end
@@ -208,4 +210,3 @@ struct UInt64
     value.to_u64
   end
 end
-

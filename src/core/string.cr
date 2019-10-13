@@ -29,7 +29,7 @@ class String
   def [](index : Int)
     bytes[index]
   end
-  
+
   def ===(other)
     self == other
   end

@@ -3,12 +3,11 @@ private lib Kernel
 end
 
 module Multiprocessing
-
   module Scheduler
     extend self
 
     NORMAL_TIME_SLICE = 1000u64 # 1ms
-    
+
     class ProcessData
       @next_data : ProcessData? = nil
       @prev_data : ProcessData? = nil
@@ -26,21 +25,22 @@ module Multiprocessing
         Sleep
         Removed
       end
-      
+
       private def wait_status?(status)
         case status
         when Status::WaitIo ||
-             Status::WaitProcess ||
-             Status::WaitFd ||
-             Status::Sleep
+          Status::WaitProcess ||
+          Status::WaitFd ||
+          Status::Sleep
           true
         else
           false
         end
       end
-      
+
       @status = Status::Normal
       getter status
+
       def status=(s)
         unless @next_data.nil? && @prev_data.nil?
           if !wait_status?(@status) && wait_status?(s)
@@ -152,12 +152,12 @@ module Multiprocessing
       @first_data : ProcessData? = nil
       @last_data : ProcessData? = nil
       property first_data, last_data
-      
+
       getter queue_id
 
       def initialize(@queue_id : Int32)
       end
-      
+
       def append_process_data(data : ProcessData)
         if data.next_data || data.prev_data
           panic "Scheduler::Queue: already in list!"
@@ -190,7 +190,7 @@ module Multiprocessing
         data.next_data = nil
         true
       end
-      
+
       def next_process(current_process : Process? = nil) : Process?
         return nil if @first_data.nil?
         if current_process.nil?
@@ -224,7 +224,7 @@ module Multiprocessing
         end
       end
     end
-    
+
     @@cpu_queue = Queue.new 0
     @@io_queue = Queue.new 1
 
@@ -245,21 +245,21 @@ module Multiprocessing
         panic "unknown queue_id: ", sched_data.queue_id
       end
     end
-    
+
     protected def move_to_cpu_queue(data : ProcessData)
       unless @@io_queue.remove_process_data data
         panic "data must be in io_queue"
       end
       @@cpu_queue.append_process_data data
     end
-    
+
     protected def move_to_io_queue(data : ProcessData)
       unless @@cpu_queue.remove_process_data data
         panic "data must be in cpu_queue"
       end
       @@io_queue.append_process_data data
     end
-    
+
     private def get_next_process
       if (process = @@io_queue.next_process)
         process
@@ -269,9 +269,11 @@ module Multiprocessing
     end
 
     @@current_process : Multiprocessing::Process? = nil
+
     def current_process
       @@current_process
     end
+
     def current_process=(@@current_process)
     end
 
@@ -303,7 +305,7 @@ module Multiprocessing
         DriverThread.lock
       end
     end
-    
+
     private def halt_processor
       rsp = Gdt.stack
       asm("mov $0, %rsp
@@ -335,11 +337,11 @@ module Multiprocessing
       elsif current_process.sched_data.status == ProcessData::Status::Running
         current_process.sched_data.status = ProcessData::Status::Normal
       end
-      
+
       # get next process
       next_process = get_next_process
       @@current_process = next_process
-      
+
       # remove or save current process state
       if remove
         current_process.remove
@@ -390,5 +392,4 @@ module Multiprocessing
       Kernel.ksyscall_switch(current_process.frame.not_nil!.to_unsafe)
     end
   end
-
 end
