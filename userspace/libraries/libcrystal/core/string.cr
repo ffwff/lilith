@@ -82,7 +82,8 @@ class String
   end
 
   def [](index : Int)
-    bytes[index]
+    # TODO
+    to_unsafe[index].unsafe_chr
   end
 
   def ===(other)

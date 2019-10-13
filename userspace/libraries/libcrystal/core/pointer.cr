@@ -30,4 +30,9 @@ struct Pointer(T)
   def +(other : Nil)
     self
   end
+
+  def to_s(io)
+    io << "0x"
+    address.to_s(io, base: 16)
+  end
 end
