@@ -118,7 +118,7 @@ private module Ata
   def read_cyl(bus)
     cl = X86.inb(bus + REG_LBA1)
     ch = X86.inb(bus + REG_LBA2)
-    Tuple.new(cl, ch)
+    {cl, ch}
   end
 
   # drive = 0 => primary

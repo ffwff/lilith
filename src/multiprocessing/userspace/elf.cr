@@ -153,7 +153,7 @@ module ElfReader
         end
       when ParserState::Byte
         if total_bytes < header.e_shoff
-          yield Tuple.new(total_bytes, byte)
+          yield {total_bytes, byte}
         else
           break
         end

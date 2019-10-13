@@ -10,7 +10,7 @@ module X86
       : "={eax}"(a), "={ebx}"(b), "={ecx}"(c), "={edx}"(d)
       : "{eax}"(code)
       : "volatile")
-    Tuple.new(a, b, c, d)
+    {a, b, c, d}
   end
 
 end

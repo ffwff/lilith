@@ -52,11 +52,11 @@ struct PBitArray
     i = idx
     while i < malloc_size
       if @pointer[i] != (~0).to_u32
-        return Tuple.new(i, i * 32 + @pointer[i].find_first_zero)
+        return {i, i * 32 + @pointer[i].find_first_zero}
       end
       i += 1
     end
-    Tuple.new(-1, -1)
+    {-1, -1}
   end
 
   # TODO: find a better algorithm

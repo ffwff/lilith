@@ -17,7 +17,7 @@ class String
     size = LibC.strlen(chars)
     new(size) do |buffer|
       LibC.strcpy buffer, chars
-      Tuple.new(size, size)
+      {size, size}
     end
   end
 

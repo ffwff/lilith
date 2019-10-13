@@ -166,7 +166,7 @@ module Syscall
       end
     end
 
-    Tuple.new(cpath, idx, vfs_node)
+    {cpath, idx, vfs_node}
   end
 
   # quick way to dereference a frame
