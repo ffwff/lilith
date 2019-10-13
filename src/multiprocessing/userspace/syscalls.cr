@@ -397,7 +397,7 @@ module Syscall
       else
         name = name.not_nil!
         i = 0
-        while i < min(name.size, dirent.d_name.size - 1)
+        while i < Math.min(name.size, dirent.d_name.size - 1)
           dirent.d_name[i] = name[i]
           i += 1
         end

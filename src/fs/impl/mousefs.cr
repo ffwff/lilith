@@ -59,7 +59,7 @@ class MouseFSRawNode < VFSNode
     packet.x = x
     packet.y = y
     packet.attr_byte = attr_byte.value
-    size = min slice.size, sizeof(MouseFSData::MousePacket)
+    size = Math.min slice.size, sizeof(MouseFSData::MousePacket)
     memcpy(slice.to_unsafe, pointerof(packet).as(UInt8*), size.to_usize)
 
     size

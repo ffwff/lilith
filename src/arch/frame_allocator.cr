@@ -41,7 +41,7 @@ module FrameAllocator
 
     def claim
       idx, iaddr = @frames.first_unset_from @search_from
-      @search_from = max idx, @search_from
+      @search_from = Math.max idx, @search_from
       return nil if iaddr == -1
       @frames[iaddr] = true
       iaddr
@@ -61,7 +61,7 @@ module FrameAllocator
         return false
       end
       idx = index_for_address(addr)
-      @search_from = min idx, @search_from
+      @search_from = Math.min idx, @search_from
       @frames[idx] = false
       true
     end

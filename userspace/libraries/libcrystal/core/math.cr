@@ -1,4 +1,6 @@
 module Math
+  extend self
+
   def max(x, y)
     x > y ? x : y
   end
