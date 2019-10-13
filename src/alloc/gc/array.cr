@@ -65,13 +65,9 @@ class GcArray(T)
   end
 
   # getter/setter
-  def [](idx : Int) : T?
+  def [](idx : Int) : T
     panic "GcArray: out of range" if idx < 0 || idx >= size
-    if buffer.as(USize*)[idx] == 0
-      nil
-    else
-      buffer[idx]
-    end
+    buffer[idx]
   end
 
   def []?(idx : Int) : T?
@@ -86,11 +82,6 @@ class GcArray(T)
   def []=(idx : Int, value : T)
     panic "GcArray: out of range" if idx < 0 || idx >= size
     buffer[idx] = value
-  end
-
-  def []=(idx : Int, value : Nil)
-    panic "GcArray: out of range" if idx < 0 || idx >= size
-    buffer.as(USize*)[idx] = 0
   end
 
   # resizing
@@ -128,11 +119,7 @@ class GcArray(T)
   def each(&block)
     i = 0
     while i < size
-      if buffer.as(USize*)[i] == 0
-        yield nil
-      else
-        yield buffer[i]
-      end
+      yield buffer[i]
       i += 1
     end
   end
