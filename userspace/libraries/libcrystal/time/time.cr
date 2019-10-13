@@ -57,7 +57,7 @@ struct Time
       size = LibC.strftime(buffer, capacity,
                            format.to_unsafe,
                            pointerof(timeinfo))
-      Tuple.new(size, size)
+      {size, size}
     end
   end
 

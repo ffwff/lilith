@@ -81,7 +81,7 @@ class Mouse
   getter available
 
   def flush
-    tuple = Tuple.new(@x, @y, @attr_byte)
+    tuple = {@x, @y, @attr_byte}
     @attr_byte = AttributeByte::None
     @x = 0
     @y = 0

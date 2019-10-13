@@ -63,7 +63,7 @@ module BGA
     X86.outw(INDEX_PORT, INDEX_XRES)
     w = X86.inw(DATA_PORT)
 
-    Tuple.new(w.to_i32, h.to_i32)
+    { w.to_i32, h.to_i32 }
   end
 
 end

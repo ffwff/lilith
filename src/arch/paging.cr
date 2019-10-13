@@ -227,7 +227,7 @@ module Paging
     dir_idx   = (addr >> 30) & (0x200 - 1)
     table_idx = (addr >> 21) & (0x200 - 1)
     page_idx  = (addr >> 12) & (0x200 - 1)
-    Tuple.new(pdpt_idx.to_i32, dir_idx.to_i32, table_idx.to_i32, page_idx.to_i32)
+    {pdpt_idx.to_i32, dir_idx.to_i32, table_idx.to_i32, page_idx.to_i32}
   end
 
   def indexes_to_address(dir_idx, table_idx, page_idx)
