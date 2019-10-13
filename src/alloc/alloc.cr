@@ -186,10 +186,12 @@ module KernelArena
   end
 
   # TODO reuse empty free pools to different size
-  def free(ptr : USize)
-    pool_hdr = Pointer(Kernel::PoolHeader).new(ptr & 0xFFFF_FFFF_FFFF_F000)
+  # FIXME: release optimizations causes weird behavior when free is called from Gc; NoInline fixes it for some reason
+  @[NoInline]
+  def free(ptr : Void*)
+    pool_hdr = Pointer(Kernel::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
     pool = Pool.new pool_hdr
-    pool.release_block ptr
+    pool.release_block ptr.address
     chain_pool pool
   end
 

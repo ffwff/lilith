@@ -65,7 +65,7 @@ struct Pointer(T)
   end
 
   def mfree
-    KernelArena.free(self.address)
+    KernelArena.free(self.as(Void*))
   end
 
   # methods
