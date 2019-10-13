@@ -1,7 +1,15 @@
+lib LibC
+  fun memcpy(dest : Void*, src : Void*, n : SizeT) : Void*
+end
+
 struct Slice(T)
   getter size
 
   def initialize(@buffer : Pointer(T), @size : Int32)
+  end
+
+  def self.new(size : Int)
+    new Pointer(T).malloc_atomic(size), size
   end
 
   def self.empty
@@ -28,6 +36,16 @@ struct Slice(T)
     Slice(T).new(@buffer + start, count)
   end
 
+  def ==(other)
+    return false if other.size != self.size
+    i = 0
+    other.each do |ch|
+      return false if ch != self[i]
+      i += 1
+    end
+    true
+  end
+
   def to_unsafe
     @buffer
   end
@@ -40,14 +58,12 @@ struct Slice(T)
     end
   end
 
-  def ==(other)
-    return false if other.size != self.size
-    i = 0
-    other.each do |ch|
-      return false if ch != self[i]
-      i += 1
-    end
-    true
+  def copy_to(target : Pointer(T), count)
+    LibC.memcpy(to_unsafe.as(Void*), target.as(Void*), count.to_usize)
+  end
+
+  def copy_to(target : self)
+    copy_to target.to_unsafe, target.size
   end
 
   def to_s(io)

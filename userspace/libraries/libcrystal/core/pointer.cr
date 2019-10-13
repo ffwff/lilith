@@ -4,7 +4,11 @@ struct Pointer(T)
   end
 
   def self.malloc(size)
-    Gc.unsafe_malloc(size.to_u64).as(T*)
+    Gc.unsafe_malloc(size.to_u64 * sizeof(T)).as(T*)
+  end
+
+  def self.malloc_atomic(size)
+    Gc.unsafe_malloc(size.to_u64 * sizeof(T), true).as(T*)
   end
 
   def null?

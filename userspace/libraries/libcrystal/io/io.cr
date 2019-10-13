@@ -1,5 +1,4 @@
 abstract class IO
-
   abstract def read(slice : Bytes)
   abstract def write(slice : Bytes)
 
