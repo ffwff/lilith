@@ -156,12 +156,12 @@ private class TmpFSNode < VFSNode
     return VFS_EOF if offset >= @size
 
     foffset = 0
-    remaining = min(slice.size, @size)
+    remaining = Math.min(slice.size, @size)
     each_frame do |frame|
       if offset > 0x1000
         offset -= 0x1000
       elsif offset >= 0
-        copy_sz = min(0x1000u64 - offset.to_u64, remaining.to_u64)
+        copy_sz = Math.min(0x1000u64 - offset.to_u64, remaining.to_u64)
         memcpy slice.to_unsafe + foffset, frame + offset.to_u64, copy_sz
         foffset += copy_sz
         remaining -= copy_sz
@@ -181,12 +181,12 @@ private class TmpFSNode < VFSNode
     end
 
     foffset = 0
-    remaining = min(slice.size, @size)
+    remaining = Math.min(slice.size, @size)
     each_frame do |frame|
       if offset > 0x1000
         offset -= 0x1000
       elsif offset >= 0
-        copy_sz = min(0x1000u64 - offset.to_u64, remaining.to_u64)
+        copy_sz = Math.min(0x1000u64 - offset.to_u64, remaining.to_u64)
         memcpy frame + offset.to_u64, slice.to_unsafe + foffset, copy_sz
         foffset += copy_sz
         remaining -= copy_sz
@@ -223,8 +223,7 @@ private class TmpFSNode < VFSNode
 
   def mmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
     @mmap_count += 1
-    Serial.puts "mmap size: ", node.size, '/', size, '\n'
-    npages = min(node.size / 0x1000, @npages)
+    npages = Math.min(node.size / 0x1000, @npages)
     i = 0
     each_frame do |frame|
       break if i == npages

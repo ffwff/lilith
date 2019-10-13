@@ -89,8 +89,8 @@ private struct VgaInstance < OutputDriver
               end
             end
           when AnsiHandler::CsiSequenceType::MoveCursor
-            state.cx = clamp(seq.arg_m.not_nil!.to_i32 - 1, 0, VGA_WIDTH)
-            state.cy = clamp(seq.arg_n.not_nil!.to_i32 - 1, 0, VGA_HEIGHT)
+            state.cx = Math.clamp(seq.arg_m.not_nil!.to_i32 - 1, 0, VGA_WIDTH)
+            state.cy = Math.clamp(seq.arg_n.not_nil!.to_i32 - 1, 0, VGA_HEIGHT)
             move_cursor state.cx, state.cy
           end
         when UInt8

@@ -148,7 +148,7 @@ module KernelArena
     Multiprocessing::DriverThread.assert_unlocked
 
     panic "only supports sizes of <= 1024" if sz > 1024
-    pool_size = max(32u64, sz.nearest_power_of_2.to_usize)
+    pool_size = Math.max(32u64, sz.nearest_power_of_2.to_usize)
     idx = idx_for_pool_size pool_size
     if @@free_pools[idx].null?
       # create a new pool if there isn't any freed

@@ -62,7 +62,7 @@ module Gc
 
   private def calc_cycles_per_alloc
     old = @@cycles_per_alloc
-    @@cycles_per_alloc = max((@@last_sweep_tick - @@last_start_tick) >> 2, 1)
+    @@cycles_per_alloc = Math.max((@@last_sweep_tick - @@last_start_tick) >> 2, 1)
   end
 
   {% if flag?(:kernel) %}

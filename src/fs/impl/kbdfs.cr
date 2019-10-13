@@ -26,7 +26,7 @@ class KbdFSNode < VFSNode
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
     if @fs.ansi_remaining > 0
-      size = min @fs.ansi_remaining, slice.size
+      size = Math.min @fs.ansi_remaining, slice.size
       size.times do |i|
         slice[i] = @fs.ansi_buf_pop
       end
@@ -83,7 +83,7 @@ class KbdFSRawNode < VFSNode
     packet.modifiers = @modifiers
     @ch = 0
     @modifiers = 0
-    size = min slice.size, sizeof(KbdFSData::Packet)
+    size = Math.min slice.size, sizeof(KbdFSData::Packet)
     memcpy(slice.to_unsafe, pointerof(packet).as(UInt8*), size.to_usize)
     size
   end
@@ -199,7 +199,7 @@ class KbdFS < VFS
     end
 
     queue.not_nil!.keep_if do |msg|
-      size = min(ansi_remaining, msg.slice_size)
+      size = Math.min(ansi_remaining, msg.slice_size)
       size.times do |i|
         msg.respond ansi_buf_pop
       end
@@ -214,7 +214,7 @@ class KbdFS < VFS
   getter ansi_remaining
 
   private def ansi_buf_set(str)
-    i = min str.size, @ansi_buf.size
+    i = Math.min str.size, @ansi_buf.size
     @ansi_remaining = i
     i -= 1
     j = 0

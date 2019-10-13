@@ -44,7 +44,7 @@ private class FbdevFSNode < VFSNode
       if offset > byte_size
         size = VFS_EOF
       else
-        size = min(slice.size, byte_size - offset)
+        size = Math.min(slice.size, byte_size - offset)
         byte_buffer = state.buffer.to_unsafe.as(UInt8*) + offset
         # NOTE: use memcpy for faster memory copying
         memcpy(slice.to_unsafe, byte_buffer, size.to_usize)
@@ -60,7 +60,7 @@ private class FbdevFSNode < VFSNode
       if offset > byte_size
         size = VFS_EOF
       else
-        size = min(slice.size, byte_size - offset)
+        size = Math.min(slice.size, byte_size - offset)
         byte_buffer = state.buffer.to_unsafe.as(UInt8*) + offset
         # NOTE: use memcpy for faster memory copying
         memcpy(byte_buffer, slice.to_unsafe, size.to_usize)

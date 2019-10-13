@@ -97,7 +97,7 @@ class VFSMessage
   end
 
   def respond(buf)
-    remaining = min(buf.size, slice_size - @offset)
+    remaining = Math.min(buf.size, slice_size - @offset)
     # offset of byte to be written in page (0 -> 0x1000)
     pg_offset = @slice.not_nil!.to_unsafe.address & 0xFFF
     # virtual page range

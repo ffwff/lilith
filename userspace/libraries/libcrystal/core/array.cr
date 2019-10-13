@@ -19,6 +19,16 @@ class Array(T)
     new_size.to_usize * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
   end
 
+  private def new_buffer(capacity)
+    if old_size > capacity
+      abort "size must be smaller than capacity"
+    end
+    old_size = size
+    old_buffer = @buffer
+    @buffer = Pointer(USize).malloc malloc_size(capacity)
+    old_buffer.copy_to @buffer, malloc_size(old_size)
+  end
+
   def initialize
     @capacity = 0
     @buffer = Pointer(USize).null
@@ -32,6 +42,15 @@ class Array(T)
       @buffer[1] = 0u32
     else
       @buffer = Pointer(USize).null
+    end
+  end
+
+  def clone
+    Array(T).build(size) do |ary|
+      size.times do |i|
+        ary.to_unsafe[i] = to_unsafe[i]
+      end
+      size
     end
   end
 
@@ -55,8 +74,29 @@ class Array(T)
   end
 
   def [](idx : Int)
-    # TODO: bounds checking
+    abort "accessing out of bounds!" unless 0 <= idx && idx < size
     to_unsafe[idx]
+  end
+
+  def []?(idx : Int) : T?
+    return nil unless 0 <= idx && idx <= size
+    to_unsafe[idx]
+  end
+
+  def []=(idx : Int, value : T)
+    abort "setting out of bounds!" unless 0 <= idx && idx < size
+    to_unsafe[idx] = value
+  end
+
+  def push(value : T)
+    if size < capacity
+      to_unsafe[size] = value
+      self.size += 1
+    else
+      idx = size
+      new_buffer(size + 1)
+      to_unsafe[idx] = value
+    end
   end
 
   def each

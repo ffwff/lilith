@@ -138,16 +138,19 @@ end
 alias ISize = Int64
 alias USize = UInt64
 
-def min(a, b)
-  a < b ? a : b
-end
+module Math
+  extend self
+  def min(a, b)
+    a < b ? a : b
+  end
 
-def max(a, b)
-  a > b ? a : b
-end
+  def max(a, b)
+    a > b ? a : b
+  end
 
-def clamp(x, min, max)
-  return min if x < min
-  return max if x > max
-  x
+  def clamp(x, min, max)
+    return min if x < min
+    return max if x > max
+    x
+  end
 end

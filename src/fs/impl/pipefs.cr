@@ -137,7 +137,7 @@ private class PipeFSNode < VFSNode
       end
     else
       # pop message from buffer
-      size = min(slice.size, @buffer_pos)
+      size = Math.min(slice.size, @buffer_pos)
       memcpy(slice.to_unsafe, @buffer + @buffer_pos - size, size.to_usize)
       @buffer_pos -= size
       size
@@ -177,7 +177,7 @@ private class PipeFSNode < VFSNode
           return size if remaining == 0
         end
       end
-      remaining = min(remaining, BUFFER_CAPACITY - @buffer_pos)
+      remaining = Math.min(remaining, BUFFER_CAPACITY - @buffer_pos)
       # push the message on to the buffer stack
       memcpy(@buffer + @buffer_pos, slice.to_unsafe, remaining.to_usize)
       @buffer_pos += remaining

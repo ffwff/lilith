@@ -40,8 +40,8 @@ private struct FbdevInstance < OutputDriver
               end
             end
           when AnsiHandler::CsiSequenceType::MoveCursor
-            state.cx = clamp(seq.arg_m.not_nil!.to_i32 - 1, 0, state.cwidth)
-            state.cy = clamp(seq.arg_n.not_nil!.to_i32 - 1, 0, state.cheight)
+            state.cx = Math.clamp(seq.arg_m.not_nil!.to_i32 - 1, 0, state.cwidth)
+            state.cy = Math.clamp(seq.arg_n.not_nil!.to_i32 - 1, 0, state.cheight)
           end
         when UInt8
           putchar(state, seq)
