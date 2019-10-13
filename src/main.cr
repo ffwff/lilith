@@ -52,9 +52,9 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Pmalloc.start = Paging.aligned(Kernel.kernel_end.address - KERNEL_OFFSET)
   Pmalloc.addr = Pmalloc.start
   Paging.init_table(Kernel.text_start, Kernel.text_end,
-                Kernel.data_start, Kernel.data_end,
-                Kernel.stack_start, Kernel.stack_end,
-                mboot_header)
+    Kernel.data_start, Kernel.data_end,
+    Kernel.stack_start, Kernel.stack_end,
+    mboot_header)
 
   Console.puts "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
 
@@ -62,9 +62,9 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Console.puts "initializing kernel garbage collector...\n"
   KernelArena.start_addr = Kernel.stack_end.address + 0x1000
   Gc.init Kernel.data_start.address,
-          Kernel.data_end.address,
-          Kernel.stack_start.address,
-          Kernel.stack_end.address
+    Kernel.data_end.address,
+    Kernel.stack_start.address,
+    Kernel.stack_end.address
 
   # processes
   Gdt.stack = Kernel.stack_end
@@ -83,7 +83,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
       Console.text_mode = false
     end
   end
-  
+
   # time
   Time.stamp = RTC.unix
 
@@ -129,9 +129,9 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     argv.push argv_0
 
     udata = Multiprocessing::Process::UserData
-              .new(argv,
-                main_path,
-                fs.not_nil!.root)
+      .new(argv,
+        main_path,
+        fs.not_nil!.root)
     udata.setenv(GcString.new("PATH"), GcString.new("/hd0/bin"))
 
     case main_bin.not_nil!.spawn(udata)
@@ -145,7 +145,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     Idt.status_mask = false
     # switch to pid 1
     Multiprocessing.first_process.not_nil!
-                   .next_process.not_nil!
-                   .initial_switch
+      .next_process.not_nil!
+      .initial_switch
   end
 end

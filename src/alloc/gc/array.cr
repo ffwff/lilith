@@ -1,11 +1,10 @@
-GC_ARRAY_HEADER_TYPE = 0xFFFF_FFFF_FFFF_FFFFu64  
+GC_ARRAY_HEADER_TYPE = 0xFFFF_FFFF_FFFF_FFFFu64
 GC_ARRAY_HEADER_SIZE = sizeof(USize) * 2
 
 class GcArray(T)
-
   @capacity : Int64 = 0
   getter capacity
-  
+
   # array data is stored in buffer, and so is size
   def size
     return 0 if @capacity == 0
@@ -61,7 +60,7 @@ class GcArray(T)
 
   private def recalculate_capacity
     @capacity = ((KernelArena.block_size_for_ptr(@ptr) -
-      (GC_ARRAY_HEADER_SIZE + sizeof(Kernel::GcNode))) / sizeof(Void*)).to_isize
+                  (GC_ARRAY_HEADER_SIZE + sizeof(Kernel::GcNode))) / sizeof(Void*)).to_isize
   end
 
   # getter/setter

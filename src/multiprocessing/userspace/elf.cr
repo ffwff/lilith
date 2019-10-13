@@ -153,7 +153,7 @@ module ElfReader
         end
       when ParserState::Byte
         if total_bytes < header.e_shoff
-          yield {total_bytes, byte}
+          yield total_bytes, byte
         else
           break
         end
@@ -171,13 +171,15 @@ module ElfReader
 
   struct InlineMemMapNode
     getter file_offset, filesz, vaddr, memsz, attrs
+
     def initialize(@file_offset : UInt64, @filesz : UInt64, @vaddr : UInt64,
-          @memsz : UInt64, @attrs : MemMapNode::Attributes)
+                   @memsz : UInt64, @attrs : MemMapNode::Attributes)
     end
   end
 
   struct Result
     getter initial_ip, heap_start, mmap_list
+
     def initialize(@initial_ip : USize, @heap_start : USize, @mmap_list : Slice(InlineMemMapNode))
     end
   end

@@ -1,6 +1,6 @@
 class Iso9660FS < VFS
-
   @root : VFSNode? = nil
+
   def root
     @root.not_nil!
   end
@@ -19,5 +19,4 @@ class Iso9660FS < VFS
     # TODO
 
   end
-
 end

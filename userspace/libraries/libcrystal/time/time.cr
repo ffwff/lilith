@@ -1,14 +1,15 @@
 lib LibC
   alias TimeT = ULongLong
+
   struct Tm
-    tm_sec   : LibC::Int
-    tm_min   : LibC::Int
-    tm_hour  : LibC::Int
-    tm_mday  : LibC::Int
-    tm_mon   : LibC::Int
-    tm_year  : LibC::Int
-    tm_wday  : LibC::Int
-    tm_yday  : LibC::Int
+    tm_sec : LibC::Int
+    tm_min : LibC::Int
+    tm_hour : LibC::Int
+    tm_mday : LibC::Int
+    tm_mon : LibC::Int
+    tm_year : LibC::Int
+    tm_wday : LibC::Int
+    tm_yday : LibC::Int
     tm_isdst : LibC::Int
   end
 
@@ -16,15 +17,13 @@ lib LibC
   fun localtime(time_t : LibC::TimeT*) : LibC::Tm*
   fun strftime(s : LibC::UString, max : LibC::SizeT,
                format : LibC::UString, tm : LibC::Tm*) : LibC::SizeT
-
 end
 
 struct Time
-
-  def initialize(@year   : Int32,
-                 @month  : Int32,
-                 @day    : Int32,
-                 @hour   : Int32 = 0,
+  def initialize(@year : Int32,
+                 @month : Int32,
+                 @day : Int32,
+                 @hour : Int32 = 0,
                  @minute : Int32 = 0,
                  @second : Int32 = 0)
   end
@@ -55,10 +54,9 @@ struct Time
     String.new(capacity) do |buffer|
       timeinfo = to_libc_tm
       size = LibC.strftime(buffer, capacity,
-                           format.to_unsafe,
-                           pointerof(timeinfo))
+        format.to_unsafe,
+        pointerof(timeinfo))
       {size, size}
     end
   end
-
 end

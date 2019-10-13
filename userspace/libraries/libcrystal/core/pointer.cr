@@ -30,5 +30,4 @@ struct Pointer(T)
   def +(other : Nil)
     self
   end
-
 end

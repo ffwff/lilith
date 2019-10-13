@@ -6,8 +6,8 @@ lib SyscallData
   struct Registers
     ds : UInt64
     rbp, rdi, rsi,
-    r15, r14, r13, r12, r11, r10, r9, r8,
-    rdx, rcx, rbx, rax : UInt64
+r15, r14, r13, r12, r11, r10, r9, r8,
+rdx, rcx, rbx, rax : UInt64
     rsp : UInt64
   end
 
@@ -27,7 +27,7 @@ lib SyscallData
 
   @[Packed]
   struct SpawnStartupInfo32
-    stdin  : Int32
+    stdin : Int32
     stdout : Int32
     stderr : Int32
   end
@@ -78,7 +78,7 @@ module Syscall
 
   # parses a path and returns the corresponding vfs node
   private def parse_path_into_vfs(path, cw_node = nil, create = false,
-                             process : Multiprocessing::Process? = nil)
+                                  process : Multiprocessing::Process? = nil)
     vfs_node : VFSNode? = nil
     return nil if path.size < 1
     if path[0] != '/'.ord
@@ -190,9 +190,9 @@ module Syscall
 
   # get syscall argument
   private macro arg(num)
-    {% 
+    {%
       arg_registers = [
-        "rbx", "rdx", "rdi", "rsi"
+        "rbx", "rdx", "rdi", "rsi",
       ]
     %}
     fv.{{ arg_registers[num].id }}
@@ -286,7 +286,7 @@ module Syscall
         vfs_node = fd.not_nil!.node.not_nil!
         vfs_node.fs.queue.not_nil!
           .enqueue(VFSMessage.new(VFSMessage::Type::Read,
-            str, process, fd, vfs_node))
+          str, process, fd, vfs_node))
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
         Multiprocessing::Scheduler.switch_process(frame)
       else
@@ -312,7 +312,7 @@ module Syscall
         vfs_node = fd.not_nil!.node.not_nil!
         vfs_node.fs.queue.not_nil!
           .enqueue(VFSMessage.new(VFSMessage::Type::Write,
-            str, process, fd, vfs_node))
+          str, process, fd, vfs_node))
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
         Multiprocessing::Scheduler.switch_process(frame)
       else
@@ -348,7 +348,7 @@ module Syscall
     when SC_WAITFD
       fds = try(checked_slice(Int32, arg(0), arg(1).to_i32))
       timeout = arg(2).to_u32
-      
+
       if fds.size == 0
         sysret(0)
       elsif fds.size == 1
@@ -358,7 +358,7 @@ module Syscall
         pudata.wait_usecs = timeout
         Multiprocessing::Scheduler.switch_process(frame)
       end
-      
+
       waitfds = GcArray(FileDescriptor).new 0
       fds.each do |fdi|
         fd = try(pudata.get_fd(fdi))
@@ -367,12 +367,12 @@ module Syscall
         end
         waitfds.push fd
       end
-      
+
       process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
       pudata.wait_object = waitfds
       pudata.wait_usecs = timeout
       Multiprocessing::Scheduler.switch_process(frame)
-    # directories
+      # directories
     when SC_READDIR
       fd = try(pudata.get_fd(arg(0).to_i32))
       retval = try(checked_pointer(SyscallData::DirentArgument32, arg(1)))
@@ -410,7 +410,7 @@ module Syscall
         fd.cur_child_end = true
       end
       sysret(SYSCALL_SUCCESS)
-    # process management
+      # process management
     when SC_GETPID
       sysret(process.pid)
     when SC_SPAWN
@@ -534,7 +534,7 @@ module Syscall
       # TODO
     when SC_EXIT
       Multiprocessing::Scheduler.switch_process_and_terminate
-    # working directory
+      # working directory
     when SC_GETCWD
       str = try(checked_slice(arg(0), arg(1)))
       if str.size > PATH_MAX
@@ -562,7 +562,7 @@ module Syscall
           sysret(SYSCALL_ERR)
         end
       end
-    # memory management
+      # memory management
     when SC_SBRK
       incr = arg(0).to_i64
       # must be page aligned

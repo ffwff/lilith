@@ -13,7 +13,7 @@ lib LibC
   $_bss_end : Void*
 end
 
-lib LibCrystalMain  
+lib LibCrystalMain
   fun __crystal_main(argc : Int32, argv : UInt8**)
 end
 
@@ -25,10 +25,10 @@ fun main(argc : LibC::Int, argv : UInt8**) : LibC::Int
     asm("mov %rsp, $0" : "=r"(stack_end) :: "volatile")
   {% end %}
   Gc._init(LibC._data.address,
-           LibC._data_end.address,
-           LibC._bss.address,
-           LibC._bss_end.address,
-           stack_end)
+    LibC._data_end.address,
+    LibC._bss.address,
+    LibC._bss_end.address,
+    stack_end)
   LibCrystalMain.__crystal_main(argc, argv)
   STDOUT.flush
   0

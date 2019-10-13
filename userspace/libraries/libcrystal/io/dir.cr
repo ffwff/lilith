@@ -18,7 +18,6 @@ lib LibC
 end
 
 class Dir
-
   def self.new(path)
     fd = LibC.open(path, O_RDONLY)
     if fd < 0
@@ -38,5 +37,4 @@ class Dir
     end
     nil
   end
-
 end

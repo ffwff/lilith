@@ -1,8 +1,7 @@
 module TermiosData
-
   VTIME = 0
   VMIN  = 1
-  NCSS = 2
+  NCSS  = 2
 
   @[Flags]
   enum IFlag : UInt32
@@ -16,28 +15,27 @@ module TermiosData
 
   @[Flags]
   enum OFlag : UInt32
-    OPOST  = 1 << 0
+    OPOST = 1 << 0
   end
 
   @[Flags]
   enum CFlag : UInt32
-    CS8    = 1 << 0
+    CS8 = 1 << 0
   end
 
   @[Flags]
   enum LFlag : UInt32
-    ECHO    = 1 << 0
-    ICANON  = 1 << 1
-    IEXTEN  = 1 << 2
-    ISIG    = 1 << 3
+    ECHO   = 1 << 0
+    ICANON = 1 << 1
+    IEXTEN = 1 << 2
+    ISIG   = 1 << 3
   end
-
 end
 
 lib IoctlData
   struct Winsize
-    ws_row    : UInt16
-    ws_col    : UInt16
+    ws_row : UInt16
+    ws_col : UInt16
     ws_xpixel : UInt16
     ws_ypixel : UInt16
   end
@@ -74,5 +72,4 @@ module IoctlHandler
     data.value = yield termios
     0
   end
-
 end

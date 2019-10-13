@@ -7,12 +7,11 @@ module X86
     c = 0u32
     d = 0u32
     asm("cpuid"
-      : "={eax}"(a), "={ebx}"(b), "={ecx}"(c), "={edx}"(d)
-      : "{eax}"(code)
-      : "volatile")
+            : "={eax}"(a), "={ebx}"(b), "={ecx}"(c), "={edx}"(d)
+            : "{eax}"(code)
+            : "volatile")
     {a, b, c, d}
   end
-
 end
 
 module Cpuid
@@ -101,9 +100,9 @@ module Cpuid
     XOP          = 1 << 11
     SKINIT       = 1 << 12
     WDT          = 1 << 13
-    LWP          = 1 << 15 
-    FMA4         = 1 << 16   
-    TCE          = 1 << 17 
+    LWP          = 1 << 15
+    FMA4         = 1 << 16
+    TCE          = 1 << 17
     NODEID_MSR   = 1 << 19
     TBM          = 1 << 21
     TOPOEXT      = 1 << 22
@@ -151,13 +150,13 @@ module Cpuid
 
   @@features_ext_ecx = FeaturesExtendedEcx::None
   @@features_ext_edx = FeaturesExtendedEdx::None
-  
+
   private def detect_features
     _, _, c, d = X86.cpuid(1)
     @@features_ecx = FeaturesEcx.new c
     @@features_edx = FeaturesEdx.new d
   end
-  
+
   private def detect_features_extended
     _, _, c, d = X86.cpuid(0x80000001)
     @@features_ext_ecx = FeaturesExtendedEcx.new c
@@ -189,6 +188,7 @@ module Cpuid
   def has_feature?(feature : FeaturesEcx)
     features_ecx.includes?(feature)
   end
+
   def has_feature?(feature : FeaturesEdx)
     features_edx.includes?(feature)
   end
@@ -196,8 +196,8 @@ module Cpuid
   def has_feature?(feature : FeaturesExtendedEcx)
     features_ext_ecx.includes?(feature)
   end
+
   def has_feature?(feature : FeaturesExtendedEdx)
     features_ext_edx.includes?(feature)
   end
-
 end

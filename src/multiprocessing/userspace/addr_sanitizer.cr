@@ -22,11 +22,10 @@ module UserAddressSanitiser
     end
     Slice(UInt8).new(Pointer(UInt8).new(addr), len.to_i32)
   end
-  
+
   def checked_slice(addr, size, len) : Slice(UInt8)?
     checked_slice(addr, size * len)
   end
-
 end
 
 macro checked_pointer(t, addr)

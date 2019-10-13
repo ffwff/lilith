@@ -34,8 +34,8 @@ module BGA
 
   def pci_device?(vendor_id, device_id)
     (vendor_id == 0x1234 && device_id == 0x1111) ||
-    (vendor_id == 0x80EE && device_id == 0xBEEF) ||
-    (vendor_id == 0x10de && device_id == 0x0a20)
+      (vendor_id == 0x80EE && device_id == 0xBEEF) ||
+      (vendor_id == 0x10de && device_id == 0x0a20)
   end
 
   # resolution
@@ -63,7 +63,6 @@ module BGA
     X86.outw(INDEX_PORT, INDEX_XRES)
     w = X86.inw(DATA_PORT)
 
-    { w.to_i32, h.to_i32 }
+    {w.to_i32, h.to_i32}
   end
-
 end

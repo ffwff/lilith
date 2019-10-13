@@ -1,5 +1,4 @@
 class StackAllocator
-
   @offset = 0u64
 
   def initialize(@pointer : Void*)
@@ -14,5 +13,4 @@ class StackAllocator
   def clear
     @offset = 0u64
   end
-
 end

@@ -1,12 +1,10 @@
 private lib MouseFSData
-
   @[Packed]
   struct MousePacket
     x : UInt32
     y : UInt32
     attr_byte : UInt32
   end
-
 end
 
 class MouseFSNode < VFSNode
@@ -35,7 +33,7 @@ class MouseFSNode < VFSNode
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
     x, y, _ = fs.mouse.flush
-    
+
     writer = SliceWriter.new(slice)
     writer << x
     writer << ','
@@ -44,7 +42,6 @@ class MouseFSNode < VFSNode
 
     writer.offset
   end
-
 end
 
 class MouseFSRawNode < VFSNode
@@ -71,9 +68,7 @@ class MouseFSRawNode < VFSNode
   def available?
     fs.mouse.available
   end
-
 end
-
 
 class MouseFS < VFS
   getter name

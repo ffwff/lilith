@@ -8,6 +8,7 @@ module FrameAllocator
 
     @frames = PBitArray.null
     getter frames
+
     protected def frames=(@frames)
     end
 
@@ -70,10 +71,12 @@ module FrameAllocator
   @@last_region = Pointer(Region).null
 
   @@is_paging_setup = false
+
   def is_paging_setup=(@@is_paging_setup)
   end
-  
+
   @@used_blocks = 0u64
+
   def used_blocks
     @@used_blocks
   end
@@ -149,5 +152,4 @@ module FrameAllocator
     panic "no more physical memory!"
     0u64
   end
-
 end

@@ -1,6 +1,6 @@
 lib LibCrystal
-  fun type_offsets="__crystal_malloc_type_offsets"(type_id : UInt32) : UInt32
-  fun type_size="__crystal_malloc_type_size"(type_id : UInt32) : UInt32
+  fun type_offsets = "__crystal_malloc_type_offsets"(type_id : UInt32) : UInt32
+  fun type_size = "__crystal_malloc_type_size"(type_id : UInt32) : UInt32
 
   struct GcNode
     next_node : GcNode*
@@ -44,7 +44,7 @@ module Gc
   @@first_black_node = Pointer(LibCrystal::GcNode).null
   @@enabled = false
   @@root_scanned = false
-  
+
   # Number of garbage collection cycles performed
   @@ticks = 0
   # Last tick when sweep phase was performed
@@ -53,7 +53,7 @@ module Gc
   @@last_start_tick = 0
 
   def _init(@@data_start : UInt64, @@data_end : UInt64,
-            @@bss_start : UInt64,  @@bss_end : UInt64,
+            @@bss_start : UInt64, @@bss_end : UInt64,
             @@stack_end : UInt64)
     @@enabled = true
   end
@@ -108,13 +108,13 @@ module Gc
             when GC_NODE_MAGIC
               node.value.magic = GC_NODE_MAGIC_GRAY
               if move_list
-                push(@@first_gray_node, node) 
+                push(@@first_gray_node, node)
               end
               fix_white = true
             when GC_NODE_MAGIC_ATOMIC
               node.value.magic = GC_NODE_MAGIC_GRAY_ATOMIC
               if move_list
-                push(@@first_gray_node, node) 
+                push(@@first_gray_node, node)
               end
               fix_white = true
             when GC_NODE_MAGIC_BLACK | GC_NODE_MAGIC_BLACK_ATOMIC
@@ -372,5 +372,5 @@ module Gc
     LibC.fprintf(LibC.stderr, "  black_nodes: ")
     out_nodes(@@first_black_node)
     LibC.fprintf(LibC.stderr, "\n}\n")
- end
+  end
 end

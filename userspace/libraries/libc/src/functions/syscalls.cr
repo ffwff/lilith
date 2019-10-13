@@ -10,25 +10,25 @@ private def __lilith_syscall(eax : UInt32, ebx : UInt32,
        mov %esp, %ecx
        sysenter
        1: add $$4, %esp"
-      : "={eax}"(ret), "={edi}"(l0), "={esi}"(l1)
-      : "{eax}"(eax), "{ebx}"(ebx), "{edx}"(edx), "{edi}"(edi), "{esi}"(esi)
-      : "cc", "ecx", "memory", "volatile")
+          : "={eax}"(ret), "={edi}"(l0), "={esi}"(l1)
+          : "{eax}"(eax), "{ebx}"(ebx), "{edx}"(edx), "{edi}"(edi), "{esi}"(esi)
+          : "cc", "ecx", "memory", "volatile")
   ret
 end
 
 # sysenter implementations
 @[AlwaysInline]
 private def __lilith_syscall64(eax : UInt32, ebx : UInt32,
-                             edx = 0u32, edi = 0u32, esi = 0u32) : UInt64
+                               edx = 0u32, edi = 0u32, esi = 0u32) : UInt64
   ret_lo, ret_hi = 0u64, 0u64
   l0 = l1 = 0
   asm("push $$1f
        mov %esp, %ecx
        sysenter
        1: add $$4, %esp"
-      : "={eax}"(ret_lo), "={ebx}"(ret_hi), "={edi}"(l0), "={esi}"(l1)
-      : "{eax}"(eax), "{ebx}"(ebx), "{edx}"(edx), "{edi}"(edi), "{esi}"(esi)
-      : "cc", "ecx", "memory", "volatile")
+          : "={eax}"(ret_lo), "={ebx}"(ret_hi), "={edi}"(l0), "={esi}"(l1)
+          : "{eax}"(eax), "{ebx}"(ebx), "{edx}"(edx), "{edi}"(edi), "{esi}"(esi)
+          : "cc", "ecx", "memory", "volatile")
   (ret_hi << 32) | ret_lo
 end
 
@@ -106,7 +106,7 @@ fun _ioctl(fd : LibC::Int, request : LibC::Int, data : UInt32) : LibC::Int
   __lilith_syscall(SC_IOCTL, fd.to_u32, request.to_u32, data.to_u32).to_int
 end
 
-fun waitfd(fds : LibC::Int*, nfd: LibC::SizeT, timeout : LibC::UInt) : LibC::Int
+fun waitfd(fds : LibC::Int*, nfd : LibC::SizeT, timeout : LibC::UInt) : LibC::Int
   __lilith_syscall(SC_WAITFD, fds.address.to_u32, nfd.to_u32, timeout.to_u32).to_int
 end
 
@@ -161,7 +161,7 @@ fun usleep(timeout : LibC::UInt) : LibC::Int
   __lilith_syscall(SC_SLEEP, timeout).to_int
 end
 
-fun _sys_time() : UInt64
+fun _sys_time : UInt64
   __lilith_syscall64(SC_TIME, 0)
 end
 

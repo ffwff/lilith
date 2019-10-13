@@ -1,8 +1,8 @@
 fun memset(dst : UInt8*, c : USize, n : USize) : Void*
   asm(
     "cld\nrep stosb"
-    :: "{al}"(c.to_u8), "{rdi}"(dst), "{rcx}"(n)
-    : "volatile", "memory"
+          :: "{al}"(c.to_u8), "{rdi}"(dst), "{rcx}"(n)
+          : "volatile", "memory"
   )
   dst.as(Void*)
 end
@@ -11,8 +11,8 @@ end
 def memset_long(dst : UInt32*, c : UInt32, n : USize)
   asm(
     "cld\nrep stosl"
-    :: "{eax}"(c), "{rdi}"(dst), "{rcx}"(n)
-    : "volatile", "memory"
+          :: "{eax}"(c), "{rdi}"(dst), "{rcx}"(n)
+          : "volatile", "memory"
   )
 end
 
@@ -24,8 +24,8 @@ fun memcpy(dst : UInt8*, src : UInt8*, n : USize) : Void*
     rep movsq
     movl %edx, %ecx
     rep movsb"
-    :: "{rdi}"(dst), "{rsi}"(src), "{rcx}"(n)
-    : "volatile", "memory"
+          :: "{rdi}"(dst), "{rsi}"(src), "{rcx}"(n)
+          : "volatile", "memory"
   )
   dst.as(Void*)
 end

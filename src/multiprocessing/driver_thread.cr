@@ -1,10 +1,9 @@
 module Multiprocessing
-
   module DriverThread
     extend self
-    
+
     @@locked = false
-    
+
     def unlock
       @@locked = false
       # Serial.puts "driverthread: unlock\n"
@@ -14,7 +13,7 @@ module Multiprocessing
       @@locked = true
       # Serial.puts "driverthread: lock \n"
     end
-    
+
     def assert_unlocked
       if Multiprocessing::Scheduler.current_process.nil?
         return
@@ -28,7 +27,5 @@ module Multiprocessing
         panic "kernel: subsystem must not be called from driver thread (called by ", name, ")\n"
       end
     end
-
   end
-
 end

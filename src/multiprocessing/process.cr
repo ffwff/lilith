@@ -83,7 +83,7 @@ module Multiprocessing
     # physical location of the process' page directory
     @phys_pg_struct : UInt64 = 0u64
     property phys_pg_struct
-    
+
     @phys_user_pg_struct : UInt64 = 0u64
     property phys_user_pg_struct
 
@@ -95,8 +95,9 @@ module Multiprocessing
     # FIXME: fxsave_region is manually allocated to save memory
     @fxsave_region = Pointer(UInt8).null
     getter fxsave_region
-    
+
     @sched_data : Scheduler::ProcessData? = nil
+
     def sched_data
       @sched_data.not_nil!
     end
@@ -277,7 +278,7 @@ module Multiprocessing
       if Multiprocessing.procfs
         Multiprocessing.procfs.not_nil!.root.not_nil!.create_for_process(self)
       end
-      
+
       # append to scheduler
       @sched_data = Scheduler.append_process self
 
@@ -363,7 +364,7 @@ module Multiprocessing
     # to the newly-spawned user process
     @[NoInline]
     def self.spawn_user(initial_ip : UInt64, heap_start : UInt64,
-          udata : UserData, mmap_list : Slice(ElfReader::InlineMemMapNode))
+                        udata : UserData, mmap_list : Slice(ElfReader::InlineMemMapNode))
       old_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
         .new(Paging.mt_addr(Paging.current_pdpt.address))
       Multiprocessing::Process.new(udata.argv[0].not_nil!, udata) do |process|
@@ -388,11 +389,11 @@ module Multiprocessing
           region_size = region_end - region_start
           udata.mmap_list.add(region_start, region_size, mmap_node.attrs)
         end
-        
+
         # heap
         udata.mmap_heap = udata.mmap_list.add(heap_start, 0,
           MemMapNode::Attributes::Read | MemMapNode::Attributes::Write).not_nil!
-        
+
         # stack
         stack = Paging.alloc_page_pg(Multiprocessing::USER_STACK_INITIAL - 0x1000 * 4, true, true, 4)
         zero_page Pointer(UInt8).new(stack), 4
@@ -411,7 +412,7 @@ module Multiprocessing
 
     @[NoInline]
     def self.spawn_user_drv(initial_ip : UInt64, heap_start : UInt64,
-          udata : UserData, mmap_list : Slice(ElfReader::InlineMemMapNode))
+                            udata : UserData, mmap_list : Slice(ElfReader::InlineMemMapNode))
       retval = 0u64
       mmap_list_addr = mmap_list.to_unsafe.address
       mmap_list_size = mmap_list.size
@@ -478,7 +479,7 @@ module Multiprocessing
         Multiprocessing.procfs.not_nil!.root.not_nil!.remove_for_process(self)
       end
     end
-    
+
     def removed?
       @sched_data.nil?
     end

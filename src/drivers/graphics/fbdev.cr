@@ -3,7 +3,6 @@ lib Kernel
 end
 
 private struct FbdevInstance < OutputDriver
-
   private def putchar(state, ch : UInt8)
     if ch == '\r'.ord.to_u8
       return
@@ -50,34 +49,48 @@ private struct FbdevInstance < OutputDriver
       end
     end
   end
-
 end
 
 Fbdev = FbdevInstance.new
 
 private module FbdevStatePrivate
-extend self
+  extend self
 
-  FB_ASCII_FONT_WIDTH = 8
-  FB_ASCII_FONT_HEIGHT = 8
+  FB_ASCII_FONT_WIDTH    =                        8
+  FB_ASCII_FONT_HEIGHT   =                        8
   FB_BACK_BUFFER_POINTER = 0xFFFF_8700_0000_0000u64
 
   @@cx = 0
   @@cy = 0
   @@fg = 0
   @@bg = 0
-  
-  def cx; @@cx; end
-  def cy; @@cy; end
-  def fg; @@fg; end
-  def bg; @@bg; end
-  
+
+  def cx
+    @@cx
+  end
+
+  def cy
+    @@cy
+  end
+
+  def fg
+    @@fg
+  end
+
+  def bg
+    @@bg
+  end
+
   def cx=(@@cx); end
+
   def cy=(@@cy); end
+
   def fg=(@@fg); end
+
   def bg=(@@bg); end
 
   @@ansi_handler = AnsiHandler.new
+
   def ansi_handler
     @@ansi_handler
   end
@@ -113,27 +126,32 @@ extend self
   end
 
   @@cwidth = 0
+
   def cwidth
     @@cwidth
   end
 
   @@width = 0
+
   def width
     @@width
   end
-  
+
   @@cheight = 0
+
   def cheight
     @@cheight
   end
 
   @@height = 0
+
   def height
     @@height
   end
 
   # physical framebuffer location
   @@buffer = Slice(UInt32).null
+
   def buffer
     @@buffer
   end
@@ -183,7 +201,6 @@ extend self
     end
     wrapback
   end
-
 end
 
 module FbdevState

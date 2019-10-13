@@ -5,7 +5,7 @@ fun mkpipe(name : LibC::String) : LibC::Int
   return -1 if nsize < 1
   psize = PIPE_PREFIX.size + nsize
 
-  # create path  
+  # create path
   path = uninitialized UInt8[SC_PATH_MAX]
   PIPE_PREFIX.size.times do |i|
     path.to_unsafe[i] = PIPE_PREFIX.to_unsafe[i]

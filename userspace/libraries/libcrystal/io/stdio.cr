@@ -14,7 +14,6 @@ class IO::FileDescriptor < IO
   def unbuffered_write(slice : Bytes)
     LibC.write(@fd, slice.to_unsafe.as(LibC::String), slice.size)
   end
-
 end
 
 STDIN  = IO::FileDescriptor.new 0

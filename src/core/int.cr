@@ -93,7 +93,7 @@ struct Int
       i -= 1
     end
   end
-  
+
   def to_gcstr(base = 10)
     s = uninitialized UInt8[128]
     sign = self < 0

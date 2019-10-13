@@ -8,7 +8,7 @@ private lib FbdevFSData
   end
 
   enum TargetBuffer : Int32
-    Back = 1
+    Back  = 1
     Front = 0
   end
 
@@ -28,7 +28,7 @@ private class FbdevFSNode < VFSNode
 
   def initialize(@fs : FbdevFS)
   end
-  
+
   def size
     byte_size = 0
     FbdevState.lock do |state|
@@ -68,7 +68,7 @@ private class FbdevFSNode < VFSNode
     end
     size
   end
-  
+
   private def get_byte_buffer(state, target_buffer)
     state.buffer.to_unsafe.as(UInt8*)
   end
@@ -89,16 +89,16 @@ private class FbdevFSNode < VFSNode
     when SC_IOCTL_GFX_BITBLIT
       arg = checked_pointer(FbdevFSData::FbBitBlit, data)
       arg = if arg.nil?
-        return -1
-      else
-        arg.not_nil!.value
-      end
+              return -1
+            else
+              arg.not_nil!.value
+            end
 
       if arg.type == FbdevFSData::FbType::Color
         FbdevState.lock do |state|
           byte_buffer = get_byte_buffer state, arg.target_buffer
-          if  arg.x == 0 && arg.y == 0 &&
-              arg.width == state.width && arg.height == state.height
+          if arg.x == 0 && arg.y == 0 &&
+             arg.width == state.width && arg.height == state.height
             copy_size = state.width.to_usize * state.height.to_usize
             memset_long(byte_buffer.as(UInt32*), arg.source, copy_size)
           else
@@ -117,8 +117,8 @@ private class FbdevFSNode < VFSNode
       # blit
       FbdevState.lock do |state|
         byte_buffer = get_byte_buffer state, arg.target_buffer
-        if  arg.x == 0 && arg.y == 0 &&
-            arg.width == state.width && arg.height == state.height
+        if arg.x == 0 && arg.y == 0 &&
+           arg.width == state.width && arg.height == state.height
           case arg.type
           when FbdevFSData::FbType::SurfaceAlpha
             copy_size = state.width * state.height
@@ -182,7 +182,6 @@ private class FbdevFSNode < VFSNode
     end
     VFS_OK
   end
-
 end
 
 class FbdevFS < VFS

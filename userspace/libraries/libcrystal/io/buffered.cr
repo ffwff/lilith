@@ -1,5 +1,4 @@
 module IO::Buffered
-
   @buffer = Bytes.empty
   @buffer_size = 512
   @pos = 0
@@ -50,9 +49,8 @@ module IO::Buffered
 
   def flush
     if @pos > 0
-      unbuffered_write(@buffer[0,@pos])
+      unbuffered_write(@buffer[0, @pos])
     end
     @pos = 0
   end
-
 end

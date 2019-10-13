@@ -29,5 +29,4 @@ module MBR
                       mbr.to_unsafe.value.header[1] == 0xaa
     mbr
   end
-
 end

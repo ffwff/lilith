@@ -29,5 +29,4 @@ abstract class IO
     end
     nil
   end
-
 end

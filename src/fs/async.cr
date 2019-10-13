@@ -141,7 +141,7 @@ class VFSMessage
     end
     @process.not_nil!.frame.not_nil!.to_unsafe.value.rax = @offset
   end
-  
+
   def unawait(retval)
     return if @process.not_nil!.sched_data.status == Multiprocessing::Scheduler::ProcessData::Status::Normal
     @process.not_nil!.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::Normal
@@ -151,7 +151,7 @@ end
 
 class VFSQueue
   @first_msg = Atomic(VFSMessage?).new(nil)
-  @last_msg  = Atomic(VFSMessage?).new(nil)
+  @last_msg = Atomic(VFSMessage?).new(nil)
 
   def initialize(@wake_process : Multiprocessing::Process? = nil)
   end

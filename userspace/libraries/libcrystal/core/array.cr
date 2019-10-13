@@ -2,7 +2,6 @@ GC_ARRAY_HEADER_TYPE = 0xFFFF_FFFF.to_usize
 GC_ARRAY_HEADER_SIZE = sizeof(USize) * 2
 
 class Array(T)
-
   @capacity : Int32
   getter capacity
 
@@ -69,6 +68,4 @@ class Array(T)
       i += 1
     end
   end
-
 end
-

@@ -6,7 +6,7 @@ lib LibC
     c_oflag : LibC::UInt
     c_cflag : LibC::UInt
     c_lflag : LibC::UInt
-    c_cc    : UInt8[NCCS]
+    c_cc : UInt8[NCCS]
   end
 end
 

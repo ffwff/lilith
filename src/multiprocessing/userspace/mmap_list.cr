@@ -1,5 +1,4 @@
 class MemMapNode
-
   @[Flags]
   enum Attributes
     Read
@@ -8,9 +7,9 @@ class MemMapNode
     Stack
     SharedMem
   end
-  
+
   def combinable_attrs(attr)
-    if @attr.includes?(Attributes::SharedMem) || 
+    if @attr.includes?(Attributes::SharedMem) ||
        attr.includes?(Attributes::SharedMem)
       return false
     end
@@ -24,7 +23,7 @@ class MemMapNode
   property prev_node
 
   property addr, attr, size
-  
+
   @shm_node : VFSNode? = nil
   property shm_node
 
@@ -34,7 +33,7 @@ class MemMapNode
   def end_addr
     @addr + @size
   end
-  
+
   def each_page(&block)
     i = 0
     while i < @size
@@ -74,8 +73,8 @@ class MemMapList
 
       combine_with_prev = current.combinable_attrs(attr) && current.end_addr == addr
       combine_with_next = !current.next_node.nil? &&
-          current.next_node.not_nil!.combinable_attrs(attr) &&
-          end_addr == current.next_node.not_nil!.addr
+                          current.next_node.not_nil!.combinable_attrs(attr) &&
+                          end_addr == current.next_node.not_nil!.addr
 
       # combine if 2 nodes represent a continuous region
       if combine_with_prev && combine_with_next
@@ -111,7 +110,7 @@ class MemMapList
   def remove(addr, size)
     panic "unimplemented"
   end
-  
+
   def remove(node : MemMapNode)
     if node.prev_node
       node.prev_node.not_nil!.next_node = node.next_node
@@ -124,7 +123,7 @@ class MemMapList
       @last_node = node.prev_node
     end
   end
-  
+
   def space_for_mmap(size : UInt64, attr)
     # look backwards from the stack
     reverse_each do |node|
@@ -132,7 +131,7 @@ class MemMapList
       prev_node = node.prev_node.not_nil!
 
       # don't allocate in the middle of the stack
-      next if node.attr.includes?(MemMapNode::Attributes::Stack) && 
+      next if node.attr.includes?(MemMapNode::Attributes::Stack) &&
               prev_node.attr.includes?(MemMapNode::Attributes::Stack)
 
       start_addr = prev_node.end_addr
@@ -149,17 +148,17 @@ class MemMapList
         mmap_size = size
         start_addr = end_addr - mmap_size
       end
-      
+
       new_node = MemMapNode.new(start_addr, size, attr)
       prev_node.next_node = new_node
       new_node.prev_node = prev_node
       node.prev_node = new_node
       new_node.next_node = node
-      
+
       return new_node
     end
   end
-  
+
   def reverse_each(&block)
     node = @last_node
     until node == @first_node
@@ -167,7 +166,7 @@ class MemMapList
       node = node.not_nil!.prev_node
     end
   end
-  
+
   def each(&block)
     node = @first_node
     while !node.nil?

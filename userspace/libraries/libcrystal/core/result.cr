@@ -1,9 +1,7 @@
 struct Result(T, E)
-
   def initialize(@data : (T | E))
   end
 
-  
   def ok?
     case @data
     when T
@@ -57,10 +55,8 @@ struct Result(T, E)
       nil
     end
   end
-
 end
 
 macro try?(result)
   {{ result }}.ok || return {{ result }}.err
 end
-

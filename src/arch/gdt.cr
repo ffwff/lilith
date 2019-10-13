@@ -3,30 +3,30 @@ GDT_REGULARS = 7
 private lib Kernel
   @[Packed]
   struct Gdtr
-    size   : UInt16
+    size : UInt16
     offset : UInt64
   end
 
   @[Packed]
   struct GdtEntry
-    limit_low    : UInt16
-    base_low     : UInt16
-    base_middle  : UInt8
-    access       : UInt8
-    granularity  : UInt8
-    base_high    : UInt8
+    limit_low : UInt16
+    base_low : UInt16
+    base_middle : UInt8
+    access : UInt8
+    granularity : UInt8
+    base_high : UInt8
   end
 
   @[Packed]
   struct GdtSystemEntry
-    limit_low    : UInt16
-    base_low     : UInt16
-    base_middle  : UInt8
-    access       : UInt8
-    granularity  : UInt8
-    base_high    : UInt8
-    base_higher  : UInt32
-    reserved     : UInt32
+    limit_low : UInt16
+    base_low : UInt16
+    base_middle : UInt8
+    access : UInt8
+    granularity : UInt8
+    base_high : UInt8
+    base_higher : UInt32
+    reserved : UInt32
   end
 
   @[Packed]
@@ -50,7 +50,7 @@ private lib Kernel
 
   @[Packed]
   struct Gdt
-    entries     : Kernel::GdtEntry[GDT_REGULARS]
+    entries : Kernel::GdtEntry[GDT_REGULARS]
     sys_entries : GdtSystemEntry[1] # tss
   end
 
@@ -101,7 +101,7 @@ module Gdt
   end
 
   private def init_gdt_sys_entry(num : ISize,
-                             base : USize, limit : USize, access : USize, gran : USize)
+                                 base : USize, limit : USize, access : USize, gran : USize)
     entry = Kernel::GdtSystemEntry.new
 
     entry.base_low = (base & 0xFFFF).to_u16
@@ -111,7 +111,7 @@ module Gdt
 
     entry.limit_low = (limit & 0xFFFF).to_u16
     entry.granularity = ((limit >> 16) & 0x0F).to_u8
-    
+
     entry.granularity |= gran
     entry.access = access.to_u8
     entry.reserved = 0

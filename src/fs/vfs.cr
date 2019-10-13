@@ -12,6 +12,7 @@ abstract class VFSNode
   def size : Int
     0
   end
+
   def name : GcString?
   end
 
@@ -19,8 +20,10 @@ abstract class VFSNode
 
   def parent : VFSNode?
   end
+
   def next_node : VFSNode?
   end
+
   def first_child : VFSNode?
   end
 
@@ -30,32 +33,41 @@ abstract class VFSNode
 
   def open(path : Slice) : VFSNode?
   end
+
   def create(name : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
   end
+
   def remove(process : Multiprocessing::Process? = nil) : Int32
     VFS_ERR
   end
+
   def read(slice : Slice(UInt8), offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
     VFS_ERR
   end
+
   def write(slice : Slice(UInt8), offset : UInt32,
             process : Multiprocessing::Process? = nil) : Int32
     VFS_ERR
   end
+
   def spawn(udata : Multiprocessing::Process::UserData) : Int32
     VFS_ERR
   end
+
   def truncate(size : Int32) : Int32
     VFS_ERR
   end
+
   def ioctl(request : Int32, data : UInt32,
             process : Multiprocessing::Process? = nil) : Int32
     VFS_ERR
   end
+
   def mmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
     VFS_ERR
   end
+
   def munmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
     VFS_ERR
   end
@@ -67,6 +79,7 @@ end
 
 abstract class VFS
   abstract def name : GcString
+
   def queue : VFSQueue?
   end
 
@@ -114,7 +127,7 @@ module RootFS
   end
 end
 
-VFS_OK              = 0
+VFS_OK              =  0
 VFS_ERR             = -1
 VFS_WAIT            = -2
 VFS_WAIT_NO_ENQUEUE = -3

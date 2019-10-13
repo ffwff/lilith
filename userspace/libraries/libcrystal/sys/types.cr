@@ -14,7 +14,6 @@ lib LibC
 end
 
 struct Int
-
   def to_int
     self.to_i32
   end
@@ -26,5 +25,4 @@ struct Int
   def to_usize
     self.to_u32
   end
-
 end

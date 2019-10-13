@@ -106,6 +106,7 @@ module KernelArena
   def start_addr
     @@start_addr
   end
+
   def start_addr=(@@start_addr)
     @@placement_addr = @@start_addr
   end
@@ -145,7 +146,7 @@ module KernelArena
   # manual functions
   def malloc(sz : USize) : USize
     Multiprocessing::DriverThread.assert_unlocked
-    
+
     panic "only supports sizes of <= 1024" if sz > 1024
     pool_size = max(32u64, sz.nearest_power_of_2.to_usize)
     idx = idx_for_pool_size pool_size

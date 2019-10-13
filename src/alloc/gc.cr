@@ -2,8 +2,8 @@ require "./alloc.cr"
 require "./gc/*"
 
 lib LibCrystal
-  fun type_offsets="__crystal_malloc_type_offsets"(type_id : UInt32) : UInt32
-  fun type_size="__crystal_malloc_type_size"(type_id : UInt32) : UInt32
+  fun type_offsets = "__crystal_malloc_type_offsets"(type_id : UInt32) : UInt32
+  fun type_size = "__crystal_malloc_type_size"(type_id : UInt32) : UInt32
 end
 
 fun __crystal_malloc64(size : UInt64) : Void*
@@ -39,7 +39,7 @@ module Gc
   @@first_black_node = Pointer(Kernel::GcNode).null
   @@enabled = false
   @@root_scanned = false
-  
+
   # Number of garbage collection cycles performed
   @@ticks = 0
   # Last tick when sweep phase was performed
@@ -48,13 +48,13 @@ module Gc
   @@last_start_tick = 0
   # Number of cycles to be performed per allocation
   @@cycles_per_alloc = 1
-  
+
   private def calc_cycles_per_alloc
     old = @@cycles_per_alloc
     @@cycles_per_alloc = max((@@last_sweep_tick - @@last_start_tick) >> 2, 1)
   end
 
-  def init(@@data_start  : UInt64, @@data_end  : UInt64,
+  def init(@@data_start : UInt64, @@data_end : UInt64,
            @@stack_start : UInt64, @@stack_end : UInt64)
     @@enabled = true
   end
@@ -103,13 +103,13 @@ module Gc
             when GC_NODE_MAGIC
               node.value.magic = GC_NODE_MAGIC_GRAY
               if move_list
-                push(@@first_gray_node, node) 
+                push(@@first_gray_node, node)
               end
               fix_white = true
             when GC_NODE_MAGIC_ATOMIC
               node.value.magic = GC_NODE_MAGIC_GRAY_ATOMIC
               if move_list
-                push(@@first_gray_node, node) 
+                push(@@first_gray_node, node)
               end
               fix_white = true
             when GC_NODE_MAGIC_BLACK | GC_NODE_MAGIC_BLACK_ATOMIC
@@ -153,7 +153,7 @@ module Gc
       end
       @@root_scanned = true
       @@last_start_tick = @@ticks
-      
+
       return CycleType::Mark
     elsif !@@first_gray_node.null?
       # second stage of marking phase: precisely marking gray nodes
