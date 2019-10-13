@@ -401,7 +401,7 @@ module Ide
   end
 
   def init_controller
-    @@devices = GcArray(AtaDevice).new 4
+    @@devices = GcArray(AtaDevice?).new 4
     devices = @@devices.not_nil!
     devices[0] = AtaDevice.new(true, 0)
     devices[1] = AtaDevice.new(true, 1)

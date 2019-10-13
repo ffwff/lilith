@@ -147,7 +147,7 @@ module Multiprocessing
       def initialize(@argv : GcArray(GcString),
                      @cwd : GcString, @cwd_node : VFSNode,
                      @environ = GcArray(EnvVar).new(0))
-        @fds = GcArray(FileDescriptor).new MAX_FD
+        @fds = GcArray(FileDescriptor?).new MAX_FD
         @mmap_list = MemMapList.new
       end
 
