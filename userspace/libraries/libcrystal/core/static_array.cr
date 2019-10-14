@@ -20,12 +20,12 @@ struct StaticArray(T, N)
     to_unsafe[idx] = value
   end
 
-  def [](index : Int)
+  def [](idx : Int)
     abort "accessing out of bounds!" unless 0 <= idx && idx < N
     to_unsafe[idx]
   end
 
-  def []?(index : Int)
+  def []?(idx : Int)
     return nil unless 0 <= idx && idx < N
     to_unsafe[idx]
   end
