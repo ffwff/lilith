@@ -40,7 +40,7 @@ struct Nil
   end
 
   def to_s(io)
-    io.write "nil"
+    io << "nil"
   end
 
   def ==(other)
