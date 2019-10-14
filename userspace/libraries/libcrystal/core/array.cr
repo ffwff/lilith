@@ -19,13 +19,13 @@ class Array(T)
     new_size.to_usize * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
   end
 
-  private def new_buffer(capacity)
+  private def new_buffer(new_size)
     if old_size > capacity
       abort "size must be smaller than capacity"
     end
     old_size = size
     old_buffer = @buffer
-    @buffer = Pointer(USize).malloc malloc_size(capacity)
+    @buffer = Pointer(USize).malloc malloc_size(new_size)
     old_buffer.copy_to @buffer, malloc_size(old_size)
   end
 
