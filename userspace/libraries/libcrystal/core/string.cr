@@ -84,7 +84,7 @@ class String
         point = ch.to_u32
         i += 1
       end
-      yield point.unsafe_chr, points
+      yield point.unsafe_chr, points, i
       points += 1
     end
   end
@@ -106,16 +106,9 @@ class String
   end
 
   def each_char(&block)
-    each_unicode_point do |char, i|
+    each_unicode_point do |char|
       yield char
     end
-  end
-
-  def index(search)
-    each_unicode_point do |char, i|
-      return i if search == char
-    end
-    nil
   end
 
   def [](index : Int)
@@ -127,6 +120,54 @@ class String
 
   def ===(other)
     self == other
+  end
+
+  def index(search)
+    each_unicode_point do |char, i|
+      return i if search == char
+    end
+    nil
+  end
+
+  def split(separator : Char, remove_empty = false, &block : String -> _)
+    last_sep_idx, last_sep_byte_idx = 0, 0
+    last_idx, last_byte_idx = 0, 0
+    each_unicode_point do |char, idx, byte_idx|
+      if char == separator
+        if last_sep_idx == 0
+          bytesize = byte_idx - 1
+          unisize = idx
+        else
+          bytesize = last_byte_idx - last_sep_byte_idx
+          unisize = last_idx - last_sep_idx
+        end
+
+        if !remove_empty || (remove_empty && bytesize != 0)
+          str = (String.new(bytesize) { |buffer|
+            byte_slice[last_sep_byte_idx, bytesize].copy_to buffer, unisize
+            { bytesize, unisize }
+          }).not_nil!
+          yield str
+        end
+
+        last_sep_idx = idx
+        last_sep_byte_idx = byte_idx
+      end
+      last_idx = idx
+      last_byte_idx = byte_idx
+    end
+
+    # last substring
+    bytesize = self.bytesize - last_sep_byte_idx
+    unisize = self.size - last_sep_idx - 1
+
+    if !remove_empty || (remove_empty && bytesize != 0)
+      str = (String.new(bytesize) { |buffer|
+        byte_slice[last_sep_byte_idx, bytesize].copy_to buffer, unisize
+        { bytesize, unisize }
+      }).not_nil!
+      yield str
+    end
   end
 
   def to_s

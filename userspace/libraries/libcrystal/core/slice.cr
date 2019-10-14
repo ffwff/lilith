@@ -32,7 +32,7 @@ struct Slice(T)
   end
 
   def [](start : Int, count : Int)
-    abort "Slice: out of range" if start + count >= @size
+    abort "Slice: out of range" if start + count > @size
     Slice(T).new(@buffer + start, count)
   end
 
@@ -59,7 +59,7 @@ struct Slice(T)
   end
 
   def copy_to(target : Pointer(T), count)
-    LibC.memcpy(to_unsafe.as(Void*), target.as(Void*), count.to_usize)
+    LibC.memcpy(target.as(Void*), to_unsafe.as(Void*), count.to_usize)
   end
 
   def copy_to(target : self)
