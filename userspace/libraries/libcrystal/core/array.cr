@@ -20,13 +20,20 @@ class Array(T)
   end
 
   private def new_buffer(capacity)
-    if old_size > capacity
+    if size > capacity
       abort "size must be smaller than capacity"
     end
-    old_size = size
-    old_buffer = @buffer
-    @buffer = Pointer(USize).malloc malloc_size(capacity)
-    old_buffer.copy_to @buffer, malloc_size(old_size)
+    @capacity = capacity
+    if @buffer.null?
+      @buffer = Pointer(USize).malloc malloc_size(capacity)
+      @buffer[0] = GC_ARRAY_HEADER_TYPE
+      @buffer[1] = 0u32
+    else
+      old_size = size
+      old_buffer = @buffer
+      @buffer = Pointer(USize).malloc malloc_size(capacity)
+      LibC.memcpy @buffer, old_buffer, malloc_size(old_size)
+    end
   end
 
   def initialize
@@ -91,12 +98,11 @@ class Array(T)
   def push(value : T)
     if size < capacity
       to_unsafe[size] = value
-      self.size += 1
     else
-      idx = size
       new_buffer(size + 1)
-      to_unsafe[idx] = value
+      to_unsafe[size] = value
     end
+    self.size = self.size + 1
   end
 
   def each
@@ -109,9 +115,13 @@ class Array(T)
 
   def to_s(io)
     io << "["
-    each do |obj|
-      io << obj
-      io << ", "
+    i = 0
+    while i < size - 1
+      io << self[i] << ", "
+      i += 1
+    end
+    if size > 0
+      io << self[size - 1]
     end
     io << "]"
   end

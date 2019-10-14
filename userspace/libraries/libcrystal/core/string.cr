@@ -129,7 +129,12 @@ class String
     nil
   end
 
-  def split(separator : Char, remove_empty = false, &block : String -> _)
+  def split(separator : Char, limit : Int32? = nil, remove_empty = false, &block : String -> _)
+    if limit && limit <= 1
+      yield self
+      return
+    end
+
     last_sep_idx, last_sep_byte_idx = 0, 0
     last_idx, last_byte_idx = 0, 0
     each_unicode_point do |char, idx, byte_idx|
@@ -152,6 +157,11 @@ class String
 
         last_sep_idx = idx
         last_sep_byte_idx = byte_idx
+
+        if limit
+          limit -= 1
+          break if limit == 0
+        end
       end
       last_idx = idx
       last_byte_idx = byte_idx
@@ -168,6 +178,14 @@ class String
       }).not_nil!
       yield str
     end
+  end
+
+  def split(separator : Char, limit = nil, remove_empty = false)
+    ary = Array(String).new
+    split(separator, limit, remove_empty: remove_empty) do |string|
+      ary.push string
+    end
+    ary
   end
 
   def to_s
