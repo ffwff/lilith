@@ -105,6 +105,18 @@ class Array(T)
     self.size = self.size + 1
   end
 
+  def shift
+    return nil if size == 0
+    retval = to_unsafe[0]
+    i = 0
+    while i < (size - 1)
+      to_unsafe[i] = to_unsafe[i + 1]
+      i += 1
+    end
+    self.size = self.size - 1
+    retval
+  end
+
   def each
     i = 0
     while i < size

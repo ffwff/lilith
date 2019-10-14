@@ -16,7 +16,7 @@ module IO::Buffered
   end
 
   def buffer_size=(value)
-    if @buffer.size < 0
+    if @buffer.size == 0
       @buffer_size = value
     end
   end
