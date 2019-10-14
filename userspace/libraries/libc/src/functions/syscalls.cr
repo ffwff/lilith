@@ -166,8 +166,16 @@ fun _sys_time : UInt64
 end
 
 # working directory
-fun getcwd(str : LibC::String, len : LibC::Int) : LibC::Int
-  __lilith_syscall(SC_GETCWD, str, len.to_u32).to_int
+fun getcwd(str : LibC::String, len : LibC::SizeT) : LibC::String
+  if str.null?
+    len = __lilith_syscall(SC_GETCWD, 0u32, 0u32).to_int + 1
+    retval = LibC::String.malloc len.to_usize
+    __lilith_syscall(SC_GETCWD, retval, len.to_usize).to_int
+    retval
+  else
+    __lilith_syscall(SC_GETCWD, str, len.to_usize).to_int
+    str
+  end  
 end
 
 fun chdir(str : LibC::String) : LibC::Int

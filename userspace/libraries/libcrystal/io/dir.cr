@@ -14,7 +14,10 @@ lib LibC
     d_name : UInt8[256]
   end
 
-  fun lilith_readdir(fd : LibC::Int, direntp : Dirent*) : LibC::Int
+  fun lilith_readdir(fd : LibC::Int,
+                     direntp : Dirent*) : LibC::Int
+  fun getcwd(path : LibC::UString, length : LibC::SizeT) : LibC::UString
+  fun chdir(path : LibC::UString) : LibC::Int
 end
 
 class Dir
@@ -37,4 +40,20 @@ class Dir
     end
     nil
   end
+
+  def self.cd(path)
+    LibC.chdir path.to_unsafe
+  end
+
+  def self.current : String?
+    unless dir = LibC.getcwd(nil, 0)
+      # TODO: errno
+      return nil
+    end
+
+    dir_str = String.new(dir)
+    LibC.free(dir.as(Void*))
+    dir_str
+  end
+  
 end
