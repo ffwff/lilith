@@ -15,34 +15,78 @@ class String
 
   def self.new(chars : UInt8*)
     size = LibC.strlen(chars)
-    new(size) do |buffer|
+    (new(size) { |buffer|
       LibC.strcpy buffer, chars
-      {size, size}
-    end
+      {size, String.calculate_length(buffer)}
+    }).not_nil!
   end
 
   def self.new(capacity : Int)
-    # str = GC.malloc_atomic(capacity.to_u32 + HEADER_SIZE + 1).as(UInt8*)
-    str = Pointer(UInt8).malloc(capacity.to_u32 + HEADER_SIZE + 1)
+    str = Pointer(UInt8).malloc_atomic(capacity.to_u32 + HEADER_SIZE + 1)
     buffer = str.as(String).to_unsafe
     bytesize, size = yield buffer
 
     unless 0 <= bytesize <= capacity
-      unimplemented!
-      # raise ArgumentError.new("Bytesize out of capacity bounds")
+      return nil
     end
 
     buffer[bytesize] = 0_u8
 
-    # Try to reclaim some memory if capacity is bigger than what was requested
-    if bytesize < capacity
-      # TODO
-      # str = str.realloc(bytesize.to_u32 + HEADER_SIZE + 1)
-    end
+    # TODO: Try to reclaim some memory if capacity is bigger than what was requested
 
     str_header = str.as({Int32, Int32, Int32}*)
     str_header.value = {TYPE_ID, bytesize.to_i, size.to_i}
     str.as(String)
+  end
+
+  protected def self.calculate_length(buffer : UInt8*)
+    i = 0
+    length = 0
+    until (ch = buffer[i]) == 0u8
+      if ch >= 0b110_00000u8
+        i += 2
+      elsif ch >= 0b1110_0000u8
+        i += 3
+      elsif ch >= 0b11110_000u8
+        i += 4
+      else
+        i += 1
+      end
+      length += 1
+    end
+    length
+  end
+
+  private def mask_tail_char(ch : UInt8) : UInt32
+    (ch & 0b111111u8).to_u32
+  end
+
+  private def each_unicode_point
+    i = 0
+    points = 0
+    until (ch = to_unsafe[i]) == 0u8
+      point = 0u32
+      if ch >= 0b110_00000u8
+        point = (ch & 0b11111u8).to_u32 << 6 | mask_tail_char(to_unsafe[i + 1])
+        i += 2
+      elsif ch >= 0b1110_0000u8
+        point = (ch & 0b1111u8).to_u32 << 12 |
+                (mask_tail_char(to_unsafe[i + 1]) << 6) |
+                (mask_tail_char(to_unsafe[i + 2]))
+        i += 3
+      elsif ch >= 0b11110_000u8
+        point = (ch & 0b1111u8).to_u32 << 18 |
+                (mask_tail_char(to_unsafe[i + 1]) << 12) |
+                (mask_tail_char(to_unsafe[i + 2]) << 6) |
+                (mask_tail_char(to_unsafe[i + 3]))
+        i += 4
+      else
+        point = ch.to_u32
+        i += 1
+      end
+      yield point.unsafe_chr, points
+      points += 1
+    end
   end
 
   def size
@@ -61,29 +105,24 @@ class String
     Bytes.new(to_unsafe, bytesize)
   end
 
-  private def each
-    size.times do |i|
-      yield to_unsafe[i], i
-    end
-  end
-
   def each_char(&block)
-    # FIXME: unicode chars
-    size.times do |i|
-      yield to_unsafe[i].unsafe_chr
+    each_unicode_point do |char, i|
+      yield char
     end
   end
 
   def index(search)
-    each do |char, i|
+    each_unicode_point do |char, i|
       return i if search == char
     end
     nil
   end
 
   def [](index : Int)
-    # TODO
-    to_unsafe[index].unsafe_chr
+    each_unicode_point do |char, i|
+      return char if i == index
+    end
+    0.unsafe_chr
   end
 
   def ===(other)
@@ -102,7 +141,7 @@ class String
 
   def to_i?(base : Int = 10)
     retval = 0
-    self.each do |char|
+    self.each_char do |char|
       unless (digit = INT_BASE.index char).nil?
         retval = retval * base + digit
       else

@@ -6,4 +6,4 @@ ARGV.each do |args|
   end
   i += 1
 end
-puts
+print "\n"

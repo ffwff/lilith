@@ -205,14 +205,6 @@ module Gc
         header_ptr = Pointer(USize).new(node.address + sizeof(LibCrystal::GcNode))
         # get its type id
         type_id = header_ptr[0]
-        {% unless flag?(:kernel) %}
-          # we don't use heap-allocated String classes in kernel
-          # skip strings (for some reason strings aren't allocated atomically)
-          if type_id == String::TYPE_ID
-            node = node.value.next_node
-            next
-          end
-        {% end %}
         # handle gc array
         if type_id == GC_ARRAY_HEADER_TYPE
           len = header_ptr[1]
