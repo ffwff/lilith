@@ -4,6 +4,8 @@ require "./buffered.cr"
 class IO::FileDescriptor < IO
   include IO::Buffered
 
+  getter fd
+
   def initialize(@fd : LibC::Int, blocking = false)
   end
 

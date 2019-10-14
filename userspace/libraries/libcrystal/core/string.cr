@@ -4,6 +4,8 @@ require "./pointer.cr"
 lib LibC
   fun strlen(str : LibC::UString) : LibC::Int
   fun strcpy(dest : LibC::UString, src : LibC::UString) : LibC::Int
+  fun strncpy(dest : LibC::UString, src : LibC::UString, size : LibC::SizeT) : LibC::Int
+  fun memcmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : LibC::Int
 end
 
 class String
@@ -18,6 +20,16 @@ class String
     (new(size) { |buffer|
       LibC.strcpy buffer, chars
       {size, String.calculate_length(buffer)}
+    }).not_nil!
+  end
+
+  def self.new(chars : UInt8*, bytesize, size = 0)
+    (new(bytesize) { |buffer|
+      LibC.strncpy buffer, chars, bytesize.to_usize
+      if size == 0
+        size = String.calculate_length buffer
+      end
+      {bytesize, size}
     }).not_nil!
   end
 
@@ -118,6 +130,12 @@ class String
     0.unsafe_chr
   end
 
+  def ==(other : self)
+    return true if same?(other)
+    return false unless bytesize == other.bytesize
+    LibC.memcmp(to_unsafe, other.to_unsafe, bytesize) == 0
+  end
+
   def ===(other)
     self == other
   end
@@ -168,11 +186,16 @@ class String
     end
 
     # last substring
-    bytesize = self.bytesize - last_sep_byte_idx
-    unisize = self.size - last_sep_idx - 1
+    if last_sep_byte_idx == 0
+      bytesize = self.bytesize
+      unisize = self.size - last_sep_idx
+    else
+      bytesize = self.bytesize - last_sep_byte_idx
+      unisize = self.size - last_sep_idx - 1
+    end
 
     if !remove_empty || (remove_empty && bytesize != 0)
-      str = (String.new(bytesize) { |buffer|
+      str = (String.new(bytesize + 1) { |buffer|
         byte_slice[last_sep_byte_idx, bytesize].copy_to buffer, unisize
         { bytesize, unisize }
       }).not_nil!
