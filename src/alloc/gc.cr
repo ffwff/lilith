@@ -321,6 +321,7 @@ module Gc
           panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
           next_node = node.value.next_node
           {% if flag?(:kernel) %}
+            Serial.puts "free ", node, '\n'
             KernelArena.free node.as(Void*)
           {% else %}
             LibC.free node.as(Void*)

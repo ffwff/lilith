@@ -1,127 +1,116 @@
-GC_ARRAY_HEADER_TYPE = 0xFFFF_FFFF_FFFF_FFFFu64
+GC_ARRAY_HEADER_TYPE = 0xFFFF_FFFF.to_usize
 GC_ARRAY_HEADER_SIZE = sizeof(USize) * 2
 
 class GcArray(T)
-  @capacity : Int64 = 0
+  @capacity : Int32
   getter capacity
 
-  # array data is stored in buffer, and so is size
   def size
     return 0 if @capacity == 0
-    @ptr[1].to_isize
+    @buffer[1].to_i32
   end
 
-  private def size=(new_size)
+  protected def size=(new_size)
     return if @capacity == 0
-    @ptr[1] = new_size.to_usize
+    @buffer[1] = new_size.to_usize
   end
 
-  private def malloc_size(new_size)
-    new_size.to_usize * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
+  private def malloc_bytes(nelem)
+    nelem.to_usize * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
   end
 
-  # init
-  def initialize(new_size : Int)
-    if new_size == 0
-      @ptr = Pointer(USize).null
+  private def capacity_for_ptr(ptr)
+     ((KernelArena.block_size_for_ptr(ptr) -
+      (GC_ARRAY_HEADER_SIZE + sizeof(LibCrystal::GcNode))) / sizeof(T)).to_i32
+  end
+
+  private def new_buffer(new_capacity)
+    if size > new_capacity
+      panic "size must be smaller than capacity"
+    elsif !@buffer.nil? && capacity_for_ptr(@buffer) >= new_capacity
       return
     end
-    m_size = malloc_size new_size
-    @ptr = Gc.unsafe_malloc(m_size).as(USize*)
-    @ptr[0] = GC_ARRAY_HEADER_TYPE
-    @ptr[1] = new_size.to_usize
-    # clear array
-    i = 0
-    while i < new_size
-      buffer.as(USize*)[i] = 0u64
-      i += 1
+    old_size = size
+    old_buffer = @buffer
+    @buffer = Pointer(UInt8).malloc(malloc_bytes(new_capacity)).as(USize*)
+    memcpy(@buffer.as(UInt8*), old_buffer.as(UInt8*), malloc_bytes(old_size))
+  end
+
+  def initialize
+    @capacity = 0
+    @buffer = Pointer(USize).null
+  end
+
+  def initialize(initial_capacity : Int32)
+    @capacity = initial_capacity
+    if initial_capacity > 0
+      @buffer = Pointer(UInt8).malloc(malloc_bytes(initial_capacity)).as(USize*)
+      @buffer[0] = GC_ARRAY_HEADER_TYPE
+      @buffer[1] = 0u32
+    else
+      @buffer = Pointer(USize).null
     end
-    # capacity
-    recalculate_capacity
   end
 
   def clone
-    new_array = GcArray(T).new(size)
-    new_buffer = new_array.buffer.as(USize*)
-    old_buffer = buffer.as(USize*)
-    # copy array data over
-    i = 0
-    while i < size
-      new_buffer[i] = old_buffer[i]
-      i += 1
+    GcArray(T).build(size) do |buffer|
+      size.times do |i|
+        buffer[i] = to_unsafe[i]
+      end
+      size
     end
-    new_array
   end
 
-  # helper
-  protected def buffer
-    (@ptr + 2).as(T*)
+  def self.build(capacity : Int) : self
+    ary = GcArray(T).new(capacity)
+    ary.size = (yield ary.to_unsafe).to_i
+    ary
   end
 
-  private def recalculate_capacity
-    @capacity = ((KernelArena.block_size_for_ptr(@ptr) -
-                  (GC_ARRAY_HEADER_SIZE + sizeof(LibCrystal::GcNode))) / sizeof(Void*)).to_isize
+  def self.new(size : Int, &block : Int32 -> T)
+    GcArray(T).build(size) do |buffer|
+      size.to_i.times do |i|
+        buffer[i] = yield i
+      end
+      size
+    end
   end
 
-  # getter/setter
-  def [](idx : Int) : T
-    panic "GcArray: out of range" if idx < 0 || idx >= size
-    buffer[idx]
+  def to_unsafe
+    (@buffer + 2).as(T*)
+  end
+
+  def [](idx : Int)
+    panic "accessing out of bounds!" unless 0 <= idx && idx < size
+    to_unsafe[idx]
   end
 
   def []?(idx : Int) : T?
-    return if idx < 0 || idx >= size
-    if buffer.as(USize*)[idx] == 0
-      nil
-    else
-      buffer[idx]
-    end
+    return nil unless 0 <= idx && idx <= size
+    to_unsafe[idx]
   end
 
   def []=(idx : Int, value : T)
-    panic "GcArray: out of range" if idx < 0 || idx >= size
-    buffer[idx] = value
-  end
-
-  # resizing
-  private def new_buffer(new_size)
-    m_size = malloc_size new_size
-    ptr = Gc.unsafe_malloc(m_size).as(USize*)
-    ptr[0] = GC_ARRAY_HEADER_TYPE
-    ptr[1] = new_size.to_usize
-    new_buffer = Pointer(USize).new((ptr.address + GC_ARRAY_HEADER_SIZE).to_u64)
-    # copy over
-    unless @ptr.null?
-      i = 0
-      while i < new_size
-        new_buffer[i] = buffer.as(USize*)[i]
-        i += 1
-      end
-    end
-    @ptr = ptr
-    # capacity
-    recalculate_capacity
+    panic "setting out of bounds!" unless 0 <= idx && idx < size
+    to_unsafe[idx] = value
   end
 
   def push(value : T)
     if size < capacity
-      buffer[size] = value
-      self.size += 1
+      to_unsafe[size] = value
+      self.size = size + 1
     else
-      idx = size
       new_buffer(size + 1)
-      buffer[idx] = value
+      to_unsafe[size] = value
+      self.size = size + 1
     end
   end
 
-  # iterator
-  def each(&block)
+  def each
     i = 0
     while i < size
-      yield buffer[i]
+      yield to_unsafe[i]
       i += 1
     end
   end
 end
-
-
