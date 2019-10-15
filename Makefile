@@ -9,7 +9,7 @@ LD32=$(ARCH32)-ld
 CR=toolchain/crystal/.build/crystal
 LLC=llc
 
-CRFLAGS=-Dkernel --cross-compile --target $(ARCH) --prelude ./prelude.cr --error-trace --mcmodel kernel 
+CRFLAGS=-Dkernel --cross-compile --target $(ARCH) --prelude ./prelude.cr --error-trace --mcmodel kernel -Ddisable_overflow
 ASFLAGS=-Isrc/asm/x64
 LDFLAGS=-T link64.ld
 KERNEL_OBJ=build/main.o build/boot.o
