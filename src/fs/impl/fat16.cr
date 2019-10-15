@@ -174,7 +174,7 @@ private class Fat16Node < VFSNode
 
   # read
   private def sector_for(cluster)
-    fs.fat_sector + cluster / fs.fat_sector_size
+    fs.fat_sector + cluster // fs.fat_sector_size
   end
 
   private def ent_for(cluster)
@@ -218,7 +218,7 @@ private class Fat16Node < VFSNode
 
     # skip clusters
     offset_factor = fs.sectors_per_cluster * 512
-    offset_clusters = offset / offset_factor
+    offset_clusters = offset // offset_factor
     while offset_clusters > 0 && cluster < 0xFFF8
       fat_sector = read_fat_table fat_table, cluster, fat_sector
       cluster = fat_table[ent_for cluster]
@@ -407,9 +407,9 @@ class Fat16FS < VFS
     end
 
     @fat_sector = partition.first_sector + bs.value.reserved_sectors
-    @fat_sector_size = bs.value.sector_size.to_i32 / sizeof(UInt16)
+    @fat_sector_size = bs.value.sector_size.to_i32 // sizeof(UInt16)
 
-    root_dir_sectors = ((bs.value.root_dir_entries * 32) + (bs.value.sector_size - 1)) / bs.value.sector_size
+    root_dir_sectors = ((bs.value.root_dir_entries * 32) + (bs.value.sector_size - 1)) // bs.value.sector_size
 
     sector = (fat_sector + bs.value.fat_size_sectors * bs.value.number_of_fats).to_u64
     @data_sector = sector + root_dir_sectors

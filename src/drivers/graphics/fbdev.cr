@@ -157,8 +157,8 @@ private module FbdevStatePrivate
   end
 
   def init_device(@@width, @@height, ptr)
-    @@cwidth = (@@width / FB_ASCII_FONT_WIDTH) - 1
-    @@cheight = (@@height / FB_ASCII_FONT_HEIGHT) - 1
+    @@cwidth = (@@width // FB_ASCII_FONT_WIDTH) - 1
+    @@cheight = (@@height // FB_ASCII_FONT_HEIGHT) - 1
     @@buffer = Slice(UInt32).new(ptr, @@width * @@height)
     memset(@@buffer.to_unsafe.as(UInt8*), 0u64,
       @@width.to_usize * @@height.to_usize * sizeof(UInt32).to_usize)
