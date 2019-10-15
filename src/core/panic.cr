@@ -9,6 +9,10 @@ end
 def raise(*args)
 end
 
+fun __crystal_raise_overflow : NoReturn
+  panic "overflow exception"
+end
+
 fun breakpoint
   asm("nop")
 end

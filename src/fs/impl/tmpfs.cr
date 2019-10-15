@@ -1,7 +1,7 @@
 private lib TmpFSData
   
   # FIXME: this is unportable for non 64-bit architectures
-  MAX_FRAMES = (0x1000 - 8 * 3) / 8
+  MAX_FRAMES = (0x1000 - 8 * 3) // 8
   struct TmpFSPage
     prev_page : TmpFSPage*
     next_page : TmpFSPage*
@@ -223,7 +223,7 @@ private class TmpFSNode < VFSNode
 
   def mmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
     @mmap_count += 1
-    npages = Math.min(node.size / 0x1000, @npages)
+    npages = Math.min(node.size // 0x1000, @npages)
     i = 0
     each_frame do |frame|
       break if i == npages
