@@ -17,6 +17,17 @@ lib LibCrystalMain
   fun __crystal_main(argc : Int32, argv : UInt8**)
 end
 
+fun __crystal_once_init : Void*
+  Pointer(Void).new 0
+end
+
+fun __crystal_once(state : Void*, flag : Bool*, initializer : Void*)
+  unless flag.value
+    Proc(Nil).new(initializer, Pointer(Void).new 0).call
+    flag.value = true
+  end
+end
+
 fun main(argc : LibC::Int, argv : UInt8**) : LibC::Int
   stack_end = 0u64 # scan from here!
   {% if flag?(:i686) %}
