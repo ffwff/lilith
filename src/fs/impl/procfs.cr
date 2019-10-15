@@ -222,11 +222,11 @@ private class ProcFSMemInfoNode < VFSNode
     writer = SliceWriter.new(slice, offset.to_i32)
 
     SliceWriter.fwrite? writer, "MemTotal: "
-    SliceWriter.fwrite? writer, (Paging.usable_physical_memory / 1024)
+    SliceWriter.fwrite? writer, (Paging.usable_physical_memory // 1024)
     SliceWriter.fwrite? writer, " kB\n"
 
     SliceWriter.fwrite? writer, "MemUsed: "
-    SliceWriter.fwrite? writer, (FrameAllocator.used_blocks * (0x1000 / 1024))
+    SliceWriter.fwrite? writer, (FrameAllocator.used_blocks * (0x1000 // 1024))
     SliceWriter.fwrite? writer, " kB\n"
 
     writer.offset

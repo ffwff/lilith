@@ -96,7 +96,7 @@ struct PBitArray
 
   # position
   private def index_position(k : Int)
-    k / 32
+    k // 32
   end
 
   private def bit_position(k : Int)

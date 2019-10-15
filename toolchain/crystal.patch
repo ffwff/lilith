@@ -12,7 +12,7 @@ index c901d9b37..a8766b586 100755
    exec "$CRYSTAL_DIR/crystal" "$@"
  elif ! command -v crystal > /dev/null; then
 diff --git a/src/compiler/crystal/codegen/codegen.cr b/src/compiler/crystal/codegen/codegen.cr
-index d28ed3dc4..0350f6a45 100644
+index c40b58ab1..ca61a1ec1 100644
 --- a/src/compiler/crystal/codegen/codegen.cr
 +++ b/src/compiler/crystal/codegen/codegen.cr
 @@ -13,6 +13,8 @@ module Crystal
@@ -21,10 +21,10 @@ index d28ed3dc4..0350f6a45 100644
    GET_EXCEPTION_NAME  = "__crystal_get_exception"
 +  MALLOC_OFFSETS_NAME = "__crystal_malloc_type_offsets"
 +  MALLOC_SIZE_NAME    = "__crystal_malloc_type_size"
+   ONCE_INIT           = "__crystal_once_init"
+   ONCE                = "__crystal_once"
  
-   class Program
-     def run(code, filename = nil, debug = Debug::Default)
-@@ -157,6 +159,19 @@ module Crystal
+@@ -164,6 +166,19 @@ module Crystal
      @main_builder : CrystalLLVMBuilder
      @call_location : Location?
  
@@ -44,7 +44,7 @@ index d28ed3dc4..0350f6a45 100644
      def initialize(@program : Program, @node : ASTNode, single_module = false, @debug = Debug::Default)
        @single_module = !!single_module
        @abi = @program.target_machine.abi
-@@ -171,6 +186,10 @@ module Crystal
+@@ -178,6 +193,10 @@ module Crystal
        ret_type = @llvm_typer.llvm_return_type(@main_ret_type)
        @main = @llvm_mod.functions.add(MAIN_NAME, [llvm_context.int32, llvm_context.void_pointer.pointer], ret_type)
  
@@ -55,7 +55,7 @@ index d28ed3dc4..0350f6a45 100644
        if @program.has_flag? "windows"
          @personality_name = "__CxxFrameHandler3"
  
-@@ -236,7 +255,8 @@ module Crystal
+@@ -243,7 +262,8 @@ module Crystal
        # to avoid some memory being allocated with plain malloc.
        codgen_well_known_functions @node
  
@@ -63,30 +63,20 @@ index d28ed3dc4..0350f6a45 100644
 +      @generate_freestanding = ENV["FREESTANDING"]? == "1"
 +      initialize_argv_and_argc unless @generate_freestanding
  
-       initialize_simple_class_vars_and_constants
+       if @debug.line_numbers?
+         set_current_debug_location Location.new(@program.filename || "(no name)", 1, 1)
+@@ -272,7 +292,9 @@ module Crystal
+         next if initializer.compile_time_value
+         next unless initializer.simple?
  
-@@ -266,14 +286,18 @@ module Crystal
-           next if initializer.compile_time_value
-           next unless initializer.simple?
- 
--          initialize_simple_const(initializer)
-+          if generate_initialize_fun?
-+            initialize_simple_const(initializer)
-+          end
-         when ClassVarInitializer
-           next unless initializer.node.simple_literal?
- 
-           class_var = initializer.owner.class_vars[initializer.name]
-           next if class_var.thread_local?
- 
--          initialize_class_var(initializer.owner, initializer.name, initializer.meta_vars, initializer.node)
-+          if generate_initialize_fun?
-+            initialize_class_var(initializer.owner, initializer.name, initializer.meta_vars, initializer.node)
-+          end
-         end
+-        initialize_simple_const(initializer)
++        if generate_initialize_fun?
++	  initialize_simple_const(initializer)
++	end
        end
      end
-@@ -345,6 +369,88 @@ module Crystal
+ 
+@@ -345,6 +367,88 @@ module Crystal
          codegen_fun node.real_name, node.external, @program, is_exported_fun: true
        end
  
@@ -117,7 +107,7 @@ index d28ed3dc4..0350f6a45 100644
 +                ivars.each_with_index do |(name, ivar), idx|
 +                  if ivar.type.has_inner_pointers?
 +                    offset = @program.instance_offset_of(type.sizeof_type, idx)
-+                    bit = offset / (@program.codegen_target.pointer_bit_width / 8)
++                    bit = offset // (@program.codegen_target.pointer_bit_width // 8)
 +                    offsets[bit] = true
 +                    # puts " + #{name}, #{ivar.type}, #{offset}"
 +                  else
@@ -175,7 +165,7 @@ index d28ed3dc4..0350f6a45 100644
        env_dump = ENV["DUMP"]?
        case env_dump
        when Nil
-@@ -932,7 +1038,9 @@ module Crystal
+@@ -932,7 +1036,9 @@ module Crystal
      def codegen_assign(target : Path, value, node)
        const = target.target_const.not_nil!
        if const.used? && !const.simple? && !const.compile_time_value
@@ -186,7 +176,7 @@ index d28ed3dc4..0350f6a45 100644
        end
        @last = llvm_nil
        false
-@@ -946,7 +1054,9 @@ module Crystal
+@@ -946,7 +1052,9 @@ module Crystal
        unless target_type
          if target.is_a?(ClassVar)
            # This is the case of a class var initializer
@@ -197,7 +187,7 @@ index d28ed3dc4..0350f6a45 100644
          end
          return false
        end
-@@ -1106,7 +1216,9 @@ module Crystal
+@@ -1106,7 +1214,9 @@ module Crystal
          end
        when ClassVar
          # This is the case of a class var initializer
@@ -208,7 +198,7 @@ index d28ed3dc4..0350f6a45 100644
        end
  
        @last = llvm_nil
-@@ -1864,6 +1976,7 @@ module Crystal
+@@ -1869,6 +1979,7 @@ module Crystal
        else
          if type.is_a?(InstanceVarContainer) && !type.struct? &&
             type.all_instance_vars.each_value.any? &.type.has_inner_pointers?
@@ -232,10 +222,10 @@ index 502b03a06..e47fde92d 100644
        context.fun.add_attribute LLVM::Attribute::NoInline
        context.fun.linkage = LLVM::Linkage::External
 diff --git a/src/compiler/crystal/codegen/target.cr b/src/compiler/crystal/codegen/target.cr
-index 07647c3ef..99e437fef 100644
+index b4ee5475d..e9b674678 100644
 --- a/src/compiler/crystal/codegen/target.cr
 +++ b/src/compiler/crystal/codegen/target.cr
-@@ -104,7 +104,8 @@ class Crystal::Codegen::Target
+@@ -105,7 +105,8 @@ class Crystal::Codegen::Target
      environment_parts.includes?("gnueabihf") || environment_parts.includes?("musleabihf")
    end
  
@@ -245,7 +235,7 @@ index 07647c3ef..99e437fef 100644
      case @architecture
      when "i386", "x86_64"
        LLVM.init_x86
-@@ -126,7 +127,7 @@ class Crystal::Codegen::Target
+@@ -127,7 +128,7 @@ class Crystal::Codegen::Target
      opt_level = release ? LLVM::CodeGenOptLevel::Aggressive : LLVM::CodeGenOptLevel::None
  
      target = LLVM::Target.from_triple(self.to_s)
@@ -255,7 +245,7 @@ index 07647c3ef..99e437fef 100644
  
    def to_s(io : IO) : Nil
 diff --git a/src/compiler/crystal/command.cr b/src/compiler/crystal/command.cr
-index e0e71f927..1ed35111d 100644
+index 333b529d6..708dea6c2 100644
 --- a/src/compiler/crystal/command.cr
 +++ b/src/compiler/crystal/command.cr
 @@ -364,6 +364,23 @@ class Crystal::Command
@@ -283,7 +273,7 @@ index e0e71f927..1ed35111d 100644
        end
  
 diff --git a/src/compiler/crystal/compiler.cr b/src/compiler/crystal/compiler.cr
-index 3853d8962..90125b269 100644
+index 7b13beee3..db779b3a6 100644
 --- a/src/compiler/crystal/compiler.cr
 +++ b/src/compiler/crystal/compiler.cr
 @@ -4,6 +4,10 @@ require "socket"
@@ -337,7 +327,7 @@ index 3853d8962..90125b269 100644
      end
  
      private def linker_command(program : Program, object_name, output_filename, output_dir)
-@@ -517,7 +528,7 @@ module Crystal
+@@ -521,7 +532,7 @@ module Crystal
      end
  
      getter(target_machine : LLVM::TargetMachine) do

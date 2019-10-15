@@ -21,7 +21,7 @@ class GcArray(T)
 
   private def capacity_for_ptr(ptr)
      ((KernelArena.block_size_for_ptr(ptr) -
-      (GC_ARRAY_HEADER_SIZE + sizeof(LibCrystal::GcNode))) / sizeof(T)).to_i32
+      (GC_ARRAY_HEADER_SIZE + sizeof(LibCrystal::GcNode))) // sizeof(T)).to_i32
   end
 
   private def new_buffer(new_capacity)

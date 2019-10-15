@@ -149,3 +149,14 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
       .initial_switch
   end
 end
+
+fun __crystal_once_init : Void*
+  Pointer(Void).new 0
+end
+
+fun __crystal_once(state : Void*, flag : Bool*, initializer : Void*)
+  unless flag.value
+    Proc(Nil).new(initializer, Pointer(Void).new 0).call
+    flag.value = true
+  end
+end
