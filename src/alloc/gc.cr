@@ -103,6 +103,7 @@ module Gc
                                    { LibC.__libc_heap_start.address, LibC.__libc_heap_placement.address }
                                  {% end %}
 
+    # FIXME: scan_region fails if overflow checking is enabled
     scan_end = end_addr - sizeof(Void*) + 1
     until scan_end.to_usize == i.to_usize
       word = Pointer(USize).new(i).value
