@@ -36,7 +36,7 @@ int usleep(useconds_t usec);
 pid_t waitpid(pid_t pid, int *status, int options);
 pid_t getpid();
 
-int getcwd(char *buf, unsigned long length);
+char *getcwd(char *buf, size_t length);
 int chdir(char *buf);
 
 off_t lseek(int fd, off_t offset, int whence);

@@ -144,7 +144,7 @@ private class FbdevFSNode < VFSNode
               height.times do |y|
                 fb_offset = (arg.y + y) * state.width * sizeof(UInt32) + arg.x * sizeof(UInt32)
                 copy_offset = y * arg.width * sizeof(UInt32)
-                copy_size = width / sizeof(UInt32)
+                copy_size = width // sizeof(UInt32)
                 Kernel.kalpha_blend(byte_buffer + fb_offset, source + copy_offset, copy_size.to_usize)
               end
             when FbdevFSData::FbType::Surface
@@ -168,7 +168,7 @@ private class FbdevFSNode < VFSNode
   end
 
   def mmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
-    npages = node.size / 0x1000
+    npages = node.size // 0x1000
     FbdevState.lock do |state|
       phys_address = state.buffer.to_unsafe.address & ~PTR_IDENTITY_MASK
       Paging.alloc_page_pg node.addr, true, true, npages, phys_address

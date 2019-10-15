@@ -9,7 +9,7 @@ LD32=$(ARCH32)-ld
 CR=toolchain/crystal/.build/crystal
 LLC=llc
 
-CRFLAGS=-Dkernel --cross-compile --target $(ARCH) --prelude ./prelude.cr --error-trace --mcmodel kernel 
+CRFLAGS=-Dkernel --cross-compile --target $(ARCH) --prelude ./prelude.cr --error-trace --mcmodel kernel -Ddisable_overflow
 ASFLAGS=-Isrc/asm/x64
 LDFLAGS=-T link64.ld
 KERNEL_OBJ=build/main.o build/boot.o
@@ -194,12 +194,12 @@ $(CR): toolchain/crystal
 # qemu
 qemu:
 	cd /tmp && \
-	git clone https://github.com/qemu/qemu/ && \
+	git clone https://github.com/qemu/qemu && \
 	cd qemu && \
 	git checkout stable-2.8 && \
 	patch -p1 < $(PWD)/toolchain/qemu.patch && \
 	mkdir build && cd build && \
-	../configure \
+	../configure --prefix=/usr/local \
 		--target-list=x86_64-softmmu \
 		--python=/usr/bin/python2 \
 		--disable-werror \

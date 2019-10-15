@@ -14,7 +14,7 @@ struct Int
   end
 
   # unsafe math
-  def /(other)
+  def //(other)
     self.unsafe_div other
   end
 
@@ -44,7 +44,7 @@ struct Int
   end
 
   def div_ceil(other : Int)
-    (self + (other - 1)) / other
+    (self + (other - 1)) // other
   end
 
   # bit manips
@@ -81,7 +81,7 @@ struct Int
     while i < 128
       s[i] = BASE.bytes[n % base]
       i += 1
-      break if (n /= base) == 0
+      break if (n //= base) == 0
     end
     if sign
       yield '-'.ord.to_u8
@@ -102,7 +102,7 @@ struct Int
     while i < 128
       s[i] = BASE.bytes[n % base]
       i += 1
-      break if (n /= base) == 0
+      break if (n //= base) == 0
     end
     if sign
       s[i] = '-'.ord.to_u8

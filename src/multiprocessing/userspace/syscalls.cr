@@ -536,6 +536,9 @@ module Syscall
       Multiprocessing::Scheduler.switch_process_and_terminate
       # working directory
     when SC_GETCWD
+      if arg(0) == 0
+        sysret(pudata.cwd.size)
+      end
       str = try(checked_slice(arg(0), arg(1)))
       if str.size > PATH_MAX
         sysret(SYSCALL_ERR)
