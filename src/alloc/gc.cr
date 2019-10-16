@@ -94,7 +94,6 @@ module Gc
   private def scan_region(start_addr : UInt64, end_addr : UInt64, move_list = true)
     # due to the way this rechains the linked list of white nodes
     # please set move_list=false when not scanning for root nodes
-    i = start_addr
     fix_white = false
 
     heap_start, heap_placement = {% if flag?(:kernel) %}
@@ -104,6 +103,7 @@ module Gc
                                  {% end %}
 
     # FIXME: scan_region fails if overflow checking is enabled
+    i = start_addr
     scan_end = end_addr - sizeof(Void*) + 1
     until scan_end.to_usize == i.to_usize
       word = Pointer(USize).new(i).value
@@ -112,7 +112,6 @@ module Gc
       if word >= heap_start && word <= heap_placement
         node = @@first_white_node
         prev = Pointer(LibCrystal::GcNode).null
-        found = false
         while !node.null?
           if node.address == word
             # word looks like a valid gc header pointer!
@@ -143,7 +142,6 @@ module Gc
             else
               # this node is gray
             end
-            found = true
             break
           end
           # next it
@@ -161,7 +159,7 @@ module Gc
     Sweep
   end
 
-  def cycle
+  def cycle : CycleType
     @@ticks += 1
 
     # marking phase
@@ -236,9 +234,7 @@ module Gc
         # lookup its offsets
         offsets = LibCrystal.type_offsets type_id
         if offsets == 0
-          # LibC.fprintf(LibC.stderr, "type_id doesn't have offset\n")
-          node = node.value.next_node
-          next
+          panic "type_id doesn't have offset\n"
         end
         # precisely scan the struct based on the offsets
         pos = 0
@@ -263,8 +259,10 @@ module Gc
                 when GC_NODE_MAGIC_ATOMIC
                   header.value.magic = GC_NODE_MAGIC_GRAY_ATOMIC
                   fix_white = true
+                when GC_NODE_MAGIC_GRAY || GC_NODE_MAGIC_GRAY_ATOMIC
+                  # this node is gray
                 else
-                  # this node is either gray or black
+                  panic "node must be either gray or white\n"
                 end
                 break
               end
@@ -279,11 +277,11 @@ module Gc
 
       # nodes in @@first_gray_node are now black
       node = @@first_gray_node
-      while !node.value.next_node.null?
-        node = node.value.next_node
+      while !node.null?
+        next_node = node.value.next_node
+        push(@@first_black_node, node)
+        node = next_node
       end
-      node.value.next_node = @@first_black_node
-      @@first_black_node = @@first_gray_node
       @@first_gray_node = Pointer(LibCrystal::GcNode).null
       # some nodes in @@first_white_node are now gray
       if fix_white
@@ -339,6 +337,8 @@ module Gc
       else
         return CycleType::Mark
       end
+    else
+      CycleType::Mark
     end
   end
 
@@ -364,9 +364,12 @@ module Gc
     # append node to linked list
     if @@enabled
       push(@@first_gray_node, header)
+      # FIXME: first_gray_node doesn't get flushed to memory unless this is done
+      asm("nop" :: "{di}"(@@first_gray_node) : "volatile", "memory")
     end
     # return
     ptr = Pointer(Void).new(header.address + sizeof(LibCrystal::GcNode))
+    # dump_nodes if @@enabled
     ptr
   end
 
@@ -389,7 +392,7 @@ module Gc
       end
     end
 
-    def to_s(io)
+    def dump_nodes(io = Serial)
       io.puts "Gc {\n"
       io.puts "  white nodes: "
       out_nodes(io, @@first_white_node)
