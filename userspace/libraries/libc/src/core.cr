@@ -212,3 +212,24 @@ struct Enum
     (value & other.value) != 0
   end
 end
+
+struct Proc
+  def self.new(pointer : Void*, closure_data : Void*)
+    func = {pointer, closure_data}
+    ptr = pointerof(func).as(self*)
+    ptr.value
+  end
+end
+
+@[Weak]
+fun __crystal_once_init : Void*
+  Pointer(Void).new 0
+end
+
+@[Weak]
+fun __crystal_once(state : Void*, flag : Bool*, initializer : Void*)
+  unless flag.value
+    Proc(Nil).new(initializer, Pointer(Void).new 0).call
+    flag.value = true
+  end
+end
