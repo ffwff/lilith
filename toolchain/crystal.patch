@@ -1,5 +1,5 @@
 diff --git a/bin/crystal b/bin/crystal
-index c901d9b37..a8766b586 100755
+index c901d9b37..c44a90e20 100755
 --- a/bin/crystal
 +++ b/bin/crystal
 @@ -141,7 +141,7 @@ CRYSTAL_DIR="$CRYSTAL_ROOT/.build"
@@ -11,8 +11,15 @@ index c901d9b37..a8766b586 100755
    __warning_msg "Using compiled compiler at \`.build/crystal'"
    exec "$CRYSTAL_DIR/crystal" "$@"
  elif ! command -v crystal > /dev/null; then
+@@ -151,5 +151,5 @@ elif [ "$(command -v crystal)" = "$SCRIPT_PATH" ] || [ "$(command -v crystal)" =
+   export PATH="$(remove_path_item "$(remove_path_item "$PATH" "$SCRIPT_ROOT")" "bin")"
+   exec "$SCRIPT_PATH" "$@"
+ else
+-  exec crystal "$@"
++  exec /usr/bin/crystal "$@"
+ fi
 diff --git a/src/compiler/crystal/codegen/codegen.cr b/src/compiler/crystal/codegen/codegen.cr
-index c40b58ab1..ca61a1ec1 100644
+index c40b58ab1..6fa559519 100644
 --- a/src/compiler/crystal/codegen/codegen.cr
 +++ b/src/compiler/crystal/codegen/codegen.cr
 @@ -13,6 +13,8 @@ module Crystal
@@ -24,7 +31,7 @@ index c40b58ab1..ca61a1ec1 100644
    ONCE_INIT           = "__crystal_once_init"
    ONCE                = "__crystal_once"
  
-@@ -164,6 +166,19 @@ module Crystal
+@@ -164,6 +166,12 @@ module Crystal
      @main_builder : CrystalLLVMBuilder
      @call_location : Location?
  
@@ -34,17 +41,10 @@ index c40b58ab1..ca61a1ec1 100644
 +
 +    @generate_freestanding = false
 +
-+    def generate_initialize_fun?
-+      if @generate_freestanding
-+        return context.fun.name != MAIN_NAME
-+      end
-+      true
-+    end
-+
      def initialize(@program : Program, @node : ASTNode, single_module = false, @debug = Debug::Default)
        @single_module = !!single_module
        @abi = @program.target_machine.abi
-@@ -178,6 +193,10 @@ module Crystal
+@@ -178,6 +186,10 @@ module Crystal
        ret_type = @llvm_typer.llvm_return_type(@main_ret_type)
        @main = @llvm_mod.functions.add(MAIN_NAME, [llvm_context.int32, llvm_context.void_pointer.pointer], ret_type)
  
@@ -55,7 +55,7 @@ index c40b58ab1..ca61a1ec1 100644
        if @program.has_flag? "windows"
          @personality_name = "__CxxFrameHandler3"
  
-@@ -243,7 +262,8 @@ module Crystal
+@@ -243,7 +255,8 @@ module Crystal
        # to avoid some memory being allocated with plain malloc.
        codgen_well_known_functions @node
  
@@ -65,23 +65,12 @@ index c40b58ab1..ca61a1ec1 100644
  
        if @debug.line_numbers?
          set_current_debug_location Location.new(@program.filename || "(no name)", 1, 1)
-@@ -272,7 +292,9 @@ module Crystal
-         next if initializer.compile_time_value
-         next unless initializer.simple?
- 
--        initialize_simple_const(initializer)
-+        if generate_initialize_fun?
-+	  initialize_simple_const(initializer)
-+	end
-       end
-     end
- 
-@@ -345,6 +367,88 @@ module Crystal
+@@ -345,6 +358,88 @@ module Crystal
          codegen_fun node.real_name, node.external, @program, is_exported_fun: true
        end
  
 +      # generate malloc types
-+      # puts @malloc_types
++      puts @malloc_types
 +      in_main do
 +        if (func = @malloc_offset_fun)
 +          context.fun = func
@@ -103,19 +92,19 @@ index c40b58ab1..ca61a1ec1 100644
 +              unless type.packed?
 +                ivars = type.all_instance_vars
 +                struct_type = llvm_struct_type(type)
-+                # puts "#{type} (#{type_id(type)})"
++                puts "#{type} (#{type_id(type)})"
 +                ivars.each_with_index do |(name, ivar), idx|
 +                  if ivar.type.has_inner_pointers?
 +                    offset = @program.instance_offset_of(type.sizeof_type, idx)
 +                    bit = offset // (@program.codegen_target.pointer_bit_width // 8)
 +                    offsets[bit] = true
-+                    # puts " + #{name}, #{ivar.type}, #{offset}"
++                    puts " + #{name}, #{ivar.type}, #{offset}"
 +                  else
-+                    # puts " - #{name}, #{ivar.type}"
++                    puts " - #{name}, #{ivar.type}"
 +                  end
 +                end
 +              end
-+              # puts "offsets: #{offsets}"
++              puts "offsets: #{offsets}"
 +
 +              position_at_end block
 +              ret arg.type.const_int(offsets.to_slice.to_unsafe.as(UInt32*).value)
@@ -165,40 +154,7 @@ index c40b58ab1..ca61a1ec1 100644
        env_dump = ENV["DUMP"]?
        case env_dump
        when Nil
-@@ -932,7 +1036,9 @@ module Crystal
-     def codegen_assign(target : Path, value, node)
-       const = target.target_const.not_nil!
-       if const.used? && !const.simple? && !const.compile_time_value
--        initialize_const(const)
-+        if generate_initialize_fun?
-+          initialize_const(const)
-+        end
-       end
-       @last = llvm_nil
-       false
-@@ -946,7 +1052,9 @@ module Crystal
-       unless target_type
-         if target.is_a?(ClassVar)
-           # This is the case of a class var initializer
--          initialize_class_var(target)
-+          if generate_initialize_fun?
-+            initialize_class_var(target)
-+          end
-         end
-         return false
-       end
-@@ -1106,7 +1214,9 @@ module Crystal
-         end
-       when ClassVar
-         # This is the case of a class var initializer
--        initialize_class_var(var)
-+        if generate_initialize_fun?
-+          initialize_class_var(var)
-+        end
-       end
- 
-       @last = llvm_nil
-@@ -1869,6 +1979,7 @@ module Crystal
+@@ -1869,6 +1964,7 @@ module Crystal
        else
          if type.is_a?(InstanceVarContainer) && !type.struct? &&
             type.all_instance_vars.each_value.any? &.type.has_inner_pointers?
