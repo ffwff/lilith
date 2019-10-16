@@ -16,7 +16,7 @@ AS = $(ARCH)-as
 # TODO: not hard code CR
 CR=$(shell pwd)/../../../toolchain/crystal/.build/crystal
 
-CRFLAGS=--cross-compile --target i686-elf --prelude ./prelude.cr
+CRFLAGS=--cross-compile --target i686-elf --prelude ./prelude.cr -Ddisable_overflow
 CCFLAGS = -Isrc/include -nostdlib -Wall
 
 ifeq ($(RELEASE),1)

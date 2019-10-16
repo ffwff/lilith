@@ -176,7 +176,7 @@ install_kernel_to_disk: build/kernel
 
 distro: $(DRIVE_IMG) install_kernel_to_disk
 	./pkgs/missio build libc libcanvas libgui libstb libwm
-	./pkgs/missio install base adam core gfx wm lua mruby
+	./pkgs/missio install base adam core gfx wm lua
 
 clean:
 	rm -f build/*

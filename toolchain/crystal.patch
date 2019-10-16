@@ -19,7 +19,7 @@ index c901d9b37..c44a90e20 100755
 +  exec /usr/bin/crystal "$@"
  fi
 diff --git a/src/compiler/crystal/codegen/codegen.cr b/src/compiler/crystal/codegen/codegen.cr
-index c40b58ab1..6fa559519 100644
+index c40b58ab1..995b76ed9 100644
 --- a/src/compiler/crystal/codegen/codegen.cr
 +++ b/src/compiler/crystal/codegen/codegen.cr
 @@ -13,6 +13,8 @@ module Crystal
@@ -163,13 +163,17 @@ index c40b58ab1..6fa559519 100644
          else
            @last = malloc_atomic struct_type
 diff --git a/src/compiler/crystal/codegen/fun.cr b/src/compiler/crystal/codegen/fun.cr
-index 502b03a06..e47fde92d 100644
+index 502b03a06..690dc9771 100644
 --- a/src/compiler/crystal/codegen/fun.cr
 +++ b/src/compiler/crystal/codegen/fun.cr
-@@ -387,6 +387,10 @@ class Crystal::CodeGenVisitor
+@@ -387,6 +387,14 @@ class Crystal::CodeGenVisitor
      context.fun.add_attribute LLVM::Attribute::Naked if target_def.naked?
      context.fun.add_attribute LLVM::Attribute::NoReturn if target_def.no_returns?
  
++    if target_def.weak?
++      context.fun.linkage = LLVM::Linkage::ExternalWeak     
++    end
++    
 +    if ENV["NO_RED_ZONE"]? # TODO
 +      context.fun.add_attribute LLVM::Attribute::NoRedZone
 +    end
@@ -292,3 +296,59 @@ index 7b13beee3..db779b3a6 100644
      rescue ex : ArgumentError
        stderr.print colorize("Error: ").red.bold
        stderr.print "llc: "
+diff --git a/src/compiler/crystal/program.cr b/src/compiler/crystal/program.cr
+index 6171ff1c0..69cd31ba0 100644
+--- a/src/compiler/crystal/program.cr
++++ b/src/compiler/crystal/program.cr
+@@ -242,6 +242,7 @@ module Crystal
+       types["ReturnsTwice"] = @returns_twice_annotation = AnnotationType.new self, self, "ReturnsTwice"
+       types["ThreadLocal"] = @thread_local_annotation = AnnotationType.new self, self, "ThreadLocal"
+       types["Deprecated"] = @deprecated_annotation = AnnotationType.new self, self, "Deprecated"
++      types["Weak"] = @weak_annotation = AnnotationType.new self, self, "Weak"
+ 
+       define_crystal_constants
+     end
+@@ -463,7 +464,7 @@ module Crystal
+                      packed_annotation thread_local_annotation no_inline_annotation
+                      always_inline_annotation naked_annotation returns_twice_annotation
+                      raises_annotation primitive_annotation call_convention_annotation
+-                     flags_annotation link_annotation extern_annotation deprecated_annotation) %}
++                     flags_annotation link_annotation extern_annotation deprecated_annotation weak_annotation) %}
+       def {{name.id}}
+         @{{name.id}}.not_nil!
+       end
+diff --git a/src/compiler/crystal/semantic/ast.cr b/src/compiler/crystal/semantic/ast.cr
+index 763b958e2..dee7f2596 100644
+--- a/src/compiler/crystal/semantic/ast.cr
++++ b/src/compiler/crystal/semantic/ast.cr
+@@ -135,6 +135,9 @@ module Crystal
+     # `true` if this def has the `@[NoInline]` annotation
+     property? no_inline = false
+ 
++    # `true` if this def has the `@[NoInline]` annotation
++    property? weak = false
++
+     # `true` if this def has the `@[AlwaysInline]` annotation
+     property? always_inline = false
+ 
+@@ -220,6 +223,7 @@ module Crystal
+       a_def.previous = previous
+       a_def.raises = raises?
+       a_def.no_inline = no_inline?
++      a_def.weak = weak?
+       a_def.always_inline = always_inline?
+       a_def.returns_twice = returns_twice?
+       a_def.naked = naked?
+diff --git a/src/compiler/crystal/semantic/top_level_visitor.cr b/src/compiler/crystal/semantic/top_level_visitor.cr
+index 52f7219a3..76f24b86b 100644
+--- a/src/compiler/crystal/semantic/top_level_visitor.cr
++++ b/src/compiler/crystal/semantic/top_level_visitor.cr
+@@ -1078,6 +1078,8 @@ class Crystal::TopLevelVisitor < Crystal::SemanticVisitor
+         node.returns_twice = true
+       when @program.raises_annotation
+         node.raises = true
++      when @program.weak_annotation
++        node.weak = true
+       when @program.deprecated_annotation
+         # Check whether a DeprecatedAnnotation can be built.
+         # There is no need to store it, but enforcing
