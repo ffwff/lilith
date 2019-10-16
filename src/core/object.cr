@@ -5,9 +5,29 @@ class Object
 
   macro getter(*names)
     {% for name in names %}
-    def {{ name.id }}
-      @{{ name.id }}
-    end
+      {% if name.is_a?(TypeDeclaration) %}
+        def {{ name.var.id }} : {{name.type}}
+          @{{ name.var.id }}
+        end
+      {% else %}
+        def {{ name.id }}
+          @{{ name.id }}
+        end
+      {% end %}
+    {% end %}
+  end
+
+  macro getter!(*names)
+    {% for name in names %}
+      {% if name.is_a?(TypeDeclaration) %}
+        def {{ name.var.id }} : {{name.type}}
+          @{{ name.var.id }}.not_nil!
+        end
+      {% else %}
+        def {{ name.id }}
+          @{{ name.id }}.not_nil!
+        end
+      {% end %}
     {% end %}
   end
 

@@ -140,6 +140,7 @@ alias USize = UInt64
 
 module Math
   extend self
+
   def min(a, b)
     a < b ? a : b
   end

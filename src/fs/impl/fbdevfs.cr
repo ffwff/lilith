@@ -24,7 +24,7 @@ private lib Kernel
 end
 
 private class FbdevFSNode < VFSNode
-  getter fs
+  getter fs : VFS
 
   def initialize(@fs : FbdevFS)
   end
@@ -185,16 +185,10 @@ private class FbdevFSNode < VFSNode
 end
 
 class FbdevFS < VFS
-  def name
-    @name.not_nil!
-  end
+  getter! name : GcString, root : VFSNode
 
   def initialize
     @name = GcString.new "fb0" # TODO
     @root = FbdevFSNode.new self
-  end
-
-  def root
-    @root.not_nil!
   end
 end
