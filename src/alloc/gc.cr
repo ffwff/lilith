@@ -365,7 +365,7 @@ module Gc
     if @@enabled
       push(@@first_gray_node, header)
       # FIXME: first_gray_node doesn't get flushed to memory unless this is done
-      asm("nop" :: "{di}"(@@first_gray_node) : "volatile", "memory")
+      no_opt @@first_gray_node
     end
     # return
     ptr = Pointer(Void).new(header.address + sizeof(LibCrystal::GcNode))
@@ -376,6 +376,10 @@ module Gc
   {% unless flag?(:kernel) %}
     private def panic(str)
       abort str
+    end
+    
+    private macro no_opt(x)
+      asm("nop" :: "{di}"(\{{ x }}) : "volatile", "memory")
     end
   {% end %}
 
