@@ -364,8 +364,6 @@ module Gc
     # append node to linked list
     if @@enabled
       push(@@first_gray_node, header)
-      # FIXME: first_gray_node doesn't get flushed to memory unless this is done
-      no_opt @@first_gray_node
     end
     # return
     ptr = Pointer(Void).new(header.address + sizeof(LibCrystal::GcNode))
