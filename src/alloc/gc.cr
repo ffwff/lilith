@@ -97,9 +97,9 @@ module Gc
     fix_white = false
 
     heap_start, heap_placement = {% if flag?(:kernel) %}
-                                   { KernelArena.start_addr, KernelArena.placement_addr }
+                                   {KernelArena.start_addr, KernelArena.placement_addr}
                                  {% else %}
-                                   { LibC.__libc_heap_start.address, LibC.__libc_heap_placement.address }
+                                   {LibC.__libc_heap_start.address, LibC.__libc_heap_placement.address}
                                  {% end %}
 
     # FIXME: scan_region fails if overflow checking is enabled
@@ -354,10 +354,10 @@ module Gc
     end
     size += sizeof(LibCrystal::GcNode)
     header = {% if flag?(:kernel) %}
-      Pointer(LibCrystal::GcNode).new(KernelArena.malloc(size))
-    {% else %}
-      LibC.malloc(size).as(LibCrystal::GcNode*)
-    {% end %}
+               Pointer(LibCrystal::GcNode).new(KernelArena.malloc(size))
+             {% else %}
+               LibC.malloc(size).as(LibCrystal::GcNode*)
+             {% end %}
 
     # move the barrier forwards by immediately graying out the header
     header.value.magic = atomic ? GC_NODE_MAGIC_GRAY_ATOMIC : GC_NODE_MAGIC_GRAY

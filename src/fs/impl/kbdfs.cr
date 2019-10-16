@@ -7,7 +7,7 @@ lib KbdFSData
 end
 
 class KbdFSNode < VFSNode
-  getter fs, raw_node, first_child
+  getter fs : VFS, raw_node, first_child
 
   def initialize(@fs : KbdFS)
     @raw_node = @first_child = KbdFSRawNode.new(fs)
@@ -64,7 +64,8 @@ class KbdFSNode < VFSNode
 end
 
 class KbdFSRawNode < VFSNode
-  getter name, fs
+  getter! name : GcString
+  getter fs : VFS
 
   def initialize(@fs : KbdFS)
     @name = GcString.new "raw"
@@ -94,19 +95,14 @@ class KbdFSRawNode < VFSNode
 end
 
 class KbdFS < VFS
-  getter name
-
-  getter queue
+  getter! name : GcString, root : VFSNode
+  getter queue : VFSQueue?
 
   def initialize(@kbd : Keyboard)
     @name = GcString.new "kbd"
     @root = KbdFSNode.new self
     @kbd.kbdfs = self
     @queue = VFSQueue.new
-  end
-
-  def root
-    @root.not_nil!
   end
 
   @echo_input = true

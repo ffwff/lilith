@@ -17,7 +17,7 @@ class GcArray(T)
   end
 
   private def malloc_size(new_size)
-    new_size.to_usize * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
+    new_size.to_usize * sizeof(T) + GC_ARRAY_HEADER_SIZE
   end
 
   # init
@@ -85,8 +85,7 @@ class GcArray(T)
 
   # resizing
   private def new_buffer(new_size)
-    m_size = malloc_size new_size
-    ptr = Gc.unsafe_malloc(m_size).as(USize*)
+    ptr = Gc.unsafe_malloc(malloc_size(new_size)).as(USize*)
     ptr[0] = GC_ARRAY_HEADER_TYPE
     ptr[1] = new_size.to_usize
     new_buffer = Pointer(USize).new((ptr.address + GC_ARRAY_HEADER_SIZE).to_u64)
@@ -123,5 +122,3 @@ class GcArray(T)
     end
   end
 end
-
-
