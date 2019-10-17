@@ -1,5 +1,5 @@
 private class PipeFSRoot < VFSNode
-  getter fs
+  getter fs : VFS
 
   def initialize(@fs : PipeFS)
   end
@@ -48,7 +48,8 @@ private class PipeFSRoot < VFSNode
 end
 
 private class PipeFSNode < VFSNode
-  getter name, fs
+  getter! name : GcString
+  getter fs : VFS
 
   @next_node : PipeFSNode? = nil
   property next_node
@@ -216,14 +217,10 @@ private class PipeFSNode < VFSNode
 end
 
 class PipeFS < VFS
-  getter name
+  getter! name : GcString, root : VFSNode
 
   def initialize
     @name = GcString.new "pipes"
     @root = PipeFSRoot.new self
-  end
-
-  def root
-    @root.not_nil!
   end
 end

@@ -359,13 +359,17 @@ module Syscall
         Multiprocessing::Scheduler.switch_process(frame)
       end
 
-      waitfds = GcArray(FileDescriptor).new 0
-      fds.each do |fdi|
-        fd = try(pudata.get_fd(fdi))
-        if fd.node.not_nil!.available?
-          sysret(fdi)
+      waitfds = GcArray(FileDescriptor).build(fds.size) do |buffer|
+        idx = 0
+        fds.each do |fdi|
+          fd = try(pudata.get_fd(fdi))
+          if fd.node.not_nil!.available?
+            sysret(fdi)
+          end
+          buffer[idx] = fd
+          idx += 1
         end
-        waitfds.push fd
+        fds.size
       end
 
       process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
@@ -457,18 +461,18 @@ module Syscall
         if !startup_info.nil?
           startup_info = startup_info.not_nil!
           if process.udata.fds[startup_info.value.stdin]?
-            udata.fds[0] = process.udata.fds[startup_info.value.stdin].not_nil!.clone 0
+            udata.fds.push process.udata.fds[startup_info.value.stdin].not_nil!.clone 0
           end
           if process.udata.fds[startup_info.value.stdin]?
-            udata.fds[1] = process.udata.fds[startup_info.value.stdout].not_nil!.clone 1
+            udata.fds.push process.udata.fds[startup_info.value.stdout].not_nil!.clone 1
           end
           if process.udata.fds[startup_info.value.stdin]?
-            udata.fds[2] = process.udata.fds[startup_info.value.stderr].not_nil!.clone 2
+            udata.fds.push process.udata.fds[startup_info.value.stderr].not_nil!.clone 2
           end
         else
           3.times do |i|
             if (fd = process.udata.fds[i])
-              udata.fds[i] = fd.clone i
+              udata.fds.push fd.clone i
             end
             i += 1
           end

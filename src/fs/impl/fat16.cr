@@ -138,7 +138,7 @@ private class Fat16Node < VFSNode
     @directory
   end
 
-  getter fs
+  getter fs : VFS
 
   def initialize(@fs : Fat16FS, @name = nil, @directory = false,
                  @next_node = nil, @first_child = nil,
@@ -370,10 +370,6 @@ end
 class Fat16FS < VFS
   FS_TYPE = "FAT16   "
 
-  def root
-    @root.not_nil!
-  end
-
   @fat_sector = 0u32
   getter fat_sector
   @fat_sector_size = 0
@@ -386,11 +382,12 @@ class Fat16FS < VFS
   getter sectors_per_cluster
 
   # impl
-  def name
+  getter! root : VFSNode
+  getter device
+
+  def name : GcString
     device.not_nil!.name.not_nil!
   end
-
-  getter device
 
   def initialize(@device : AtaDevice, partition)
     Console.puts "initializing FAT16 filesystem\n"

@@ -12,7 +12,7 @@ private lib TmpFSData
 end
 
 private class TmpFSRoot < VFSNode
-  getter fs
+  getter fs : VFS
   
   def initialize(@fs : TmpFS)
   end
@@ -61,7 +61,8 @@ private class TmpFSRoot < VFSNode
 end
 
 private class TmpFSNode < VFSNode
-  getter name, size, fs
+  getter! name : GcString, fs : VFS
+  getter size
 
   @next_node : TmpFSNode? = nil
   property next_node
@@ -244,16 +245,10 @@ private class TmpFSNode < VFSNode
 end
 
 class TmpFS < VFS
-  def name
-    @name.not_nil!
-  end
+  getter! name : GcString, root : VFSNode
 
   def initialize
     @name = GcString.new "tmp"
     @root = TmpFSRoot.new self
-  end
-
-  def root
-    @root.not_nil!
   end
 end

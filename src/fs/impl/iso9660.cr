@@ -1,7 +1,8 @@
+{% if false %}
 class Iso9660FS < VFS
   @root : VFSNode? = nil
 
-  def root
+  def root : VFSNode
     @root.not_nil!
   end
 
@@ -20,3 +21,4 @@ class Iso9660FS < VFS
 
   end
 end
+{% end %}

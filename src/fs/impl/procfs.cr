@@ -25,7 +25,7 @@ end
 
 class ProcFSNode < VFSNode
   @first_child : ProcFSProcessNode? = nil
-  getter fs, raw_node, first_child
+  getter fs : VFS, raw_node, first_child
 
   def initialize(@fs : ProcFS)
     add_child(ProcFSProcessNode.new(self, @fs))
@@ -85,7 +85,8 @@ end
 # /proc/[pid]
 class ProcFSProcessNode < VFSNode
   @name : GcString? = nil
-  getter name, fs
+  getter! name : GcString
+  getter fs : VFS
   property prev_node, next_node
 
   @first_child : VFSNode? = nil
@@ -145,7 +146,7 @@ end
 
 # /proc/[pid]/status
 private class ProcFSProcessStatusNode < VFSNode
-  getter fs
+  getter fs : VFS
 
   def name
     ProcFSStrings.status
@@ -175,7 +176,7 @@ end
 
 # /proc/[pid]/mmap
 private class ProcFSProcessMmapNode < VFSNode
-  getter fs
+  getter fs : VFS
 
   def name
     ProcFSStrings.mmap
@@ -205,7 +206,7 @@ end
 
 # /proc/meminfo
 private class ProcFSMemInfoNode < VFSNode
-  getter fs
+  getter fs : VFS
 
   def name
     ProcFSStrings.meminfo
@@ -234,7 +235,7 @@ private class ProcFSMemInfoNode < VFSNode
 end
 
 class ProcFS < VFS
-  getter name, root
+  getter! name : GcString, root : VFSNode
 
   def initialize
     ProcFSStrings.lazy_init

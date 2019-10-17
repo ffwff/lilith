@@ -8,7 +8,7 @@ private lib MouseFSData
 end
 
 class MouseFSNode < VFSNode
-  getter fs, first_child
+  getter fs : VFS, first_child
 
   def initialize(@fs : MouseFS)
     @first_child = MouseFSRawNode.new(fs)
@@ -45,7 +45,8 @@ class MouseFSNode < VFSNode
 end
 
 class MouseFSRawNode < VFSNode
-  getter fs, name
+  getter! name : GcString
+  getter fs : VFS
 
   def initialize(@fs : MouseFS)
     @name = GcString.new("raw")
@@ -71,17 +72,12 @@ class MouseFSRawNode < VFSNode
 end
 
 class MouseFS < VFS
-  getter name
-
+  getter! name : GcString, root : VFSNode
   getter mouse
 
   def initialize(@mouse : Mouse)
     @name = GcString.new "mouse"
     @root = MouseFSNode.new self
     @mouse.mousefs = self
-  end
-
-  def root
-    @root.not_nil!
   end
 end
