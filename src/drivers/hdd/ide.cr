@@ -404,15 +404,16 @@ module Ide
   def init_controller
     @@devices = GcArray(AtaDevice?).new 4
     devices = @@devices.not_nil!
-    devices[0] = AtaDevice.new(true, 0)
-    devices[1] = AtaDevice.new(true, 1)
-    devices[2] = AtaDevice.new(false, 0)
-    devices[3] = AtaDevice.new(false, 1)
+
+    devices.push AtaDevice.new(true, 0)
+    devices.push AtaDevice.new(true, 1)
+    devices.push AtaDevice.new(false, 0)
+    devices.push AtaDevice.new(false, 1)
 
     Idt.register_irq 14, ->ata_primary_irq_handler
     Idt.register_irq 15, ->ata_secondary_irq_handler
-    @@devices.not_nil!.size.times do |idx|
-      unless device(idx).init_device
+    devices.size.times do |idx|
+      unless devices[idx].not_nil!.init_device
         devices[idx] = nil
       end
     end
