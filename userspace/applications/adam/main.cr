@@ -29,10 +29,11 @@ def interpret_line(line)
       cwd = Dir.current
     end
   else
-    if proc = Process.new(argv.shift.not_nil!, argv)
+    cmd = argv.shift.not_nil!
+    if proc = Process.new(cmd, argv)
       proc.wait
     else
-      print "unable to spawn ", argv[0], '\n'
+      print "unable to spawn ", cmd, '\n'
     end
   end
 end

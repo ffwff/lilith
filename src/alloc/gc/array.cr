@@ -15,8 +15,8 @@ class GcArray(T)
     @buffer[1] = new_size.to_usize
   end
 
-  private def malloc_bytes(nelem)
-    nelem.to_usize * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
+  private def malloc_bytes(new_size)
+    new_size.to_usize * sizeof(T) + GC_ARRAY_HEADER_SIZE
   end
 
   private def capacity_for_ptr(ptr)
@@ -27,13 +27,20 @@ class GcArray(T)
   private def new_buffer(new_capacity)
     if size > new_capacity
       panic "size must be smaller than capacity"
-    elsif !@buffer.nil? && capacity_for_ptr(@buffer) >= new_capacity
+    elsif new_capacity <= @capacity
       return
     end
+
     old_size = size
     old_buffer = @buffer
-    @buffer = Pointer(UInt8).malloc(malloc_bytes(new_capacity)).as(USize*)
-    memcpy(@buffer.as(UInt8*), old_buffer.as(UInt8*), malloc_bytes(old_size))
+    @buffer = Gc.unsafe_malloc(malloc_bytes(new_capacity)).as(USize*)
+    if old_buffer.null?
+      @buffer[0] = GC_ARRAY_HEADER_TYPE
+      @buffer[1] = 0u32
+    else
+      memcpy(@buffer.as(UInt8*), old_buffer.as(UInt8*), malloc_bytes(old_size))
+    end
+    @capacity = capacity_for_ptr(@buffer)
   end
 
   def initialize
@@ -42,13 +49,14 @@ class GcArray(T)
   end
 
   def initialize(initial_capacity : Int32)
-    @capacity = initial_capacity
     if initial_capacity > 0
-      @buffer = Pointer(UInt8).malloc(malloc_bytes(initial_capacity)).as(USize*)
+      @buffer = Gc.unsafe_malloc(malloc_bytes(initial_capacity)).as(USize*)
       @buffer[0] = GC_ARRAY_HEADER_TYPE
       @buffer[1] = 0u32
+      @capacity = capacity_for_ptr(@buffer)
     else
       @buffer = Pointer(USize).null
+      @capacity = 0
     end
   end
 
@@ -91,19 +99,18 @@ class GcArray(T)
   end
 
   def []=(idx : Int, value : T)
-    panic "setting out of bounds!" unless 0 <= idx && idx < size
+    panic "accessing out of bounds!" unless 0 <= idx && idx < size
     to_unsafe[idx] = value
   end
 
   def push(value : T)
-    if size < capacity
+    if size < @capacity
       to_unsafe[size] = value
-      self.size = size + 1
     else
       new_buffer(size + 1)
       to_unsafe[size] = value
-      self.size = size + 1
     end
+    self.size = size + 1
   end
 
   def each

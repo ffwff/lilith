@@ -42,9 +42,6 @@ _start_main:
     call *%rcx
 
 # misc functions
-.global no_opt
-no_opt: ret
-
 .global ksetup_fxsave_region_base
 ksetup_fxsave_region_base:
     movabs $fxsave_region_base, %rax

@@ -410,10 +410,6 @@ module Ide
     devices.push AtaDevice.new(false, 0)
     devices.push AtaDevice.new(false, 1)
 
-    Serial.puts instance_sizeof(GcArray(AtaDevice?)), '\n'
-    Serial.puts devices.as(Void*), '\n'
-    breakpoint
-
     Idt.register_irq 14, ->ata_primary_irq_handler
     Idt.register_irq 15, ->ata_secondary_irq_handler
     devices.size.times do |idx|

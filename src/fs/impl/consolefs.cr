@@ -1,5 +1,5 @@
 private class ConsoleFSNode < VFSNode
-  getter fs
+  getter fs : VFS
 
   def initialize(@fs : ConsoleFS)
   end
@@ -37,11 +37,7 @@ private class ConsoleFSNode < VFSNode
 end
 
 class ConsoleFS < VFS
-  getter name
-
-  def root
-    @root.not_nil!
-  end
+  getter! name : GcString, root : VFSNode
 
   def initialize
     @name = GcString.new "con"
