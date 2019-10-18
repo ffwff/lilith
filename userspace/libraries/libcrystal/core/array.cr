@@ -29,10 +29,7 @@ class Array(T)
       @buffer[0] = GC_ARRAY_HEADER_TYPE
       @buffer[1] = 0u32
     else
-      old_size = size
-      old_buffer = @buffer
-      @buffer = Pointer(USize).malloc malloc_size(capacity)
-      LibC.memcpy @buffer, old_buffer, malloc_size(old_size)
+      @buffer = @buffer.realloc malloc_size(capacity)
     end
   end
 
