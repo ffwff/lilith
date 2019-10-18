@@ -4,6 +4,7 @@
 {% else %}
   lib LibC
     fun malloc(size : LibC::SizeT) : Void*
+    fun realloc(ptr : Void*, size : LibC::SizeT) : Void*
     fun free(data : Void*)
 
     fun __libc_heap_start : Void*
@@ -90,6 +91,16 @@ module Gc
     end
   end
 
+  private def each_node(first_node, &block)
+    node = first_node
+    prev = Pointer(LibCrystal::GcNode).null
+    while !node.null?
+      yield node, prev
+      prev = node
+      node = node.value.next_node
+    end
+  end
+
   # gc algorithm
   private def scan_region(start_addr : UInt64, end_addr : UInt64, move_list = true)
     # due to the way this rechains the linked list of white nodes
@@ -110,9 +121,7 @@ module Gc
       # subtract to get the pointer to the header
       word -= sizeof(LibCrystal::GcNode)
       if word >= heap_start && word <= heap_placement
-        node = @@first_white_node
-        prev = Pointer(LibCrystal::GcNode).null
-        while !node.null?
+        each_node(@@first_white_node) do |node, prev|
           if node.address == word
             # word looks like a valid gc header pointer!
             # remove from current list
@@ -144,9 +153,6 @@ module Gc
             end
             break
           end
-          # next it
-          prev = node
-          node = node.value.next_node
         end
       end
       i += 1
@@ -186,8 +192,7 @@ module Gc
     elsif !@@first_gray_node.null?
       # second stage of marking phase: precisely marking gray nodes
       fix_white = false
-      node = @@first_gray_node
-      while !node.null?
+      each_node(@@first_gray_node) do |node|
         if node.value.magic == GC_NODE_MAGIC_GRAY_ATOMIC
           # skip atomic nodes
           node.value.magic = GC_NODE_MAGIC_BLACK_ATOMIC
@@ -272,7 +277,6 @@ module Gc
           pos += 1
           offsets >>= 1
         end
-        node = node.value.next_node
       end
 
       # nodes in @@first_gray_node are now black
@@ -307,6 +311,7 @@ module Gc
         # sweeping phase
         @@last_sweep_tick = @@ticks
         calc_cycles_per_alloc
+
         node = @@first_white_node
         while !node.null?
           panic "invariance broken" unless node.value.magic == GC_NODE_MAGIC || node.value.magic == GC_NODE_MAGIC_ATOMIC
@@ -318,9 +323,9 @@ module Gc
           {% end %}
           node = next_node
         end
+
         @@first_white_node = @@first_black_node
-        node = @@first_white_node
-        while !node.null?
+        each_node(@@first_white_node) do |node|
           case node.value.magic
           when GC_NODE_MAGIC_BLACK
             node.value.magic = GC_NODE_MAGIC
@@ -329,8 +334,8 @@ module Gc
           else
             panic "invariance broken"
           end
-          node = node.value.next_node
         end
+
         @@first_black_node = Pointer(LibCrystal::GcNode).null
         @@root_scanned = false
         return CycleType::Sweep
@@ -375,9 +380,47 @@ module Gc
     private def panic(str)
       abort str
     end
-    
-    private macro no_opt(x)
-      asm("nop" :: "{di}"(\{{ x }}) : "volatile", "memory")
+
+    private macro realloc_if_first_node(node)
+      if header == \{{ node }}
+        new_header = LibC.realloc(header, size).as(LibCrystal::GcNode*)
+        \{{ node }} = new_header
+        new_ptr = Pointer(Void).new(new_header.address + sizeof(LibCrystal::GcNode))
+        return new_ptr
+      end
+
+      { \{{ node }}.value.next_node, \{{ node }} }
+    end
+
+    def realloc(ptr : Void*, size : UInt64)
+      size += sizeof(LibCrystal::GcNode)
+      header = Pointer(LibCrystal::GcNode).new(ptr.address - sizeof(LibCrystal::GcNode))
+
+      if header.value.magic == GC_NODE_MAGIC_ATOMIC ||
+         header.value.magic == GC_NODE_MAGIC
+        node, prev = realloc_if_first_node @@first_white_node
+      elsif header.value.magic == GC_NODE_MAGIC_GRAY_ATOMIC ||
+            header.value.magic == GC_NODE_MAGIC_GRAY
+        node, prev = realloc_if_first_node @@first_gray_node
+      elsif header.value.magic == GC_NODE_MAGIC_BLACK_ATOMIC ||
+            header.value.magic == GC_NODE_MAGIC_BLACK
+        node, prev = realloc_if_first_node @@first_black_node
+      else
+        panic "invalid magic for header"
+      end
+
+      each_node(node) do |node, prev|
+        if node == header
+          new_header = LibC.realloc(header, size).as(LibCrystal::GcNode*)
+          prev.value.next_node = new_header
+          new_ptr = Pointer(Void).new(new_header.address + sizeof(LibCrystal::GcNode))
+          return new_ptr
+        end
+        prev = node
+        node = node.value.next_node
+      end
+
+      panic "ptr is not managed by the gc"
     end
   {% end %}
 

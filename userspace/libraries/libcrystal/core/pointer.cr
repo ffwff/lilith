@@ -11,6 +11,10 @@ struct Pointer(T)
     Gc.unsafe_malloc(size.to_u64 * sizeof(T), true).as(T*)
   end
 
+  def realloc(size)
+    Gc.realloc(self.as(Void*), size.to_u64).as(T*)
+  end
+
   def null?
     self.address == 0u64
   end
@@ -21,6 +25,10 @@ struct Pointer(T)
 
   def []=(offset, value : T)
     (self + offset).value = value
+  end
+
+  def ==(other)
+    self.address == other.address
   end
 
   def +(other : Int)
