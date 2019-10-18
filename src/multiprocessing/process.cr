@@ -118,7 +118,6 @@ module Multiprocessing
       property pgid
 
       # files
-      MAX_FD = 16
       property fds
 
       # mmap
@@ -148,7 +147,7 @@ module Multiprocessing
       def initialize(@argv : GcArray(GcString),
                      @cwd : GcString, @cwd_node : VFSNode,
                      @environ = GcArray(EnvVar).new(0))
-        @fds = GcArray(FileDescriptor?).new MAX_FD
+        @fds = GcArray(FileDescriptor?).new 4
         @mmap_list = MemMapList.new
       end
 
