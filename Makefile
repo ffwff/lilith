@@ -9,7 +9,7 @@ LD32=$(ARCH32)-ld
 CR=toolchain/crystal/.build/crystal
 LLC=llc
 
-CRFLAGS=-Dkernel --cross-compile --target $(ARCH) --prelude ./prelude.cr --error-trace --mcmodel kernel -Ddisable_overflow
+CRFLAGS=-Dkernel --cross-compile --target $(ARCH) --prelude ./prelude.cr --error-trace --mcmodel kernel --mno-red-zone -Ddisable_overflow
 ASFLAGS=-Isrc/asm/x64
 LDFLAGS=-T link64.ld
 KERNEL_OBJ=build/main.o build/boot.o
@@ -50,7 +50,7 @@ build:
 
 build/main.o: $(KERNEL_SRC)
 	@echo "CR src/main.cr"
-	@NO_RED_ZONE=1 FREESTANDING=1 $(CR) build $(CRFLAGS) src/main.cr -o build/main
+	@FREESTANDING=1 $(CR) build $(CRFLAGS) src/main.cr -o build/main
 
 build/boot.o: src/asm/x64/boot.s build/fonts
 	@echo "AS $<"
