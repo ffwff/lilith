@@ -2,6 +2,7 @@ require "./stdio.cr"
 
 lib LibC
   fun open(filename : LibC::UString, mode : LibC::UInt) : LibC::Int
+  fun mmap(fd : LibC::Int, size : LibC::SizeT) : Void*
 end
 
 O_RDONLY = 1 << 0
@@ -27,5 +28,9 @@ class File < IO::FileDescriptor
     else
       File.new fd
     end
+  end
+
+  def map_to_memory
+    LibC.mmap fd, (-1).to_usize
   end
 end
