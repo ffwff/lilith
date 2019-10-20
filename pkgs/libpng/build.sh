@@ -12,7 +12,7 @@ build() {
     fi
     pushd .
         cd $build_dir/libpng-$version
-        CCFLAGS="-I$opt_toolsdir/include" \
+        CCFLAGS="-I$opt_toolsdir/include -DPNG_NO_CONSOLE_IO" \
         LDFLAGS="-L$opt_toolsdir/lib" \
             ./configure --host=$opt_arch --prefix="$opt_toolsdir" --enable-shared=no \
                 --enable-arm-neon=no \
