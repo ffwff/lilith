@@ -30,7 +30,7 @@ class File < IO::FileDescriptor
     end
   end
 
-  def map_to_memory
-    LibC.mmap fd, (-1).to_usize
+  def map_to_memory(size = (-1).to_usize)
+    LibC.mmap fd, size
   end
 end
