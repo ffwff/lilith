@@ -81,15 +81,8 @@ private class PipeFSNode < VFSNode
   @m_pid = 0
   @s_pid = 0
 
-  @queue : VFSQueue? = nil
-
   def remove : Int32
     return VFS_ERR if @flags.includes?(Flags::Removed)
-    if @queue
-      while (msg = @queue.not_nil!.dequeue)
-        msg.unawait 0
-      end
-    end
     FrameAllocator.declaim_addr(@buffer.address & ~PTR_IDENTITY_MASK)
     @buffer = Pointer(UInt8).null
     @parent.remove self
@@ -100,12 +93,6 @@ private class PipeFSNode < VFSNode
   private def init_buffer
     if @buffer.null?
       @buffer = Pointer(UInt8).new(FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK)
-    end
-  end
-
-  private def init_queue
-    if @queue.nil?
-      @queue = VFSQueue.new
     end
   end
 
@@ -128,11 +115,7 @@ private class PipeFSNode < VFSNode
     init_buffer
     if @buffer_pos == 0
       if @flags.includes?(Flags::WaitRead)
-        init_queue
-        @queue.not_nil!
-          .enqueue(VFSMessage.new(VFSMessage::Type::Read,
-          slice, process, nil, self))
-        VFS_WAIT_NO_ENQUEUE
+        VFS_WAIT_POLL
       else
         0
       end
@@ -165,24 +148,10 @@ private class PipeFSNode < VFSNode
     if @buffer_pos == BUFFER_CAPACITY
       0
     else
-      remaining = slice.size
-      size = 0
-      if @queue
-        # pop vfsmessage from queue and respond
-        while (msg = @queue.not_nil!.dequeue)
-          panic "vfsmessage must be read type" unless msg.type == VFSMessage::Type::Read
-          written = msg.respond slice
-          msg.unawait
-          size += written
-          remaining -= written
-          return size if remaining == 0
-        end
-      end
-      remaining = Math.min(remaining, BUFFER_CAPACITY - @buffer_pos)
+      size = Math.min(slice.size, BUFFER_CAPACITY - @buffer_pos)
       # push the message on to the buffer stack
-      memcpy(@buffer + @buffer_pos, slice.to_unsafe, remaining.to_usize)
-      @buffer_pos += remaining
-      size += remaining
+      memcpy(@buffer + @buffer_pos, slice.to_unsafe, size.to_usize)
+      @buffer_pos += size
       size
     end
   end

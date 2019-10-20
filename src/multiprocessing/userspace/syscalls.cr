@@ -279,8 +279,9 @@ module Syscall
       str = try(checked_slice(arg(1), arg(2)))
       result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
       case result
-      when VFS_WAIT_NO_ENQUEUE
-        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
+      when VFS_WAIT_POLL
+        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
+        pudata.wait_object = fd
         Multiprocessing::Scheduler.switch_process(frame)
       when VFS_WAIT
         vfs_node = fd.not_nil!.node.not_nil!
@@ -305,8 +306,9 @@ module Syscall
       str = try(checked_slice(arg(1), arg(2)))
       result = fd.not_nil!.node.not_nil!.write(str, fd.offset, process)
       case result
-      when VFS_WAIT_NO_ENQUEUE
-        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
+      when VFS_WAIT_POLL
+        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
+        pudata.wait_object = fd
         Multiprocessing::Scheduler.switch_process(frame)
       when VFS_WAIT
         vfs_node = fd.not_nil!.node.not_nil!
