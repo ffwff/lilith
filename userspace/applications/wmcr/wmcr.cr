@@ -80,7 +80,10 @@ module Wm
       @bytes = image.bytes
     end
 
-    def render(buffer, width, height)
+    def render(buffer, bwidth, bheight)
+      Wm::Painter.blit_img(buffer, bwidth, bheight,
+                           @bytes.not_nil!.to_unsafe,
+                           width, height, x, y)
     end
   end
 
@@ -92,12 +95,43 @@ module Wm
   module Painter
     extend self
 
+    @[AlwaysInline]
     def blit_u32(dst : UInt32*, c : UInt32, n)
       asm(
         "cld\nrep stosl"
           :: "{eax}"(c), "{Di}"(dst), "{ecx}"(n)
           : "volatile", "memory"
       )
+    end
+
+    def blit_img(db, dw, dh,
+                 sb, sw, sh, sx, sy)
+      if sx == 0 && sy == 0 && sw == dw && sh == dh
+        LibC.memcpy db, sb, dw.to_u32 * dh.to_u32 * 4
+        return 
+      end
+      if sy + sh > dh
+        if dh < sy # dh - sy < 0
+          sh = 0
+        else
+          sh = dh - sy
+        end
+      end
+      if sx + sw > dw
+        if dw < sx # dw - sx < 0
+          sw = 0
+        else
+          sw = dw - sx
+        end
+      end
+      sh.times do |y|
+        fb_offset = ((sy + y) * dw + sx) * 4
+        src_offset = y * sw * 4
+        copy_size = sw * 4
+        LibC.memcpy(db.as(UInt8*) + fb_offset,
+                    sb.as(UInt8*) + src_offset,
+                    copy_size)
+      end
     end
 
     struct Image
