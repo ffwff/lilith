@@ -17,6 +17,6 @@ cleanup() {
 
 CRYSTAL_PATH="$SCRIPT_PATH" \
   crystal build $1 --cross-compile --target $ARCH --prelude prelude --release -Ddisable_overflow || cleanup $?
-$ARCH-lilith-gcc -o $output "$basename.o" || cleanup $?
+$ARCH-lilith-gcc -o $output "$basename.o" $LDFLAGS || cleanup $?
 rm "$basename.o"
 cleanup 0

@@ -9,7 +9,7 @@ struct Slice(T)
   end
 
   def self.new(size : Int)
-    new Pointer(T).malloc_atomic(size), size
+    new Pointer(T).malloc_atomic(size), size.to_i32
   end
 
   def self.empty
