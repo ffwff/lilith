@@ -282,6 +282,7 @@ module Syscall
       when VFS_WAIT_POLL
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
         pudata.wait_object = fd
+        pudata.wait_usecs = (-1).to_u32
         Multiprocessing::Scheduler.switch_process(frame)
       when VFS_WAIT
         vfs_node = fd.not_nil!.node.not_nil!
@@ -309,6 +310,7 @@ module Syscall
       when VFS_WAIT_POLL
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
         pudata.wait_object = fd
+        pudata.wait_usecs = (-1).to_u32
         Multiprocessing::Scheduler.switch_process(frame)
       when VFS_WAIT
         vfs_node = fd.not_nil!.node.not_nil!
