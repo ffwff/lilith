@@ -32,6 +32,10 @@ class Object
     x = self
     pointerof(x).as(T*).value
   end
+
+  def ===(other)
+    object_id == other.object_id
+  end
 end
 
 struct Nil

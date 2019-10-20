@@ -13,6 +13,10 @@ struct Int
     end
   end
 
+  def -
+    self * -1
+  end
+
   # unsafe math
   def /(other)
     self.unsafe_div other
@@ -43,7 +47,17 @@ struct Int
     self >= 0 ? self : self * -1
   end
 
+  def clamp(min, max)
+    return min if self < min
+    return max if self > max
+    self
+  end
+
   # bit manips
+  def find_first_set : Int
+    Intrinsics.counttrailing32(self.to_i32, true)
+  end
+
   def find_first_zero : Int
     Intrinsics.counttrailing32(~self.to_i32, true)
   end

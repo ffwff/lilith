@@ -244,7 +244,6 @@ module Gc
         # lookup its offsets
         offsets = LibCrystal.type_offsets type_id
         if offsets == 0
-          LibC.fprintf LibC.stderr, "node: %p\n", node
           panic "type_id doesn't have offset\n"
         end
         # precisely scan the struct based on the offsets
