@@ -87,6 +87,7 @@ private class FbdevFSNode < VFSNode
         -1
       end
     when SC_IOCTL_GFX_BITBLIT
+      # TODO: this is deprecated and is only used for demo applications
       arg = checked_pointer(FbdevFSData::FbBitBlit, data)
       arg = if arg.nil?
               return -1
