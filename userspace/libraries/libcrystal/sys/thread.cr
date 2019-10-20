@@ -3,7 +3,11 @@ lib LibC
   fun exit(code : LibC::Int) : NoReturn
 end
 
-def sleep(seconds : Int)
+def usleep(usecs)
+  LibC.usleep usecs.to_uint
+end
+
+def sleep(seconds)
   usecs = seconds.to_uint * 1000000
   LibC.usleep usecs
 end

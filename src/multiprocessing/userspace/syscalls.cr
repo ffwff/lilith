@@ -357,6 +357,9 @@ module Syscall
         sysret(0)
       elsif fds.size == 1
         fd = try(pudata.get_fd(fds[0]))
+        if fd.node.not_nil!.available?
+          sysret(fds[0])
+        end
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
         pudata.wait_object = fd
         pudata.wait_usecs = timeout

@@ -7,6 +7,13 @@ lib LibC
   end
   TIOCGWINSZ = 2
 
+  @[Packed]
+  struct MousePacket
+    x : UInt32
+    y : UInt32
+    attr_byte : UInt32
+  end
+
   fun _ioctl(fd : LibC::Int, request : LibC::Int, data : UInt32) : LibC::Int
   fun fopen(path : LibC::UString, mode : LibC::UString) : Void*
 end
@@ -44,6 +51,7 @@ lib LibPNG
   fun png_get_bit_depth(png_ptr : Void*, info_ptr : Void*) : UInt8
 end
 
+FRAME_WAIT = 10000
 CURSOR_FILE = "/hd0/share/cursors/cursor.png"
 
 module Wm
@@ -84,6 +92,26 @@ module Wm
       Wm::Painter.blit_img(buffer, bwidth, bheight,
                            @bytes.not_nil!.to_unsafe,
                            width, height, x, y)
+    end
+
+    def respond(file)
+      packet = LibC::MousePacket.new
+      file.read(Bytes.new(pointerof(packet).as(UInt8*), sizeof(LibC::MousePacket)))
+      speed = (packet.x + packet.y).find_first_set
+      if packet.x != 0
+        delta_x = packet.x * speed
+        self.x = self.x + delta_x
+        self.x = self.x.clamp(0, Wm.screen_width)
+      else
+        delta_x = 0
+      end
+      if packet.y != 0
+        delta_y = -packet.y * speed
+        self.y = self.y + delta_y
+        self.y = self.y.clamp(0, Wm.screen_height)
+      else
+        delta_y = 0
+      end
     end
   end
 
@@ -202,35 +230,61 @@ module Wm
 
   @@windows = Array(Window).new 4
   @@focused : Window?
+
   @@ws = uninitialized LibC::Winsize
+  def screen_width
+    @@ws.ws_col.to_i32
+  end
+  def screen_height
+    @@ws.ws_row.to_i32
+  end
+
+  @@selector : IO::Select? = nil
+  @@mouse : File? = nil
+  @@cursor : Cursor? = nil
+
+  private def selector
+    @@selector.not_nil!
+  end
 
   def _init
     unless (@@fb = File.new("/fb0", "r"))
       abort "unable to open /fb0"
     end
+    @@selector = IO::Select.new
     fb = @@fb.not_nil!
     @@framebuffer = fb.map_to_memory.as(UInt32*)
     LibC._ioctl fb.fd, LibC::TIOCGWINSZ, pointerof(@@ws).address
 
-    # @@bb = File.new("/tmp/wm:backbuffer", "w").not_nil!
-    # @@backbuffer = @@bb.map_to_memory
-
     @@focused = nil
 
     # wallpaper
-    @@windows.push Background.new(@@ws.ws_col,
-                                  @@ws.ws_row,
-                                  0x000066cc)
+    #@@windows.push Background.new(@@ws.ws_col,
+    #                              @@ws.ws_row,
+    #                              0x000066cc)
 
-    # cursor
-    @@windows.push Cursor.new
+    # mouse
+    if (@@mouse = File.new("/mouse/raw", "r"))
+      selector << @@mouse.not_nil!
+    else
+      abort "unable to open /mouse/raw"
+    end
+    @@cursor = Cursor.new
+    @@windows.push @@cursor.not_nil!
   end
   
   def loop
-    @@windows.each do |window|
-      window.render framebuffer,
-                    @@ws.ws_col,
-                    @@ws.ws_row
+    while true
+      case selector.wait(1)
+      when @@mouse.not_nil!
+        @@cursor.not_nil!.respond @@mouse.not_nil!
+      end
+      @@windows.each do |window|
+        window.render framebuffer,
+                      @@ws.ws_col,
+                      @@ws.ws_row
+      end
+      usleep FRAME_WAIT
     end
   end
 
