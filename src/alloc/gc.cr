@@ -209,6 +209,11 @@ module Gc
         header_ptr = Pointer(USize).new(node.address + sizeof(LibCrystal::GcNode))
         # get its type id
         type_id = header_ptr[0]
+        # skip type id = 0
+        if type_id == 0
+          node = node.value.next_node
+          next
+        end
         # handle gc array
         if type_id == GC_ARRAY_HEADER_TYPE
           len = header_ptr[1]
@@ -239,6 +244,7 @@ module Gc
         # lookup its offsets
         offsets = LibCrystal.type_offsets type_id
         if offsets == 0
+          LibC.fprintf LibC.stderr, "node: %p\n", node
           panic "type_id doesn't have offset\n"
         end
         # precisely scan the struct based on the offsets

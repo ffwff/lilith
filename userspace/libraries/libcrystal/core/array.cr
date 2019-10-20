@@ -25,7 +25,11 @@ class Array(T)
     end
     @capacity = capacity
     if @buffer.null?
-      @buffer = Pointer(USize).malloc malloc_size(capacity)
+      {% if T < Int %}
+        @buffer = Pointer(USize).malloc_atomic malloc_size(capacity)
+      {% else %}
+        @buffer = Pointer(USize).malloc malloc_size(capacity)
+      {% end %}
       @buffer[0] = GC_ARRAY_HEADER_TYPE
       @buffer[1] = 0u32
     else
@@ -41,7 +45,11 @@ class Array(T)
   def initialize(initial_capacity)
     @capacity = initial_capacity
     if initial_capacity > 0
-      @buffer = Pointer(USize).malloc malloc_size(initial_capacity)
+      {% if T < Int %}
+        @buffer = Pointer(USize).malloc_atomic malloc_size(initial_capacity)
+      {% else %}
+        @buffer = Pointer(USize).malloc malloc_size(initial_capacity)
+      {% end %}
       @buffer[0] = GC_ARRAY_HEADER_TYPE
       @buffer[1] = 0u32
     else
