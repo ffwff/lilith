@@ -221,11 +221,10 @@ module Wm
     end
   end
 
+  @@framebuffer = Pointer(UInt32).null
+  @@backbuffer = Pointer(UInt32).null
   def fb
     @@fb.not_nil!
-  end
-  def framebuffer
-    @@framebuffer.not_nil!
   end
 
   @@windows = Array(Window).new 4
@@ -240,11 +239,18 @@ module Wm
   end
 
   @@selector : IO::Select? = nil
-  @@mouse : File? = nil
-  @@cursor : Cursor? = nil
-
   private def selector
     @@selector.not_nil!
+  end
+
+  @@mouse : File? = nil
+  private def mouse
+    @@mouse.not_nil!
+  end
+
+  @@cursor : Cursor? = nil
+  private def cursor
+    @@cursor.not_nil!
   end
 
   def _init
@@ -252,38 +258,39 @@ module Wm
       abort "unable to open /fb0"
     end
     @@selector = IO::Select.new
-    fb = @@fb.not_nil!
-    @@framebuffer = fb.map_to_memory.as(UInt32*)
     LibC._ioctl fb.fd, LibC::TIOCGWINSZ, pointerof(@@ws).address
+    @@framebuffer = fb.map_to_memory.as(UInt32*)
+    @@backbuffer = Pointer(UInt32).malloc(screen_width * screen_height)
 
     @@focused = nil
 
     # wallpaper
-    #@@windows.push Background.new(@@ws.ws_col,
-    #                              @@ws.ws_row,
-    #                              0x000066cc)
+    @@windows.push Background.new(@@ws.ws_col,
+                                  @@ws.ws_row,
+                                  0x000066cc)
 
     # mouse
     if (@@mouse = File.new("/mouse/raw", "r"))
-      selector << @@mouse.not_nil!
+      selector << mouse
     else
       abort "unable to open /mouse/raw"
     end
     @@cursor = Cursor.new
-    @@windows.push @@cursor.not_nil!
+    @@windows.push cursor
   end
   
   def loop
     while true
       case selector.wait(1)
-      when @@mouse.not_nil!
-        @@cursor.not_nil!.respond @@mouse.not_nil!
+      when mouse
+        cursor.respond mouse
       end
       @@windows.each do |window|
-        window.render framebuffer,
+        window.render @@backbuffer,
                       @@ws.ws_col,
                       @@ws.ws_row
       end
+      LibC.memcpy @@framebuffer, @@backbuffer, (screen_width * screen_height * 4)
       usleep FRAME_WAIT
     end
   end
