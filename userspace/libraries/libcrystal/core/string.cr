@@ -240,4 +240,13 @@ class String
       0
     end
   end
+
+  def +(other : self) : self
+    size = self.bytesize + other.bytesize
+    (String.new(size) { |buffer|
+      LibC.strcpy buffer, to_unsafe
+      LibC.strcpy buffer + self.bytesize, other.to_unsafe
+      {size, self.size + other.size}
+    }).not_nil!
+  end
 end
