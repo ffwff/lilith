@@ -230,6 +230,7 @@ module Wm
   @@windows = Array(Window).new 4
   @@focused : Window?
 
+  # display size information
   @@ws = uninitialized LibC::Winsize
   def screen_width
     @@ws.ws_col.to_i32
@@ -238,19 +239,28 @@ module Wm
     @@ws.ws_row.to_i32
   end
 
+  # io selection
   @@selector : IO::Select? = nil
   private def selector
     @@selector.not_nil!
   end
 
+  # raw mouse hardware file
   @@mouse : File? = nil
   private def mouse
     @@mouse.not_nil!
   end
 
+  # window representing the cursor
   @@cursor : Cursor? = nil
   private def cursor
     @@cursor.not_nil!
+  end
+
+  # communication pipes
+  @@pipe : IO::Pipe? = nil
+  private def pipe
+    @@pipe.not_nil!
   end
 
   def _init
@@ -263,6 +273,13 @@ module Wm
     @@backbuffer = Pointer(UInt32).malloc(screen_width * screen_height)
 
     @@focused = nil
+
+    # communication pipe
+    if (@@pipe = IO::Pipe.new "wm", "r")
+      selector << pipe
+    else
+      abort "unable to create communication pipe"
+    end
 
     # wallpaper
     @@windows.push Background.new(@@ws.ws_col,
@@ -284,13 +301,17 @@ module Wm
       case selector.wait(1)
       when mouse
         cursor.respond mouse
+      when pipe
+        STDERR.print "unhandled window message\n"
       end
       @@windows.each do |window|
         window.render @@backbuffer,
                       @@ws.ws_col,
                       @@ws.ws_row
       end
-      LibC.memcpy @@framebuffer, @@backbuffer, (screen_width * screen_height * 4)
+      LibC.memcpy @@framebuffer,
+                  @@backbuffer,
+                  (screen_width * screen_height * 4)
       usleep FRAME_WAIT
     end
   end

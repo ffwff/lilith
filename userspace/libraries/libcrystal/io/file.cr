@@ -23,9 +23,7 @@ class File < IO::FileDescriptor
                   return nil
                 end
     fd = LibC.open(filename.to_unsafe, open_mode)
-    if fd < 0
-      nil
-    else
+    if fd >= 0
       File.new fd
     end
   end
