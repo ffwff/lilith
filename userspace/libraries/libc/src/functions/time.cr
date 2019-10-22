@@ -19,6 +19,10 @@ lib LibC
     tm_isdst : LibC::Int
   end
 
+  fun snprintf(str : LibC::UString,
+               size : LibC::SizeT,
+               format : LibC::UString, ...) : LibC::Int
+
   $__libc_timeval : Timeval
   $__libc_tm : Tm
 end
@@ -166,4 +170,49 @@ end
 fun mktime(timep : Void*) : LibC::ULong
   # TODO
   0u32
+end
+
+private macro format!(fmt, num)
+  i += 1
+  j += LibC.snprintf(s + j, max - j, {{ fmt }}, {{ num }})
+  return j if j == max
+end
+
+fun strftime(s : LibC::UString, max : LibC::SizeT,
+             format : LibC::UString, tm : LibC::Tm*) : LibC::SizeT
+  i : LibC::SizeT = 0
+  j : LibC::SizeT = 0
+  until format[i] == 0
+    if format[i] == '%'.ord
+      i += 1
+      case format[i].unsafe_chr
+      when 'Y'
+        format!("%d", tm.value.tm_year)
+      when 'm'
+        format!("%d", tm.value.tm_mon)
+      when 'd'
+        format!("%d", tm.value.tm_mday)
+      when 'H'
+        format!("%02d", tm.value.tm_hour)
+      when 'M'
+        format!("%02d", tm.value.tm_min)
+      when 'S'
+        format!("%02d", tm.value.tm_sec)
+      when '%'
+        i += 1
+        return j if j == max
+        s[j] = '%'.ord.to_u8
+        j += 1
+      else
+        return j
+      end
+    else
+      return j if j == max
+      s[j] = format[i]
+      i += 1
+      j += 1
+    end
+  end
+  s[j] = 0
+  j
 end

@@ -221,6 +221,12 @@ struct Proc
   end
 end
 
+struct Char
+  def ===(other : self)
+    self == other
+  end
+end
+
 @[Weak]
 fun __crystal_once_init : Void*
   Pointer(Void).new 0
