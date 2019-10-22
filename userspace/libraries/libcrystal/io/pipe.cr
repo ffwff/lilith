@@ -20,7 +20,7 @@ class IO::Pipe < IO::FileDescriptor
     end
     open_mode = case mode
                 when "r"
-                  O_RDONLY
+                  O_RDONLY | O_CREAT
                 when "w"
                   O_WRONLY | O_CREAT
                 else
@@ -41,11 +41,11 @@ class IO::Pipe < IO::FileDescriptor
   end
 
   def flags=(flag : Flags)
-    LibC.ioctl(fd, SC_IOCTL_PIPE_CONF_FLAGS, flag.value)
+    LibC._ioctl(fd, SC_IOCTL_PIPE_CONF_FLAGS, flag.value)
   end
 
   def pid=(pid : Int32)
-    LibC.ioctl(fd, SC_IOCTL_PIPE_CONF_PID, pid.to_u32)
+    LibC._ioctl(fd, SC_IOCTL_PIPE_CONF_PID, pid.to_u32)
   end
 
 end

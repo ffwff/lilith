@@ -249,4 +249,8 @@ class String
       {size, self.size + other.size}
     }).not_nil!
   end
+
+  def +(other) : self
+    self + other.to_s
+  end
 end

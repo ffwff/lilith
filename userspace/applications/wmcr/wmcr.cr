@@ -275,7 +275,7 @@ module Wm
     @@focused = nil
 
     # communication pipe
-    if (@@pipe = IO::Pipe.new "wm", "r")
+    if (@@pipe = IO::Pipe.new("wm", "r"))
       selector << pipe
     else
       abort "unable to create communication pipe"
