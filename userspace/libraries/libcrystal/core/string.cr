@@ -5,6 +5,7 @@ lib LibC
   fun strlen(str : LibC::UString) : LibC::Int
   fun strcpy(dest : LibC::UString, src : LibC::UString) : LibC::Int
   fun strncpy(dest : LibC::UString, src : LibC::UString, size : LibC::SizeT) : LibC::Int
+  fun strncmp(dest : LibC::UString, src : LibC::UString, size : LibC::SizeT) : LibC::Int
   fun memcmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : LibC::Int
 end
 
