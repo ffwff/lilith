@@ -16,6 +16,7 @@ lib LibC
   fun open(filename : LibC::UString, mode : LibC::UInt) : LibC::Int
   fun mmap(fd : LibC::Int, size : LibC::SizeT) : Void*
   fun lseek(fd : LibC::Int, offset : Int32, whence : LibC::Int) : Int32
+  fun _ioctl(fd : LibC::Int, request : LibC::Int, data : UInt32) : LibC::Int
 end
 
 
@@ -33,16 +34,5 @@ class File < IO::FileDescriptor
     if fd >= 0
       File.new fd
     end
-  end
-
-  def map_to_memory(size = (-1).to_usize)
-    LibC.mmap fd, size
-  end
-
-  def size : Int
-    cur = LibC.lseek @fd, 0, LibC::SEEK_CUR
-    retval = LibC.lseek @fd, 0, LibC::SEEK_END
-    LibC.lseek @fd, cur, LibC::SEEK_START
-    retval
   end
 end
