@@ -16,7 +16,6 @@ lib LibC
     attr_byte : UInt32
   end
 
-  fun _ioctl(fd : LibC::Int, request : LibC::Int, data : UInt32) : LibC::Int
   fun fopen(path : LibC::UString, mode : LibC::UString) : Void*
 end
 
@@ -277,7 +276,7 @@ module Wm
     @@focused = nil
 
     # communication pipe
-    if (@@pipe = IO::Pipe.new("wm", "r"))
+    if (@@pipe = IO::Pipe.new("wm", "r", Flags::M_Read | Flags::G_Write))
       selector << pipe
     else
       abort "unable to create communication pipe"
@@ -296,6 +295,9 @@ module Wm
     end
     @@cursor = Cursor.new
     @@windows.push cursor
+
+    # default startup application
+    Process.new "windem"
   end
   
   def loop
@@ -304,7 +306,7 @@ module Wm
       when mouse
         cursor.respond mouse
       when pipe
-        STDERR.print "unhandled window message\n"
+        respond_pipe
       end
       @@windows.each do |window|
         window.render @@backbuffer,
@@ -315,6 +317,20 @@ module Wm
                   @@backbuffer,
                   (screen_width * screen_height * 4)
       usleep FRAME_WAIT
+    end
+  end
+
+  @@pipe_buffer = Bytes.empty
+  def respond_pipe
+    if pipe.size > @@pipe_buffer.size
+      @@pipe_buffer = Bytes.new pipe.size
+    end
+    pipe.unbuffered_read @@pipe_buffer
+    return unless IPC.valid_msg? @@pipe_buffer
+    header = IPC.header_part @@pipe_buffer
+    case header.value.type
+    when 0
+      STDERR.puts "test message!"
     end
   end
 
