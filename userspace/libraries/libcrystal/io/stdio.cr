@@ -16,6 +16,17 @@ class IO::FileDescriptor < IO
   def unbuffered_write(slice : Bytes)
     LibC.write(@fd, slice.to_unsafe.as(LibC::String), slice.size)
   end
+
+  def map_to_memory(size = (-1).to_usize)
+    LibC.mmap @fd, size
+  end
+
+  def size : Int
+    cur = LibC.lseek @fd, 0, LibC::SEEK_CUR
+    retval = LibC.lseek @fd, 0, LibC::SEEK_END
+    LibC.lseek @fd, cur, LibC::SEEK_START
+    retval
+  end
 end
 
 STDIN  = IO::FileDescriptor.new 0

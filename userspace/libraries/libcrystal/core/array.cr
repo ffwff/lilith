@@ -85,6 +85,10 @@ class Array(T)
     (@buffer + 2).as(T*)
   end
 
+  def to_slice
+    Slice(T).new(to_unsafe, size)
+  end
+
   def [](idx : Int)
     abort "accessing out of bounds!" unless 0 <= idx && idx < size
     to_unsafe[idx]
