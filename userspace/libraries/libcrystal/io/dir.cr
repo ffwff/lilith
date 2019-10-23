@@ -22,7 +22,7 @@ end
 
 class Dir
   def self.new(path)
-    fd = LibC.open(path, O_RDONLY)
+    fd = LibC.open(path, LibC::O_RDONLY)
     if fd < 0
       nil
     else

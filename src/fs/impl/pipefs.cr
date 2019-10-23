@@ -81,6 +81,10 @@ private class PipeFSNode < VFSNode
   @m_pid = 0
   @s_pid = 0
 
+  def size : Int
+    @buffer_pos
+  end
+
   def remove : Int32
     return VFS_ERR if @flags.includes?(Flags::Removed)
     FrameAllocator.declaim_addr(@buffer.address & ~PTR_IDENTITY_MASK)

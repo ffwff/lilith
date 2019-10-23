@@ -1,13 +1,13 @@
 STDOUT.buffer_size = 0
 
 if LibC.read(STDIN.fd, LibC::String.null, 0) < 0
-  LibC.open "/kbd", O_RDONLY
+  LibC.open "/kbd", LibC::O_RDONLY
 end
 if LibC.write(STDOUT.fd, LibC::String.null, 0) < 0
-  LibC.open "/con", O_WRONLY
+  LibC.open "/con", LibC::O_WRONLY
 end
 if LibC.write(STDERR.fd, LibC::String.null, 0) < 0
-  LibC.open "/serial", O_WRONLY
+  LibC.open "/serial", LibC::O_WRONLY
 end
 
 cwd = Dir.current
