@@ -203,6 +203,7 @@ module Malloc
   private def footer_for_block(hdr)
     ftr = Pointer(Data::Footer).new(hdr.address + sizeof(Data::Header) + hdr.value.size)
     if ftr.value.magic != FOOTER_MAGIC
+      Stdio.stderr.fputs "free: invalid magic number for ftr"
       abort
     end
     ftr
