@@ -32,6 +32,8 @@ class IO::Pipe < IO::FileDescriptor
       file = new fd
       if flags != Flags::None
         file.flags = flags
+      else
+        file.flags = Flags::G_Write | Flags::G_Read
       end
       if !pid.nil?
         file.pid = pid.not_nil!

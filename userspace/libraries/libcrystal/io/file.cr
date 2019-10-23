@@ -9,10 +9,6 @@ lib LibC
   O_TRUNC  = 1 << 3
   O_APPEND = 1 << 4
 
-  SEEK_SET = 0
-  SEEK_CUR = 1
-  SEEK_END = 2
-
   fun open(filename : LibC::UString, mode : LibC::UInt) : LibC::Int
   fun mmap(fd : LibC::Int, size : LibC::SizeT) : Void*
   fun lseek(fd : LibC::Int, offset : Int32, whence : LibC::Int) : Int32

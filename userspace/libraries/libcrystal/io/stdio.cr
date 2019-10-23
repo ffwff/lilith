@@ -1,6 +1,12 @@
 require "./io.cr"
 require "./buffered.cr"
 
+lib LibC
+  SEEK_SET = 0
+  SEEK_CUR = 1
+  SEEK_END = 2
+end
+
 class IO::FileDescriptor < IO
   include IO::Buffered
 
@@ -24,7 +30,7 @@ class IO::FileDescriptor < IO
   def size : Int
     cur = LibC.lseek @fd, 0, LibC::SEEK_CUR
     retval = LibC.lseek @fd, 0, LibC::SEEK_END
-    LibC.lseek @fd, cur, LibC::SEEK_START
+    LibC.lseek @fd, cur, LibC::SEEK_SET
     retval
   end
 end
