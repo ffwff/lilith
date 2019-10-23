@@ -20,9 +20,9 @@ class IO::Pipe < IO::FileDescriptor
     end
     open_mode = case mode
                 when "r"
-                  O_RDONLY | O_CREAT
+                  LibC::O_RDONLY | LibC::O_CREAT
                 when "w"
-                  O_WRONLY | O_CREAT
+                  LibC::O_WRONLY | LibC::O_CREAT
                 else
                   return nil
                 end

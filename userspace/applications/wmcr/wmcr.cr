@@ -1,3 +1,5 @@
+require "./wm/*"
+
 lib LibC
   struct Winsize
     ws_row : UInt16
