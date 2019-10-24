@@ -18,7 +18,7 @@ struct Int
   end
 
   # unsafe math
-  def /(other)
+  def //(other)
     self.unsafe_div other
   end
 
@@ -54,10 +54,6 @@ struct Int
   end
 
   # bit manips
-  def find_first_set : Int
-    Intrinsics.counttrailing32(self.to_i32, true)
-  end
-
   def find_first_zero : Int
     Intrinsics.counttrailing32(~self.to_i32, true)
   end
@@ -91,7 +87,7 @@ struct Int
     while i < 128
       s[i] = BASE.to_unsafe[n % base]
       i += 1
-      break if (n /= base) == 0
+      break if (n //= base) == 0
     end
     if sign
       yield '-'
@@ -127,6 +123,10 @@ struct Int
       self.to_i64
     end
   {% end %}
+
+  def <=>(other : Int) : Int32
+    self > other ? 1 : (self < other ? -1 : 0)
+  end
 end
 
 {% if flag?(:bits32) %}

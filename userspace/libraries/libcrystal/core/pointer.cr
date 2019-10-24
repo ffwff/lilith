@@ -1,4 +1,6 @@
 struct Pointer(T)
+  include Comparable(self)
+
   def self.null
     new 0u64
   end
@@ -37,6 +39,14 @@ struct Pointer(T)
 
   def +(other : Nil)
     self
+  end
+
+  def -(other : Int)
+    self + (-other.to_i64!)
+  end
+
+  def <=>(other : self)
+    address <=> other.address
   end
 
   def to_s(io)
