@@ -62,7 +62,8 @@ private class PipeFSNode < VFSNode
   end
 
   @buffer = Pointer(UInt8).null
-  @buffer_pos = 0
+  @read_pos = 0
+  @write_pos = 0
   BUFFER_CAPACITY = 0x1000
 
   @[Flags]
@@ -82,7 +83,7 @@ private class PipeFSNode < VFSNode
   @s_pid = 0
 
   def size : Int
-    @buffer_pos
+    @write_pos - @read_pos
   end
 
   def remove : Int32
@@ -117,19 +118,17 @@ private class PipeFSNode < VFSNode
     end
 
     init_buffer
-    if @buffer_pos == 0
-      if @flags.includes?(Flags::WaitRead)
-        VFS_WAIT_POLL
-      else
-        0
+
+    slice.size.times do |i|
+      slice.to_unsafe[i] = @buffer[@read_pos]
+      @read_pos += 1
+      if @read_pos == BUFFER_CAPACITY - 1
+        @read_pos = 0
       end
-    else
-      # pop message from buffer
-      size = Math.min(slice.size, @buffer_pos)
-      memcpy(slice.to_unsafe, @buffer + @buffer_pos - size, size.to_usize)
-      @buffer_pos -= size
-      size
+      return i if @read_pos == @write_pos
     end
+
+    slice.size
   end
 
   def write(slice : Slice, offset : UInt32,
@@ -149,28 +148,22 @@ private class PipeFSNode < VFSNode
     end
 
     init_buffer
-    if @buffer_pos == BUFFER_CAPACITY
-      0
-    else
-      size = Math.min(slice.size, BUFFER_CAPACITY - @buffer_pos)
-      # push the message on to the buffer stack
-      memcpy(@buffer + @buffer_pos, slice.to_unsafe, size.to_usize)
-      @buffer_pos += size
-      size
-    end
-  end
 
-  def truncate(size : Int32) : Int32
-    return 0 if @flags.includes?(Flags::Removed)
-    if size < @buffer_pos
-      @buffer_pos = size
+    slice.size.times do |i|
+      @buffer[@write_pos] = slice.to_unsafe[i]
+      @write_pos += 1
+      if @write_pos == BUFFER_CAPACITY - 1
+        @write_pos = 0
+      end
+      return i if @read_pos == @write_pos
     end
-    @buffer_pos
+
+    slice.size
   end
 
   def available?
     return true if @flags.includes?(Flags::Removed)
-    @buffer_pos > 0
+    size > 0
   end
 
   def ioctl(request : Int32, data : UInt32,

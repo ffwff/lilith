@@ -34,6 +34,10 @@ class String
     }).not_nil!
   end
 
+  def self.new(bytes : Bytes)
+    new bytes.to_unsafe
+  end
+
   def self.new(capacity : Int)
     str = Pointer(UInt8).malloc_atomic(capacity.to_u32 + HEADER_SIZE + 1)
     buffer = str.as(String).to_unsafe
