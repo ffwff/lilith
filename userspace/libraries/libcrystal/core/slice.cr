@@ -16,6 +16,11 @@ struct Slice(T)
     new Pointer(T).null, 0
   end
 
+  def +(offset : Int)
+    abort "Slice: out of range" if offset > @size
+    Slice(T).new(@buffer + offset, @size - offset)
+  end
+
   def [](idx : Int)
     abort "Slice: out of range" if idx >= @size || idx < 0
     @buffer[idx]

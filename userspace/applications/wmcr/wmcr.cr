@@ -276,7 +276,8 @@ module Wm
     @@focused = nil
 
     # communication pipe
-    if (@@pipe = IO::Pipe.new("wm", "r", Flags::M_Read | Flags::G_Write))
+    if (@@pipe = IO::Pipe.new("wm", "r",
+        IO::Pipe::Flags::M_Read | IO::Pipe::Flags::G_Write))
       selector << pipe
     else
       abort "unable to create communication pipe"
@@ -326,11 +327,21 @@ module Wm
       @@pipe_buffer = Bytes.new pipe.size
     end
     pipe.unbuffered_read @@pipe_buffer
-    return unless IPC.valid_msg? @@pipe_buffer
-    header = IPC.header_part @@pipe_buffer
-    case header.value.type
-    when 0
-      STDERR.puts "test message!"
+    pipe_buffer = @@pipe_buffer
+    while IPC.valid_msg?(pipe_buffer)
+      header = IPC.header_part pipe_buffer
+      case header.value.type
+      when IPC::Data::TEST_MESSAGE_ID
+        STDERR.puts "test message!"
+      when IPC::Data::WINDOW_CREATE_ID
+        wc = IPC.payload_part(IPC::Data::WindowCreate,
+                              pipe_buffer)
+        STDERR.print("wc: ",
+          wc.x, " ", wc.y, " ",
+          wc.width, " ", wc.height, "\n")
+      end
+      pipe_buffer += sizeof(IPC::Data::Header)
+      pipe_buffer += header.value.length
     end
   end
 
