@@ -117,20 +117,37 @@ module Wm
   end
 
   class Program < Window
-    def render(buffer, width, height)
+    def initialize(x, y, width, height)
+      self.x = x
+      self.y = y
+      self.width = width
+      self.height = height
+    end
+
+    def render(buffer, dw, dh)
+      Wm::Painter.blit_rect buffer,
+        dw, dh,
+        self.width, self.height,
+        self.x, self.y, 0x00ff0000u32
     end
   end
 
   module Painter
     extend self
 
-    @[AlwaysInline]
-    def blit_u32(dst : UInt32*, c : UInt32, n)
+    def blit_u32(dst : UInt32*, c : UInt32, n : LibC::SizeT)
       asm(
         "cld\nrep stosl"
           :: "{eax}"(c), "{Di}"(dst), "{ecx}"(n)
-          : "volatile", "memory"
+          : "volatile", "memory", "Di", "eax", "ecx"
       )
+    end
+
+    def blit_rect(db, dw, dh, sw, sh, sx, sy, color)
+      sh.times do |y|
+        fb_offset = ((sy + y) * dw + sx)
+        blit_u32(db + fb_offset, color, sw.to_usize)
+      end
     end
 
     def blit_img(db, dw, dh,
@@ -321,6 +338,14 @@ module Wm
     end
   end
 
+  private macro enforce_length(t)
+    if header.value.length != (sizeof({{ t }}) - sizeof(IPC::Data::Header))
+      pipe_buffer += sizeof(IPC::Data::Header)
+      pipe_buffer += header.value.length
+      next
+    end
+  end
+
   @@pipe_buffer = Bytes.empty
   def respond_pipe
     if pipe.size > @@pipe_buffer.size
@@ -334,11 +359,14 @@ module Wm
       when IPC::Data::TEST_MESSAGE_ID
         STDERR.puts "test message!"
       when IPC::Data::WINDOW_CREATE_ID
+        enforce_length(IPC::Data::WindowCreate)
         wc = IPC.payload_part(IPC::Data::WindowCreate,
                               pipe_buffer)
         STDERR.print("wc: ",
           wc.x, " ", wc.y, " ",
           wc.width, " ", wc.height, "\n")
+        w = Program.new(wc.x, wc.y, wc.width, wc.height)
+        @@windows.push w
       end
       pipe_buffer += sizeof(IPC::Data::Header)
       pipe_buffer += header.value.length

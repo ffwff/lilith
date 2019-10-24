@@ -16,7 +16,7 @@ module Wm::IPC
     @[Packed]
     struct WindowCreate
       header : Header
-      x, y, width, height : UInt32
+      x, y, width, height : Int32
     end
   end
 
