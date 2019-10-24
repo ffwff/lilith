@@ -89,6 +89,10 @@ class Array(T)
     Slice(T).new(to_unsafe, size)
   end
 
+  def sort!
+    to_slice.sort!
+  end
+
   def [](idx : Int)
     abort "accessing out of bounds!" unless 0 <= idx && idx < size
     to_unsafe[idx]

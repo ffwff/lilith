@@ -1,3 +1,5 @@
+require "./slice/sort"
+
 lib LibC
   fun memcpy(dest : Void*, src : Void*, n : SizeT) : Void*
   fun memset(dest : Void*, c : LibC::Int, n : SizeT) : Void*
@@ -74,6 +76,11 @@ struct Slice(T)
 
   def to_s(io)
     io.print "Slice(", @buffer, " ", @size, ")"
+  end
+
+  def sort! : Slice(T)
+    Slice.intro_sort!(to_unsafe, size)
+    self
   end
 end
 

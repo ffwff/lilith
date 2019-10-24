@@ -70,7 +70,7 @@ module Wm
     def respond(file)
       packet = LibC::MousePacket.new
       file.read(Bytes.new(pointerof(packet).as(UInt8*), sizeof(LibC::MousePacket)))
-      speed = (packet.x + packet.y).find_first_set
+      speed = Math.log2(packet.x + packet.y)
       if packet.x != 0
         delta_x = packet.x * speed
         self.x = self.x + delta_x
@@ -230,8 +230,9 @@ module Wm
         STDERR.print("wc: ",
           wc.x, " ", wc.y, " ",
           wc.width, " ", wc.height, "\n")
-        w = Program.new(wc.x, wc.y, wc.width, wc.height)
-        @@windows.push w
+        @@windows.push Program
+          .new(wc.x, wc.y, wc.width, wc.height)
+        @@windows.sort!
       end
       pipe_buffer += sizeof(IPC::Data::Header)
       pipe_buffer += header.value.length
