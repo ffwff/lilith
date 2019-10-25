@@ -77,8 +77,11 @@ module Syscall
   end
 
   # parses a path and returns the corresponding vfs node
-  private def parse_path_into_vfs(path : Slice(UInt8), cw_node = nil, create = false,
-                                  process : Multiprocessing::Process? = nil)
+  private def parse_path_into_vfs(path : Slice(UInt8),
+                                  cw_node = nil,
+                                  create = false,
+                                  process : Multiprocessing::Process? = nil,
+                                  create_options = 0)
     vfs_node : VFSNode? = nil
     return nil if path.size < 1
     if path[0] != '/'.ord
@@ -102,7 +105,7 @@ module Syscall
       else
         cur_node = vfs_node.open(segment)
         if cur_node.nil? && create
-          cur_node = vfs_node.create(segment, process)
+          cur_node = vfs_node.create(segment, process, create_options)
         end
         return if cur_node.nil?
         vfs_node = cur_node
@@ -244,12 +247,13 @@ module Syscall
       end
     when SC_CREATE
       path = try(checked_slice(arg(0), arg(1)))
-      vfs_node = parse_path_into_vfs path, pudata.cwd_node, true, process
+      options = arg(2).to_i32
+      vfs_node = parse_path_into_vfs path, pudata.cwd_node, true, process, create_options: options
       if vfs_node.nil?
         sysret(SYSCALL_ERR)
       else
         sysret(pudata.install_fd(vfs_node.not_nil!,
-          FileDescriptor::Attributes::Read | FileDescriptor::Attributes::Write))
+          FileDescriptor::Attributes.new(options)))
       end
     when SC_CLOSE
       if pudata.close_fd(arg(0).to_i32)

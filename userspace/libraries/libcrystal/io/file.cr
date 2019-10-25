@@ -8,8 +8,11 @@ lib LibC
   O_CREAT  = 1 << 2
   O_TRUNC  = 1 << 3
   O_APPEND = 1 << 4
+  C_ANON   = 1 << 24
 
-  fun open(filename : LibC::UString, mode : LibC::UInt) : LibC::Int
+  fun open(filename : LibC::UString, mode : LibC::Int) : LibC::Int
+  fun _open(filename : LibC::UString, mode : LibC::Int) : LibC::Int
+  fun create(filename : LibC::UString, mode : LibC::Int) : LibC::Int
   fun mmap(fd : LibC::Int, size : LibC::SizeT) : Void*
   fun lseek(fd : LibC::Int, offset : Int32, whence : LibC::Int) : Int32
   fun _ioctl(fd : LibC::Int, request : LibC::Int, data : UInt32) : LibC::Int
