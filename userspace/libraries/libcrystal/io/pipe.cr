@@ -20,14 +20,18 @@ class IO::Pipe < IO::FileDescriptor
     end
     open_mode = case mode
                 when "r"
-                  LibC::O_RDONLY | LibC::O_CREAT
+                  LibC::O_RDONLY
                 when "w"
-                  LibC::O_WRONLY | LibC::O_CREAT
+                  LibC::O_WRONLY
+                when "ra"
+                  LibC::O_RDONLY | LibC::C_ANON
+                when "wa"
+                  LibC::O_WRONLY | LibC::C_ANON
                 else
                   return nil
                 end
     filename = "/pipes/" + name
-    fd = LibC.open(filename.to_unsafe, open_mode)
+    fd = LibC.create(filename.to_unsafe, open_mode)
     if fd >= 0
       file = new fd
       if flags != Flags::None

@@ -12,7 +12,7 @@ fun mkpipe(name : LibC::String) : LibC::Int
   end
   path.to_unsafe[PIPE_PREFIX.size] = 0u8
   strcpy((path.to_unsafe + PIPE_PREFIX.size).as(LibC::String), name.as(LibC::String))
-  fd = create(path.to_unsafe.as(LibC::String))
+  fd = create(path.to_unsafe.as(LibC::String), 0)
   fd
 end
 
