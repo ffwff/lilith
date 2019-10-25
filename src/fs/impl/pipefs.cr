@@ -183,10 +183,13 @@ private class PipeFSNode < VFSNode
 end
 
 class PipeFS < VFS
-  getter! name : String, root : VFSNode
+  getter! root : VFSNode
+
+  def name
+    "pipes"
+  end
 
   def initialize
-    @name = "pipes"
     @root = PipeFSRoot.new self
   end
 end

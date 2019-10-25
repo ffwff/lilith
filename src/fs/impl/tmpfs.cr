@@ -245,10 +245,13 @@ private class TmpFSNode < VFSNode
 end
 
 class TmpFS < VFS
-  getter! name : String, root : VFSNode
+  getter! root : VFSNode
+
+  def name
+    "tmp"
+  end
 
   def initialize
-    @name = "tmp"
     @root = TmpFSRoot.new self
   end
 end
