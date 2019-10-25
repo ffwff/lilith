@@ -74,8 +74,8 @@ fun _open(device : LibC::String, flags : LibC::Int) : LibC::Int
   __lilith_syscall(SC_OPEN, device, strlen(device), flags)
 end
 
-fun create(device : LibC::String) : LibC::Int
-  __lilith_syscall(SC_CREATE, device, strlen(device))
+fun create(device : LibC::String, flags : LibC::Int) : LibC::Int
+  __lilith_syscall(SC_CREATE, device, strlen(device), flags)
 end
 
 fun close(fd : LibC::Int) : LibC::Int

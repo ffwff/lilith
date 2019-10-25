@@ -6,7 +6,7 @@ typedef unsigned int mode_t;
 typedef unsigned long off_t;
 
 int open(char *device, int flags, ...);
-int create(char *device);
+int create(char *path, int flags);
 int close(int fd);
 ssize_t write(int fd, const void *str, size_t len);
 ssize_t read(int fd, void *str, size_t len);
@@ -52,3 +52,4 @@ off_t lseek(int fd, off_t offset, int whence);
 #define O_CREAT  (1 << 2)
 #define O_TRUNC  (1 << 3)
 #define O_APPEND (1 << 4)
+#define C_ANON   (1 << 24)

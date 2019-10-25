@@ -34,7 +34,13 @@ abstract class VFSNode
   def open(path : Slice) : VFSNode?
   end
 
-  def create(name : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
+  def clone
+  end
+
+  def close
+  end
+
+  def create(name : Slice, process : Multiprocessing::Process? = nil, options : Int32 = 0) : VFSNode?
   end
 
   def remove(process : Multiprocessing::Process? = nil) : Int32
@@ -132,3 +138,5 @@ VFS_ERR       = -1
 VFS_WAIT      = -2
 VFS_WAIT_POLL = -3
 VFS_EOF       = -4
+
+VFS_CREATE_ANON = 1 << 24

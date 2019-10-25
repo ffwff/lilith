@@ -454,8 +454,14 @@ module Multiprocessing
       else
         @next_process.not_nil!.prev_process = @prev_process
       end
-      # cleanup memory mapped regions
       if @udata
+        # cleanup file descriptors
+        udata.fds.each do |fd|
+          unless fd.nil?
+            fd.not_nil!.node.not_nil!.close
+          end
+        end
+        # cleanup memory mapped regions
         udata.mmap_list.each do |node|
           if node.attr.includes?(MemMapNode::Attributes::SharedMem)
             node.shm_node.not_nil!.munmap(node, self)

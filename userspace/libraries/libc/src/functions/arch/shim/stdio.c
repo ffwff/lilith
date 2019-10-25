@@ -8,9 +8,9 @@ int open(char *device, int flags, ...) {
   va_start(vl, flags);
   if((flags & O_CREAT) != 0) {
     int mode = va_arg(vl, int);
-    int fd = create(device);
-    (void)mode; // TODO: set mode
     va_end(vl);
+    (void)mode; // TODO: set mode
+    int fd = create(device, flags);
     return fd;
   }
   va_end(vl);
