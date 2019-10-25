@@ -275,7 +275,6 @@ module Gc
                 when GC_NODE_MAGIC_GRAY_ATOMIC
                   # this node is gray
                 else
-                  Serial.puts header, '\n'
                   panic "node must be either gray or white\n"
                 end
                 break

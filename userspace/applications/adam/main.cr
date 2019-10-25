@@ -10,7 +10,17 @@ if LibC.write(STDERR.fd, LibC::String.null, 0) < 0
   LibC.open "/serial", LibC::O_WRONLY
 end
 
-cwd = Dir.current
+module Adam
+  extend self
+
+  @@cwd = Dir.current
+
+  def cwd
+    @@cwd
+  end
+  def cwd=(@@cwd)
+  end
+end
 
 def getline : String?
   buffer = uninitialized UInt8[128]
@@ -26,7 +36,7 @@ def interpret_line(line)
   if argv[0] == "cd"
     if argv[1]?
       Dir.cd argv[1]
-      cwd = Dir.current
+      Adam.cwd = Dir.current
     end
   else
     cmd = argv.shift.not_nil!
@@ -39,7 +49,7 @@ def interpret_line(line)
 end
 
 while true
-  print cwd, "> "
+  print Adam.cwd, "> "
   if line = getline
     interpret_line line
   end
