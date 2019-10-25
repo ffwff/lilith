@@ -37,10 +37,13 @@ private class ConsoleFSNode < VFSNode
 end
 
 class ConsoleFS < VFS
-  getter! name : String, root : VFSNode
+  getter! root : VFSNode
+
+  def name
+    "con"
+  end
 
   def initialize
-    @name = "con"
     @root = ConsoleFSNode.new self
 
     # setup process-local variables

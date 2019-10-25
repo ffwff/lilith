@@ -19,10 +19,13 @@ private class SerialFSNode < VFSNode
 end
 
 class SerialFS < VFS
-  getter! name : String, root : VFSNode
+  getter! root : VFSNode
+
+  def name
+    "serial"
+  end
 
   def initialize
-    @name = "serial"
     @root = SerialFSNode.new self
   end
 end

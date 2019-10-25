@@ -210,10 +210,13 @@ private class ProcFSMemInfoNode < VFSNode
 end
 
 class ProcFS < VFS
-  getter! name : String, root : VFSNode
+  getter! root : VFSNode
+
+  def name
+    "proc"
+  end
 
   def initialize
-    @name = "proc"
     @root = ProcFSNode.new self
   end
 end
