@@ -45,11 +45,11 @@ class MouseFSNode < VFSNode
 end
 
 class MouseFSRawNode < VFSNode
-  getter! name : GcString
+  getter! name : String
   getter fs : VFS
 
   def initialize(@fs : MouseFS)
-    @name = GcString.new("raw")
+    @name = "raw"
   end
 
   def read(slice : Slice, offset : UInt32,
@@ -72,11 +72,11 @@ class MouseFSRawNode < VFSNode
 end
 
 class MouseFS < VFS
-  getter! name : GcString, root : VFSNode
+  getter! name : String, root : VFSNode
   getter mouse
 
   def initialize(@mouse : Mouse)
-    @name = GcString.new "mouse"
+    @name = "mouse"
     @root = MouseFSNode.new self
     @mouse.mousefs = self
   end

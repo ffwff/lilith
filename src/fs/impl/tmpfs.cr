@@ -27,7 +27,7 @@ private class TmpFSRoot < VFSNode
     each_child do |node|
       return if node.name == name
     end
-    node = TmpFSNode.new(GcString.new(name), self, fs)
+    node = TmpFSNode.new(String.new(name), self, fs)
     node.next_node = @first_child
     unless @first_child.nil?
       @first_child.not_nil!.prev_node = node
@@ -61,7 +61,7 @@ private class TmpFSRoot < VFSNode
 end
 
 private class TmpFSNode < VFSNode
-  getter! name : GcString, fs : VFS
+  getter! name : String, fs : VFS
   getter size
 
   @next_node : TmpFSNode? = nil
@@ -70,7 +70,7 @@ private class TmpFSNode < VFSNode
   @prev_node : TmpFSNode? = nil
   property prev_node
 
-  def initialize(@name : GcString, @parent : TmpFSRoot, @fs : TmpFS)
+  def initialize(@name : String, @parent : TmpFSRoot, @fs : TmpFS)
   end
 
   @removed = false
@@ -245,10 +245,10 @@ private class TmpFSNode < VFSNode
 end
 
 class TmpFS < VFS
-  getter! name : GcString, root : VFSNode
+  getter! name : String, root : VFSNode
 
   def initialize
-    @name = GcString.new "tmp"
+    @name = "tmp"
     @root = TmpFSRoot.new self
   end
 end

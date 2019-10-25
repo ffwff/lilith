@@ -23,14 +23,14 @@ struct ArgvBuilder
   end
 
   private def place_str(str)
-    d = str.size + 1
+    d = str.bytesize + 1
     if @placement + d > MAX_STR_PLACEMENT
       return false
     end
     @placement += d
     ptr = Pointer(UInt8).new((@process.initial_sp - @placement).to_u64)
     i = 0
-    str.each do |char|
+    str.each_byte do |char|
       ptr[i] = char.to_u8
       i += 1
     end

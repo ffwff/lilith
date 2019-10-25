@@ -64,11 +64,11 @@ class KbdFSNode < VFSNode
 end
 
 class KbdFSRawNode < VFSNode
-  getter! name : GcString
+  getter! name : String
   getter fs : VFS
 
   def initialize(@fs : KbdFS)
-    @name = GcString.new "raw"
+    @name = "raw"
   end
 
   @ch = 0
@@ -95,11 +95,11 @@ class KbdFSRawNode < VFSNode
 end
 
 class KbdFS < VFS
-  getter! name : GcString, root : VFSNode
+  getter! name : String, root : VFSNode
   getter queue : VFSQueue?
 
   def initialize(@kbd : Keyboard)
-    @name = GcString.new "kbd"
+    @name = "kbd"
     @root = KbdFSNode.new self
     @kbd.kbdfs = self
     @queue = VFSQueue.new

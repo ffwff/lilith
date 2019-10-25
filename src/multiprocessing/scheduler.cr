@@ -92,7 +92,7 @@ module Multiprocessing
         when ProcessData::Status::WaitFd
           wait_object = process.udata.wait_object
           case wait_object
-          when GcArray(FileDescriptor)
+          when Array(FileDescriptor)
             if process.udata.wait_usecs != 0xFFFF_FFFFu32
               if process.udata.wait_usecs <= Pit::USECS_PER_TICK
                 process.frame.not_nil!.to_unsafe.value.rax = 0
@@ -102,7 +102,7 @@ module Multiprocessing
                 process.udata.wait_usecs -= Pit::USECS_PER_TICK
               end
             end
-            fds = wait_object.as(GcArray(FileDescriptor))
+            fds = wait_object.as(Array(FileDescriptor))
             fds.each do |fd|
               fd = fd.not_nil!
               if fd.node.not_nil!.available?

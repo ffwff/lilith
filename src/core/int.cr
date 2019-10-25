@@ -79,7 +79,7 @@ struct Int
     n = self.abs
     i = 0
     while i < 128
-      s[i] = BASE.bytes[n % base]
+      s[i] = BASE.to_unsafe[n % base]
       i += 1
       break if (n //= base) == 0
     end
@@ -94,13 +94,13 @@ struct Int
     end
   end
 
-  def to_gcstr(base = 10)
+  def to_s(base : Int = 10)
     s = uninitialized UInt8[128]
     sign = self < 0
     n = self.abs
     i = 0
     while i < 128
-      s[i] = BASE.bytes[n % base]
+      s[i] = BASE.to_unsafe[n % base]
       i += 1
       break if (n //= base) == 0
     end
@@ -109,18 +109,16 @@ struct Int
     else
       i -= 1
     end
-    str = GcString.new(i + 1)
-    j = 0
+    builder = String::Builder.new(i + 1)
     while true
-      str[j] = s[i]
+      builder.write_byte s[i]
       break if i == 0
-      j += 1
       i -= 1
     end
-    str
+    builder.to_s
   end
 
-  def to_s(io, base = 10)
+  def to_s(io, base : Int = 10)
     each_digit(base) do |ch|
       io.putc ch
     end
