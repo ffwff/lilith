@@ -6,8 +6,12 @@ class String
   HEADER_SIZE = sizeof({Int32, Int32, Int32})
 
   class Builder
+    @capacity : Int32 = 0
+    @bytesize : Int32 = 0
+
     def initialize(@capacity : Int32)
-      @buffer = Pointer(UInt8).malloc_atomic(@capacity.to_u32 + HEADER_SIZE + 1)
+      @capacity += 1 # null terminator
+      @buffer = Pointer(UInt8).malloc_atomic(@capacity.to_u32 + HEADER_SIZE)
       @bytesize = 0
       @finished = false
     end
@@ -41,8 +45,11 @@ class String
       @buffer.as(String)
     end
 
-    def reset(capacity : Int)
-      panic "TODO"
+    def reset(@capacity : Int32)
+      @capacity += 1 # null terminator
+      @buffer = Pointer(UInt8).malloc_atomic(@capacity.to_u32 + HEADER_SIZE)
+      @bytesize = 0
+      @finished = false
     end
   end
 
@@ -65,11 +72,14 @@ class String
   end
 
   def self.new(bytes : Slice(UInt8))
-    panic "TODO"
+    (new(bytes.size) {|buffer|
+      memcpy(buffer, bytes.to_unsafe, bytes.size.to_usize)
+      {bytes.size, String.calculate_length(bytes.to_unsafe)}
+    }).not_nil!
   end
 
   def self.new(bytes : NullTerminatedSlice)
-    panic "TODO"
+    String.new Slice(UInt8).new(bytes.to_unsafe, bytes.size)
   end
 
   protected def self.calculate_length(buffer : UInt8*)
@@ -123,7 +133,10 @@ class String
   end
 
   def clone
-    panic "TODO"
+    (String.new(bytesize) {|buffer|
+      memcpy(buffer, to_unsafe, bytesize.to_usize)
+      {bytesize, size}
+    }).not_nil!
   end
 
   def size
@@ -168,7 +181,11 @@ class String
   end
 
   def ==(other : Slice(UInt8))
-    panic "TODO"
+    return false unless bytesize == other.size
+    bytesize.times do |i|
+      return false if to_unsafe[i] != other.to_unsafe[i]
+    end
+    true
   end
 
   def ===(other)
