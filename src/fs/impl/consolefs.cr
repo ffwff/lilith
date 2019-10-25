@@ -37,15 +37,15 @@ private class ConsoleFSNode < VFSNode
 end
 
 class ConsoleFS < VFS
-  getter! name : GcString, root : VFSNode
+  getter! name : String, root : VFSNode
 
   def initialize
-    @name = GcString.new "con"
+    @name = "con"
     @root = ConsoleFSNode.new self
 
     # setup process-local variables
     @process = Multiprocessing::Process
-      .spawn_kernel(GcString.new("[consolefs]"),
+      .spawn_kernel("[consolefs]",
         ->(ptr : Void*) { ptr.as(ConsoleFS).process },
         self.as(Void*),
         stack_pages: 4) do |process|

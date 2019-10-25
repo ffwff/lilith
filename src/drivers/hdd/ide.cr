@@ -252,8 +252,8 @@ class AtaDevice
 
   #
   getter primary, slave
-  @name : GcString? = nil
-  getter name
+  @name : String? = nil
+  getter! name
 
   enum Type
     Ata
@@ -288,13 +288,17 @@ class AtaDevice
 
     case @type
     when Type::Ata
-      name = GcString.new "hd"
-      name << (Ide.next_hd_idx + '0'.ord).to_u8
+      builder = String::Builder.new 4
+      builder << "hd"
+      builder.write_byte (Ide.next_hd_idx + '0'.ord).to_u8
     when Type::Atapi
-      name = GcString.new "cdrom"
-      name << (Ide.next_cdrom_idx + '0'.ord).to_u8
+      builder = String::Builder.new 7
+      builder << "cdrom"
+      builder.write_byte (Ide.next_hd_idx + '0'.ord).to_u8
+    else
+      panic "unhandled ata type: ", @type
     end
-    @name = name
+    @name = builder.to_s
 
     # read device identifier
     device = Pointer(Kernel::AtaIdentify).mmalloc
@@ -402,7 +406,7 @@ module Ide
   end
 
   def init_controller
-    @@devices = GcArray(AtaDevice?).new 4
+    @@devices = Array(AtaDevice?).new 4
     devices = @@devices.not_nil!
 
     devices.push AtaDevice.new(true, 0)

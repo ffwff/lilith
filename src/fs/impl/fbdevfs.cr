@@ -186,10 +186,10 @@ private class FbdevFSNode < VFSNode
 end
 
 class FbdevFS < VFS
-  getter! name : GcString, root : VFSNode
+  getter! name : String, root : VFSNode
 
   def initialize
-    @name = GcString.new "fb0" # TODO
+    @name = "fb0" # TODO
     @root = FbdevFSNode.new self
   end
 end

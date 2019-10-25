@@ -13,7 +13,7 @@ abstract class VFSNode
     0
   end
 
-  def name : GcString?
+  def name : String?
   end
 
   abstract def fs : VFS
@@ -78,7 +78,7 @@ abstract class VFSNode
 end
 
 abstract class VFS
-  abstract def name : GcString
+  abstract def name : String
 
   def queue : VFSQueue?
   end

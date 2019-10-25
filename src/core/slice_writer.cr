@@ -29,7 +29,7 @@ class SliceWriter
   end
 
   def puts(str : String)
-    str.each do |ch|
+    str.each_byte do |ch|
       putc(ch)
     end
   end
