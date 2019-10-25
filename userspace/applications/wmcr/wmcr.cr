@@ -227,9 +227,6 @@ module Wm
         enforce_length(IPC::Data::WindowCreate)
         wc = IPC.payload_part(IPC::Data::WindowCreate,
                               pipe_buffer)
-        STDERR.print("wc: ",
-          wc.x, " ", wc.y, " ",
-          wc.width, " ", wc.height, "\n")
         @@windows.push Program
           .new(wc.x, wc.y, wc.width, wc.height)
         @@windows.sort!
