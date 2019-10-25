@@ -10,11 +10,21 @@ private class PipeFSRoot < VFSNode
     end
   end
 
-  def create(name : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
+  def create(name : Slice,
+             process : Multiprocessing::Process? = nil,
+             options : Int32 = 0) : VFSNode?
+    if (options & VFS_CREATE_ANON) != 0
+      return PipeFSNode.new(String.new(name),
+                            process.not_nil!.pid,
+                            self, fs,
+                            anonymous: true)
+    end
     each_child do |node|
       return if node.name == name
     end
-    node = PipeFSNode.new(String.new(name), process.not_nil!.pid, self, fs)
+    node = PipeFSNode.new(String.new(name),
+                          process.not_nil!.pid,
+                          self, fs)
     node.next_node = @first_child
     unless @first_child.nil?
       @first_child.not_nil!.prev_node = node
@@ -57,8 +67,20 @@ private class PipeFSNode < VFSNode
   @prev_node : PipeFSNode? = nil
   property prev_node
 
-  def initialize(@name : String, @m_pid, @parent : PipeFSRoot, @fs : PipeFS)
+  def initialize(@name : String,
+                 @m_pid,
+                 @parent : PipeFSRoot,
+                 @fs : PipeFS,
+                 anonymous = false)
+    if anonymous
+      @open_count += 1
+      @flags |= Flags::Anonymous
+    end
     # Serial.puts "mk ", @name, '\n'
+  end
+
+  def clone
+    @open_count += 1
   end
 
   @buffer = Pointer(UInt8).null
@@ -66,16 +88,19 @@ private class PipeFSNode < VFSNode
   @write_pos = 0
   BUFFER_CAPACITY = 0x1000
 
+  @open_count = 0
+
   @[Flags]
   enum Flags : UInt32
-    WaitRead = 1 << 0
-    M_Read   = 1 << 1
-    S_Read   = 1 << 2
-    M_Write  = 1 << 3
-    S_Write  = 1 << 4
-    G_Read   = 1 << 5
-    G_Write  = 1 << 6
-    Removed  = 1 << 7
+    WaitRead  = 1 << 0
+    M_Read    = 1 << 1
+    S_Read    = 1 << 2
+    M_Write   = 1 << 3
+    S_Write   = 1 << 4
+    G_Read    = 1 << 5
+    G_Write   = 1 << 6
+    Removed   = 1 << 30
+    Anonymous = 1 << 31
   end
 
   @flags = Flags::None
@@ -86,11 +111,19 @@ private class PipeFSNode < VFSNode
     @write_pos - @read_pos
   end
 
+  def close
+    Serial.puts "close!"
+    if @flags.includes?(Flags::Anonymous)
+      @open_count -= 1
+      remove if @open_count == 0
+    end
+  end
+
   def remove : Int32
     return VFS_ERR if @flags.includes?(Flags::Removed)
+    @parent.remove self unless @flags.includes?(Flags::Anonymous)
     FrameAllocator.declaim_addr(@buffer.address & ~PTR_IDENTITY_MASK)
     @buffer = Pointer(UInt8).null
-    @parent.remove self
     @flags |= Flags::Removed
     VFS_OK
   end
@@ -172,6 +205,8 @@ private class PipeFSNode < VFSNode
     return -1 if @flags.includes?(Flags::Removed)
     case request
     when SC_IOCTL_PIPE_CONF_FLAGS
+      # 24-bits for options! (last 8-bits are reserved for node state)
+      data = data & 0xffffff
       @flags = Flags.new(data)
       0
     when SC_IOCTL_PIPE_CONF_PID
