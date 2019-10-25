@@ -1,6 +1,5 @@
 {% if flag?(:kernel) %}
   require "./alloc.cr"
-  require "./gc/*"
 {% else %}
   lib LibC
     fun malloc(size : LibC::SizeT) : Void*

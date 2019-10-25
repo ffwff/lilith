@@ -19,10 +19,10 @@ private class SerialFSNode < VFSNode
 end
 
 class SerialFS < VFS
-  getter! name : GcString, root : VFSNode
+  getter! name : String, root : VFSNode
 
   def initialize
-    @name = GcString.new "serial"
+    @name = "serial"
     @root = SerialFSNode.new self
   end
 end

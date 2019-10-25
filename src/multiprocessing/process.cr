@@ -106,7 +106,7 @@ module Multiprocessing
     class UserData
       # wait process / file
       # TODO: this should be a weak pointer once it's implemented
-      @wait_object : (Process | FileDescriptor | GcArray(FileDescriptor))? = nil
+      @wait_object : (Process | FileDescriptor | Array(FileDescriptor))? = nil
       property wait_object
 
       # wait useconds
@@ -137,17 +137,17 @@ module Multiprocessing
         getter key
         property value
 
-        def initialize(@key : GcString, @value : GcString)
+        def initialize(@key : String, @value : String)
         end
       end
 
       # environment variables
       getter environ
 
-      def initialize(@argv : GcArray(GcString),
-                     @cwd : GcString, @cwd_node : VFSNode,
-                     @environ = GcArray(EnvVar).new(0))
-        @fds = GcArray(FileDescriptor?).new 4
+      def initialize(@argv : Array(String),
+                     @cwd : String, @cwd_node : VFSNode,
+                     @environ = Array(EnvVar).new(0))
+        @fds = Array(FileDescriptor?).new 4
         @mmap_list = MemMapList.new
       end
 
@@ -208,7 +208,7 @@ module Multiprocessing
 
     getter name
 
-    def initialize(@name : GcString?, @udata : UserData? = nil, &on_setup_paging : Process -> _)
+    def initialize(@name : String?, @udata : UserData? = nil, &on_setup_paging : Process -> _)
       Multiprocessing.n_process += 1
       @pid = Multiprocessing.pids
       Multiprocessing.pids += 1
@@ -428,7 +428,7 @@ module Multiprocessing
     end
 
     # spawn kernel process with optional argument
-    def self.spawn_kernel(name : GcString, function, arg : Void*? = nil, stack_pages = 1, &block)
+    def self.spawn_kernel(name : String, function, arg : Void*? = nil, stack_pages = 1, &block)
       Multiprocessing::Process.new(name) do |process|
         stack_start = Paging.t_addr(process.initial_sp) - (stack_pages - 1) * 0x1000
         stack = Paging.alloc_page_pg(stack_start, true, false, npages: stack_pages.to_u64)

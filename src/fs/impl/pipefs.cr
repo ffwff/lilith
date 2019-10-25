@@ -14,7 +14,7 @@ private class PipeFSRoot < VFSNode
     each_child do |node|
       return if node.name == name
     end
-    node = PipeFSNode.new(GcString.new(name), process.not_nil!.pid, self, fs)
+    node = PipeFSNode.new(String.new(name), process.not_nil!.pid, self, fs)
     node.next_node = @first_child
     unless @first_child.nil?
       @first_child.not_nil!.prev_node = node
@@ -48,7 +48,7 @@ private class PipeFSRoot < VFSNode
 end
 
 private class PipeFSNode < VFSNode
-  getter! name : GcString
+  getter! name : String
   getter fs : VFS
 
   @next_node : PipeFSNode? = nil
@@ -57,7 +57,7 @@ private class PipeFSNode < VFSNode
   @prev_node : PipeFSNode? = nil
   property prev_node
 
-  def initialize(@name : GcString, @m_pid, @parent : PipeFSRoot, @fs : PipeFS)
+  def initialize(@name : String, @m_pid, @parent : PipeFSRoot, @fs : PipeFS)
     # Serial.puts "mk ", @name, '\n'
   end
 
@@ -183,10 +183,10 @@ private class PipeFSNode < VFSNode
 end
 
 class PipeFS < VFS
-  getter! name : GcString, root : VFSNode
+  getter! name : String, root : VFSNode
 
   def initialize
-    @name = GcString.new "pipes"
+    @name = "pipes"
     @root = PipeFSRoot.new self
   end
 end

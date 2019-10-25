@@ -1,7 +1,7 @@
 GC_ARRAY_HEADER_TYPE = 0xFFFF_FFFF.to_usize
 GC_ARRAY_HEADER_SIZE = sizeof(USize) * 2
 
-class GcArray(T)
+class Array(T)
   @capacity : Int32
   getter capacity
 
@@ -61,7 +61,7 @@ class GcArray(T)
   end
 
   def clone
-    GcArray(T).build(size) do |buffer|
+    Array(T).build(size) do |buffer|
       size.times do |i|
         buffer[i] = to_unsafe[i]
       end
@@ -70,13 +70,13 @@ class GcArray(T)
   end
 
   def self.build(capacity : Int) : self
-    ary = GcArray(T).new(capacity)
+    ary = Array(T).new(capacity)
     ary.size = (yield ary.to_unsafe).to_i
     ary
   end
 
   def self.new(size : Int, &block : Int32 -> T)
-    GcArray(T).build(size) do |buffer|
+    Array(T).build(size) do |buffer|
       size.to_i.times do |i|
         buffer[i] = yield i
       end
