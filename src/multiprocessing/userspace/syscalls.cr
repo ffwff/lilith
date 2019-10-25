@@ -77,7 +77,7 @@ module Syscall
   end
 
   # parses a path and returns the corresponding vfs node
-  private def parse_path_into_vfs(path, cw_node = nil, create = false,
+  private def parse_path_into_vfs(path : Slice(UInt8), cw_node = nil, create = false,
                                   process : Multiprocessing::Process? = nil)
     vfs_node : VFSNode? = nil
     return nil if path.size < 1
@@ -112,15 +112,19 @@ module Syscall
   end
 
   # append two path slices together
-  private def append_paths(path, src_path, cw_node)
+  private def append_paths(path, srac_path, cw_node)
+    panic "TODO"
+  {% if false %}
     return nil if path.size < 1
+    builder = String::Builder.new
+
     if path[0] == '/'.ord
       vfs_node = nil
-      cpath = GcString.new "/"
+      builder << "/"
       idx = 0
     else
       vfs_node = cw_node
-      cpath = GcString.new src_path
+      builder << src_path
       idx = cpath.size
     end
 
@@ -166,7 +170,8 @@ module Syscall
       end
     end
 
-    {cpath, idx, vfs_node}
+    {builder.to_s, idx, vfs_node}
+  {% end %}
   end
 
   # quick way to dereference a frame
@@ -366,7 +371,7 @@ module Syscall
         Multiprocessing::Scheduler.switch_process(frame)
       end
 
-      waitfds = GcArray(FileDescriptor).build(fds.size) do |buffer|
+      waitfds = Array(FileDescriptor).build(fds.size) do |buffer|
         idx = 0
         fds.each do |fdi|
           fd = try(pudata.get_fd(fdi))
@@ -408,8 +413,8 @@ module Syscall
       else
         name = name.not_nil!
         i = 0
-        while i < Math.min(name.size, dirent.d_name.size - 1)
-          dirent.d_name[i] = name[i]
+        while i < Math.min(name.bytesize, dirent.d_name.size - 1)
+          dirent.d_name[i] = name.to_unsafe[i]
           i += 1
         end
         dirent.d_name[i] = 0
@@ -433,7 +438,7 @@ module Syscall
       # search in path env
       vfs_node = unless (path_env = pudata.getenv("PATH")).nil?
         # TODO: parse multiple paths
-        unless (dir = parse_path_into_vfs(path_env)).nil?
+        unless (dir = parse_path_into_vfs(path_env.byte_slice)).nil?
           parse_path_into_vfs path, dir
         end
       end
@@ -446,14 +451,14 @@ module Syscall
         sysret(SYSCALL_ERR)
       else
         # argv
-        pargv = GcArray(GcString).new 0
+        pargv = Array(String).new 0
         i = 0
         while i < SC_SPAWN_MAX_ARGS
           if argv[i] == 0
             break
           end
           arg = NullTerminatedSlice.new(try(checked_pointer(UInt8, argv[i])))
-          pargv.push GcString.new(arg, arg.size)
+          pargv.push String.new(arg)
           i += 1
         end
 
@@ -555,7 +560,7 @@ module Syscall
         sysret(SYSCALL_ERR)
       end
       idx = 0
-      pudata.cwd.each do |ch|
+      pudata.cwd.each_byte do |ch|
         break if idx == str.size - 1
         str[idx] = ch
         idx += 1
@@ -569,7 +574,7 @@ module Syscall
       else
         cpath, idx, vfs_node = t.not_nil!
         if !vfs_node.nil?
-          pudata.cwd = GcString.new(cpath, idx)
+          pudata.cwd = String.new(cpath, idx)
           pudata.cwd_node = vfs_node.not_nil!
           sysret(SYSCALL_SUCCESS)
         else

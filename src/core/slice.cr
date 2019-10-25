@@ -56,14 +56,8 @@ struct Slice(T)
     end
   end
 
-  def ==(other)
-    return false if other.size != self.size
-    i = 0
-    other.each do |ch|
-      return false if ch != self[i]
-      i += 1
-    end
-    true
+  def ==(other : String)
+    other == self
   end
 
   def to_s(io)

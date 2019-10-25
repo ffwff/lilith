@@ -75,33 +75,31 @@ private def name_from_entry(entry)
 
   # filename
   if ext_len > 0
-    fname = GcString.new(name_len + 2 + ext_len + 1)
+    builder = String::Builder.new(name_len + 2 + ext_len + 1)
   else
-    fname = GcString.new(name_len + 1)
+    builder = String::Builder.new(name_len + 1)
   end
   (name_len + 1).times do |i|
     if entry.name[i] >= 'A'.ord && entry.name[i] <= 'Z'.ord
       # to lower case
-      fname[i] = entry.name[i] - 'A'.ord + 'a'.ord
+      builder.write_byte(entry.name[i] - 'A'.ord + 'a'.ord)
     else
-      fname[i] = entry.name[i]
+      builder.write_byte(entry.name[i])
     end
   end
   if ext_len > 0
-    name_len += 1
-    fname[name_len] = '.'.ord.to_u8
-    name_len += 1
+    builder << "."
     (ext_len + 1).times do |i|
       if entry.ext[i] >= 'A'.ord && entry.ext[i] <= 'Z'.ord
         # to lower case
-        fname[name_len + i] = entry.ext[i] - 'A'.ord + 'a'.ord
+        builder.write_byte(entry.ext[i] - 'A'.ord + 'a'.ord)
       else
-        fname[name_len + i] = entry.ext[i]
+        builder.write_byte(entry.ext[i])
       end
     end
   end
 
-  fname
+  builder.to_s
 end
 
 private class Fat16Node < VFSNode
@@ -111,7 +109,7 @@ private class Fat16Node < VFSNode
   @next_node : Fat16Node? = nil
   property next_node
 
-  @name : GcString? = nil
+  @name : String? = nil
   property name
 
   @first_child : Fat16Node? = nil
@@ -385,8 +383,8 @@ class Fat16FS < VFS
   getter! root : VFSNode
   getter device
 
-  def name : GcString
-    device.not_nil!.name.not_nil!
+  def name : String
+    device.not_nil!.name
   end
 
   def initialize(@device : AtaDevice, partition)
@@ -399,7 +397,7 @@ class Fat16FS < VFS
     device.read_sector(bs.as(UInt16*), partition.first_sector.to_u64)
     idx = 0
     bs.value.fs_type.each do |ch|
-      panic "only FAT16 is accepted" if ch != FS_TYPE[idx]
+      panic "only FAT16 is accepted" if ch != FS_TYPE.to_unsafe[idx]
       idx += 1
     end
 
@@ -435,7 +433,7 @@ class Fat16FS < VFS
     @process_allocator =
       StackAllocator.new(Pointer(Void).new(Multiprocessing::KERNEL_HEAP_INITIAL))
     @process = Multiprocessing::Process
-      .spawn_kernel(GcString.new("[fat16fs]"),
+      .spawn_kernel("[fat16fs]",
         ->(ptr : Void*) { ptr.as(Fat16FS).process },
         self.as(Void*),
         stack_pages: 4) do |process|

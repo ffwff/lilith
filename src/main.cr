@@ -23,6 +23,8 @@ lib Kernel
   $stack_start : Void*; $stack_end : Void*
 end
 
+MAIN_PROGRAM = "/main"
+
 fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   if mboot_magic != MULTIBOOT_BOOTLOADER_MAGIC
     panic "Kernel should be booted from a multiboot bootloader!"
@@ -120,19 +122,23 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     end
   else
     Console.puts "executing MAIN.BIN...\n"
-    main_path = GcString.new("/")
-    main_path << fs.not_nil!.name
 
-    argv = GcArray(GcString).new 0
-    argv_0 = main_path.clone
-    argv_0 << "/main"
-    argv.push argv_0
+    builder = String::Builder.new(1 + fs.not_nil!.name.bytesize)
+    builder << "/"
+    builder << fs.not_nil!.name
+    main_path = builder.to_s
+
+    argv = Array(String).new 0
+    builder.reset(main_path.bytesize + MAIN_PROGRAM.bytesize)
+    builder << main_path
+    builder << MAIN_PROGRAM
+    argv.push builder.to_s
 
     udata = Multiprocessing::Process::UserData
       .new(argv,
         main_path,
         fs.not_nil!.root)
-    udata.setenv(GcString.new("PATH"), GcString.new("/hd0/bin"))
+    udata.setenv("PATH", "/hd0/bin")
 
     case main_bin.not_nil!.spawn(udata)
     when VFS_ERR

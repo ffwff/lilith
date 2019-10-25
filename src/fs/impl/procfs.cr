@@ -1,28 +1,3 @@
-private module ProcFSStrings
-  extend self
-
-  private macro string(name, value)
-    {{ name.name.upcase }} = {{ value }}
-    def {{ name }}
-      @@{{ name }}.not_nil!
-    end
-  end
-
-  string(status, "status")
-  string(mmap, "mmap")
-  string(meminfo, "meminfo")
-
-  @@initialized = false
-
-  def lazy_init
-    return if @@initialized
-    @@status = GcString.new(STATUS)
-    @@mmap = GcString.new(MMAP)
-    @@meminfo = GcString.new(MEMINFO)
-    @@initialized = true
-  end
-end
-
 class ProcFSNode < VFSNode
   @first_child : ProcFSProcessNode? = nil
   getter fs : VFS, raw_node, first_child
@@ -84,8 +59,8 @@ end
 
 # /proc/[pid]
 class ProcFSProcessNode < VFSNode
-  @name : GcString? = nil
-  getter! name : GcString
+  @name : String? = nil
+  getter! name : String
   getter fs : VFS
   property prev_node, next_node
 
@@ -99,7 +74,7 @@ class ProcFSProcessNode < VFSNode
   def initialize(@process : Multiprocessing::Process?, @parent : ProcFSNode, @fs : ProcFS,
                  @prev_node : ProcFSProcessNode? = nil,
                  @next_node : ProcFSProcessNode? = nil)
-    @name = process.pid.to_gcstr
+    @name = process.pid.to_s
     add_child(ProcFSProcessStatusNode.new(self, @fs))
     unless process.kernel_process?
       add_child(ProcFSProcessMmapNode.new(self, @fs))
@@ -109,7 +84,7 @@ class ProcFSProcessNode < VFSNode
   def initialize(@parent : ProcFSNode, @fs : ProcFS,
                  @prev_node : ProcFSProcessNode? = nil,
                  @next_node : ProcFSProcessNode? = nil)
-    @name = GcString.new "kernel"
+    @name = "kernel"
     add_child(ProcFSMemInfoNode.new(self, @fs))
   end
 
@@ -149,7 +124,7 @@ private class ProcFSProcessStatusNode < VFSNode
   getter fs : VFS
 
   def name
-    ProcFSStrings.status
+    "status"
   end
 
   @next_node : VFSNode? = nil
@@ -179,7 +154,7 @@ private class ProcFSProcessMmapNode < VFSNode
   getter fs : VFS
 
   def name
-    ProcFSStrings.mmap
+    "mmap"
   end
 
   @next_node : VFSNode? = nil
@@ -209,7 +184,7 @@ private class ProcFSMemInfoNode < VFSNode
   getter fs : VFS
 
   def name
-    ProcFSStrings.meminfo
+    "meminfo"
   end
 
   @next_node : VFSNode? = nil
@@ -235,11 +210,10 @@ private class ProcFSMemInfoNode < VFSNode
 end
 
 class ProcFS < VFS
-  getter! name : GcString, root : VFSNode
+  getter! name : String, root : VFSNode
 
   def initialize
-    ProcFSStrings.lazy_init
-    @name = GcString.new "proc"
+    @name = "proc"
     @root = ProcFSNode.new self
   end
 end
