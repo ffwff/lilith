@@ -26,7 +26,10 @@ struct NullTerminatedSlice
     end
   end
 
-  #
+  def to_unsafe
+    @buffer
+  end
+
   def to_s(io)
     each do |ch|
       io.puts ch.unsafe_chr
