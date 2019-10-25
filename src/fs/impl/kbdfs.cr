@@ -64,11 +64,13 @@ class KbdFSNode < VFSNode
 end
 
 class KbdFSRawNode < VFSNode
-  getter! name : String
   getter fs : VFS
 
   def initialize(@fs : KbdFS)
-    @name = "raw"
+  end
+
+  def name
+    "raw"
   end
 
   @ch = 0
@@ -95,14 +97,17 @@ class KbdFSRawNode < VFSNode
 end
 
 class KbdFS < VFS
-  getter! name : String, root : VFSNode
+  getter! root : VFSNode
   getter queue : VFSQueue?
 
   def initialize(@kbd : Keyboard)
-    @name = "kbd"
     @root = KbdFSNode.new self
     @kbd.kbdfs = self
     @queue = VFSQueue.new
+  end
+
+  def name
+    "kbd"
   end
 
   @echo_input = true
