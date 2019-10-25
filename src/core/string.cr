@@ -8,21 +8,51 @@ class String
   class Builder
     @capacity : Int32 = 0
     @bytesize : Int32 = 0
+    getter capacity, bytesize
 
-    def initialize(@capacity : Int32)
-      @capacity += 1 # null terminator
-      @buffer = Pointer(UInt8).malloc_atomic(@capacity.to_u32 + HEADER_SIZE)
+    def initialize(capacity : Int32)
+      @buffer = Pointer(UInt8).malloc_atomic(capacity.to_u32 + 1 + HEADER_SIZE)
+      @capacity = capacity_for_ptr @buffer
       @bytesize = 0
       @finished = false
+    end
+
+    def initialize
+      @capacity = 0
+      @buffer = Pointer(UInt8).null
+      @bytesize = 0
+      @finished = false
+    end
+
+    private def capacity_for_ptr(ptr)
+      (KernelArena.block_size_for_ptr(ptr) - HEADER_SIZE).to_i32
     end
 
     def buffer
       @buffer + String::HEADER_SIZE
     end
 
+    def empty?
+      @bytesize == 0
+    end
+
+    def back(amount : Int)
+      panic "overflow" if amount > @bytesize
+      @bytesize -= amount
+    end
+
     def write_byte(other : UInt8)
       if @bytesize == @capacity
-        panic "resizing string unimplemented!"
+        if @buffer.null?
+          @buffer = Pointer(UInt8).malloc_atomic(5 + HEADER_SIZE)
+          @capacity = capacity_for_ptr @buffer
+        else
+          old_buffer = @buffer
+          old_size = @capacity.to_usize + 1 + HEADER_SIZE
+          @buffer = Pointer(UInt8).malloc_atomic(@bytesize.to_u32 + 1 + HEADER_SIZE)
+          @capacity = capacity_for_ptr @buffer
+          memcpy(@buffer, old_buffer, old_size)
+        end
       end
       buffer[@bytesize] = other
       @bytesize += 1
@@ -30,6 +60,12 @@ class String
 
     def <<(other : String)
       other.each_byte do |byte|
+        write_byte byte
+      end
+    end
+
+    def <<(other : Slice(UInt8))
+      other.each do |byte|
         write_byte byte
       end
     end
@@ -45,9 +81,9 @@ class String
       @buffer.as(String)
     end
 
-    def reset(@capacity : Int32)
-      @capacity += 1 # null terminator
-      @buffer = Pointer(UInt8).malloc_atomic(@capacity.to_u32 + HEADER_SIZE)
+    def reset(capacity : Int32)
+      @buffer = Pointer(UInt8).malloc_atomic(capacity.to_u32 + 1 + HEADER_SIZE)
+      @capacity = capacity_for_ptr @buffer
       @bytesize = 0
       @finished = false
     end
