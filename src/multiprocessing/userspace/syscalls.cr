@@ -112,20 +112,16 @@ module Syscall
   end
 
   # append two path slices together
-  private def append_paths(path, srac_path, cw_node)
-    panic "TODO"
-  {% if false %}
+  private def append_paths(path, src_path, cw_node)
     return nil if path.size < 1
     builder = String::Builder.new
 
     if path[0] == '/'.ord
       vfs_node = nil
       builder << "/"
-      idx = 0
     else
       vfs_node = cw_node
       builder << src_path
-      idx = cpath.size
     end
 
     parse_path_into_segments(path) do |segment|
@@ -137,21 +133,17 @@ module Syscall
           if vfs_node.not_nil!.parent.nil?
             return nil
           end
-          while idx > 1
-            idx -= 1
-            if cpath[idx] == '/'.ord
+          while builder.bytesize > 1
+            builder.back 1
+            if builder.buffer[builder.bytesize] == '/'.ord
               break
             end
           end
           vfs_node = vfs_node.not_nil!.parent
         end
       else
-        cpath.insert(idx, '/'.ord.to_u8)
-        idx += 1
-        segment.each do |ch|
-          cpath.insert(idx, ch)
-          idx += 1
-        end
+        builder << "/"
+        builder << segment
         if vfs_node.nil?
           RootFS.each do |fs|
             if segment == fs.name
@@ -164,14 +156,13 @@ module Syscall
             end
           end
         elsif (vfs_node = vfs_node.not_nil!.open(segment)).nil?
-          # Serial.puts segment, '\n'
+          Serial.puts segment, '\n'
           return nil
         end
       end
     end
 
-    {builder.to_s, idx, vfs_node}
-  {% end %}
+    {builder.to_s, vfs_node}
   end
 
   # quick way to dereference a frame
@@ -572,9 +563,9 @@ module Syscall
       if (t = append_paths path, pudata.cwd, pudata.cwd_node).nil?
         sysret(SYSCALL_ERR)
       else
-        cpath, idx, vfs_node = t.not_nil!
+        cwd, vfs_node = t.not_nil!
         if !vfs_node.nil?
-          pudata.cwd = String.new(cpath, idx)
+          pudata.cwd = cwd
           pudata.cwd_node = vfs_node.not_nil!
           sysret(SYSCALL_SUCCESS)
         else
