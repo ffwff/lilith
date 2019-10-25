@@ -26,9 +26,11 @@ class FileDescriptor
   getter idx, attrs
 
   def initialize(@idx : Int32, @node, @attrs : Attributes)
+    @node.clone
   end
 
   def clone(idx)
+    @node.clone
     fd = FileDescriptor.new(idx, @node, @attrs)
     fd.offset = @offset
     fd.buffering = @buffering
