@@ -145,7 +145,9 @@ module Gc
                 push(@@first_gray_node, node)
               end
               fix_white = true
-            when GC_NODE_MAGIC_BLACK | GC_NODE_MAGIC_BLACK_ATOMIC
+            when GC_NODE_MAGIC_BLACK
+              panic "invariance broken"
+            when GC_NODE_MAGIC_BLACK_ATOMIC
               panic "invariance broken"
             else
               # this node is gray
@@ -268,9 +270,12 @@ module Gc
                 when GC_NODE_MAGIC_ATOMIC
                   header.value.magic = GC_NODE_MAGIC_GRAY_ATOMIC
                   fix_white = true
-                when GC_NODE_MAGIC_GRAY || GC_NODE_MAGIC_GRAY_ATOMIC
+                when GC_NODE_MAGIC_GRAY
+                  # this node is gray
+                when GC_NODE_MAGIC_GRAY_ATOMIC
                   # this node is gray
                 else
+                  Serial.puts header, '\n'
                   panic "node must be either gray or white\n"
                 end
                 break
