@@ -23,10 +23,14 @@ class IO::Pipe < IO::FileDescriptor
                   LibC::O_RDONLY
                 when "w"
                   LibC::O_WRONLY
+                when "rw"
+                  LibC::O_RDONLY | LibC::O_WRONLY
                 when "ra"
                   LibC::O_RDONLY | LibC::C_ANON
                 when "wa"
                   LibC::O_WRONLY | LibC::C_ANON
+                when "rwa"
+                  LibC::O_RDONLY | LibC::O_WRONLY | LibC::C_ANON
                 else
                   return nil
                 end

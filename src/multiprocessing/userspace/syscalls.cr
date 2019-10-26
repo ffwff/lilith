@@ -467,19 +467,25 @@ module Syscall
         # copy file descriptors 0, 1, 2
         if !startup_info.nil?
           startup_info = startup_info.not_nil!
-          if process.udata.fds[startup_info.value.stdin]?
-            udata.fds.push process.udata.fds[startup_info.value.stdin].not_nil!.clone 0
+          if (fd = process.udata.fds[startup_info.value.stdin]?)
+            udata.fds.push fd.clone(0)
+          else
+            udata.fds.push nil
           end
-          if process.udata.fds[startup_info.value.stdin]?
-            udata.fds.push process.udata.fds[startup_info.value.stdout].not_nil!.clone 1
+          if (fd = process.udata.fds[startup_info.value.stdout]?)
+            udata.fds.push fd.clone(1)
+          else
+            udata.fds.push nil
           end
-          if process.udata.fds[startup_info.value.stdin]?
-            udata.fds.push process.udata.fds[startup_info.value.stderr].not_nil!.clone 2
+          if (fd = process.udata.fds[startup_info.value.stderr]?)
+            udata.fds.push fd.clone(2)
+          else
+            udata.fds.push nil
           end
         else
           3.times do |i|
             if (fd = process.udata.fds[i])
-              udata.fds.push fd.clone i
+              udata.fds.push fd.clone(i)
             end
             i += 1
           end
