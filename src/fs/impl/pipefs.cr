@@ -1,3 +1,5 @@
+require "./pipe/circular_buffer.cr"
+
 private class PipeFSRoot < VFSNode
   getter fs : VFS
 
@@ -73,6 +75,7 @@ private class PipeFSNode < VFSNode
       @open_count += 1
       @flags |= Flags::Anonymous
     end
+    @pipe = CircularBuffer.new
     # Serial.puts "mk ", @name, '\n'
   end
 
@@ -86,13 +89,6 @@ private class PipeFSNode < VFSNode
   def clone
     @open_count += 1
   end
-
-  @buffer = Pointer(UInt8).null
-  @read_pos = 0
-  @write_pos = 0
-  BUFFER_CAPACITY = 0x1000
-
-  @open_count = 0
 
   @[Flags]
   enum Flags : UInt32
@@ -110,24 +106,18 @@ private class PipeFSNode < VFSNode
   @flags = Flags::None
   @m_pid = 0
   @s_pid = 0
+  @open_count = 0
 
   def size : Int
-    @write_pos - @read_pos
+    @pipe.size
   end
 
   def remove : Int32
     return VFS_ERR if @flags.includes?(Flags::Removed)
     @parent.remove self unless @flags.includes?(Flags::Anonymous)
-    FrameAllocator.declaim_addr(@buffer.address & ~PTR_IDENTITY_MASK)
-    @buffer = Pointer(UInt8).null
+    @pipe.deinit_buffer
     @flags |= Flags::Removed
     VFS_OK
-  end
-
-  private def init_buffer
-    if @buffer.null?
-      @buffer = Pointer(UInt8).new(FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK)
-    end
   end
 
   def read(slice : Slice, offset : UInt32,
@@ -146,18 +136,7 @@ private class PipeFSNode < VFSNode
       end
     end
 
-    init_buffer
-
-    slice.size.times do |i|
-      slice.to_unsafe[i] = @buffer[@read_pos]
-      @read_pos += 1
-      if @read_pos == BUFFER_CAPACITY - 1
-        @read_pos = 0
-      end
-      return i if @read_pos == @write_pos
-    end
-
-    slice.size
+    @pipe.read slice
   end
 
   def write(slice : Slice, offset : UInt32,
@@ -176,18 +155,7 @@ private class PipeFSNode < VFSNode
       end
     end
 
-    init_buffer
-
-    slice.size.times do |i|
-      @buffer[@write_pos] = slice.to_unsafe[i]
-      @write_pos += 1
-      if @write_pos == BUFFER_CAPACITY - 1
-        @write_pos = 0
-      end
-      return i if @read_pos == @write_pos
-    end
-
-    slice.size
+    @pipe.write slice
   end
 
   def available?

@@ -159,7 +159,6 @@ module Syscall
             end
           end
         elsif (vfs_node = vfs_node.not_nil!.open(segment)).nil?
-          Serial.puts segment, '\n'
           return nil
         end
       end
