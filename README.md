@@ -61,13 +61,5 @@ make run_img
 
 ## License
 
-Lilith is licensed under GPLv3.
+Lilith is licensed under MIT. See LICENSE for more details.
 
-Unless stated otherwise, all code in the project are licensed
-under GPLv3.
-
-*Assembly code under userspace/libc/src/functions/math are
-taken from musl-libc and are licensed under MIT.*
-
-*Patches in toolchain/\* are licensed under MIT.
-Feel free to upstream them!*
