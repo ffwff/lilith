@@ -23,7 +23,7 @@ private class TmpFSRoot < VFSNode
     end
   end
 
-  def create(name : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
+  def create(name : Slice, process : Multiprocessing::Process? = nil, options : Int32 = 0) : VFSNode?
     each_child do |node|
       return if node.name == name
     end

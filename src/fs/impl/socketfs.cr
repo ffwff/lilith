@@ -10,7 +10,7 @@ private class SocketFSRoot < VFSNode
     end
   end
 
-  def create(name : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
+  def create(name : Slice, process : Multiprocessing::Process? = nil, options : Int32 = 0) : VFSNode?
     node = SocketFSNode.new(String.new(name), self, fs)
     node.next_node = @first_child
     unless @first_child.nil?
@@ -46,7 +46,7 @@ end
 
 private class SocketFSNode < VFSNode
   getter! name : String
-  getter fs : VFS
+  getter fs : VFS, first_child
 
   @next_node : SocketFSNode? = nil
   property next_node
@@ -55,6 +55,23 @@ private class SocketFSNode < VFSNode
   property prev_node
 
   def initialize(@name : String, @parent : SocketFSRoot, @fs : SocketFS)
+    @first_child = SocketFSListenNode.new self, @fs
+  end
+
+  def each_child(&block)
+    node = first_child
+    while !node.nil?
+      yield node.not_nil!
+      node = node.next_node
+    end
+  end
+
+  def open(path)
+    each_child do |node|
+      if node.name == path
+        return node
+      end
+    end
   end
 
   def remove : Int32
@@ -77,16 +94,13 @@ private class SocketFSNode < VFSNode
 end
 
 private class SocketFSListenNode < VFSNode
-  getter! name : String
   getter fs : VFS
 
-  @next_node : SocketFSNode? = nil
-  property next_node
+  def initialize(@parent : SocketFSNode, @fs : SocketFS)
+  end
 
-  @prev_node : SocketFSNode? = nil
-  property prev_node
-
-  def initialize(@name : String, @parent : SocketFSRoot, @fs : SocketFS)
+  def name
+    "listen"
   end
 
   def remove : Int32
@@ -137,7 +151,7 @@ class SocketFS < VFS
   getter! root : VFSNode
 
   def name
-    "socket"
+    "sockets"
   end
 
   def initialize
