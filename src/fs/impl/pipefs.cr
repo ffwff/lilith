@@ -79,6 +79,13 @@ private class PipeFSNode < VFSNode
     # Serial.puts "mk ", @name, '\n'
   end
 
+  def close
+    if @flags.includes?(Flags::Anonymous)
+      @open_count -= 1
+      remove if @open_count == 0
+    end
+  end
+
   def clone
     @open_count += 1
   end
@@ -109,14 +116,6 @@ private class PipeFSNode < VFSNode
 
   def size : Int
     @write_pos - @read_pos
-  end
-
-  def close
-    Serial.puts "close!"
-    if @flags.includes?(Flags::Anonymous)
-      @open_count -= 1
-      remove if @open_count == 0
-    end
   end
 
   def remove : Int32

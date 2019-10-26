@@ -1,8 +1,9 @@
 lib LibC
+  @[Packed]
   struct StartupInfo
-    stdin : Int
-    stdout : Int
-    stderr : Int
+    stdin : Int32
+    stdout : Int32
+    stderr : Int32
   end
   fun spawnxv(startup_info : StartupInfo*, file : LibC::UString, argv : UInt8**) : LibC::Pid
   fun waitpid(pid : LibC::Pid, status : LibC::Int*, options : LibC::Int) : LibC::Pid
