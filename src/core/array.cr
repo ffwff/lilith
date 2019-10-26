@@ -94,7 +94,7 @@ class Array(T)
   end
 
   def []?(idx : Int) : T?
-    return nil unless 0 <= idx && idx <= size
+    return nil unless 0 <= idx && idx < size
     to_unsafe[idx]
   end
 
