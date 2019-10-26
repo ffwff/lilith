@@ -19,9 +19,6 @@ private class PipeFSRoot < VFSNode
                             self, fs,
                             anonymous: true)
     end
-    each_child do |node|
-      return if node.name == name
-    end
     node = PipeFSNode.new(String.new(name),
                           process.not_nil!.pid,
                           self, fs)

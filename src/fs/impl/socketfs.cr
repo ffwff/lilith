@@ -11,9 +11,6 @@ private class SocketFSRoot < VFSNode
   end
 
   def create(name : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
-    each_child do |node|
-      return if node.name == name
-    end
     node = SocketFSNode.new(String.new(name), self, fs)
     node.next_node = @first_child
     unless @first_child.nil?
@@ -48,6 +45,38 @@ private class SocketFSRoot < VFSNode
 end
 
 private class SocketFSNode < VFSNode
+  getter! name : String
+  getter fs : VFS
+
+  @next_node : SocketFSNode? = nil
+  property next_node
+
+  @prev_node : SocketFSNode? = nil
+  property prev_node
+
+  def initialize(@name : String, @parent : SocketFSRoot, @fs : SocketFS)
+  end
+
+  def remove : Int32
+    0
+  end
+
+  def read(slice : Slice, offset : UInt32,
+           process : Multiprocessing::Process? = nil) : Int32
+    0
+  end
+
+  def write(slice : Slice, offset : UInt32,
+            process : Multiprocessing::Process? = nil) : Int32
+    0
+  end
+
+  def available?
+    false
+  end
+end
+
+private class SocketFSListenNode < VFSNode
   getter! name : String
   getter fs : VFS
 
