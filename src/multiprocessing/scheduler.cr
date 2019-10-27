@@ -21,8 +21,6 @@ module Multiprocessing::Scheduler
       WaitIo
       WaitProcess
       WaitFd
-      WaitFdRead
-      WaitFdWrite
       Sleep
       Removed
     end
@@ -34,10 +32,6 @@ module Multiprocessing::Scheduler
       when Status::WaitProcess
         true
       when Status::WaitFd
-        true
-      when Status::WaitFdRead
-        true
-      when Status::WaitFdWrite
         true
       when Status::Sleep
         true
@@ -138,38 +132,6 @@ module Multiprocessing::Scheduler
           else
             false
           end
-        else
-          process.unawait
-          true
-        end
-      when ProcessData::Status::WaitFdRead
-        wait_object = process.udata.wait_object
-        case wait_object
-        when FileDescriptor
-          fd = wait_object.as(FileDescriptor)
-          if fd.node.not_nil!.available? process
-            process.unawait
-            true
-          else
-            false
-          end
-
-        else
-          process.unawait
-          true
-        end
-      when ProcessData::Status::WaitFdWrite
-        wait_object = process.udata.wait_object
-        case wait_object
-        when FileDescriptor
-          fd = wait_object.as(FileDescriptor)
-          if fd.node.not_nil!.write_available? process
-            process.unawait
-            true
-          else
-            false
-          end
-
         else
           process.unawait
           true
@@ -418,9 +380,9 @@ module Multiprocessing::Scheduler
     frame.value = current_process.frame.not_nil!.to_unsafe.value
   end
 
-  def switch_process(frame : SyscallData::Registers*, rewind_syscall=false)
+  def switch_process(frame : SyscallData::Registers*)
     current_process = switch_process_save_and_load do |process|
-      process.new_frame_from_syscall frame, rewind_syscall
+      process.new_frame_from_syscall frame
     end
     Syscall.unlock
     Kernel.ksyscall_switch(current_process.frame.not_nil!.to_unsafe)

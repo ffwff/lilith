@@ -34,8 +34,8 @@ class VFSMessage
 
   def initialize(@udata : Multiprocessing::Process::UserData?,
                  @vfs_node : VFSNode,
-                 @process : Multiprocessing::Process? = nil)
-    @type = VFSMessage::Type::Spawn
+                 @process : Multiprocessing::Process? = nil,
+                 @type = VFSMessage::Type::Spawn)
   end
 
   def buffering
