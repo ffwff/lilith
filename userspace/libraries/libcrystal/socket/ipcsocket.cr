@@ -1,12 +1,15 @@
 class IPCSocket < IO::FileDescriptor
   
+  def initialize(@fd)
+    self.buffer_size = 0
+  end
+
   def self.new(name : String)
-    filename = "/sockets/" + name
+    filename = "/sockets/" + name + "/-"
     fd = LibC.create(filename.to_unsafe, LibC::O_RDWR)
     if fd >= 0
       new fd
     end
-
   end
 
 end
@@ -18,7 +21,7 @@ class IPCServer < IPCSocket
       return nil if char == '/'
     end
     filename = "/sockets/" + name + "/listen"
-    fd = LibC.create(filename.to_unsafe, LibC::O_RDWR)
+    fd = LibC.create(filename.to_unsafe, LibC::O_RDONLY)
     if fd >= 0
       new fd
     end
