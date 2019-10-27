@@ -16,6 +16,7 @@ lib LibC
   fun mmap(fd : LibC::Int, size : LibC::SizeT) : Void*
   fun lseek(fd : LibC::Int, offset : Int32, whence : LibC::Int) : Int32
   fun _ioctl(fd : LibC::Int, request : LibC::Int, data : UInt32) : LibC::Int
+  fun ftruncate(fd : LibC::Int, size : LibC::Int) : LibC::Int
 end
 
 
@@ -26,6 +27,8 @@ class File < IO::FileDescriptor
                   LibC::O_RDONLY
                 when "w"
                   LibC::O_WRONLY | LibC::O_CREAT
+                when "rw"
+                  LibC::O_RDWR | LibC::O_CREAT
                 else
                   return nil
                 end
@@ -33,5 +36,9 @@ class File < IO::FileDescriptor
     if fd >= 0
       File.new fd
     end
+  end
+
+  def truncate(length : LibC::Int)
+    LibC.ftruncate @fd, length
   end
 end

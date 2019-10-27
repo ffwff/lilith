@@ -100,7 +100,34 @@ struct Int
     end
   end
 
-  def to_s(io, base = 10)
+  def to_s(base : Int = 10)
+    s = uninitialized UInt8[128]
+    sign = self < 0
+    n = self.abs
+    i = 0
+    while i < 128
+      s[i] = BASE.to_unsafe[n % base]
+      i += 1
+      break if (n //= base) == 0
+    end
+    if sign
+      s[i] = '-'.ord.to_u8
+      i += 1
+    end
+    i -= 1
+    (String.new(i + 1) { |buffer|
+      j = 0
+      while true
+        buffer[j] = s[i]
+        j += 1
+        break if i == 0
+        i -= 1
+      end
+      {j, j}
+    }).not_nil!
+  end
+
+  def to_s(io, base : Int = 10)
     each_digit(base) do |ch|
       io << ch
     end
