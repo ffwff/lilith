@@ -364,7 +364,6 @@ module Syscall
           sysret(fds[0])
         end
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
-        Serial.puts "wait!\n"
         pudata.wait_object = fd
         pudata.wait_usecs = timeout
         Multiprocessing::Scheduler.switch_process(frame)
