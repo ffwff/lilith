@@ -156,6 +156,10 @@ class VFSQueue
   def initialize(@wake_process : Multiprocessing::Process? = nil)
   end
 
+  def empty?
+    @first_msg.get.nil?
+  end
+
   def enqueue(msg : VFSMessage)
     if @first_msg.get.nil?
       @first_msg.set(msg)

@@ -111,8 +111,7 @@ private class SocketFSListenNode < VFSNode
   end
 
   def available?(process : Multiprocessing::Process) : Bool
-    # TODO
-    true
+    !@queue.empty?
   end
 end
 
