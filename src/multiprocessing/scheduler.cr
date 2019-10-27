@@ -21,17 +21,25 @@ module Multiprocessing::Scheduler
       WaitIo
       WaitProcess
       WaitFd
-      WaitFdPollSyscall
+      WaitFdRead
+      WaitFdWrite
       Sleep
       Removed
     end
 
     private def wait_status?(status)
       case status
-      when Status::WaitIo ||
-        Status::WaitProcess ||
-        Status::WaitFd ||
-        Status::Sleep
+      when Status::WaitIo
+        true
+      when Status::WaitProcess
+        true
+      when Status::WaitFd
+        true
+      when Status::WaitFdRead
+        true
+      when Status::WaitFdWrite
+        true
+      when Status::Sleep
         true
       else
         false
@@ -134,12 +142,28 @@ module Multiprocessing::Scheduler
           process.unawait
           true
         end
-      when ProcessData::Status::WaitFdPollSyscall
+      when ProcessData::Status::WaitFdRead
         wait_object = process.udata.wait_object
         case wait_object
         when FileDescriptor
           fd = wait_object.as(FileDescriptor)
           if fd.node.not_nil!.available? process
+            process.unawait
+            true
+          else
+            false
+          end
+
+        else
+          process.unawait
+          true
+        end
+      when ProcessData::Status::WaitFdWrite
+        wait_object = process.udata.wait_object
+        case wait_object
+        when FileDescriptor
+          fd = wait_object.as(FileDescriptor)
+          if fd.node.not_nil!.write_available? process
             process.unawait
             true
           else
@@ -336,7 +360,7 @@ module Multiprocessing::Scheduler
   private def switch_process_save_and_load(remove = false, &block)
     # switching from idle process
     if @@current_process.nil?
-      @@current_process = @@cpu_queue.next_process
+      @@current_process = get_next_process
       if @@current_process.nil?
         halt_processor
       end
