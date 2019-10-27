@@ -150,6 +150,7 @@ class SocketFSConnectionNode < VFSNode
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
+    Serial.puts "read: ", @state, "!\n"
     case @state
     when State::Disconnected
       @parent.listen_node.try_connect(self)
@@ -161,6 +162,7 @@ class SocketFSConnectionNode < VFSNode
     if process.not_nil!.pid == @parent.listen_node.listener_pid
       @s_buffer.read slice
     else
+      Serial.puts "client read\n"
       @m_buffer.read slice
     end
   end
@@ -175,6 +177,7 @@ class SocketFSConnectionNode < VFSNode
       return VFS_WAIT_QUEUE
     end
     if process.not_nil!.pid == @parent.listen_node.listener_pid
+      Serial.puts "listener write\n"
       @m_buffer.write slice
     else
       @s_buffer.write slice
@@ -190,17 +193,20 @@ class SocketFSConnectionNode < VFSNode
         msg.read do |ch|
           @s_buffer.write ch
         end
+        msg.unawait msg.slice_size
       end
       false
     end
   end
 
   def available?(process : Multiprocessing::Process) : Bool
-    if !@connected
-      if @state == State::Disconnected
-        @parent.listen_node.try_connect(self)
-        @state = State::TryConnect
-      end
+    Serial.puts "wait...\n"
+    case @state
+    when State::Disconnected
+      @parent.listen_node.try_connect(self)
+      @state = State::TryConnect
+      return false
+    when State::TryConnect
       return false
     end
     if process.pid == @parent.listen_node.listener_pid

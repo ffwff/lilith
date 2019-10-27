@@ -22,4 +22,9 @@ class IO::Select
     end
   end
 
+  def self.wait(io : IO::FileDescriptor, timeout = 0u32)
+    fd : LibC::Int = io.fd
+    LibC.waitfd(pointerof(fd), 1, timeout)
+  end
+
 end
