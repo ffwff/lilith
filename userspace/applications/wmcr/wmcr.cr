@@ -56,16 +56,16 @@ module Wm
     @bytes : Bytes? = nil
     def initialize
       image = Painter.load_png(CURSOR_FILE).not_nil!
-      self.width = image.width
-      self.height = image.height
-      self.z_index = Int32::MAX
+      @width = image.width
+      @height = image.height
+      @z_index = Int32::MAX
       @bytes = image.bytes
     end
 
     def render(buffer, bwidth, bheight)
       Wm::Painter.blit_img(buffer, bwidth, bheight,
                            @bytes.not_nil!.to_unsafe,
-                           width, height, x, y)
+                           @width, @height, @x, @y)
     end
 
     def respond(file)
@@ -74,15 +74,15 @@ module Wm
       speed = Math.log2(packet.x + packet.y)
       if packet.x != 0
         delta_x = packet.x * speed
-        self.x = self.x + delta_x
-        self.x = self.x.clamp(0, Wm.screen_width)
+        @x = @x + delta_x
+        @x = @x.clamp(0, Wm.screen_width)
       else
         delta_x = 0
       end
       if packet.y != 0
         delta_y = -packet.y * speed
-        self.y = self.y + delta_y
-        self.y = self.y.clamp(0, Wm.screen_height)
+        @y = @y + delta_y
+        @y = @y.clamp(0, Wm.screen_height)
       else
         delta_y = 0
       end
@@ -90,18 +90,29 @@ module Wm
   end
 
   class Program < Window
-    def initialize(x, y, width, height)
-      self.x = x
-      self.y = y
-      self.width = width
-      self.height = height
+    class Socket < IO::FileDescriptor
+      @program : Program? = nil
+      property program
+
+      def initialize(@fd)
+        self.buffer_size = 0
+      end
     end
 
-    def render(buffer, dw, dh)
-      Wm::Painter.blit_rect buffer,
-        dw, dh,
-        self.width, self.height,
-        self.x, self.y, 0x00ff0000u32
+    @wid : Int32
+    @bitmap_file : File
+
+    def initialize(@x, @y, @width, @height)
+      @wid = Wm.next_wid
+      @bitmap_file = File.new("/tmp/wm-bm:" + @wid.to_s, "rw").not_nil!
+      @bitmap_file.truncate @width * @height * 4
+      @bitmap = @bitmap_file.map_to_memory.as(UInt8*)
+    end
+
+    def render(buffer, bwidth, bheight)
+      Wm::Painter.blit_img(buffer, bwidth, bheight,
+                           @bitmap,
+                           @width, @height, @x, @y)
     end
   end
 
@@ -114,6 +125,14 @@ module Wm
   @@windows = Array(Window).new 4
   @@focused : Window?
 
+  # window id
+  @@wid = 0
+  def next_wid
+    i = @@wid
+    @@wid += 1
+    i
+  end
+
   # display size information
   @@ws = uninitialized LibC::Winsize
   def screen_width
@@ -123,7 +142,7 @@ module Wm
     @@ws.ws_row.to_i32
   end
 
-  # io selection
+  # io selector
   @@selector : IO::Select? = nil
   private def selector
     @@selector.not_nil!
@@ -192,8 +211,8 @@ module Wm
         cursor.respond mouse
       when ipc
         respond_ipc
-      when IPCSocket
-        respond_ipc_socket selected.as(IPCSocket)
+      when Program::Socket
+        respond_ipc_socket selected.as(Program::Socket)
       end
       @@windows.each do |window|
         window.render @@backbuffer,
@@ -209,8 +228,8 @@ module Wm
 
   def respond_ipc
     if socket = ipc.accept?
-      STDERR.puts "ipc connection!"
-      selector << socket
+      psocket = Program::Socket.new(socket.fd)
+      selector << psocket
     end
   end
 
@@ -227,11 +246,12 @@ module Wm
       when IPC::Data::WINDOW_CREATE_ID
         wc = uninitialized IPC::Data::WindowCreate
         payload = IPC.payload_bytes(wc)
-        if socket.unbuffered_read(payload) != payload.size
-          return
-        end
-        @@windows.push Program
-          .new(wc.x, wc.y, wc.width, wc.height)
+        next if payload.size != header.length
+        return if socket.unbuffered_read(payload) != payload.size
+
+        next unless socket.program.nil?
+        socket.program = Program.new(wc.x, wc.y, wc.width, wc.height)
+        @@windows.push socket.program.not_nil!
         @@windows.sort!
       end
     end
