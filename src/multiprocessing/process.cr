@@ -323,7 +323,7 @@ module Multiprocessing
       end
     end
 
-    def new_frame_from_syscall(syscall_frame : SyscallData::Registers*)
+    def new_frame_from_syscall(syscall_frame : SyscallData::Registers*, rewind_syscall)
       frame = IdtData::Registers.new
 
       {% for id in [
@@ -336,6 +336,7 @@ module Multiprocessing
 
       # setup frame for waking up
       if kernel_process?
+        panic "rewind syscall isn't supported for kernel processes" if rewind_syscall
         frame.rip = syscall_frame.value.rcx
         frame.userrsp = syscall_frame.value.rsp
 
@@ -345,6 +346,12 @@ module Multiprocessing
         frame.ds = KERNEL_SS_SEGMENT
       else
         frame.rip = Pointer(UInt32).new(syscall_frame.value.rcx).value
+        if rewind_syscall
+          # NOTE: syscall instructions are 2 bytes (this is arch dependent!!)
+          # syscall: 0F 05
+          # sysenter: 0F 34
+          frame.rip -= sizeof(UInt8) * 2
+        end
         frame.userrsp = syscall_frame.value.rcx & 0xFFFF_FFFFu64
 
         frame.rflags = USER_RFLAGS
