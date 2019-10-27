@@ -1,10 +1,14 @@
 require "socket"
 
 server = IPCServer.new("test").not_nil!
-Process.new "sockchd"
+Process.new("sockchd",
+  input: Process::Redirect::Inherit,
+  output: Process::Redirect::Inherit,
+  error: Process::Redirect::Inherit)
 if socket = server.accept?
-  STDERR.print "connected: ", socket.fd, "!\n"
+  print "connected: ", socket.fd, "!\n"
   bytes = Bytes.new 128
   print "read: ", socket.unbuffered_read(bytes), '\n'
   print "rd: ", String.new(bytes), '\n'
+  socket.puts "hello"
 end
