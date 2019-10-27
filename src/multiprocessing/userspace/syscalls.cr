@@ -103,7 +103,7 @@ module Syscall
       elsif segment == ".."
         vfs_node = vfs_node.parent
       else
-        cur_node = vfs_node.open(segment)
+        cur_node = vfs_node.open(segment, process)
         if cur_node.nil? && create
           cur_node = vfs_node.create(segment, process, create_options)
         end
@@ -237,7 +237,7 @@ module Syscall
     # files
     when SC_OPEN
       path = try(checked_slice(arg(0), arg(1)))
-      vfs_node = parse_path_into_vfs path, pudata.cwd_node
+      vfs_node = parse_path_into_vfs path, pudata.cwd_node, process: process
       if vfs_node.nil?
         sysret(SYSCALL_ERR)
       else
@@ -279,10 +279,10 @@ module Syscall
       result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
       case result
       when VFS_WAIT_POLL
-        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
+        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFdPollSyscall
         pudata.wait_object = fd
         pudata.wait_usecs = (-1).to_u32
-        Multiprocessing::Scheduler.switch_process(frame)
+        Multiprocessing::Scheduler.switch_process(frame, rewind_syscall: true)
       when VFS_WAIT
         vfs_node = fd.not_nil!.node.not_nil!
         vfs_node.fs.queue.not_nil!
@@ -307,10 +307,10 @@ module Syscall
       result = fd.not_nil!.node.not_nil!.write(str, fd.offset, process)
       case result
       when VFS_WAIT_POLL
-        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
+        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFdPollSyscall
         pudata.wait_object = fd
         pudata.wait_usecs = (-1).to_u32
-        Multiprocessing::Scheduler.switch_process(frame)
+        Multiprocessing::Scheduler.switch_process(frame, rewind_syscall: true)
       when VFS_WAIT
         vfs_node = fd.not_nil!.node.not_nil!
         vfs_node.fs.queue.not_nil!
