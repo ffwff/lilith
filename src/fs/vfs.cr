@@ -31,7 +31,7 @@ abstract class VFSNode
   def read(&block)
   end
 
-  def open(path : Slice) : VFSNode?
+  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
   end
 
   def clone
@@ -78,7 +78,7 @@ abstract class VFSNode
     VFS_ERR
   end
 
-  def available? : Bool
+  def available?(process : Multiprocessing::Process) : Bool
     true
   end
 end

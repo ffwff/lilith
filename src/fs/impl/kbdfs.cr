@@ -13,7 +13,7 @@ class KbdFSNode < VFSNode
     @raw_node = @first_child = KbdFSRawNode.new(fs)
   end
 
-  def open(path)
+  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
     node = @first_child
     while !node.nil?
       if node.not_nil!.name == path
@@ -91,7 +91,7 @@ class KbdFSRawNode < VFSNode
     size
   end
 
-  def available?
+  def available?(process : Multiprocessing::Process) : Bool
     @packet_available
   end
 end

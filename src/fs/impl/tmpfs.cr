@@ -17,7 +17,7 @@ private class TmpFSRoot < VFSNode
   def initialize(@fs : TmpFS)
   end
 
-  def open(path : Slice) : VFSNode?
+  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
     each_child do |node|
       return node if node.name == path
     end
