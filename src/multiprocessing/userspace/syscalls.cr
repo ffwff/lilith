@@ -279,7 +279,7 @@ module Syscall
       result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
       case result
       when VFS_WAIT_POLL
-        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFdPollSyscall
+        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFdRead
         pudata.wait_object = fd
         pudata.wait_usecs = (-1).to_u32
         Multiprocessing::Scheduler.switch_process(frame, rewind_syscall: true)
@@ -307,7 +307,7 @@ module Syscall
       result = fd.not_nil!.node.not_nil!.write(str, fd.offset, process)
       case result
       when VFS_WAIT_POLL
-        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFdPollSyscall
+        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFdWrite
         pudata.wait_object = fd
         pudata.wait_usecs = (-1).to_u32
         Multiprocessing::Scheduler.switch_process(frame, rewind_syscall: true)
