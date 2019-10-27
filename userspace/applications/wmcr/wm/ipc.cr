@@ -43,14 +43,13 @@ module Wm::IPC
     header
   end
 
-  # Gets a pointer to the header of a byte stream
-  def header_part(msg : Bytes)
-    msg.to_unsafe.as(Data::Header*)
+  macro payload_size(t)
+    sizeof({{ t }}) - sizeof(IPC::Data::Header)
   end
 
-  # Gets a pointer to the payload of a byte stream
-  macro payload_part(t, msg)
-    ({{ msg }}.to_unsafe).as({{ t }}*).value
+  macro payload_bytes(msg)
+    Bytes.new(Pointer(UInt8).new(pointerof({{ msg }}).address + sizeof(IPC::Data::Header)),
+              IPC.payload_size(typeof({{ msg }})))
   end
 
   # Creates a test message
@@ -59,10 +58,6 @@ module Wm::IPC
     msg.to_unsafe.as(Data::Header*)
       .value = create_header 0, Data::TEST_MESSAGE_ID
     msg
-  end
-
-  private macro payload_size(t)
-    sizeof({{ t }}) - sizeof(Data::Header)
   end
 
   # Creates window create message

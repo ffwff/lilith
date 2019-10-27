@@ -1,13 +1,15 @@
+require "socket"
+
 class Wm::Client
 
   getter comm_pipe
 
-  def initialize(@comm_pipe : IO::Pipe)
+  def initialize(@comm_pipe : IPCSocket)
     @comm_pipe.buffer_size = 0
   end
 
   def self.new
-    if (comm_pipe = IO::Pipe.new("wm", "w")).nil?
+    if (comm_pipe = IPCSocket.new("wm")).nil?
       return nil
     end
     new comm_pipe

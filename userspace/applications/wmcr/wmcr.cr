@@ -1,4 +1,5 @@
 require "./wm/*"
+require "socket"
 
 lib LibC
   struct Winsize
@@ -140,10 +141,10 @@ module Wm
     @@cursor.not_nil!
   end
 
-  # communication pipes
-  @@pipe : IO::Pipe? = nil
-  private def pipe
-    @@pipe.not_nil!
+  # communication server
+  @@ipc : IPCServer? = nil
+  private def ipc
+    @@ipc.not_nil!
   end
 
   def _init
@@ -153,14 +154,13 @@ module Wm
     @@selector = IO::Select.new
     LibC._ioctl fb.fd, LibC::TIOCGWINSZ, pointerof(@@ws).address
     @@framebuffer = fb.map_to_memory.as(UInt32*)
-    @@backbuffer = Pointer(UInt32).malloc(screen_width * screen_height)
+    @@backbuffer = Pointer(UInt32).malloc_atomic(screen_width * screen_height)
 
     @@focused = nil
 
     # communication pipe
-    if (@@pipe = IO::Pipe.new("wm", "r",
-        IO::Pipe::Flags::M_Read | IO::Pipe::Flags::G_Write))
-      selector << pipe
+    if @@ipc = IPCServer.new("wm")
+      selector << ipc
     else
       abort "unable to create communication pipe"
     end
@@ -182,14 +182,18 @@ module Wm
     # default startup application
     Process.new "windem"
   end
-  
+
+
   def loop
     while true
-      case selector.wait(1)
+      selected = selector.wait(1)
+      case selected
       when mouse
         cursor.respond mouse
-      when pipe
-        respond_pipe
+      when ipc
+        respond_ipc
+      when IPCSocket
+        respond_ipc_socket selected.as(IPCSocket)
       end
       @@windows.each do |window|
         window.render @@backbuffer,
@@ -203,36 +207,33 @@ module Wm
     end
   end
 
-  private macro enforce_length(t)
-    if header.value.length != (sizeof({{ t }}) - sizeof(IPC::Data::Header))
-      pipe_buffer += sizeof(IPC::Data::Header)
-      pipe_buffer += header.value.length
-      next
+  def respond_ipc
+    if socket = ipc.accept?
+      STDERR.puts "ipc connection!"
+      selector << socket
     end
   end
 
-  @@pipe_buffer = Bytes.empty
-  def respond_pipe
-    if pipe.size > @@pipe_buffer.size
-      @@pipe_buffer = Bytes.new pipe.size
-    end
-    pipe.unbuffered_read @@pipe_buffer
-    pipe_buffer = @@pipe_buffer
-    while IPC.valid_msg?(pipe_buffer)
-      header = IPC.header_part pipe_buffer
-      case header.value.type
+  def respond_ipc_socket(socket)
+    while true
+      header = uninitialized IPC::Data::Header
+      if socket.unbuffered_read(Bytes.new(pointerof(header).as(UInt8*), sizeof(IPC::Data::Header))) \
+          != sizeof(IPC::Data::Header)
+        return
+      end
+      case header.type
       when IPC::Data::TEST_MESSAGE_ID
         STDERR.puts "test message!"
       when IPC::Data::WINDOW_CREATE_ID
-        enforce_length(IPC::Data::WindowCreate)
-        wc = IPC.payload_part(IPC::Data::WindowCreate,
-                              pipe_buffer)
+        wc = uninitialized IPC::Data::WindowCreate
+        payload = IPC.payload_bytes(wc)
+        if socket.unbuffered_read(payload) != payload.size
+          return
+        end
         @@windows.push Program
           .new(wc.x, wc.y, wc.width, wc.height)
         @@windows.sort!
       end
-      pipe_buffer += sizeof(IPC::Data::Header)
-      pipe_buffer += header.value.length
     end
   end
 
