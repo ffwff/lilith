@@ -120,14 +120,26 @@ private class SocketFSConnectionNode < VFSNode
   getter fs : VFS
   property connected
 
+  @open_count = 0
+
   def initialize(@parent : SocketFSNode, @fs : SocketFS)
     @m_buffer = CircularBuffer.new
     @s_buffer = CircularBuffer.new
     @connected = false
+    @open_count += 1
   end
 
-  def remove : Int32
-    0
+  def clone
+    @open_count += 1
+  end
+
+  def close
+    @open_count -= 1
+    if @open_count == 0
+      @m_buffer.deinit_buffer
+      @s_buffer.deinit_buffer
+      @connected = false
+    end
   end
 
   def read(slice : Slice, offset : UInt32,
@@ -161,9 +173,8 @@ private class SocketFSConnectionNode < VFSNode
     end
     if process.pid == @parent.listen_node.listener_pid
       @s_buffer.size > 0
-    else # TODO
+    else
       true
-      # @m_buffer.size > 0
     end
   end
 end
