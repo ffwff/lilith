@@ -356,7 +356,7 @@ module Syscall
         sysret(0)
       elsif fds.size == 1
         fd = try(pudata.get_fd(fds[0]))
-        if fd.node.not_nil!.available?
+        if fd.node.not_nil!.available? process
           sysret(fds[0])
         end
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
@@ -369,7 +369,7 @@ module Syscall
         idx = 0
         fds.each do |fdi|
           fd = try(pudata.get_fd(fdi))
-          if fd.node.not_nil!.available?
+          if fd.node.not_nil!.available? process
             sysret(fdi)
           end
           buffer[idx] = fd

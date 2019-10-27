@@ -307,7 +307,7 @@ private class Fat16Node < VFSNode
     fat_table.mfree
   end
 
-  def open(path : Slice) : VFSNode?
+  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
     return unless directory?
     each_child do |node|
       if node.name == path

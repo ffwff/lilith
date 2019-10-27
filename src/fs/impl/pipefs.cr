@@ -6,7 +6,7 @@ private class PipeFSRoot < VFSNode
   def initialize(@fs : PipeFS)
   end
 
-  def open(path : Slice) : VFSNode?
+  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
     each_child do |node|
       return node if node.name == path
     end
@@ -158,7 +158,7 @@ private class PipeFSNode < VFSNode
     @pipe.write slice
   end
 
-  def available?
+  def available?(process : Multiprocessing::Process) : Bool
     return true if @flags.includes?(Flags::Removed)
     size > 0
   end

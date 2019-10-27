@@ -105,7 +105,7 @@ module Multiprocessing::Scheduler
           fds = wait_object.as(Array(FileDescriptor))
           fds.each do |fd|
             fd = fd.not_nil!
-            if fd.node.not_nil!.available?
+            if fd.node.not_nil!.available? process
               process.frame.not_nil!.to_unsafe.value.rax = fd.idx
               process.unawait
               return true
@@ -123,7 +123,7 @@ module Multiprocessing::Scheduler
             end
           end
           fd = wait_object.as(FileDescriptor)
-          if fd.node.not_nil!.available?
+          if fd.node.not_nil!.available? process
             process.frame.not_nil!.to_unsafe.value.rax = fd.idx
             process.unawait
             true
@@ -139,7 +139,7 @@ module Multiprocessing::Scheduler
         case wait_object
         when FileDescriptor
           fd = wait_object.as(FileDescriptor)
-          if fd.node.not_nil!.available?
+          if fd.node.not_nil!.available? process
             process.unawait
             true
           else

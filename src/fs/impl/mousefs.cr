@@ -21,8 +21,8 @@ class MouseFSNode < VFSNode
       node = node.next_node
     end
   end
-
-  def open(path)
+  
+  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
     each_child do |node|
       if node.name == path
         return node
@@ -68,7 +68,7 @@ class MouseFSRawNode < VFSNode
     size
   end
 
-  def available?
+  def available?(process : Multiprocessing::Process) : Bool
     fs.mouse.available
   end
 end
