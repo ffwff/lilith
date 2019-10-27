@@ -81,6 +81,9 @@ abstract class VFSNode
   def available?(process : Multiprocessing::Process) : Bool
     true
   end
+
+  def queue : VFSQueue?
+  end
 end
 
 abstract class VFS
@@ -133,10 +136,10 @@ module RootFS
   end
 end
 
-VFS_OK        =  0
-VFS_ERR       = -1
-VFS_WAIT      = -2
-VFS_WAIT_POLL = -3
-VFS_EOF       = -4
+VFS_OK         =  0
+VFS_ERR        = -1
+VFS_WAIT       = -2
+VFS_WAIT_QUEUE = -3
+VFS_EOF        = -4
 
 VFS_CREATE_ANON = 1 << 24

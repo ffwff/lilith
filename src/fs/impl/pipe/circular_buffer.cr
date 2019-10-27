@@ -32,6 +32,14 @@ class CircularBuffer
     slice.size
   end
 
+  def write(ch : UInt8)
+    @buffer[@write_pos] = ch
+    @write_pos += 1
+    if @write_pos == CAPACITY - 1
+      @write_pos = 0
+    end
+  end
+
   def write(slice : Slice(UInt8))
     init_buffer
     slice.size.times do |i|
