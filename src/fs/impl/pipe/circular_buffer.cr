@@ -20,35 +20,35 @@ class CircularBuffer
   end
 
   def read(slice : Slice(UInt8))
+    return 0 if @read_pos == @write_pos
     init_buffer
     slice.size.times do |i|
       slice.to_unsafe[i] = @buffer[@read_pos]
-      @read_pos += 1
       if @read_pos == CAPACITY - 1
         @read_pos = 0
+      else
+        @read_pos += 1
       end
-      return i if @read_pos == @write_pos
+      return i + 1 if @read_pos == @write_pos
     end
     slice.size
   end
 
   def write(ch : UInt8)
     @buffer[@write_pos] = ch
-    @write_pos += 1
     if @write_pos == CAPACITY - 1
       @write_pos = 0
+    else
+      @write_pos += 1
     end
   end
 
   def write(slice : Slice(UInt8))
+    return 0 if @read_pos == @write_pos
     init_buffer
     slice.size.times do |i|
-      @buffer[@write_pos] = slice.to_unsafe[i]
-      @write_pos += 1
-      if @write_pos == CAPACITY - 1
-        @write_pos = 0
-      end
-      return i if @read_pos == @write_pos
+      write(slice.to_unsafe[i])
+      return i + 1 if @read_pos == @write_pos
     end
     slice.size
   end
