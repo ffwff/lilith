@@ -390,7 +390,7 @@ module Gc
     end
 
     private macro realloc_if_first_node(node)
-      if header == \{{ node }}
+      if header.address == \{{ node }}.address
         new_header = LibC.realloc(header, size).as(LibCrystal::GcNode*)
         \{{ node }} = new_header
         new_ptr = Pointer(Void).new(new_header.address + sizeof(LibCrystal::GcNode))
@@ -417,7 +417,7 @@ module Gc
         panic "invalid magic for header"
       end
 
-      each_node(node) do |node, prev|
+      while !node.null?
         if node == header
           new_header = LibC.realloc(header, size).as(LibCrystal::GcNode*)
           prev.value.next_node = new_header
