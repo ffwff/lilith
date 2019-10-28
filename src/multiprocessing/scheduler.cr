@@ -200,7 +200,6 @@ module Multiprocessing::Scheduler
         cur = sched_data
       else
         sched_data = current_process.not_nil!.sched_data
-        return nil if sched_data.queue_id != @queue_id
         cur = sched_data.next_data
       end
       # look from middle to end
@@ -223,6 +222,14 @@ module Multiprocessing::Scheduler
         cur.process
       else
         nil
+      end
+    end
+
+    def to_s(io)
+      cur = @first_data
+      while !cur.nil?
+        io.puts "- ", cur.process.name, ": ", cur.status, "\n"
+        cur = cur.next_data
       end
     end
   end
@@ -263,11 +270,17 @@ module Multiprocessing::Scheduler
   end
 
   private def get_next_process
-    if (process = @@io_queue.next_process)
-      process
+    next_process = if (process = @@io_queue.next_process)
+      if process == @@current_process
+        # try to prevent resource starvation by getting another in the queue
+        @@cpu_queue.next_process
+      else
+        process
+      end
     else
       @@cpu_queue.next_process(@@current_process)
     end
+    next_process
   end
 
   @@current_process : Multiprocessing::Process? = nil
