@@ -18,7 +18,16 @@ module Wm::IPC
       header : Header
       x, y, width, height : Int32
     end
+
+    RESPONSE_ID = 2
+    @[Packed]
+    struct Response
+      header : Header
+      retval : Int32
+    end
   end
+
+  alias Message = Data::WindowCreate | Data::Response
 
   # Checks if bytes represents a valid IPC message
   def valid_msg?(msg : Bytes)
@@ -71,6 +80,17 @@ module Wm::IPC
     wc.value.y = y
     wc.value.width = width
     wc.value.height = height
+    msg
+  end
+
+  # Creates response message
+  def response_message(retval)
+    msg = uninitialized UInt8[sizeof(Data::Response)]
+    rep = msg.to_unsafe.as(Data::Response*)
+    rep.value.header = create_header(
+      payload_size(Data::Response),
+      Data::RESPONSE_ID)
+    rep.value.retval = retval
     msg
   end
 

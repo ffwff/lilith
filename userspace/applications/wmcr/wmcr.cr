@@ -22,7 +22,7 @@ end
 FRAME_WAIT = 10000
 CURSOR_FILE = "/hd0/share/cursors/cursor.png"
 
-module Wm
+module Wm::Server
   extend self
 
   abstract class Window
@@ -75,14 +75,14 @@ module Wm
       if packet.x != 0
         delta_x = packet.x * speed
         @x = @x + delta_x
-        @x = @x.clamp(0, Wm.screen_width)
+        @x = @x.clamp(0, Server.screen_width)
       else
         delta_x = 0
       end
       if packet.y != 0
         delta_y = -packet.y * speed
         @y = @y + delta_y
-        @y = @y.clamp(0, Wm.screen_height)
+        @y = @y.clamp(0, Server.screen_height)
       else
         delta_y = 0
       end
@@ -103,7 +103,7 @@ module Wm
     @bitmap_file : File
 
     def initialize(@x, @y, @width, @height)
-      @wid = Wm.next_wid
+      @wid = Server.next_wid
       @bitmap_file = File.new("/tmp/wm-bm:" + @wid.to_s, "rw").not_nil!
       @bitmap_file.truncate @width * @height * 4
       @bitmap = @bitmap_file.map_to_memory.as(UInt8*)
@@ -199,7 +199,10 @@ module Wm
     @@windows.push cursor
 
     # default startup application
-    Process.new "windem"
+    Process.new "windem",
+        input: Process::Redirect::Inherit,
+        output: Process::Redirect::Inherit,
+        error: Process::Redirect::Inherit
   end
 
 
@@ -233,10 +236,21 @@ module Wm
     end
   end
 
+  private struct FixedMessageReader(T)
+    def self.read(header, socket)
+      msg = uninitialized T
+      payload = IPC.payload_bytes(msg)
+      return if payload.size != header.length
+      return if socket.unbuffered_read(payload) != payload.size
+      msg
+    end
+  end
+
   def respond_ipc_socket(socket)
     while true
       header = uninitialized IPC::Data::Header
-      if socket.unbuffered_read(Bytes.new(pointerof(header).as(UInt8*), sizeof(IPC::Data::Header))) \
+      if socket.unbuffered_read(Bytes.new(pointerof(header).as(UInt8*),
+                                          sizeof(IPC::Data::Header))) \
           != sizeof(IPC::Data::Header)
         return
       end
@@ -244,20 +258,22 @@ module Wm
       when IPC::Data::TEST_MESSAGE_ID
         STDERR.puts "test message!"
       when IPC::Data::WINDOW_CREATE_ID
-        wc = uninitialized IPC::Data::WindowCreate
-        payload = IPC.payload_bytes(wc)
-        next if payload.size != header.length
-        return if socket.unbuffered_read(payload) != payload.size
+        if (msg = FixedMessageReader(IPC::Data::WindowCreate).read(header, socket))
+          unless socket.program.nil?
+            socket.unbuffered_write IPC.response_message(0).to_slice
+            next
+          end
+          socket.program = Program.new(msg.x, msg.y, msg.width, msg.height)
+          @@windows.push socket.program.not_nil!
+          @@windows.sort!
 
-        next unless socket.program.nil?
-        socket.program = Program.new(wc.x, wc.y, wc.width, wc.height)
-        @@windows.push socket.program.not_nil!
-        @@windows.sort!
+          socket.unbuffered_write IPC.response_message(1).to_slice
+        end
       end
     end
   end
 
 end
 
-Wm._init
-Wm.loop
+Wm::Server._init
+Wm::Server.loop
