@@ -44,7 +44,6 @@ class CircularBuffer
   end
 
   def write(slice : Slice(UInt8))
-    return 0 if @read_pos == @write_pos
     init_buffer
     slice.size.times do |i|
       write(slice.to_unsafe[i])

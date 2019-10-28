@@ -143,7 +143,7 @@ class SocketFSConnectionNode < VFSNode
     if @open_count == 0
       @m_buffer.deinit_buffer
       @s_buffer.deinit_buffer
-      @connected = false
+      @state = State::Disconnected
     end
   end
 
