@@ -44,7 +44,7 @@ module Multiprocessing::Scheduler
     getter status
 
     def status=(s)
-      unless @next_data.nil? && @prev_data.nil?
+      if s != Status::Removed
         if !wait_status?(@status) && wait_status?(s)
           # transition to active state
           Scheduler.move_to_io_queue self
@@ -228,7 +228,7 @@ module Multiprocessing::Scheduler
     def to_s(io)
       cur = @first_data
       while !cur.nil?
-        io.puts "- ", cur.process.name, ": ", cur.status, "\n"
+        io.puts "- ", cur.process.name, ": ", cur.status, "(", cur.queue_id, ")\n"
         cur = cur.next_data
       end
     end
@@ -253,6 +253,14 @@ module Multiprocessing::Scheduler
     else
       panic "unknown queue_id: ", sched_data.queue_id
     end
+  end
+
+  def debug
+    Serial.puts "cpu:\n"
+    @@cpu_queue.to_s Serial
+    Serial.puts "io:\n"
+    @@io_queue.to_s Serial
+    Serial.puts "---\n"
   end
 
   protected def move_to_cpu_queue(data : ProcessData)
