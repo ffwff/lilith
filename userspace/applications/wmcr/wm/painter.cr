@@ -47,9 +47,12 @@ module Wm::Painter
   end
 
   def blit_rect(db, dw, dh, sw, sh, sx, sy, color)
+    if sx == 0 && sy == 0 && dw == sw && dh == sh
+      return blit_u32(db, color.to_u32, sw.to_usize * sh.to_usize)
+    end
     sh.times do |y|
       fb_offset = ((sy + y) * dw + sx)
-      blit_u32(db + fb_offset, color, sw.to_usize)
+      blit_u32(db + fb_offset, color.to_u32, sw.to_usize)
     end
   end
 
