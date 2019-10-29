@@ -1,9 +1,6 @@
-require "./wm/*"
+require "./gui/lib"
 
-client = Wm::Client.new.not_nil!
-if (window = client.create_window)
-  Wm::Painter.blit_rect(window.bitmap,
-                        window.width, window.height,
-                        window.width, window.height,
-                        0, 0, 0x00ff0000)
-end
+app = G::Application.new
+main_window = G::Window.new(0, 0, 400, 300)
+app.main_widget = main_window
+app.run

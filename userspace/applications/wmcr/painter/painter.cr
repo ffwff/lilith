@@ -35,7 +35,7 @@ lib LibPNG
   fun png_get_bit_depth(png_ptr : Void*, info_ptr : Void*) : UInt8
 end
 
-module Wm::Painter
+module Painter
   extend self
 
   def blit_u32(dst : UInt32*, c : UInt32, n : LibC::SizeT)
