@@ -4,7 +4,6 @@ lib ElfStructs
 
   @[Packed]
   struct Elf32Header
-    e_ident : UInt8[16]
     e_type : Elf32EType
     e_machine : UInt16
     e_version : UInt32
@@ -83,10 +82,11 @@ end
 module ElfReader
   extend self
 
-  EI_MAG0       = 0 # 0x7F
-  EI_MAG1       = 1 # 'E'
-  EI_MAG2       = 2 # 'L'
-  EI_MAG3       = 3 # 'F'
+  EI_MAG0       = 0x7f
+  EI_MAG1       = 'E'.ord 
+  EI_MAG2       = 'L'.ord
+  EI_MAG3       = 'F'.ord
+
   EI_CLASS      = 4 # Architecture (32/64)
   EI_DATA       = 5 # Byte Order
   EI_VERSION    = 6 # ELF Version
@@ -94,7 +94,10 @@ module ElfReader
   EI_ABIVERSION = 8 # OS Specific
   EI_PAD        = 9 # Padding
 
+  ELF_EIDENT_SZ = 16
+
   private enum ParserState
+    Start
     Byte
     ElfHeader
     ProgramHeader
@@ -108,31 +111,48 @@ module ElfReader
     ExpectedProgramHdr
   end
 
-  def read(node : VFSNode, allocator = nil, &block)
-    state = ParserState::ElfHeader
-    header = uninitialized ElfStructs::Elf32Header
-    pheader = uninitialized ElfStructs::Elf32ProgramHeader
+  def read(node : VFSNode, allocator : StackAllocator, &block)
+    state = ParserState::Start
+    buffer = Slice(UInt8).null
+
+    e_shoff = 0u32
+    n_pheader = 0
+    max_pheader = 0
 
     idx_h = 0u32
-    n_pheader = 0u32
     total_bytes = 0u32
     node.read(allocator: allocator) do |byte|
       case state
+      when ParserState::Start
+        if (idx_h == 0 && byte != EI_MAG0) ||
+           (idx_h == 1 && byte != EI_MAG1) ||
+           (idx_h == 2 && byte != EI_MAG2) ||
+           (idx_h == 3 && byte != EI_MAG3)
+          return ParserError::InvalidElfHdr
+        end
+        idx_h += 1
+        if idx_h == ELF_EIDENT_SZ
+          # TODO: handle 64-bit elf files
+          buffer = Slice(UInt8).mmalloc_a sizeof(ElfStructs::Elf32Header), allocator
+          state = ParserState::ElfHeader
+          idx_h = 0
+        end
       when ParserState::ElfHeader
-        pointerof(header).as(UInt8*)[idx_h] = byte
+        buffer[idx_h] = byte
         idx_h += 1
         if idx_h == sizeof(ElfStructs::Elf32Header)
-          unless header.e_ident[0] == 127 &&
-                 header.e_ident[1] == 69 &&
-                 header.e_ident[2] == 76 &&
-                 header.e_ident[3] == 70
-            return ParserError::InvalidElfHdr
-          end
-          unless header.e_phentsize == sizeof(ElfStructs::Elf32ProgramHeader)
+          header = buffer.to_unsafe.as(ElfStructs::Elf32Header*)
+
+          e_shoff = header.value.e_shoff
+          max_pheader = header.value.e_phnum
+
+          unless header.value.e_phentsize == sizeof(ElfStructs::Elf32ProgramHeader)
             return ParserError::InvalidProgramHdrSz
           end
-          yield header
-          if header.e_phoff == total_bytes + 1
+          yield header.value
+
+          if header.value.e_phoff == total_bytes + 1
+            buffer = Slice(UInt8).mmalloc_a sizeof(ElfStructs::Elf32ProgramHeader), allocator
             state = ParserState::ProgramHeader
             idx_h = 0
           else
@@ -140,19 +160,20 @@ module ElfReader
           end
         end
       when ParserState::ProgramHeader
-        pointerof(pheader).as(UInt8*)[idx_h] = byte
+        buffer[idx_h] = byte
         idx_h += 1
         if idx_h == sizeof(ElfStructs::Elf32ProgramHeader)
-          yield pheader
+          pheader = buffer.to_unsafe.as(ElfStructs::Elf32ProgramHeader*)
+          yield pheader.value
           n_pheader += 1
           idx_h = 0
         end
-        if n_pheader == header.e_phnum
+        if n_pheader == max_pheader
           state = ParserState::Byte
           idx_h = 0
         end
       when ParserState::Byte
-        if total_bytes < header.e_shoff
+        if total_bytes < e_shoff
           yield Tuple.new(total_bytes, byte)
         else
           break
@@ -201,8 +222,7 @@ module ElfReader
       when ElfStructs::Elf32Header
         data = data.as(ElfStructs::Elf32Header)
         ret_initial_ip = data.e_entry.to_usize
-        sz = data.e_phnum.to_i32
-        mmap_list = Slice(InlineMemMapNode).new(allocator.malloc(sz * sizeof(InlineMemMapNode)).as(InlineMemMapNode*), sz)
+        mmap_list = Slice(InlineMemMapNode).mmalloc_a data.e_phnum.to_i32, allocator
       when ElfStructs::Elf32ProgramHeader
         data = data.as(ElfStructs::Elf32ProgramHeader)
         if data.p_memsz > 0
