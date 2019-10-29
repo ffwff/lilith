@@ -1,4 +1,5 @@
 require "./wm/*"
+require "./painter/*"
 require "socket"
 
 lib LibC
@@ -42,13 +43,13 @@ module Wm::Server
 
   class Background < Window
     def initialize(width, height, @color : UInt32)
-      self.width = width.to_i32
-      self.height = height.to_i32
-      self.z_index = -1
+      @width = width.to_i32
+      @height = height.to_i32
+      @z_index = -1
     end
 
     def render(buffer, width, height)
-      Wm::Painter.blit_u32(buffer, @color, width.to_u32 * height.to_u32)
+      Painter.blit_u32(buffer, @color, @width.to_usize * @height.to_usize)
     end
   end
 
@@ -63,9 +64,9 @@ module Wm::Server
     end
 
     def render(buffer, bwidth, bheight)
-      Wm::Painter.blit_img(buffer, bwidth, bheight,
-                           @bytes.not_nil!.to_unsafe,
-                           @width, @height, @x, @y)
+      Painter.blit_img(buffer, bwidth, bheight,
+                       @bytes.not_nil!.to_unsafe,
+                       @width, @height, @x, @y)
     end
 
     def respond(file)
@@ -112,9 +113,9 @@ module Wm::Server
     end
 
     def render(buffer, bwidth, bheight)
-      Wm::Painter.blit_img(buffer, bwidth, bheight,
-                           @bitmap,
-                           @width, @height, @x, @y)
+      Painter.blit_img(buffer, bwidth, bheight,
+                       @bitmap,
+                       @width, @height, @x, @y)
     end
   end
 
