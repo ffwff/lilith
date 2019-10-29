@@ -102,6 +102,8 @@ module Wm::Server
     @wid : Int32
     @bitmap_file : File
 
+    getter wid, bitmap
+
     def initialize(@x, @y, @width, @height)
       @wid = Server.next_wid
       @bitmap_file = File.new("/tmp/wm-bm:" + @wid.to_s, "rw").not_nil!
@@ -260,14 +262,14 @@ module Wm::Server
       when IPC::Data::WINDOW_CREATE_ID
         if (msg = FixedMessageReader(IPC::Data::WindowCreate).read(header, socket))
           unless socket.program.nil?
-            socket.unbuffered_write IPC.response_message(0).to_slice
+            socket.unbuffered_write IPC.response_message(-1).to_slice
             next
           end
-          socket.program = Program.new(msg.x, msg.y, msg.width, msg.height)
-          @@windows.push socket.program.not_nil!
+          socket.program = program = Program.new(msg.x, msg.y, msg.width, msg.height)
+          @@windows.push program
           @@windows.sort!
 
-          socket.unbuffered_write IPC.response_message(1).to_slice
+          socket.unbuffered_write IPC.response_message(program.wid).to_slice
         end
       end
     end
