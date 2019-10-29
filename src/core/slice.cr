@@ -16,6 +16,10 @@ struct Slice(T)
     new Pointer(T).malloc(sz), sz
   end
 
+  def self.mmalloc_a(sz, allocator)
+    new allocator.malloc(sz * sizeof(T)).as(T*), sz
+  end
+
   # manual malloc: this should only be used when the slice is
   # to be cleaned up before the function returns
   def self.mmalloc(sz)
