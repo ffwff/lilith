@@ -480,7 +480,10 @@ class Fat16FS < VFS
               msg.unawait(pid)
             end
           else
-            panic "unable to execute ", retval, "\n"
+            Serial.puts "unable to execute: ", retval, "\n"
+            if msg.process
+              msg.unawait(-1)
+            end
           end
           @process_allocator.not_nil!.clear
         end
