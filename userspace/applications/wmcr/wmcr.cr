@@ -37,7 +37,7 @@ module Wm::Server
     abstract def render(buffer, width, height)
 
     def <=>(other)
-      self.z_index <=> other.z_index
+      @z_index <=> other.z_index
     end
   end
 
