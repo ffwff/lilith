@@ -65,7 +65,7 @@ module Wm::Server
 
     def render(buffer, bwidth, bheight)
       Painter.blit_img(buffer, bwidth, bheight,
-                       @bytes.not_nil!.to_unsafe,
+                       @bytes.not_nil!.to_unsafe.as(UInt32*),
                        @width, @height, @x, @y)
     end
 
@@ -109,7 +109,7 @@ module Wm::Server
       @wid = Server.next_wid
       @bitmap_file = File.new("/tmp/wm-bm:" + @wid.to_s, "rw").not_nil!
       @bitmap_file.truncate @width * @height * 4
-      @bitmap = @bitmap_file.map_to_memory.as(UInt8*)
+      @bitmap = @bitmap_file.map_to_memory.as(UInt32*)
     end
 
     def render(buffer, bwidth, bheight)
