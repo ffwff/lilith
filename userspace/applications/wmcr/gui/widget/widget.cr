@@ -29,5 +29,6 @@ abstract class G::Widget
 
   def_event   setup
   def_event_d wm_message, Wm::IPC::Message
+  def_event   draw
 
 end

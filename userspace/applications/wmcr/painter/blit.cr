@@ -17,13 +17,13 @@ module Painter
       return blit_u32(db, color.to_u32, sw.to_usize * sh.to_usize)
     end
     sh.times do |y|
-      fb_offset = ((sy + y) * dw + sx)
+      fb_offset = ((sy.to_usize + y.to_usize) * dw.to_usize + sx.to_usize)
       blit_u32(db + fb_offset, color.to_u32, sw.to_usize)
     end
   end
 
   def blit_img(db : UInt32*, dw : Int, dh : Int,
-               sb : UInt8*, sw : Int, sh : Int,
+               sb : UInt32*, sw : Int, sh : Int,
                sx : Int, sy : Int)
     if sx == 0 && sy == 0 && sw == dw && sh == dh
       LibC.memcpy db, sb, dw.to_u32 * dh.to_u32 * 4

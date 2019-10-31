@@ -38,4 +38,8 @@ module G::Fonts
       str
   end
 
+  def text_width(str : String)
+    str.size * WIDTH
+  end
+
 end

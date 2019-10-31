@@ -21,6 +21,7 @@ class G::Application
   def run
     if (main_widget = @main_widget)
       main_widget.setup_event
+      main_widget.draw_event
     end
     while @running
       io = @selector.wait
