@@ -9,7 +9,10 @@ module Painter
     )
   end
 
-  def blit_rect(db, dw, dh, sw, sh, sx, sy, color)
+  def blit_rect(db : UInt32*,
+                dw : Int, dh : Int,
+                sw : Int, sh : Int,
+                sx : Int, sy : Int, color : Int)
     if sx == 0 && sy == 0 && dw == sw && dh == sh
       return blit_u32(db, color.to_u32, sw.to_usize * sh.to_usize)
     end
@@ -19,8 +22,9 @@ module Painter
     end
   end
 
-  def blit_img(db, dw, dh,
-               sb, sw, sh, sx, sy)
+  def blit_img(db : UInt32*, dw : Int, dh : Int,
+               sb : UInt8*, sw : Int, sh : Int,
+               sx : Int, sy : Int)
     if sx == 0 && sy == 0 && sw == dw && sh == dh
       LibC.memcpy db, sb, dw.to_u32 * dh.to_u32 * 4
       return 

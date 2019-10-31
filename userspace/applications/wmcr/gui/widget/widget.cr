@@ -7,6 +7,16 @@ abstract class G::Widget
   def app=(@app)
   end
 
+  def width : Int32
+    0
+  end
+  def height : Int32
+    0
+  end
+  def bitmap : UInt32*
+    Pointer(UInt32).null
+  end
+
   private macro def_event(name)
     def {{ name }}_event
     end

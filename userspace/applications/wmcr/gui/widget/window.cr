@@ -9,6 +9,10 @@ class G::Window < G::Widget
                  @width : Int32, @height : Int32)
   end
 
+  def bitmap
+    @wm_window.not_nil!.bitmap
+  end
+
   def setup_event
     @wm_window = app.client.create_window(@x, @y, @width, @height).not_nil!
   end
