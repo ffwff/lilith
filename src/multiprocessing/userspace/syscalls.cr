@@ -220,7 +220,7 @@ module Syscall
         initial_ip = fv.rbx
         heap_start = fv.rdx
         udata = Pointer(Void).new(fv.r8).as(Multiprocessing::Process::UserData)
-        mmap_list = Slice(ElfReader::InlineMemMapNode).new(Pointer(ElfReader::InlineMemMapNode).new(fv.r9), fv.r10.to_i32)
+        mmap_list = Slice(ElfReader::MemMapHeader).new(Pointer(ElfReader::MemMapHeader).new(fv.r9), fv.r10.to_i32)
         process = Multiprocessing::Process.spawn_user(initial_ip, heap_start, udata, mmap_list)
         fv.rax = process.pid
       when SC_SLEEP
