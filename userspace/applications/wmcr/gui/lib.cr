@@ -1,5 +1,6 @@
 require "../painter/*"
 require "../wm/*"
 require "./core/*"
+require "./widget/widget.cr"
 require "./widget/*"
 require "./data/*"

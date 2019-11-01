@@ -1,6 +1,17 @@
 class G::WindowDecoration < G::Widget
 
-  getter x, y, width, height, bitmap, title
+  @main_widget : G::Widget? = nil
+  getter main_widget
+
+  def main_widget=(@main_widget)
+    x, y, width, height = calculate_dimensions
+    main_widget = @main_widget.not_nil!
+    main_widget.move x, y
+    main_widget.resize width, height
+    main_widget.app = @app
+  end
+
+  getter bitmap, title
   def initialize(@x : Int32, @y : Int32,
                  @width : Int32, @height : Int32,
                  @title : String? = nil)
@@ -13,6 +24,14 @@ class G::WindowDecoration < G::Widget
     decoration
   end
 
+  def calculate_dimensions
+    x = 0
+    y = 15
+    width = @width
+    height = @height - y
+    {x, y, width, height}
+  end
+
   def draw_event
     Painter.blit_rect @bitmap,
                       @width, @height,
@@ -21,6 +40,14 @@ class G::WindowDecoration < G::Widget
     if (title = @title)
       tx, ty = (@width - G::Fonts.text_width(title)) // 2, 3
       G::Fonts.blit(self, tx, ty, title)
+    end
+    if (main_widget = @main_widget)
+      main_widget.draw_event
+      Painter.blit_img @bitmap,
+                       @width, @height,
+                       main_widget.bitmap,
+                       main_widget.width, main_widget.height,
+                       main_widget.x, main_widget.y
     end
   end
 

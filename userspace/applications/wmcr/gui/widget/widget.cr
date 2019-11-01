@@ -7,12 +7,18 @@ abstract class G::Widget
   def app=(@app)
   end
 
-  def width : Int32
-    0
+  @x = 0
+  @y = 0
+  @width = 0
+  @height = 0
+
+  getter x : Int32, y : Int32
+  getter width : Int32, height : Int32
+  def move(@x : Int32, @y : Int32)
   end
-  def height : Int32
-    0
+  def resize(@width : Int32, @height : Int32)
   end
+
   def bitmap : UInt32*
     Pointer(UInt32).null
   end
