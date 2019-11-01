@@ -16,7 +16,7 @@ class Array(T)
   end
 
   private def malloc_size(new_size)
-    new_size.to_usize * sizeof(Void*) + GC_ARRAY_HEADER_SIZE
+    new_size.to_usize * sizeof(T) + GC_ARRAY_HEADER_SIZE
   end
 
   private def new_buffer(capacity)
@@ -33,7 +33,7 @@ class Array(T)
       @buffer[0] = GC_ARRAY_HEADER_TYPE
       @buffer[1] = 0u32
     else
-      @buffer = @buffer.realloc malloc_size(capacity)
+      @buffer = @buffer.realloc(malloc_size(capacity) // sizeof(T))
     end
   end
 

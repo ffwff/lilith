@@ -5,9 +5,15 @@ class Object
 
   macro getter(*names)
     {% for name in names %}
-    def {{ name.id }}
-      @{{ name.id }}
-    end
+      {% if name.is_a?(TypeDeclaration) %}
+        def {{ name.var.id }} : {{ name.type }}
+          @{{ name.var.id }}
+        end
+      {% else %}
+        def {{ name.id }}
+          @{{ name.id }}
+        end
+      {% end %}
     {% end %}
   end
 

@@ -14,7 +14,7 @@ struct Pointer(T)
   end
 
   def realloc(size)
-    Gc.realloc(self.as(Void*), size.to_u64).as(T*)
+    Gc.realloc(self.as(Void*), size.to_u64 * sizeof(T)).as(T*)
   end
 
   def null?
