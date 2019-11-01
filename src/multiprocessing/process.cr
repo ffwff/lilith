@@ -366,7 +366,7 @@ module Multiprocessing
     # to the newly-spawned user process
     @[NoInline]
     def self.spawn_user(initial_ip : UInt64, heap_start : UInt64,
-                        udata : UserData, mmap_list : Slice(ElfReader::InlineMemMapNode))
+                        udata : UserData, mmap_list : Slice(ElfReader::MemMapHeader))
       old_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
         .new(Paging.mt_addr(Paging.current_pdpt.address))
       Multiprocessing::Process.new(udata.argv[0].not_nil!, udata) do |process|
@@ -414,7 +414,7 @@ module Multiprocessing
 
     @[NoInline]
     def self.spawn_user_drv(initial_ip : UInt64, heap_start : UInt64,
-                            udata : UserData, mmap_list : Slice(ElfReader::InlineMemMapNode))
+                            udata : UserData, mmap_list : Slice(ElfReader::MemMapHeader))
       retval = 0u64
       mmap_list_addr = mmap_list.to_unsafe.address
       mmap_list_size = mmap_list.size
