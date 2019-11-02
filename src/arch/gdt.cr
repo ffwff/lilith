@@ -1,4 +1,4 @@
-GDT_REGULARS = 7
+GDT_REGULARS = 9
 
 private lib Kernel
   @[Packed]
@@ -55,7 +55,6 @@ private lib Kernel
   end
 
   fun kload_gdt(ptr : Gdtr*)
-  fun kload_tss
 end
 
 module Gdt
@@ -78,6 +77,8 @@ module Gdt
     init_gdt_entry 4, 0x0, 0xFFFFFFFF, 0xF2, 0xCF # user data (32-bit)
     init_gdt_entry 5, 0x0, 0xFFFFFFFF, 0xBA, 0xAF # device code (CPL=1)
     init_gdt_entry 6, 0x0, 0xFFFFFFFF, 0xB2, 0xAF # device data (CPL=1)
+    init_gdt_entry 7, 0x0, 0xFFFFFFFF, 0xFA, 0xAF # user code (64-bit)
+    init_gdt_entry 8, 0x0, 0xFFFFFFFF, 0xF2, 0xAF # user data (64-bit)
     init_tss
 
     Kernel.kload_gdt pointerof(@@gdtr)
@@ -127,7 +128,8 @@ module Gdt
   end
 
   def flush_tss
-    Kernel.kload_tss
+    asm("mov $$0x4A, %bx
+         ltr %bx" ::: "volatile", "bx")
   end
 
   def stack : Void*

@@ -8,9 +8,3 @@ kload_gdt:
     push (%rsp)
     movq $KERNEL_CODE_SELECTOR, 8(%rsp)
     lretq
-
-.global kload_tss
-kload_tss:
-    mov $0x3A, %bx
-    ltr %bx
-    ret

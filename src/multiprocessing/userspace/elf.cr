@@ -144,18 +144,30 @@ module ElfReader
   end
 
   struct ElfHeader
-    getter e_phnum, e_shnum, e_entry
-    def initialize(@e_phnum : UInt16,
+    getter is64, e_phnum, e_shnum, e_entry
+    def initialize(@is64 : Bool,
+                   @e_phnum : UInt16,
                    @e_shnum : UInt16,
-                   @e_entry : UInt64)
+                   @e_entry : USize)
     end
   end
 
   struct MemMapHeader
     getter file_offset, filesz, vaddr, memsz, attrs
 
-    def initialize(@file_offset : UInt64, @filesz : UInt64, @vaddr : UInt64,
-                   @memsz : UInt64, @attrs : MemMapNode::Attributes)
+    def initialize(@file_offset : USize,
+                   @filesz : USize,
+                   @vaddr : USize,
+                   @memsz : USize, @attrs : MemMapNode::Attributes)
+    end
+  end
+
+  struct Result
+    getter is64, initial_ip, heap_start, mmap_list
+    def initialize(@is64 : Bool,
+                   @initial_ip : USize,
+                   @heap_start : USize,
+                   @mmap_list : Slice(MemMapHeader))
     end
   end
 
@@ -226,9 +238,10 @@ module ElfReader
           unless header.value.e_phentsize == sizeof(ElfStructs::Elf32ProgramHeader)
             return ParserError::InvalidProgramHdrSz
           end
-          yield ElfHeader.new(header.value.e_phnum,
+          yield ElfHeader.new(false,
+                              header.value.e_phnum,
                               header.value.e_shnum,
-                              header.value.e_entry.to_u64)
+                              header.value.e_entry.to_usize)
 
           if header.value.e_phoff == total_bytes + 1
             buffer = Slice(UInt8).mmalloc_a sizeof(ElfStructs::Elf32ProgramHeader), allocator
@@ -250,9 +263,10 @@ module ElfReader
           unless header.value.e_phentsize == sizeof(ElfStructs::Elf64ProgramHeader)
             return ParserError::InvalidProgramHdrSz
           end
-          yield ElfHeader.new(header.value.e_phnum,
+          yield ElfHeader.new(true,
+                              header.value.e_phnum,
                               header.value.e_shnum,
-                              header.value.e_entry)
+                              header.value.e_entry.to_usize)
 
           if header.value.e_phoff == total_bytes + 1
             buffer = Slice(UInt8).mmalloc_a sizeof(ElfStructs::Elf64ProgramHeader), allocator
@@ -315,18 +329,12 @@ module ElfReader
   end
 
 
-  struct Result
-    getter initial_ip, heap_start, mmap_list
-
-    def initialize(@initial_ip : USize, @heap_start : USize, @mmap_list : Slice(MemMapHeader))
-    end
-  end
-
   # load process code from kernel thread
   def load_from_kernel_thread(node, allocator : StackAllocator)
     unless node.size > 0
       return ParserError::EmptyFile
     end
+    is64 = false
     mmap_list = Slice(MemMapHeader).null
     mmap_append_idx = 0
     mmap_idx = 0
@@ -338,6 +346,7 @@ module ElfReader
       case data
       when ElfHeader
         data = data.as(ElfHeader)
+        is64 = data.is64
         ret_initial_ip = data.e_entry.to_usize
         mmap_list = Slice(MemMapHeader).mmalloc_a data.e_phnum.to_i32, allocator
       when MemMapHeader
@@ -377,7 +386,7 @@ module ElfReader
       # pad heap offset
       ret_heap_start += 0x2000
       # allocate the stack
-      Result.new(ret_initial_ip, ret_heap_start, mmap_list)
+      Result.new(is64, ret_initial_ip, ret_heap_start, mmap_list)
     else
       result
     end
