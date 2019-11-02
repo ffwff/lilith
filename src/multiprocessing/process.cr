@@ -20,9 +20,11 @@ module Multiprocessing
   KERNEL_STACK_INITIAL = Paging::KERNEL_PDPT_POINTER + 0x7F_FFFF_FFFFu64
   KERNEL_HEAP_INITIAL  = Paging::KERNEL_PDPT_POINTER + 0x0u64
 
-  USER_CS_SEGMENT =  0x1b
-  USER_SS_SEGMENT =  0x23
-  USER_RFLAGS     = 0x212
+  USER_CS_SEGMENT   =  0x1b
+  USER_SS_SEGMENT   =  0x23
+  USER_CS64_SEGMENT =  0x3b
+  USER_SS64_SEGMENT =  0x43
+  USER_RFLAGS       = 0x212
 
   KERNEL_CS_SEGMENT =   0x29
   KERNEL_SS_SEGMENT =   0x31
@@ -129,11 +131,14 @@ module Multiprocessing
       property mmap_heap
 
       # working directory
-      property cwd
-      property cwd_node
+      property cwd, cwd_node
 
       # argv
       property argv
+
+      # whether this process is a 64-bit or 32-bit process
+      @is64 = false
+      property is64
 
       class EnvVar
         getter key
@@ -200,10 +205,7 @@ module Multiprocessing
     end
 
     @udata : UserData? = nil
-
-    def udata
-      @udata.not_nil!
-    end
+    getter! udata
 
     def kernel_process?
       @udata.nil?
@@ -313,9 +315,15 @@ module Multiprocessing
         frame.ds = KERNEL_SS_SEGMENT
       else
         frame.rflags = USER_RFLAGS
-        frame.cs = USER_CS_SEGMENT
-        frame.ds = USER_SS_SEGMENT
-        frame.ss = USER_SS_SEGMENT
+        if udata.is64
+          frame.cs = USER_CS64_SEGMENT
+          frame.ds = USER_SS64_SEGMENT
+          frame.ss = USER_SS64_SEGMENT
+        else
+          frame.cs = USER_CS_SEGMENT
+          frame.ds = USER_SS_SEGMENT
+          frame.ss = USER_SS_SEGMENT
+        end
       end
 
       if @frame.nil?
@@ -346,13 +354,22 @@ module Multiprocessing
         frame.ss = KERNEL_SS_SEGMENT
         frame.ds = KERNEL_SS_SEGMENT
       else
-        frame.rip = Pointer(UInt32).new(syscall_frame.value.rcx).value
-        frame.userrsp = syscall_frame.value.rcx & 0xFFFF_FFFFu64
-
         frame.rflags = USER_RFLAGS
-        frame.cs = USER_CS_SEGMENT
-        frame.ss = USER_SS_SEGMENT
-        frame.ds = USER_SS_SEGMENT
+        if udata.is64
+          frame.rip = Pointer(UInt64).new(syscall_frame.value.rcx).value
+          frame.userrsp = syscall_frame.value.rcx
+
+          frame.cs = USER_CS64_SEGMENT
+          frame.ss = USER_SS64_SEGMENT
+          frame.ds = USER_SS64_SEGMENT
+        else
+          frame.rip = Pointer(UInt32).new(syscall_frame.value.rcx).value
+          frame.userrsp = syscall_frame.value.rcx & 0xFFFF_FFFFu64
+
+          frame.cs = USER_CS_SEGMENT
+          frame.ss = USER_SS_SEGMENT
+          frame.ds = USER_SS_SEGMENT
+        end
       end
 
       if @frame.nil?
@@ -365,12 +382,12 @@ module Multiprocessing
     # spawn user process and move the lower-half of the current the address space
     # to the newly-spawned user process
     @[NoInline]
-    def self.spawn_user(initial_ip : UInt64, heap_start : UInt64,
-                        udata : UserData, mmap_list : Slice(ElfReader::MemMapHeader))
+    def self.spawn_user(udata : UserData, result : ElfReader::Result)
+      udata.is64 = result.is64
       old_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
         .new(Paging.mt_addr(Paging.current_pdpt.address))
       Multiprocessing::Process.new(udata.argv[0].not_nil!, udata) do |process|
-        process.initial_ip = initial_ip
+        process.initial_ip = result.initial_ip
 
         new_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
           .new(Paging.mt_addr(process.phys_pg_struct))
@@ -384,7 +401,7 @@ module Multiprocessing
         Paging.flush
 
         # memory map
-        mmap_list.each do |mmap_node|
+        result.mmap_list.each do |mmap_node|
           next if mmap_node.memsz == 0u64
           region_start = Paging.t_addr(mmap_node.vaddr)
           region_end = Paging.aligned(mmap_node.vaddr + mmap_node.memsz)
@@ -393,7 +410,7 @@ module Multiprocessing
         end
 
         # heap
-        udata.mmap_heap = udata.mmap_list.add(heap_start, 0,
+        udata.mmap_heap = udata.mmap_list.add(result.heap_start, 0,
           MemMapNode::Attributes::Read | MemMapNode::Attributes::Write).not_nil!
 
         # stack
@@ -413,20 +430,14 @@ module Multiprocessing
     end
 
     @[NoInline]
-    def self.spawn_user_drv(initial_ip : UInt64, heap_start : UInt64,
-                            udata : UserData, mmap_list : Slice(ElfReader::MemMapHeader))
+    def self.spawn_user_drv(udata : UserData, result : ElfReader::Result)
       retval = 0u64
-      mmap_list_addr = mmap_list.to_unsafe.address
-      mmap_list_size = mmap_list.size
       asm("syscall"
               : "={rax}"(retval)
               : "{rax}"(SC_PROCESS_CREATE_DRV),
-                "{rbx}"(initial_ip),
-                "{rdx}"(heap_start),
-                "{r8}"(udata),
-                "{r9}"(mmap_list_addr),
-                "{r10}"(mmap_list_size)
-              : "cc", "memory", "{rcx}", "{r11}", "{rdi}", "{rsi}")
+                "{rbx}"(pointerof(result)),
+                "{rdx}"(udata)
+              : "cc", "volatile", "memory", "{rcx}", "{r11}", "{rdi}", "{rsi}")
       retval
     end
 

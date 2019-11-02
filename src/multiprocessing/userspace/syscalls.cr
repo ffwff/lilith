@@ -217,11 +217,9 @@ module Syscall
           process.phys_user_pg_struct = Paging.real_pdpt.address
         end
       when SC_PROCESS_CREATE_DRV
-        initial_ip = fv.rbx
-        heap_start = fv.rdx
-        udata = Pointer(Void).new(fv.r8).as(Multiprocessing::Process::UserData)
-        mmap_list = Slice(ElfReader::MemMapHeader).new(Pointer(ElfReader::MemMapHeader).new(fv.r9), fv.r10.to_i32)
-        process = Multiprocessing::Process.spawn_user(initial_ip, heap_start, udata, mmap_list)
+        result = Pointer(ElfReader::Result).new(fv.rbx)
+        udata = Pointer(Void).new(fv.rdx).as(Multiprocessing::Process::UserData)
+        process = Multiprocessing::Process.spawn_user(udata, result.value)
         fv.rax = process.pid
       when SC_SLEEP
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
