@@ -388,6 +388,7 @@ module ElfReader
       # allocate the stack
       Result.new(is64, ret_initial_ip, ret_heap_start, mmap_list)
     else
+      Paging.free_process_pdpt Paging.current_pdpt.address, false
       result
     end
   end

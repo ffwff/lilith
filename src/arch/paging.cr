@@ -356,7 +356,7 @@ module Paging
     pdpt.address
   end
 
-  def free_process_pdpt(pdtpa : UInt64)
+  def free_process_pdpt(pdtpa : UInt64, free_pdpta? : Bool = true)
     pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(mt_addr pdtpa)
     # free directories
     512.times do |i|
@@ -385,7 +385,9 @@ module Paging
     end
 
     # free itself
-    FrameAllocator.declaim_addr(pdtpa.to_u64)
+    if free_pdpta?
+      FrameAllocator.declaim_addr(pdtpa.to_u64)
+    end
   end
 
   # page creation
