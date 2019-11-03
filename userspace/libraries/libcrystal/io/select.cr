@@ -12,12 +12,19 @@ class IO::Select
     @fds.push target.fd
   end
 
+  def delete(target)
+    if idx = @fds.index target
+      @fds.delete_at idx
+      @targets.delete_at idx
+    end
+  end
+
   def wait(timeout = 0u32)
     if (fd = LibC.waitfd(@fds.to_unsafe,
                          @fds.size,
                          timeout)) >= 0
-      @targets.each do |target|
-        return target if target.fd == fd
+      if idx = @fds.index(fd)
+        @targets[idx]
       end
     end
   end
