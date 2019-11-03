@@ -1,7 +1,11 @@
+require "./enumerable.cr"
+
 GC_ARRAY_HEADER_TYPE = 0xFFFF_FFFF.to_usize
 GC_ARRAY_HEADER_SIZE = sizeof(USize) * 2
 
 class Array(T)
+  include Enumerable(T)
+
   @capacity : Int32
   getter capacity
 
@@ -121,13 +125,37 @@ class Array(T)
   def shift
     return nil if size == 0
     retval = to_unsafe[0]
-    i = 0
-    while i < (size - 1)
-      to_unsafe[i] = to_unsafe[i + 1]
-      i += 1
-    end
+    LibC.memmove(to_unsafe,
+                 to_unsafe + 1, 
+                 sizeof(T) * (self.size - 1))
     self.size = self.size - 1
     retval
+  end
+
+  def delete(obj)
+    # FIXME: untested
+    i = 0
+    size = self.size
+    while i < size
+      if to_unsafe[i] == obj
+        LibC.memmove(to_unsafe + i, to_unsafe + i + 1, 
+                     sizeof(T) * (size - i - 1))
+        size -= 1
+      else
+        i += 1
+      end
+    end
+  end
+
+  def delete_at(idx : Int)
+    return false unless 0 <= idx && idx < size
+    if idx == size - 1
+      self.size = self.size - 1
+    else
+      LibC.memmove(to_unsafe + idx, to_unsafe + idx + 1,
+                   sizeof(T) * (size - idx - 1))
+    end
+    true
   end
 
   def each
