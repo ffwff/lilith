@@ -85,7 +85,6 @@ run_img: build/kernel
 rungdb: build/kernel
 	$(QEMU) -S -kernel $^ $(QEMUFLAGS) -gdb tcp::9000 &
 	$(GDB) -quiet -ex 'target remote localhost:9000' -ex 'b kmain' -ex 'continue' build/kernel
-	-@pkill qemu
 
 rungdb_img:
 	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda $(DRIVE_IMG) -S -gdb tcp::9000 &
@@ -97,7 +96,6 @@ rungdb_img:
 		-ex 'set arch i386:x86-64:intel' \
 		-ex 'target remote localhost:9000' \
 		build/kernel64
-	-@pkill qemu
 
 rungdb_img_user: build/kernel
 	$(QEMU) -kernel build/kernel $(QEMUFLAGS) -hda $(DRIVE_IMG) -S -gdb tcp::9000 &
