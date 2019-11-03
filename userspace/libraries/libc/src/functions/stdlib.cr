@@ -1,12 +1,12 @@
 # string conversion
 fun strtol(nptr : LibC::String, endptr : LibC::String*, base : LibC::Int) : LibC::Long
   abort
-  0
+  0.to_long
 end
 
 fun strtoul(nptr : LibC::String, endptr : LibC::String*, base : LibC::Int) : LibC::ULong
   abort
-  0u32
+  0.to_ulong
 end
 
 fun atoi(nptr : LibC::String) : LibC::Int
@@ -16,7 +16,7 @@ end
 
 fun atol(nptr : LibC::String) : LibC::Long
   abort
-  0
+  0.to_long
 end
 
 # environ

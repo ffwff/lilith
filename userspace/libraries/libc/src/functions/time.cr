@@ -159,7 +159,7 @@ end
 
 fun clock : LibC::ULong
   # TODO
-  0u32
+  0.to_ulong
 end
 
 fun difftime(t1 : LibC::ULong, t0 : LibC::ULong) : Float64
@@ -169,7 +169,7 @@ end
 
 fun mktime(timep : Void*) : LibC::ULong
   # TODO
-  0u32
+  0.to_ulong
 end
 
 private macro format!(fmt, num)

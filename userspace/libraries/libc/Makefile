@@ -1,5 +1,6 @@
-CPU=i386
-ARCH=$(CPU)-elf-lilith
+ARCH ?= i386-elf-lilith
+CRTARGET = $(shell echo $(ARCH) | sed 's/-[^-]*$$//g')
+
 AR = $(ARCH)-ar
 CC = $(ARCH)-gcc
 AS = $(ARCH)-as
@@ -18,7 +19,7 @@ MATH_SRC=$(wildcard src/functions/math/*.cr)
 # TODO: not hard code CR
 CR=$(shell pwd)/../../../toolchain/crystal/.build/crystal
 
-CRFLAGS=--cross-compile --target i686-elf --prelude ./prelude.cr -Ddisable_overflow
+CRFLAGS=--cross-compile --target $(CRTARGET) --prelude ./prelude.cr -Ddisable_overflow
 CCFLAGS = -Isrc/include -nostdlib -Wall
 
 ifeq ($(RELEASE),1)

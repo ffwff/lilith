@@ -14,7 +14,7 @@ O_APPEND = (1 << 4)
 
 class FileBuffer
   @buffer = Pointer(UInt8).null
-  @pos = 0
+  @pos : LibC::SizeT = 0.to_usize
 
   def initialize(@is_write : Bool)
   end
@@ -25,9 +25,9 @@ class FileBuffer
     end
   end
 
-  def fwrite(fd : LibC::Int, obuf : UInt8*, osize : LibC::Int, line_buffered? = false)
+  def fwrite(fd : LibC::Int, obuf : UInt8*, osize : LibC::SizeT, line_buffered? = false)
     lazy_init
-    offset = 0
+    offset = 0.to_usize
     i = 0
     while i < osize
       if obuf[i] == '\n'.ord
@@ -45,13 +45,13 @@ class FileBuffer
     end
     if line_buffered?
       pos = @pos
-      @pos = offset
+      @pos = offset.to_usize
       if flush(fd) == EOF
         @pos = pos
         return i
       end
       @pos = pos - offset
-      memmove(@buffer, @buffer + offset, @pos.to_u32)
+      memmove(@buffer, @buffer + offset, @pos.to_usize)
     else
       flush fd
     end
@@ -63,7 +63,7 @@ class FileBuffer
     if @is_write && submit_kernel
       retval = write(fd, @buffer.as(LibC::String), @pos)
     end
-    @pos = 0
+    @pos = 0.to_usize
     retval
   end
 
@@ -161,12 +161,13 @@ class File
 
   # reading
   def fputs(str : String)
-    write(@fd, str.to_unsafe.as(LibC::String), str.size).to_int
+    write(@fd, str.to_unsafe.as(LibC::String),
+          str.size.to_usize).to_int
   end
 
   def fputs(str)
     return -1 unless @status.includes?(Status::Write)
-    len = strlen(str).to_int
+    len = strlen(str).to_usize
     if @buffering == Buffering::Unbuffered
       write(@fd, str, len).to_int
     else
@@ -177,9 +178,10 @@ class File
   def fnputs(str, len)
     return -1 unless @status.includes?(Status::Write)
     if @buffering == Buffering::Unbuffered
-      write(@fd, str, len.to_int).to_int
+      write(@fd, str, len.to_usize).to_int
     else
-      @wbuffer.fwrite(@fd, str.as(UInt8*), len.to_int, line_buffered?)
+      @wbuffer.fwrite(@fd, str.as(UInt8*),
+                      len.to_usize, line_buffered?)
     end
   end
 
@@ -194,7 +196,7 @@ class File
   def fgets(str, size)
     return str unless @status.includes?(Status::Read)
     if @buffering == Buffering::Unbuffered
-      idx = read @fd, str, size
+      idx = read @fd, str, size.to_usize
       if idx == EOF
         @status |= Status::EOF
         LibC::String.null
@@ -232,20 +234,20 @@ class File
     @rbuffer.ungetc(ch)
   end
 
-  GETLINE_INITIAL = 128u32
+  GETLINE_INITIAL = 128.to_usize
 
   def getline(lineptr : LibC::String*, n : LibC::SizeT*) : LibC::SSizeT
     if lineptr.value.null? && n.value == 0
       n.value = GETLINE_INITIAL
-      lineptr.value = LibC::String.malloc(n.value)
+      lineptr.value = LibC::String.malloc(GETLINE_INITIAL)
     end
     line = lineptr.value
     line_size = n.value
-    i = 0
+    i = 0.to_isize
     while i < line_size
       if (ch = fgetc) == EOF
         if i == 0
-          return EOF
+          return EOF.to_isize
         else
           return i
         end
@@ -271,30 +273,34 @@ class File
 
   # rw
   def fread(ptr, len)
-    return 0u32 unless @status.includes?(Status::Read)
+    return 0.to_usize unless @status.includes?(Status::Read)
     if @buffering == Buffering::Unbuffered
-      retval = read(@fd, ptr.as(LibC::String), len.to_int)
+      retval = read(@fd, ptr.as(LibC::String),
+                    len.to_usize).to_usize
       if retval < 0
         if retval == EOF
           @status |= Status::EOF
         end
-        0u32
+        0.to_usize
       else
-        retval.to_u32
+        retval.to_usize
       end
     else
+      # FIXME: unimplemented
       abort
-      0u32
+      0.to_usize
     end
   end
 
   def fwrite(ptr, len)
-    return 0u32 unless @status.includes?(Status::Write)
+    return 0.to_usize unless @status.includes?(Status::Write)
     if @buffering == Buffering::Unbuffered
-      write(@fd, ptr.as(LibC::String), len.to_int).to_u32
+      write(@fd, ptr.as(LibC::String),
+            len.to_usize).to_usize
     else
-      ret = @wbuffer.fwrite(@fd, ptr.as(UInt8*), len.to_int, line_buffered?)
-      ret == EOF ? 0u32 : ret.to_u32
+      ret = @wbuffer.fwrite(@fd, ptr.as(UInt8*),
+                            len.to_usize, line_buffered?)
+      ret == EOF ? 0.to_usize : ret.to_usize
     end
   end
 
@@ -465,13 +471,13 @@ end
 
 # prints
 fun puts(data : LibC::String) : LibC::Int
-  ret = write(STDOUT, data, strlen(data).to_int)
+  ret = write(STDOUT, data, strlen(data).to_usize)
   ret += putchar '\n'.ord.to_int
   ret
 end
 
 fun nputs(data : LibC::String, len : LibC::SizeT) : LibC::Int
-  write(STDOUT, data, len.to_int)
+  write(STDOUT, data, len.to_usize)
 end
 
 fun putchar(c : LibC::Int) : LibC::Int

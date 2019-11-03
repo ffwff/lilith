@@ -38,14 +38,6 @@ struct Int
     self.to_u32
   end
 
-  def to_long
-    self.to_i32
-  end
-
-  def to_ulong
-    self.to_u32
-  end
-
   def to_longlong
     self.to_i64
   end
@@ -55,6 +47,14 @@ struct Int
   end
 
   {% if flag?(:bits32) %}
+    def to_long
+      self.to_i32
+    end
+
+    def to_ulong
+      self.to_u32
+    end
+
     def to_usize
       self.to_u32
     end
@@ -63,6 +63,14 @@ struct Int
       self.to_i32
     end
   {% else %}
+    def to_long
+      self.to_i64
+    end
+
+    def to_ulong
+      self.to_u64
+    end
+
     def to_usize
       self.to_u64
     end
@@ -122,15 +130,15 @@ struct Pointer(T)
   end
 
   def self.malloc
-    Malloc.malloc(sizeof(T).to_u32).as(T*)
+    Malloc.malloc(sizeof(T).to_usize).as(T*)
   end
 
   def self.malloc(sz)
-    Malloc.malloc(sizeof(T).to_u32 * sz).as(T*)
+    Malloc.malloc(sizeof(T).to_usize * sz).as(T*)
   end
 
   def realloc(sz)
-    Malloc.realloc(self.as(Void*), sizeof(T).to_u32 * sz).as(T*)
+    Malloc.realloc(self.as(Void*), sizeof(T).to_usize * sz).as(T*)
   end
 
   def free

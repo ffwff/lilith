@@ -19,14 +19,14 @@ end
 fun mkfpipe(name : LibC::String, flags : LibC::UInt) : LibC::Int
   fd = mkpipe(name)
   return fd if fd < 0
-  _ioctl(fd, SC_IOCTL_PIPE_CONF_FLAGS, flags)
+  _ioctl(fd, SC_IOCTL_PIPE_CONF_FLAGS, flags.to_ulong)
   fd
 end
 
 fun mkppipe(name : LibC::String, flags : LibC::UInt, pid : LibC::Pid) : LibC::Int
   fd = mkpipe(name)
   return fd if fd < 0
-  _ioctl(fd, SC_IOCTL_PIPE_CONF_FLAGS, flags)
-  _ioctl(fd, SC_IOCTL_PIPE_CONF_PID, pid.to_uint)
+  _ioctl(fd, SC_IOCTL_PIPE_CONF_FLAGS, flags.to_ulong)
+  _ioctl(fd, SC_IOCTL_PIPE_CONF_PID, pid.to_ulong)
   fd
 end

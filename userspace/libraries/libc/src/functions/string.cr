@@ -1,8 +1,8 @@
 fun strlen(str : LibC::String) : LibC::SizeT
   if str.null?
-    return 0u32
+    return 0.to_usize
   end
-  i = 0u32
+  i = 0.to_usize
   until str[i] == 0
     i += 1
   end
@@ -167,7 +167,7 @@ end
 
 # spn
 fun strspn(s1 : LibC::String, s2 : LibC::String) : LibC::SizeT
-  ret = 0u32
+  ret = 0.to_usize
   while s1.value != 0 && strchr(s2, s1.value.to_int)
     s1 += 1
     ret += 1
@@ -191,7 +191,7 @@ end
 fun memset(dst : UInt8*, c : LibC::UInt, n : LibC::SizeT) : Void*
   asm(
     "cld\nrep stosb"
-          :: "{al}"(c.to_u8), "{edi}"(dst), "{ecx}"(n)
+          :: "{al}"(c.to_u8), "{Di}"(dst), "{cx}"(n)
           : "volatile", "memory"
   )
   dst.as(Void*)
@@ -200,7 +200,7 @@ end
 fun memcpy(dst : UInt8*, src : UInt8*, n : LibC::SizeT) : Void*
   asm(
     "cld\nrep movsb"
-          :: "{edi}"(dst), "{esi}"(src), "{ecx}"(n)
+          :: "{Di}"(dst), "{Si}"(src), "{cx}"(n)
           : "volatile", "memory"
   )
   dst.as(Void*)
