@@ -1,8 +1,8 @@
 diff --git a/bfd/config.bfd b/bfd/config.bfd
-index 0e1ddb659c..e21cf2bc76 100644
+index 0e1ddb659c..73f1869035 100644
 --- a/bfd/config.bfd
 +++ b/bfd/config.bfd
-@@ -223,6 +223,11 @@ case "${targ}" in
+@@ -223,6 +223,18 @@ case "${targ}" in
      ;;
  
  # START OF targmatch.h
@@ -11,6 +11,13 @@ index 0e1ddb659c..e21cf2bc76 100644
 +    targ_selvecs=
 +    targ64_selvecs=x86_64_elf64_vec
 +    ;;
++#ifdef BFD64
++  x86_64-*-lilith*)
++    targ_defvec=x86_64_elf64_vec
++    targ_selvecs="i386_elf32_vec iamcu_elf32_vec x86_64_elf32_vec l1om_elf64_vec k1om_elf64_vec"
++    want64=true
++    ;;
++#endif
  #ifdef BFD64
    aarch64-*-darwin*)
      targ_defvec=aarch64_mach_o_vec
@@ -27,14 +34,15 @@ index 75bb6a3135..78ce133e7c 100755
  	     | hpux* | unos* | osf* | luna* | dgux* | auroraux* | solaris* \
  	     | sym* | kopensolaris* | plan9* \
 diff --git a/gas/configure.tgt b/gas/configure.tgt
-index 616d211308..9095940d10 100644
+index 616d211308..c94c214b3b 100644
 --- a/gas/configure.tgt
 +++ b/gas/configure.tgt
-@@ -121,6 +121,7 @@ esac
+@@ -121,6 +121,8 @@ esac
  generic_target=${cpu_type}-$vendor-$os
  # Note: This table is alpha-sorted, please try to keep it that way.
  case ${generic_target} in
 +  i386-*-lilith*)                     fmt=elf;;
++  x86_64-*-lilith*)                     fmt=elf;;
    aarch64*-*-elf*)			fmt=elf;;
    aarch64*-*-fuchsia*)			fmt=elf;;
    aarch64*-*-linux*)			fmt=elf em=linux
@@ -62,7 +70,7 @@ index c2c798b4fe..53d47f8bfb 100644
    $(ELF_DEPS) $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
  
 diff --git a/ld/Makefile.in b/ld/Makefile.in
-index fc687fc516..955cfed0ff 100644
+index fc687fc516..5f03caf75f 100644
 --- a/ld/Makefile.in
 +++ b/ld/Makefile.in
 @@ -769,6 +769,7 @@ ALL_EMULATION_SOURCES = \
@@ -73,11 +81,19 @@ index fc687fc516..955cfed0ff 100644
  	eelf_i386_be.c \
  	eelf_i386_chaos.c \
  	eelf_i386_fbsd.c \
+@@ -943,6 +944,7 @@ ALL_64_EMULATION_SOURCES = \
+ 	eelf_x86_64_fbsd.c \
+ 	eelf_x86_64_nacl.c \
+ 	eelf_x86_64_sol2.c \
++	eelf_x86_64_lilith.c \
+ 	ehppa64linux.c \
+ 	ei386pep.c \
+ 	emmo.c
 diff --git a/ld/configure.tgt b/ld/configure.tgt
-index beba17ef51..a1a42872fe 100644
+index beba17ef51..c86394dfe0 100644
 --- a/ld/configure.tgt
 +++ b/ld/configure.tgt
-@@ -45,6 +45,10 @@ targ64_extra_libpath=
+@@ -45,6 +45,12 @@ targ64_extra_libpath=
  # architecture variants should be kept together even if their names
  # break the alpha sorting.
  case "${targ}" in
@@ -85,16 +101,29 @@ index beba17ef51..a1a42872fe 100644
 +			targ_emul=elf_i386_lilith
 +			targ_extra_emuls=elf_i386
 +			;;
++x86_64-*-lilith*)	targ_emul=elf_x86_64
++			targ_extra_emuls=elf_i386 ;;
  aarch64_be-*-elf)	targ_emul=aarch64elfb
  			targ_extra_emuls="aarch64elf aarch64elf32 aarch64elf32b armelfb armelf" ;;
  aarch64-*-elf | aarch64-*-rtems*)
 diff --git a/ld/emulparams/elf_i386_lilith.sh b/ld/emulparams/elf_i386_lilith.sh
 new file mode 100644
-index 0000000000..3e85d8c58b
+index 0000000000..98fec0aa62
 --- /dev/null
 +++ b/ld/emulparams/elf_i386_lilith.sh
 @@ -0,0 +1,4 @@
 +. ${srcdir}/emulparams/elf_i386.sh
++GENERATE_SHLIB_SCRIPT=yes
++GENERATE_PIE_SCRIPT=yes
++TEXT_START_ADDR=0x100000
+\ No newline at end of file
+diff --git a/ld/emulparams/elf_x86_64_lilith.sh b/ld/emulparams/elf_x86_64_lilith.sh
+new file mode 100644
+index 0000000000..3db295211c
+--- /dev/null
++++ b/ld/emulparams/elf_x86_64_lilith.sh
+@@ -0,0 +1,4 @@
++. ${srcdir}/emulparams/elf_x86_64.sh
 +GENERATE_SHLIB_SCRIPT=yes
 +GENERATE_PIE_SCRIPT=yes
 +TEXT_START_ADDR=0x100000
