@@ -11,11 +11,12 @@ int close(int fd);
 ssize_t write(int fd, const void *str, size_t len);
 ssize_t read(int fd, void *str, size_t len);
 int ftruncate(int fd, off_t length);
-int _ioctl(int fd, int request, unsigned int arg);
+int _ioctl(int fd, int request, unsigned long arg);
 int waitfd(int *fds, size_t nfds, useconds_t timeout);
 void *mmap(int fd, size_t size);
 void munmap(void *addr);
 int remove(char *device);
+void *sbrk(size_t size);
 
 time_t _sys_time();
 

@@ -11,11 +11,11 @@ lib LibC
 end
 
 fun tcgetattr(fd : LibC::Int, termios_p : LibC::Termios*) : LibC::Int
-  _ioctl fd, SC_IOCTL_TCSAGETS, termios_p.address.to_uint
+  _ioctl fd, SC_IOCTL_TCSAGETS, termios_p.address.to_ulong
 end
 
 fun tcsetattr(fd : LibC::Int,
               optional_actions : LibC::Int,
               termios_p : LibC::Termios*) : LibC::Int
-  _ioctl fd, optional_actions, termios_p.address.to_uint
+  _ioctl fd, optional_actions, termios_p.address.to_ulong
 end

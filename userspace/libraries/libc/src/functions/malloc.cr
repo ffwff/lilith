@@ -8,26 +8,26 @@ module Malloc
   FOOTER_MAGIC = 0x1badb011
   ALLOC_UNIT   =  0x1000u32
 
-  def unit_aligned(sz : LibC::UInt)
+  def unit_aligned(sz)
     (sz & 0xFFFF_F000) + 0x1000
   end
 
   lib Data
     struct Header
       # magic number for the header
-      magic : LibC::UInt
+      magic : LibC::SizeT
       # prev header in free list chain
       prev_header : Header*
       # next header in free list chain
       next_header : Header*
       # size of the data next to the header,
       # excluding the size of the footer
-      size : LibC::UInt
+      size : LibC::SizeT
     end
 
     struct Footer
       # magic number for the footer
-      magic : LibC::UInt
+      magic : LibC::SizeT
       # corresponding header
       header : Header*
     end
@@ -63,15 +63,15 @@ module Malloc
     @@heap_placement
   end
 
-  private def alloc_header(size : LibC::UInt) : Data::Header*
+  private def alloc_header(size : LibC::SizeT) : Data::Header*
     total_size = sizeof(Data::Header) + size
     units = unit_aligned size
     if @@heap_end == 0
       # first allocation
       cur_placement = sbrk(units)
-      @@heap_start = cur_placement.address.to_u32
-      @@heap_placement = cur_placement.address.to_u32 + total_size
-      @@heap_end = cur_placement.address.to_u32 + units
+      @@heap_start = cur_placement.address.to_usize
+      @@heap_placement = cur_placement.address.to_usize + total_size
+      @@heap_end = cur_placement.address.to_usize + units
       cur_placement.as(Data::Header*)
     else
       # subsequent allocations with end of heap known
@@ -118,7 +118,7 @@ module Malloc
   end
 
   # search free list for suitable area
-  private def search_free_list(data_sz : LibC::UInt) : Data::Header*
+  private def search_free_list(data_sz : LibC::SizeT) : Data::Header*
     hdr = @@first_free_header
     while !hdr.null?
       # dbg "found size: "; hdr.value.size.dbg; dbg " "; data_sz.dbg; dbg "\n"
@@ -139,7 +139,7 @@ module Malloc
   end
 
   # split the block
-  private def split_block(hdr : Data::Header*, data_sz : LibC::UInt)
+  private def split_block(hdr : Data::Header*, data_sz : LibC::SizeT)
     if (hdr.value.size - data_sz) >= MIN_ALLOC_DATA
       # we can reasonably split this header for more allocation
 
@@ -170,9 +170,9 @@ module Malloc
     end
   end
 
-  def malloc(size : LibC::UInt) : Void*
+  def malloc(size : LibC::SizeT) : Void*
     if size < MIN_ALLOC_DATA
-      size = MIN_ALLOC_DATA.to_u32
+      size = MIN_ALLOC_DATA.to_usize
     else
       unless aligned?(size)
         size = align_up(size)
@@ -303,7 +303,7 @@ module Malloc
     end
   end
 
-  def realloc(ptr : Void*, size : LibC::UInt) : Void*
+  def realloc(ptr : Void*, size : LibC::SizeT) : Void*
     # malloc if null pointer is passed
     if ptr.null?
       return malloc size
@@ -399,13 +399,13 @@ module Malloc
 end
 
 # c functions
-fun calloc(nmeb : LibC::UInt, size : LibC::UInt) : Void*
-  ptr = Malloc.malloc nmeb * size
-  memset ptr.as(UInt8*), 0u32, nmeb * size
+  fun calloc(nmemb : LibC::SizeT, size : LibC::SizeT) : Void*
+  ptr = Malloc.malloc nmemb * size
+  memset ptr.as(UInt8*), 0u32, nmemb * size
   ptr
 end
 
-fun malloc(size : LibC::UInt) : Void*
+fun malloc(size : LibC::SizeT) : Void*
   Malloc.malloc size
 end
 
@@ -413,7 +413,7 @@ fun free(ptr : Void*)
   Malloc.free ptr
 end
 
-fun realloc(ptr : Void*, size : LibC::UInt) : Void*
+fun realloc(ptr : Void*, size : LibC::SizeT) : Void*
   Malloc.realloc ptr, size
 end
 
