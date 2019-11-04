@@ -351,8 +351,8 @@ module Multiprocessing
         frame.ss = USER_SS_SEGMENT
         frame.ds = USER_SS_SEGMENT
         if udata.is64
-          frame.rip = Pointer(UInt64).new(syscall_frame.value.rcx).value
-          frame.userrsp = syscall_frame.value.rcx
+          frame.rip = syscall_frame.value.rcx
+          frame.userrsp = syscall_frame.value.rsp
         else
           frame.rip = Pointer(UInt32).new(syscall_frame.value.rcx).value
           frame.userrsp = syscall_frame.value.rcx & 0xFFFF_FFFFu64
