@@ -42,7 +42,6 @@ ksyscall_setup:
 
 # sysenter instruction path
 .global ksyscall_stub
-.global xxxsysret
 ksyscall_stub:
     push $0 # rsp
     pusha64
@@ -57,7 +56,7 @@ ksyscall_stub:
     fxrstor (%rax)
     popa64
     mov %rcx, %rsp
-    mov (%rsp), %rcx
+    mov (%rsp), %ecx
     mov $USER_RFLAGS, %r11
     sysret
 
@@ -81,8 +80,13 @@ ksyscall_stub_sc:
     cld
     mov %rsp, %rdi
     call ksyscall_handler
-
-
+    # return!
+    movabs $fxsave_region, %rax
+    fxrstor (%rax)
+    popa64
+    pop %rsp
+ksyscall_ret:
+    sysretq
 
 ksyscall_sc_ret_driver:
     movabs $fxsave_region, %rax

@@ -22,8 +22,6 @@ module Multiprocessing
 
   USER_CS_SEGMENT   =  0x1b
   USER_SS_SEGMENT   =  0x23
-  USER_CS64_SEGMENT =  0x3b
-  USER_SS64_SEGMENT =  0x43
   USER_RFLAGS       = 0x212
 
   KERNEL_CS_SEGMENT =   0x29
@@ -315,15 +313,9 @@ module Multiprocessing
         frame.ds = KERNEL_SS_SEGMENT
       else
         frame.rflags = USER_RFLAGS
-        if udata.is64
-          frame.cs = USER_CS64_SEGMENT
-          frame.ds = USER_SS64_SEGMENT
-          frame.ss = USER_SS64_SEGMENT
-        else
-          frame.cs = USER_CS_SEGMENT
-          frame.ds = USER_SS_SEGMENT
-          frame.ss = USER_SS_SEGMENT
-        end
+        frame.cs = USER_CS_SEGMENT
+        frame.ds = USER_SS_SEGMENT
+        frame.ss = USER_SS_SEGMENT
       end
 
       if @frame.nil?
@@ -355,20 +347,15 @@ module Multiprocessing
         frame.ds = KERNEL_SS_SEGMENT
       else
         frame.rflags = USER_RFLAGS
+        frame.cs = USER_CS_SEGMENT
+        frame.ss = USER_SS_SEGMENT
+        frame.ds = USER_SS_SEGMENT
         if udata.is64
           frame.rip = Pointer(UInt64).new(syscall_frame.value.rcx).value
           frame.userrsp = syscall_frame.value.rcx
-
-          frame.cs = USER_CS64_SEGMENT
-          frame.ss = USER_SS64_SEGMENT
-          frame.ds = USER_SS64_SEGMENT
         else
           frame.rip = Pointer(UInt32).new(syscall_frame.value.rcx).value
           frame.userrsp = syscall_frame.value.rcx & 0xFFFF_FFFFu64
-
-          frame.cs = USER_CS_SEGMENT
-          frame.ss = USER_SS_SEGMENT
-          frame.ds = USER_SS_SEGMENT
         end
       end
 

@@ -39,7 +39,7 @@ private def __lilith_syscall(rax : UInt32, rbx : UInt64,
   l0 = l1 = 0
   asm("push $$1f
        mov %rsp, %rcx
-       sysenter
+       syscall
        1: add $$8, %rsp"
           : "={rax}"(ret), "={rdi}"(l0), "={rsi}"(l1)
           : "{rax}"(rax), "{rbx}"(rbx), "{rdx}"(rdx), "{rdi}"(rdi), "{rsi}"(rsi)
@@ -54,7 +54,7 @@ private def __lilith_syscall64(rax : UInt32, rbx : UInt64,
   l0 = l1 = 0
   asm("push $$1f
        mov %rsp, %rcx
-       sysenter
+       syscall
        1: add $$8, %rsp"
           : "={rax}"(ret), "={rdi}"(l0), "={rsi}"(l1)
           : "{rax}"(rax), "{rbx}"(rbx), "{rdx}"(rdx), "{rdi}"(rdi), "{rsi}"(rsi)
