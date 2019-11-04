@@ -6,8 +6,8 @@ lib SyscallData
   struct Registers
     ds : UInt64
     rbp, rdi, rsi,
-r15, r14, r13, r12, r11, r10, r9, r8,
-rdx, rcx, rbx, rax : UInt64
+    r15, r14, r13, r12, r11, r10, r9, r8,
+    rdx, rcx, rbx, rax : UInt64
     rsp : UInt64
   end
 
@@ -204,7 +204,7 @@ module Syscall
   @[AlwaysInline]
   def handler(frame : SyscallData::Registers*)
     process = Multiprocessing::Scheduler.current_process.not_nil!
-    # Serial.puts "syscall ", fv.rax, " from ", Multiprocessing::Scheduler.current_process.not_nil!.pid, "\n"
+    Serial.puts "syscall ", fv.rax, " from ", Multiprocessing::Scheduler.current_process.not_nil!.pid, "\n"
     if process.kernel_process?
       case fv.rax
       when SC_MMAP_DRV
