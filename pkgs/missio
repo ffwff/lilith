@@ -19,7 +19,7 @@ usage() {
 missio_dir=$(realpath "$(dirname $0)")
 opt_image="$(pwd)/disk.img"
 opt_mountdir="/mnt"
-opt_arch="i386-elf-lilith"
+export opt_arch="x86_64-elf-lilith"
 opt_toolsdir="$(pwd)/userspace/toolchain/tools"
 
 fail() {

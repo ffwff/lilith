@@ -1,9 +1,9 @@
 #!/bin/sh
 
-ARCH="i386-elf"
-SCRIPT_PATH=$(dirname $(realpath $0))
-
+crystal_target=`echo $opt_arch | sed 's/-[^-]*$//g'`
+script_path=$(dirname $(realpath $0))
 basename=`basename $1 .cr`
+
 if [[ "x$2" = "x" ]]; then
   echo "output argument required"
   exit 1
@@ -11,12 +11,8 @@ else
   output="$2"
 fi
 
-cleanup() {
-  exit $1
-}
-
-CRYSTAL_PATH="$SCRIPT_PATH" \
-  crystal build $1 --cross-compile --target $ARCH --prelude prelude --release -Ddisable_overflow || cleanup $?
-$ARCH-lilith-gcc -o $output "$basename.o" $LDFLAGS || cleanup $?
+CRYSTAL_PATH="$script_path" \
+  crystal build $1 --cross-compile --target $crystal_target --prelude prelude --release -Ddisable_overflow || exit $?
+$opt_arch-gcc -o $output "$basename.o" $LDFLAGS || exit $?
 rm "$basename.o"
-cleanup 0
+exit 0
