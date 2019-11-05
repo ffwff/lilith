@@ -11,7 +11,7 @@ class Array(T)
 
   def size
     return 0 if @capacity == 0
-    @buffer[1].to_isize
+    @buffer[1].to_i32
   end
 
   protected def size=(new_size)
