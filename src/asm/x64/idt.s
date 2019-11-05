@@ -98,5 +98,7 @@ kirq_stub:
     fxrstor (%rax)
     popa64
     add $8, %rsp # skip int_no
+    # NOTE: iretq requires %ss to be set
+    mov 32(%rsp), %ss
     iretq
 
