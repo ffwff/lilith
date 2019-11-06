@@ -3,6 +3,7 @@ require "./file.cr"
 lib LibC
   alias Ino_t = LibC::Int
 
+  @[Packed]
   struct Dirent
     # Inode number
     d_ino : Ino_t
