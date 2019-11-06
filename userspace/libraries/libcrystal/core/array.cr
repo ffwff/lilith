@@ -47,8 +47,8 @@ class Array(T)
   end
 
   def initialize(initial_capacity)
-    @capacity = initial_capacity
     if initial_capacity > 0
+      @capacity = initial_capacity
       {% if T < Int %}
         @buffer = Pointer(USize).malloc_atomic malloc_size(initial_capacity)
       {% else %}
@@ -58,6 +58,7 @@ class Array(T)
       @buffer[1] = 0u32
     else
       @buffer = Pointer(USize).null
+      @capacity = 0
     end
   end
 
