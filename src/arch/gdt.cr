@@ -1,4 +1,4 @@
-GDT_REGULARS = 7
+GDT_REGULARS = 9
 
 private lib Kernel
   @[Packed]
@@ -73,25 +73,15 @@ module Gdt
     init_gdt_entry 0, 0x0, 0x0, 0x0, 0x0          # null
     init_gdt_entry 1, 0x0, 0xFFFFFFFF, 0x9A, 0xAF # kernel code (64-bit)
     init_gdt_entry 2, 0x0, 0xFFFFFFFF, 0x92, 0x0F # kernel data (64-bit)
-    init_gdt_entry 3, 0x0, 0xFFFFFFFF, 0x00, 0x00 # user code
-    init_gdt_entry 4, 0x0, 0xFFFFFFFF, 0x00, 0x00 # user data
-    init_gdt_entry 5, 0x0, 0xFFFFFFFF, 0xBA, 0xAF # device code (CPL=1)
-    init_gdt_entry 6, 0x0, 0xFFFFFFFF, 0xB2, 0xAF # device data (CPL=1)
+    init_gdt_entry 3, 0x0, 0xFFFFFFFF, 0xFA, 0xCF # user code (32-bit)
+    init_gdt_entry 4, 0x0, 0xFFFFFFFF, 0xF2, 0xCF # user data
+    init_gdt_entry 5, 0x0, 0xFFFFFFFF, 0xFA, 0xAF # user code (64-bit)
+    init_gdt_entry 6, 0x0, 0xFFFFFFFF, 0xF2, 0xCF # user code (64-bit)
+    init_gdt_entry 7, 0x0, 0xFFFFFFFF, 0xBA, 0xAF # device code (CPL=1)
+    init_gdt_entry 8, 0x0, 0xFFFFFFFF, 0xB2, 0xAF # device data (CPL=1)
     init_tss
 
     Kernel.kload_gdt pointerof(@@gdtr)
-  end
-
-  def switch_user_32
-    init_gdt_entry 3, 0x0, 0xFFFFFFFF, 0xFA, 0xCF # user code (32-bit)
-    init_gdt_entry 4, 0x0, 0xFFFFFFFF, 0xF2, 0xCF # user data (32-bit)
-    asm("lgdt ($0)" :: "r"(pointerof(@@gdtr)) : "volatile", "memory")
-  end
-
-  def switch_user_64
-    init_gdt_entry 3, 0x0, 0xFFFFFFFF, 0xFA, 0xFF # user code (64-bit)
-    init_gdt_entry 4, 0x0, 0xFFFFFFFF, 0xF2, 0xFF # user data (64-bit)
-    asm("lgdt ($0)" :: "r"(pointerof(@@gdtr)) : "volatile", "memory")
   end
 
   private def init_gdt_entry(num : ISize,
@@ -138,7 +128,7 @@ module Gdt
   end
 
   def flush_tss
-    asm("mov $$0x3A, %bx
+    asm("mov $$0x4a, %bx
          ltr %bx" ::: "volatile", "bx")
   end
 
