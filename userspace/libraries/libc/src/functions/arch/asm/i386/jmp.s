@@ -1,6 +1,4 @@
 .global setjmp
-.global longjmp
-
 setjmp:
     mov 4(%esp), %eax
     mov    %ebx, (%eax)
@@ -14,6 +12,7 @@ setjmp:
     xor    %eax, %eax
     ret
 
+.global longjmp
 longjmp:
     mov  4(%esp),%edx
     mov  8(%esp),%eax
