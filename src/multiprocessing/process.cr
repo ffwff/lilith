@@ -21,11 +21,13 @@ module Multiprocessing
   KERNEL_HEAP_INITIAL  = Paging::KERNEL_PDPT_POINTER + 0x0u64
 
   USER_CS_SEGMENT   =  0x1b
-  USER_SS_SEGMENT   =  0x23
+  USER_DS_SEGMENT   =  0x23
+  USER_CS64_SEGMENT =  0x2b
+  USER_DS64_SEGMENT =  0x33
   USER_RFLAGS       = 0x212
 
-  KERNEL_CS_SEGMENT =   0x29
-  KERNEL_SS_SEGMENT =   0x31
+  KERNEL_CS_SEGMENT =   0x39
+  KERNEL_DS_SEGMENT =   0x41
   KERNEL_RFLAGS     = 0x1202 # IOPL=1
 
   FXSAVE_SIZE = 512u64
@@ -309,13 +311,19 @@ module Multiprocessing
       if kernel_process?
         frame.rflags = KERNEL_RFLAGS
         frame.cs = KERNEL_CS_SEGMENT
-        frame.ss = KERNEL_SS_SEGMENT
-        frame.ds = KERNEL_SS_SEGMENT
+        frame.ss = KERNEL_DS_SEGMENT
+        frame.ds = KERNEL_DS_SEGMENT
       else
         frame.rflags = USER_RFLAGS
-        frame.cs = USER_CS_SEGMENT
-        frame.ds = USER_SS_SEGMENT
-        frame.ss = USER_SS_SEGMENT
+        if udata.is64
+          frame.cs = USER_CS64_SEGMENT
+          frame.ss = USER_DS64_SEGMENT
+          frame.ds = USER_DS64_SEGMENT
+        else
+          frame.cs = USER_CS_SEGMENT
+          frame.ss = USER_DS_SEGMENT
+          frame.ds = USER_DS_SEGMENT
+        end
       end
 
       if @frame.nil?
@@ -343,17 +351,22 @@ module Multiprocessing
 
         frame.rflags = frame.r11
         frame.cs = KERNEL_CS_SEGMENT
-        frame.ss = KERNEL_SS_SEGMENT
-        frame.ds = KERNEL_SS_SEGMENT
+        frame.ss = KERNEL_DS_SEGMENT
+        frame.ds = KERNEL_DS_SEGMENT
       else
         frame.rflags = USER_RFLAGS
-        frame.cs = USER_CS_SEGMENT
-        frame.ss = USER_SS_SEGMENT
-        frame.ds = USER_SS_SEGMENT
         if udata.is64
+          frame.cs = USER_CS64_SEGMENT
+          frame.ss = USER_DS64_SEGMENT
+          frame.ds = USER_DS64_SEGMENT
+
           frame.rip = syscall_frame.value.rcx
           frame.userrsp = syscall_frame.value.rsp
         else
+          frame.cs = USER_CS_SEGMENT
+          frame.ss = USER_DS_SEGMENT
+          frame.ds = USER_DS_SEGMENT
+
           frame.rip = Pointer(UInt32).new(syscall_frame.value.rcx).value
           frame.userrsp = syscall_frame.value.rcx & 0xFFFF_FFFFu64
         end
@@ -411,7 +424,11 @@ module Multiprocessing
         udata.argv.each do |arg|
           argv_builder.from_string arg.not_nil!
         end
-        argv_builder.build
+        if udata.is64
+          argv_builder.build64
+        else
+          argv_builder.build32
+        end
         true
       end
     end
