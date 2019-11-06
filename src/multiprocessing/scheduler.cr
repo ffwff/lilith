@@ -323,15 +323,6 @@ module Multiprocessing::Scheduler
       memcpy Multiprocessing.fxsave_region, process.fxsave_region, FXSAVE_SIZE
     end
 
-    # setup gdt
-    unless process.kernel_process?
-      if process.udata.is64
-        Gdt.switch_user_64
-      else
-        Gdt.switch_user_32
-      end
-    end
-
     # lock kernel subsytems for driver threads
     if process.kernel_process?
       DriverThread.lock
