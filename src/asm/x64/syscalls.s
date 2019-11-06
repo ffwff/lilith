@@ -1,5 +1,5 @@
-DRIVER_CODE_SELECTOR = 0x29
-DRIVER_DATA_SELECTOR = 0x31
+DRIVER_CODE_SELECTOR = 0x39
+DRIVER_DATA_SELECTOR = 0x41
 
 .section .text
 .global ksyscall_setup
@@ -85,7 +85,6 @@ ksyscall_stub_sc:
     fxrstor (%rax)
     popa64
     pop %rsp
-ksyscall_ret:
     sysretq
 
 ksyscall_sc_ret_driver:
