@@ -32,6 +32,12 @@ fun __crystal_malloc_atomic64(size : UInt64) : Void*
   Gc.unsafe_malloc size, true
 end
 
+{% unless flag?(:kernel) %}
+  fun __crystal_realloc64(ptr : Void*, size : UInt64) : Void*
+    Gc.realloc ptr, size
+  end
+{% end %}
+
 # white nodes
 private GC_NODE_MAGIC        = 0x45564100
 private GC_NODE_MAGIC_ATOMIC = 0x45564101
