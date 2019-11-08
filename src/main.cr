@@ -34,22 +34,22 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Multiprocessing.fxsave_region_base = Kernel.fxsave_region_base_ptr
   Kernel.ksetup_fxsave_region_base
 
-  Console.puts "Booting lilith...\n"
+  Console.print "Booting lilith...\n"
 
-  Console.puts "initializing gdtr...\n"
+  Console.print "initializing gdtr...\n"
   Gdt.init_table
 
   # drivers
   Pit.init_device
 
   # interrupt tables
-  Console.puts "initializing idt...\n"
+  Console.print "initializing idt...\n"
   Idt.init_interrupts
   Idt.init_table
   Idt.status_mask = true
 
   # paging
-  Console.puts "initializing paging...\n"
+  Console.print "initializing paging...\n"
   # use the physical address of the kernel end for pmalloc
   Pmalloc.start = Paging.aligned(Kernel.kernel_end.address - KERNEL_OFFSET)
   Pmalloc.addr = Pmalloc.start
@@ -58,10 +58,10 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     Kernel.stack_start, Kernel.stack_end,
     mboot_header)
 
-  Console.puts "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
+  Console.print "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
 
   # gc
-  Console.puts "initializing kernel garbage collector...\n"
+  Console.print "initializing kernel garbage collector...\n"
   KernelArena.start_addr = Kernel.stack_end.address + 0x1000
   Gc._init Kernel.data_start.address,
     Kernel.data_end.address,
@@ -75,7 +75,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   # hardware
   # pci
-  Console.puts "checking PCI buses...\n"
+  Console.print "checking PCI buses...\n"
   PCI.check_all_buses do |bus, device, func, vendor_id|
     device_id = PCI.read_field bus, device, func, PCI::PCI_DEVICE_ID, 2
     if Ide.pci_device?(vendor_id, device_id)
@@ -104,7 +104,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   # file systems
   main_bin : VFSNode? = nil
   if (mbr = MBR.read(Ide.device(0)))
-    Console.puts "found MBR header...\n"
+    Console.print "found MBR header...\n"
     fs = Fat16FS.new Ide.device(0), mbr.to_unsafe.value.partitions[0]
     fs.root.each_child do |node|
       if node.name == "main"
@@ -118,11 +118,11 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   # load main.bin
   if main_bin.nil?
-    Console.puts "no main.bin detected.\n"
+    Console.print "no main.bin detected.\n"
     while true
     end
   else
-    Console.puts "executing MAIN.BIN...\n"
+    Console.print "executing MAIN.BIN...\n"
 
     builder = String::Builder.new(1 + fs.not_nil!.name.bytesize)
     builder << "/"

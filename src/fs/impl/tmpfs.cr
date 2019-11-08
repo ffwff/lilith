@@ -131,7 +131,7 @@ private class TmpFSNode < VFSNode
   def remove : Int32
     return VFS_ERR if @removed
     if @mmap_count > 0
-      Serial.puts "tmpfs: can't remove if mmapd"
+      Serial.print "tmpfs: can't remove if mmapd"
       return VFS_ERR
     end
 
@@ -198,7 +198,7 @@ private class TmpFSNode < VFSNode
   end
   
   def truncate(size : Int32) : Int32
-    Serial.puts "trunc: ", size, '\n'
+    Serial.print "trunc: ", size, '\n'
     new_npages = size.div_ceil 0x1000
     if size > @size
       @size = size
@@ -208,7 +208,7 @@ private class TmpFSNode < VFSNode
       end
     elsif size < @size
       if @mmap_count > 0
-        Serial.puts "tmpfs: can't truncate if mmapd"
+        Serial.print "tmpfs: can't truncate if mmapd"
         return @size
       end
       @size = size

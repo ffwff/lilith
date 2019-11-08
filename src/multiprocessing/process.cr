@@ -464,7 +464,7 @@ module Multiprocessing
 
     # deinitialize
     def remove(remove_proc? = true)
-      Serial.puts "remove ", @pid, '\n'
+      Serial.print "remove ", @pid, '\n'
       Multiprocessing.n_process -= 1
       @prev_process.not_nil!.next_process = @next_process
       if @next_process.nil?
@@ -553,16 +553,16 @@ module Multiprocessing
 
     # debugging
     def to_s(io)
-      io.puts "Process {\n"
-      io.puts " pid: ", @pid, ", \n"
-      io.puts " name: ", @name, ", \n"
-      io.puts " status: ", @sched_data.not_nil!.status, ", \n"
-      io.puts " initial_sp: ", Pointer(Void).new(@initial_sp), ", \n"
-      io.puts " initial_ip: ", Pointer(Void).new(@initial_ip), ", \n"
+      io.print "Process {\n"
+      io.print " pid: ", @pid, ", \n"
+      io.print " name: ", @name, ", \n"
+      io.print " status: ", @sched_data.not_nil!.status, ", \n"
+      io.print " initial_sp: ", Pointer(Void).new(@initial_sp), ", \n"
+      io.print " initial_ip: ", Pointer(Void).new(@initial_ip), ", \n"
       if @frame
-        io.puts " ip: ", Pointer(Void).new(@frame.not_nil!.to_unsafe.value.rip), ", \n"
+        io.print " ip: ", Pointer(Void).new(@frame.not_nil!.to_unsafe.value.rip), ", \n"
       end
-      io.puts "}"
+      io.print "}"
     end
 
     protected def unawait

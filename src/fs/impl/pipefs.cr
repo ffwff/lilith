@@ -76,7 +76,7 @@ private class PipeFSNode < VFSNode
       @flags |= Flags::Anonymous
     end
     @pipe = CircularBuffer.new
-    # Serial.puts "mk ", @name, '\n'
+    # Serial.print "mk ", @name, '\n'
   end
 
   def close
@@ -125,7 +125,7 @@ private class PipeFSNode < VFSNode
     return VFS_EOF if @flags.includes?(Flags::Removed)
 
     process = process.not_nil!
-    # Serial.puts "rd from ", process.pid, "(", @m_pid, ",", @s_pid, ")", "\n"
+    Serial.print "rd from ", process.pid, "(", @m_pid, ",", @s_pid, ")", "\n"
     unless @flags.includes?(Flags::G_Read)
       if process.pid == @m_pid
         return 0 unless @flags.includes?(Flags::M_Read)
@@ -144,7 +144,7 @@ private class PipeFSNode < VFSNode
     return VFS_EOF if @flags.includes?(Flags::Removed)
 
     process = process.not_nil!
-    # Serial.puts "wr from ", process.pid, "(", @m_pid, ",", @s_pid, ")", "\n"
+    Serial.print "wr from ", process.pid, "(", @m_pid, ",", @s_pid, ")", "\n"
     unless @flags.includes?(Flags::G_Write)
       if process.pid == @m_pid
         return 0 unless @flags.includes?(Flags::M_Write)

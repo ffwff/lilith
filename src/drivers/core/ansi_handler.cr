@@ -111,7 +111,7 @@ struct AnsiHandler
         seq
       elsif ch == 'm'.ord.to_u8
         # SGR
-        # Serial.puts "unhandled sgr: ", @arg_n, '\n'
+        # Serial.print "unhandled sgr: ", @arg_n, '\n'
         reset
       elsif !@arg_n.nil? && ch == 'K'.ord.to_u8
         seq = CsiSequence.new CsiSequenceType::EraseInLine, @arg_n

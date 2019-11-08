@@ -43,9 +43,9 @@ class MemMapNode
   end
 
   def to_s(io)
-    io.puts Pointer(Void).new(@addr), ' '
+    io.print Pointer(Void).new(@addr), ' '
     @size.to_s io, 16
-    io.puts ' ', @attr
+    io.print ' ', @attr
   end
 end
 
@@ -177,7 +177,7 @@ class MemMapList
 
   def to_s(io)
     each do |node|
-      io.puts node, '\n'
+      io.print node, '\n'
     end
   end
 end

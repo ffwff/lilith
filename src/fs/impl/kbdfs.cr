@@ -153,7 +153,7 @@ class KbdFS < VFS
       if ch == '\n' && !@canonical
         Console.newline
       elsif should_print ch
-        Console.puts ch
+        Console.print ch
       end
     end
 

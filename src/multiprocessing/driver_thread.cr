@@ -5,12 +5,12 @@ module Multiprocessing::DriverThread
 
   def unlock
     @@locked = false
-    # Serial.puts "driverthread: unlock\n"
+    # Serial.print "driverthread: unlock\n"
   end
 
   def lock
     @@locked = true
-    # Serial.puts "driverthread: lock \n"
+    # Serial.print "driverthread: lock \n"
   end
 
   def assert_unlocked
@@ -20,7 +20,7 @@ module Multiprocessing::DriverThread
     unless Multiprocessing::Scheduler.current_process.not_nil!.kernel_process?
       return
     end
-    # Serial.puts "assert_unlocked called from ", Multiprocessing.current_process.not_nil!.name, '\n'
+    # Serial.print "assert_unlocked called from ", Multiprocessing.current_process.not_nil!.name, '\n'
     if @@locked
       name = Multiprocessing::Scheduler.current_process.not_nil!.name
       panic "kernel: subsystem must not be called from driver thread (called by ", name, ")\n"

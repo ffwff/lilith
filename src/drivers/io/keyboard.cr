@@ -87,7 +87,7 @@ class Keyboard
 
   def callback
     keycode = X86.inb(0x60)
-    # Serial.puts "kc: ", keycode,'\n'
+    # Serial.print "kc: ", keycode,'\n'
     case keycode
     when 0x2A # left shift pressed
       @modifiers |= Modifiers::ShiftL

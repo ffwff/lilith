@@ -32,7 +32,7 @@ struct NullTerminatedSlice
 
   def to_s(io)
     each do |ch|
-      io.puts ch.unsafe_chr
+      io.print ch.unsafe_chr
     end
   end
 end

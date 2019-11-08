@@ -343,12 +343,12 @@ class AtaDevice
         i += 2
       end
     {% end %}
-    Serial.puts "Type: ", @type, '\n'
-    Serial.puts "Detected: "
+    Serial.print "Type: ", @type, '\n'
+    Serial.print "Detected: "
     device.value.model.each do |ch|
-      Serial.puts ch.unsafe_chr
+      Serial.print ch.unsafe_chr
     end
-    Serial.puts "\n"
+    Serial.print "\n"
 
     # cleanup
     device.mfree
@@ -379,7 +379,7 @@ class AtaDevice
 
   #
   def debug(*args)
-    Console.puts *args
+    Console.print *args
   end
 end
 

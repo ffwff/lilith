@@ -20,9 +20,9 @@ private struct ConsoleInstance < OutputDriver
     device.putc ch
   end
 
-  def puts(args)
+  def print(args)
     return unless @enabled
-    device.puts args
+    device.print args
   end
 
   def newline

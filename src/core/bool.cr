@@ -5,9 +5,9 @@ struct Bool
 
   def to_s(io)
     if self
-      io.puts "true"
+      io.print "true"
     else
-      io.puts "false"
+      io.print "false"
     end
   end
 end

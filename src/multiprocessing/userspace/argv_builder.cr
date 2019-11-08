@@ -66,7 +66,7 @@ struct ArgvBuilder
     while i < scan_end
       ptr = Pointer(UInt8).new(i.to_u64)
       if ptr.value == 0u8
-        # Serial.puts Pointer(UInt8).new(str_start.to_u64), '\n'
+        # Serial.print Pointer(UInt8).new(str_start.to_u64), '\n'
         place_u32 str_start
         str_start = i + 1 # skip nul terminator
       end
@@ -94,7 +94,7 @@ struct ArgvBuilder
     while i < scan_end
       ptr = Pointer(UInt8).new(i)
       if ptr.value == 0u8
-        # Serial.puts Pointer(UInt8).new(str_start.to_u64), '\n'
+        # Serial.print Pointer(UInt8).new(str_start.to_u64), '\n'
         place_u64 str_start
         str_start = i + 1 # skip nul terminator
       end

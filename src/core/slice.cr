@@ -65,6 +65,6 @@ struct Slice(T)
   end
 
   def to_s(io)
-    io.puts "Slice(", @buffer, " ", @size, ")"
+    io.print "Slice(", @buffer, " ", @size, ")"
   end
 end

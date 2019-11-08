@@ -70,7 +70,7 @@ class ConsoleFS < VFS
         case msg.type
         when VFSMessage::Type::Write
           msg.read do |ch|
-            Console.puts ch.unsafe_chr
+            Console.print ch.unsafe_chr
           end
           msg.unawait(msg.slice_size)
         end

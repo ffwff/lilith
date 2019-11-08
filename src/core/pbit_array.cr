@@ -82,11 +82,11 @@ struct PBitArray
 
   # to_s
   def to_s(io)
-    io.puts "PBitArray ["
+    io.print "PBitArray ["
     size.times do |i|
-      io.puts (self[i] ? '1' : '0')
+      io.print (self[i] ? '1' : '0')
     end
-    io.puts "]"
+    io.print "]"
   end
 
   # size
