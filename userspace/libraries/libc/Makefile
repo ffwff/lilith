@@ -1,4 +1,5 @@
-ARCH ?= i386-elf-lilith
+ARCH ?=
+CPU = $(shell echo $(ARCH) | cut -d'-' -f1)
 CRTARGET = $(shell echo $(ARCH) | sed 's/-[^-]*$$//g')
 
 AR = $(ARCH)-ar
