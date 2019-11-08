@@ -6,7 +6,7 @@ lib LibC
   fun _fini
 end
 
-private def start_common(argc, argv)
+private def start_common(argc : LibC::Int, argv : UInt8**)
   LibC._init
   Stdio.init
   exit LibC.main(argc, argv)
@@ -25,7 +25,7 @@ end
          pop %rcx
          pop %rdx"
         : "={rcx}"(argc), "={rdx}"(argv)
-        :: "volatile", "memory")
+        :: "volatile", "memory", "rcx", "rdx")
     start_common(argc, argv)
   end
 {% end %}
