@@ -69,7 +69,7 @@ module Multiprocessing::Scheduler
 
     def can_switch? : Bool
       process = self.process
-      # Serial.puts "next_process: ", process, '\n'
+      # Serial.print "next_process: ", process, '\n'
       case @status
       when ProcessData::Status::Normal
         true
@@ -228,7 +228,7 @@ module Multiprocessing::Scheduler
     def to_s(io)
       cur = @first_data
       while !cur.nil?
-        io.puts "- ", cur.process.name, ": ", cur.status, "(", cur.queue_id, ")\n"
+        io.print "- ", cur.process.name, ": ", cur.status, "(", cur.queue_id, ")\n"
         cur = cur.next_data
       end
     end
@@ -256,11 +256,11 @@ module Multiprocessing::Scheduler
   end
 
   def debug
-    Serial.puts "cpu:\n"
+    Serial.print "cpu:\n"
     @@cpu_queue.to_s Serial
-    Serial.puts "io:\n"
+    Serial.print "io:\n"
     @@io_queue.to_s Serial
-    Serial.puts "---\n"
+    Serial.print "---\n"
   end
 
   protected def move_to_cpu_queue(data : ProcessData)
@@ -391,7 +391,7 @@ module Multiprocessing::Scheduler
       Paging.free_process_pdpt(current_process.phys_pg_struct)
     end
 
-    Serial.puts "next: ", next_process.name, "\n"
+    Serial.print "next: ", next_process.name, "\n"
     next_process
   end
 

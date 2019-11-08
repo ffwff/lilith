@@ -164,7 +164,7 @@ fun kirq_handler(frame : IdtData::Registers*)
   X86.outb 0x20, 0x20
 
   if Idt.irq_handlers[frame.value.int_no].pointer.null?
-    Serial.puts "no handler for ", frame.value.int_no, "\n"
+    Serial.print "no handler for ", frame.value.int_no, "\n"
   else
     Idt.lock do
       Idt.irq_handlers[frame.value.int_no].call
@@ -197,9 +197,9 @@ private def dump_frame(frame : IdtData::ExceptionRegisters*)
                  "int_no", "errcode",
                  "rip", "cs", "rflags", "userrsp", "ss",
                ] %}
-  Serial.puts {{ id }}, "="
+  Serial.print {{ id }}, "="
   frame.value.{{ id.id }}.to_s Serial, 16
-  Serial.puts "\n"
+  Serial.print "\n"
   {% end %}
 end
 
@@ -217,7 +217,7 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
       reserved = (errcode & 0x8) != 0
       id = (errcode & 0x10) != 0
 
-      Serial.puts Pointer(Void).new(faulting_address), user, " ", Pointer(Void).new(frame.value.rip), "\n"
+      Serial.print Pointer(Void).new(faulting_address), user, " ", Pointer(Void).new(frame.value.rip), "\n"
       process = Multiprocessing.current_process.not_nil!
       if process.kernel_process?
         panic "segfault from kernel process"
@@ -243,7 +243,7 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
     {% end %}
   else
     dump_frame(frame)
-    Serial.puts "unhandled cpu exception: ", frame.value.int_no, ' ', errcode, '\n'
+    Serial.print "unhandled cpu exception: ", frame.value.int_no, ' ', errcode, '\n'
     while true; end
   end
 end

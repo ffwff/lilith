@@ -8,7 +8,7 @@
         _, changed = @value.compare_and_set(0, 1)
         return if changed
         if i == 10000
-          Serial.puts "spinlock: unable to lock after 10000 iterations\n"
+          Serial.print "spinlock: unable to lock after 10000 iterations\n"
         end
         i += 1
       end

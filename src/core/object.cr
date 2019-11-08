@@ -63,7 +63,7 @@ struct Nil
   end
 
   def to_s(io)
-    io.puts "nil"
+    io.print "nil"
   end
 
   def ==(other)

@@ -388,7 +388,7 @@ class Fat16FS < VFS
   end
 
   def initialize(@device : AtaDevice, partition)
-    Console.puts "initializing FAT16 filesystem\n"
+    Console.print "initializing FAT16 filesystem\n"
 
     panic "device must be ATA" if @device.type != AtaDevice::Type::Ata
 
@@ -475,7 +475,7 @@ class Fat16FS < VFS
               msg.unawait(pid)
             end
           else
-            Serial.puts "unable to execute: ", retval, "\n"
+            Serial.print "unable to execute: ", retval, "\n"
             if msg.process
               msg.unawait(-1)
             end

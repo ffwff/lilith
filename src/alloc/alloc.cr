@@ -69,26 +69,26 @@ private struct Pool
   end
 
   def to_s(io)
-    io.puts "Pool ", @header, " {\n"
-    io.puts " header_size: ", HEADER_SIZE, "\n"
-    io.puts " block_buffer_size: ", block_buffer_size, "\n"
-    io.puts " capacity: ", capacity, "\n"
-    io.puts " first_free_block: ", first_free_block, "\n"
-    io.puts "}\n"
+    io.print "Pool ", @header, " {\n"
+    io.print " header_size: ", HEADER_SIZE, "\n"
+    io.print " block_buffer_size: ", block_buffer_size, "\n"
+    io.print " capacity: ", capacity, "\n"
+    io.print " first_free_block: ", first_free_block, "\n"
+    io.print "}\n"
   end
 
   # obtain a free block and pop it from the pool
   # returns a pointer to the buffer
   def get_free_block : USize
     block = first_free_block
-    # Serial.puts "allocate block of size ", block_buffer_size, '\n'
+    # Serial.print "allocate block of size ", block_buffer_size, '\n'
     @header.value.first_free_block = block.value.next_free_block
     block.address + BLOCK_HEADER_SIZE
   end
 
   # release a free block
   def release_block(addr : USize)
-    # Serial.puts "free block of size ", block_buffer_size, '\n'
+    # Serial.print "free block of size ", block_buffer_size, '\n'
     block = Pointer(Kernel::PoolBlockHeader).new(addr - BLOCK_HEADER_SIZE)
     block.value.next_free_block = @header.value.first_free_block
     @header.value.first_free_block = block
@@ -205,7 +205,7 @@ module KernelArena
 
   # utils
   def to_s(io)
-    io.puts
+    io.print
   end
 
   def block_size_for_ptr(ptr)

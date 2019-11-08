@@ -1,6 +1,6 @@
 def panic(*args)
   # TODO: print call stack
-  Serial.puts *args
+  Serial.print *args
   Pointer(Int32).null.value = 0
   while true
   end

@@ -445,24 +445,24 @@ module Gc
       while !node.null?
         body = node.as(USize*) + 2
         type_id = (node + 1).as(USize*)[0]
-        io.puts body, " (", type_id, ")"
-        io.puts ", " if !node.value.next_node.null?
+        io.print body, " (", type_id, ")"
+        io.print ", " if !node.value.next_node.null?
         node = node.value.next_node
       end
     end
 
     def dump_nodes(io = Serial)
-      io.puts "Gc {\n"
-      io.puts "  white nodes: "
+      io.print "Gc {\n"
+      io.print "  white nodes: "
       out_nodes(io, @@first_white_node)
-      io.puts "\n"
-      io.puts "  gray nodes: "
+      io.print "\n"
+      io.print "  gray nodes: "
       out_nodes(io, @@first_gray_node)
-      io.puts "\n"
-      io.puts "  black nodes: "
+      io.print "\n"
+      io.print "  black nodes: "
       out_nodes(io, @@first_black_node)
-      io.puts "\n"
-      io.puts "}"
+      io.print "\n"
+      io.print "}"
     end
   {% else %}
     private def out_nodes(first_node)

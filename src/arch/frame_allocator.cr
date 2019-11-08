@@ -24,7 +24,7 @@ module FrameAllocator
 
     def to_s(io)
       @base_addr.to_s io, 16
-      io.puts ':'
+      io.print ':'
       @length.to_s io, 16
     end
 

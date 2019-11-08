@@ -246,7 +246,7 @@ module Paging
   # returns page address
   def alloc_page_pg(virt_addr_start : UInt64, rw : Bool, user : Bool,
                     npages : USize = 1, phys_addr_start : UInt64 = 0) : UInt64
-    # Serial.puts "allocate: ", Pointer(Void).new(virt_addr_start), ' ', npages, '\n'
+    # Serial.print "allocate: ", Pointer(Void).new(virt_addr_start), ' ', npages, '\n'
     Idt.disable
 
     virt_addr = t_addr(virt_addr_start)
@@ -364,16 +364,16 @@ module Paging
       # free tables
       if pd_addr != 0
         pd = Pointer(PageStructs::PageDirectory).new(mt_addr pd_addr)
-        # Serial.puts pd, '\n'
+        # Serial.print pd, '\n'
         512.times do |j|
           pt_addr = t_addr(pd.value.tables[j])
           if pt_addr != 0
             pt = Pointer(PageStructs::PageTable).new(mt_addr pt_addr)
-            # Serial.puts pt, '\n'
+            # Serial.print pt, '\n'
             512.times do |k|
               page_phys = t_addr(pt.value.pages[k])
               if page_phys != 0
-                # Serial.puts page_phys, '\n'
+                # Serial.print page_phys, '\n'
                 FrameAllocator.declaim_addr(page_phys)
               end
             end

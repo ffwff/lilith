@@ -57,7 +57,7 @@ module RTC
       i += 1
     end
     if i == 10_000
-      Serial.puts "rtc: timeout"
+      Serial.print "rtc: timeout"
     end
     second = CMOS.get_register(0x0).to_u64
     minute = CMOS.get_register(0x2).to_u64

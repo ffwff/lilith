@@ -59,7 +59,7 @@ module Syscall
     i = 0
     pslice_start = 0
     while i < path.size
-      # Serial.puts path[i].unsafe_chr
+      # Serial.print path[i].unsafe_chr
       if path[i] == '/'.ord
         # ignore multi occurences of slashes
         if i - pslice_start > 0
@@ -150,7 +150,7 @@ module Syscall
         if vfs_node.nil?
           RootFS.each do |fs|
             if segment == fs.name
-              # Serial.puts "goto ", fs.name, '\n'
+              # Serial.print "goto ", fs.name, '\n'
               if (vfs_node = fs.root).nil?
                 return nil
               else
@@ -204,7 +204,7 @@ module Syscall
   @[AlwaysInline]
   def handler(frame : SyscallData::Registers*)
     process = Multiprocessing::Scheduler.current_process.not_nil!
-    # Serial.puts "syscall ", fv.rax, " from ", Multiprocessing::Scheduler.current_process.not_nil!.pid, "\n"
+    # Serial.print "syscall ", fv.rax, " from ", Multiprocessing::Scheduler.current_process.not_nil!.pid, "\n"
     if process.kernel_process?
       case fv.rax
       when SC_MMAP_DRV
@@ -515,7 +515,7 @@ module Syscall
       # end
       if pid <= 0
         # wait for any child process
-        Serial.puts "waitpid: pid <= 0 unimplemented"
+        Serial.print "waitpid: pid <= 0 unimplemented"
         sysret(SYSCALL_ERR)
       else # pid > 0
         cprocess = nil

@@ -74,9 +74,9 @@ struct Pointer(T)
 
   # methods
   def to_s(io)
-    io.puts "[0x"
+    io.print "[0x"
     self.address.to_s io, 16
-    io.puts "]"
+    io.print "]"
   end
 
   def null?

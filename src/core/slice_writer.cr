@@ -20,21 +20,21 @@ class SliceWriter
     @offset += 1
   end
 
-  def puts(ch : Char)
+  def print(ch : Char)
     putc(ch.ord.to_u8)
   end
 
-  def puts(ch : Int32)
+  def print(ch : Int32)
     putc(ch.to_u8)
   end
 
-  def puts(str : String)
+  def print(str : String)
     str.each_byte do |ch|
       putc(ch)
     end
   end
 
-  def puts(*args)
+  def print(*args)
     args.each do |arg|
       arg.to_s self
     end

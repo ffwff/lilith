@@ -100,7 +100,7 @@ private struct VgaInstance < OutputDriver
     end
   end
 
-  def puts(*args)
+  def print(*args)
     args.each do |arg|
       arg.to_s self
     end
