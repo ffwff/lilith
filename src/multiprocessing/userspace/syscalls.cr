@@ -204,7 +204,7 @@ module Syscall
   @[AlwaysInline]
   def handler(frame : SyscallData::Registers*)
     process = Multiprocessing::Scheduler.current_process.not_nil!
-    Serial.puts "syscall ", fv.rax, " from ", Multiprocessing::Scheduler.current_process.not_nil!.pid, "\n"
+    # Serial.puts "syscall ", fv.rax, " from ", Multiprocessing::Scheduler.current_process.not_nil!.pid, "\n"
     if process.kernel_process?
       case fv.rax
       when SC_MMAP_DRV
@@ -429,7 +429,11 @@ module Syscall
       path = try(checked_slice(arg(0), arg(1)))
       sysret(SYSCALL_ERR) if path.size < 1
       startup_info = checked_pointer(SyscallData::SpawnStartupInfo32, arg(2))
-      argv = try(checked_pointer(UInt32, arg(3)))
+      if pudata.is64
+        argv = try(checked_pointer(UInt64, arg(3)))
+      else
+        argv = try(checked_pointer(UInt32, arg(3)))
+      end
 
       # search in path env
       vfs_node = unless (path_env = pudata.getenv("PATH")).nil?
