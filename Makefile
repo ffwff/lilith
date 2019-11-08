@@ -23,7 +23,7 @@ else
 	CRFLAGS += -d
 endif
 
-QEMU = $(shell which qemu-system-x86_64)
+QEMU = qemu-system-x86_64
 
 QEMUFLAGS += \
 	-monitor telnet:127.0.0.1:7777,server,nowait \
