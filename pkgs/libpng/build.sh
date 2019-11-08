@@ -17,7 +17,7 @@ build() {
             ./configure --host=$opt_arch --prefix="$opt_toolsdir" --enable-shared=no \
                 --enable-arm-neon=no \
                 --enable-mips-msa=no \
-                --enable-powerpc-vsx=no
+                --enable-powerpc-vsx=no && \
         make install -j`nproc` CPPFLAGS="-I$opt_toolsdir/include"
     popd
 }
