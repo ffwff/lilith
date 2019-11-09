@@ -542,9 +542,7 @@ module Syscall
     when SC_SLEEP
       hi = arg(0).to_u32
       lo = arg(1).to_u32
-      Serial.print "sl: ",hi, ' ' , lo, '\n'
       timeout = hi.to_u64 << 32 | lo.to_u64
-      Serial.print "sleep ", timeout, '\n'
       if timeout == 0
         sysret(0)
       elsif timeout == (-1).to_u64
