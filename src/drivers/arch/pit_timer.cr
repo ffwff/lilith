@@ -23,5 +23,6 @@ module Pit
     if (@@ticks % FREQUENCY) == 0
       Time.stamp += 1
     end
+    Time.usecs_since_boot += USECS_PER_TICK
   end
 end

@@ -95,14 +95,10 @@ module Multiprocessing::Scheduler
         wait_object = process.udata.wait_object
         case wait_object
         when Array(FileDescriptor)
-          if process.udata.wait_usecs != 0xFFFF_FFFFu32
-            if process.udata.wait_usecs <= Pit::USECS_PER_TICK
-              process.frame.not_nil!.to_unsafe.value.rax = 0
-              process.unawait
-              return true
-            else
-              process.udata.wait_usecs -= Pit::USECS_PER_TICK
-            end
+          if process.udata.wait_end != 0 && process.udata.wait_end <= Time.usecs_since_boot
+            process.frame.not_nil!.to_unsafe.value.rax = 0
+            process.unawait
+            return true
           end
           fds = wait_object.as(Array(FileDescriptor))
           fds.each do |fd|
@@ -115,14 +111,10 @@ module Multiprocessing::Scheduler
           end
           false
         when FileDescriptor
-          if process.udata.wait_usecs != 0xFFFF_FFFFu32
-            if process.udata.wait_usecs <= Pit::USECS_PER_TICK
-              process.frame.not_nil!.to_unsafe.value.rax = 0
-              process.unawait
-              return true
-            else
-              process.udata.wait_usecs -= Pit::USECS_PER_TICK
-            end
+          if process.udata.wait_end != 0 && process.udata.wait_end <= Time.usecs_since_boot
+            process.frame.not_nil!.to_unsafe.value.rax = 0
+            process.unawait
+            return true
           end
           fd = wait_object.as(FileDescriptor)
           if fd.node.not_nil!.available? process
@@ -137,11 +129,10 @@ module Multiprocessing::Scheduler
           true
         end
       when ProcessData::Status::Sleep
-        if process.udata.wait_usecs <= Pit::USECS_PER_TICK
+        if process.udata.wait_end <= Time.usecs_since_boot
           process.unawait
           true
         else
-          process.udata.wait_usecs -= Pit::USECS_PER_TICK
           false
         end
       else
