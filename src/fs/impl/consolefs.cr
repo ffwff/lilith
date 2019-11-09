@@ -39,7 +39,7 @@ end
 class ConsoleFS < VFS
   getter! root : VFSNode
 
-  def name
+  def name : String
     "con"
   end
 

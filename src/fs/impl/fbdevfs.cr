@@ -188,7 +188,7 @@ end
 class FbdevFS < VFS
   getter! root : VFSNode
   
-  def name
+  def name : String
     "fb0"
   end
 

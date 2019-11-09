@@ -247,7 +247,7 @@ end
 class TmpFS < VFS
   getter! root : VFSNode
 
-  def name
+  def name : String
     "tmp"
   end
 
