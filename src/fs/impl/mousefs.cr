@@ -77,7 +77,7 @@ class MouseFS < VFS
   getter! root : VFSNode
   getter mouse
 
-  def name
+  def name : String
     "mouse"
   end
 

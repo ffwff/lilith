@@ -184,7 +184,7 @@ end
 class PipeFS < VFS
   getter! root : VFSNode
 
-  def name
+  def name : String
     "pipes"
   end
 

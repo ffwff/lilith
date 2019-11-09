@@ -212,7 +212,7 @@ end
 class ProcFS < VFS
   getter! root : VFSNode
 
-  def name
+  def name : String
     "proc"
   end
 

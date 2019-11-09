@@ -21,7 +21,7 @@ end
 class SerialFS < VFS
   getter! root : VFSNode
 
-  def name
+  def name : String
     "serial"
   end
 

@@ -214,7 +214,7 @@ end
 class SocketFS < VFS
   getter! root : VFSNode
 
-  def name
+  def name : String
     "sockets"
   end
 

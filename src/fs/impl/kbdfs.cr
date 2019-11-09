@@ -106,7 +106,7 @@ class KbdFS < VFS
     @queue = VFSQueue.new
   end
 
-  def name
+  def name : String
     "kbd"
   end
 
