@@ -33,36 +33,21 @@ module Multiprocessing
   FXSAVE_SIZE = 512u64
 
   @@first_process : Process? = nil
-  mod_property first_process
   @@last_process : Process? = nil
-  mod_property last_process
+  class_property first_process, last_process
 
   @@pids = 1
-  mod_property pids
+  class_property pids
+
   @@n_process = 0
-  mod_property n_process
+  class_property n_process
+
   @@fxsave_region = Pointer(UInt8).null
   @@fxsave_region_base = Pointer(UInt8).null
-
-  protected def fxsave_region
-    @@fxsave_region
-  end
-
-  def fxsave_region=(@@fxsave_region); end
-
-  protected def fxsave_region_base
-    @@fxsave_region_base
-  end
-
-  def fxsave_region_base=(@@fxsave_region_base); end
+  class_property fxsave_region, fxsave_region_base
 
   @@procfs : ProcFS? = nil
-
-  def procfs
-    @@procfs
-  end
-
-  def procfs=(@@procfs); end
+  class_property procfs
 
   class Process
     @pid = 0
@@ -113,11 +98,11 @@ module Multiprocessing
       @wait_object : Waitable? = nil
       property wait_object
 
-      # wait useconds
-      @wait_usecs = 0u32
-      property wait_usecs
+      # wait timeout
+      @wait_end = 0u64
+      property wait_end
 
-      # group id
+      # process group id
       @pgid = 0u64
       property pgid
 
@@ -158,7 +143,7 @@ module Multiprocessing
         @mmap_list = MemMapList.new
       end
 
-      # file descriptors
+      # add a file descriptor and return it
       def install_fd(node : VFSNode, attrs) : Int32
         i = 0
         while i < @fds.size
@@ -172,10 +157,12 @@ module Multiprocessing
         @fds.size.to_i32 - 1
       end
 
+      # gets a file descriptor or nil if it isn't opened
       def get_fd(i : Int32) : FileDescriptor?
         @fds[i]?
       end
 
+      # closes a file descriptor
       def close_fd(i : Int32) : Bool
         return false unless i >= 0 && i <= @fds.size
         return false if @fds[i].nil?
@@ -184,13 +171,14 @@ module Multiprocessing
         true
       end
 
-      # environ
+      # gets an environment variable by key
       def getenv(key)
         @environ.each do |env|
           return env.not_nil!.value if env.not_nil!.key == key
         end
       end
 
+      # set or override an environment variable
       def setenv(key, value, override = false)
         @environ.each do |env|
           if env.not_nil!.key == key
@@ -201,6 +189,23 @@ module Multiprocessing
         end
         @environ.push(EnvVar.new(key, value))
         true
+      end
+
+      # set wait timeout by microseconds
+      def wait_usecs(usecs : UInt32)
+        if usecs == (-1).to_u32
+          @wait_end = 0
+        else
+          @wait_end = Time.usecs_since_boot + usecs
+        end
+      end
+
+      def wait_usecs(usecs : UInt64)
+        if usecs == (-1).to_u64
+          @wait_end = 0
+        else
+          @wait_end = Time.usecs_since_boot + usecs
+        end
       end
     end
 
@@ -569,7 +574,7 @@ module Multiprocessing
       @sched_data.not_nil!.status =
         Multiprocessing::Scheduler::ProcessData::Status::Normal
       @udata.not_nil!.wait_object = nil
-      @udata.not_nil!.wait_usecs = 0u32
+      @udata.not_nil!.wait_end = 0u64
     end
   end
 

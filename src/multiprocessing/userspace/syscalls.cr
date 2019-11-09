@@ -363,7 +363,7 @@ module Syscall
         end
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
         pudata.wait_object = fd
-        pudata.wait_usecs = timeout
+        pudata.wait_usecs timeout
         Multiprocessing::Scheduler.switch_process(frame)
       end
 
@@ -382,7 +382,7 @@ module Syscall
 
       process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
       pudata.wait_object = waitfds
-      pudata.wait_usecs = timeout
+      pudata.wait_usecs timeout
       Multiprocessing::Scheduler.switch_process(frame)
       # directories
     when SC_READDIR
@@ -540,14 +540,18 @@ module Syscall
       fv.rbx = hi
       sysret(lo)
     when SC_SLEEP
-      timeout = fv.rbx.to_u32
+      hi = arg(0).to_u32
+      lo = arg(1).to_u32
+      Serial.print "sl: ",hi, ' ' , lo, '\n'
+      timeout = hi.to_u64 << 32 | lo.to_u64
+      Serial.print "sleep ", timeout, '\n'
       if timeout == 0
-        return
-      elsif timeout == 0xFFFF_FFFFu32
+        sysret(0)
+      elsif timeout == (-1).to_u64
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
       else
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::Sleep
-        pudata.wait_usecs = timeout
+        pudata.wait_usecs timeout
       end
       Multiprocessing::Scheduler.switch_process(frame)
     when SC_GETENV
