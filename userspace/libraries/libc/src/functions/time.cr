@@ -1,6 +1,8 @@
 lib LibC
   alias TimeT = ULongLong
-  alias SusecondsT = ULongLong
+  alias SusecondsT = LongLong
+  alias UsecondsT = ULongLong
+  alias ClockT = ULongLong
 
   struct Timeval
     tv_sec : TimeT
@@ -157,9 +159,9 @@ fun localtime(time_t : LibC::TimeT*) : LibC::Tm*
   pointerof(LibC.__libc_tm)
 end
 
-fun clock : LibC::ULong
+fun clock : LibC::ClockT
   # TODO
-  0.to_ulong
+  0.to_ulonglong
 end
 
 fun difftime(t1 : LibC::ULong, t0 : LibC::ULong) : Float64
@@ -167,9 +169,9 @@ fun difftime(t1 : LibC::ULong, t0 : LibC::ULong) : Float64
   0.0f64
 end
 
-fun mktime(timep : Void*) : LibC::ULong
+fun mktime(timep : Void*) : LibC::TimeT
   # TODO
-  0.to_ulong
+  0.to_ulonglong
 end
 
 private macro format!(fmt, num)
