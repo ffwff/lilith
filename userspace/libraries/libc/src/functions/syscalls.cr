@@ -137,7 +137,7 @@ fun _ioctl(fd : LibC::Int, request : LibC::Int, data : LibC::ULong) : LibC::Int
   lilith_syscall(SC_IOCTL, fd.to_usize, request.to_usize, data.to_usize).to_int
 end
 
-fun waitfd(fds : LibC::Int*, nfd : LibC::SizeT, timeout : LibC::UInt) : LibC::Int
+fun waitfd(fds : LibC::Int*, nfd : LibC::SizeT, timeout : LibC::UsecondsT) : LibC::Int
   lilith_syscall(SC_WAITFD, fds.address.to_usize, nfd.to_usize, timeout.to_usize).to_int
 end
 
@@ -192,11 +192,11 @@ fun waitpid(pid : LibC::Pid, status : LibC::Int*, options : LibC::Int) : LibC::P
   lilith_syscall(SC_WAITPID, pid.to_usize).to_int
 end
 
-fun usleep(timeout : LibC::UInt) : LibC::Int
-  lilith_syscall(SC_SLEEP, timeout.to_usize).to_int
+fun usleep(timeout : LibC::UsecondsT) : LibC::Int
+  lilith_syscall(SC_SLEEP, timeout >> 32, timeout & 0xFFFF_FFFF).to_int
 end
 
-fun _sys_time : UInt64
+fun _sys_time : LibC::TimeT
   lilith_syscall64(SC_TIME, 0.to_usize)
 end
 

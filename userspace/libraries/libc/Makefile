@@ -25,7 +25,7 @@ CCFLAGS = -Isrc/include -nostdlib -Wall
 
 ifeq ($(RELEASE),1)
 CRFLAGS += --release
-CCFLAGS += -O2
+CCFLAGS += -O2 -g
 else
 CRFLAGS += -d
 CCFLAGS += -g

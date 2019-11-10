@@ -1,5 +1,10 @@
 # simple free-list based memory allocator
 # reference: https://moss.cs.iit.edu/cs351/slides/slides-malloc.pdf
+lib LibC
+  $stderr : Void*
+  fun fprintf(stream : Void*, fmt : LibC::UString, ...) : LibC::Int
+end
+
 module Malloc
   extend self
 
@@ -9,7 +14,11 @@ module Malloc
   ALLOC_UNIT   =  0x1000u32
 
   def unit_aligned(sz)
-    (sz & 0xFFFF_F000) + 0x1000
+    {% if flag?(:bits32) %}
+      (sz & 0xFFFF_F000) + 0x1000
+    {% else %}
+      (sz & 0xFFFF_FFFF_FFFF_F000) + 0x1000
+    {% end %}
   end
 
   lib Data
@@ -246,6 +255,8 @@ module Malloc
     # dbg "FREE "; ptr.dbg; dbg "\n"
     return if ptr.null?
 
+    LibC.fprintf(LibC.stderr, "free %p\n", ptr)
+
     hdr = Pointer(Data::Header).new(ptr.address - sizeof(Data::Header))
     if hdr.value.magic != MAGIC
       Stdio.stderr.fputs "free: wrong magic number for hdr\n"
@@ -401,7 +412,7 @@ end
 # c functions
   fun calloc(nmemb : LibC::SizeT, size : LibC::SizeT) : Void*
   ptr = Malloc.malloc nmemb * size
-  memset ptr.as(UInt8*), 0u32, nmemb * size
+  memset ptr.as(UInt8*), 0, nmemb * size
   ptr
 end
 

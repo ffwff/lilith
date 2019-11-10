@@ -21,5 +21,5 @@ typedef unsigned char wchar_t;
 
 typedef unsigned long long time_t;
 typedef unsigned long long suseconds_t;
-typedef unsigned long useconds_t;
-typedef unsigned long clock_t;
+typedef long long useconds_t;
+typedef unsigned long long clock_t;
