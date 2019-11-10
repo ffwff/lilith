@@ -1,5 +1,5 @@
 lib LibC
-  fun waitfd(fds : LibC::Int*, nfd : LibC::SizeT, timeout : LibC::UInt) : LibC::Int
+  fun waitfd(fds : LibC::Int*, nfd : LibC::SizeT, timeout : UInt64) : LibC::Int
 end
 
 class IO::Select
@@ -19,19 +19,19 @@ class IO::Select
     end
   end
 
-  def wait(timeout = 0u32)
+  def wait(timeout : Int = 0)
     if (fd = LibC.waitfd(@fds.to_unsafe,
                          @fds.size,
-                         timeout)) >= 0
+                         timeout.to_u64)) >= 0
       if idx = @fds.index(fd)
         @targets[idx]
       end
     end
   end
 
-  def self.wait(io : IO::FileDescriptor, timeout = 0u32)
+  def self.wait(io : IO::FileDescriptor, timeout : Int = 0)
     fd : LibC::Int = io.fd
-    LibC.waitfd(pointerof(fd), 1, timeout)
+    LibC.waitfd(pointerof(fd), 1, timeout.to_u64)
   end
 
 end
