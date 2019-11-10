@@ -13,7 +13,7 @@ struct Slice(T)
   end
 
   def self.new(size : Int)
-    new Pointer(T).malloc_atomic(size), size.to_i32
+    new Gc.unsafe_malloc(size.to_u64 * sizeof(T), true).as(T*), size.to_i32
   end
 
   def self.empty

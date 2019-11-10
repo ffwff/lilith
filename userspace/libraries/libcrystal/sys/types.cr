@@ -36,7 +36,7 @@ struct Int
     end
   {% else %}
     def to_usize
-      self.to_u32
+      self.to_u64
     end
   {% end %}
 end

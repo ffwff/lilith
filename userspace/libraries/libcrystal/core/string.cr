@@ -2,9 +2,9 @@ require "./int.cr"
 require "./pointer.cr"
 
 lib LibC
-  fun strlen(str : LibC::UString) : LibC::Int
-  fun strcpy(dest : LibC::UString, src : LibC::UString) : LibC::Int
-  fun strncpy(dest : LibC::UString, src : LibC::UString, size : LibC::SizeT) : LibC::Int
+  fun strlen(str : LibC::UString) : LibC::SizeT
+  fun strcpy(dest : LibC::UString, src : LibC::UString) : LibC::UString
+  fun strncpy(dest : LibC::UString, src : LibC::UString, size : LibC::SizeT) : LibC::UString
   fun strncmp(dest : LibC::UString, src : LibC::UString, size : LibC::SizeT) : LibC::Int
   fun memcmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : LibC::Int
 end
@@ -39,7 +39,7 @@ class String
   end
 
   def self.new(capacity : Int)
-    str = Pointer(UInt8).malloc_atomic(capacity.to_u32 + HEADER_SIZE + 1)
+    str = Gc.unsafe_malloc(capacity.to_u64 + HEADER_SIZE + 1, true).as(UInt8*)
     buffer = str.as(String).to_unsafe
     bytesize, size = yield buffer
 
