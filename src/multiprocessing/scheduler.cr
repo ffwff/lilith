@@ -5,7 +5,7 @@ end
 module Multiprocessing::Scheduler
   extend self
 
-  NORMAL_TIME_SLICE = 1000u64 # 1ms
+  NORMAL_TIME_SLICE = 10u64 # 1ms
 
   class ProcessData
     @next_data : ProcessData? = nil
@@ -69,7 +69,7 @@ module Multiprocessing::Scheduler
 
     def can_switch? : Bool
       process = self.process
-      # Serial.print "next_process: ", process, '\n'
+      # Serial.print "next_process: ", process.name, '\n'
       case @status
       when ProcessData::Status::Normal
         true
@@ -382,7 +382,8 @@ module Multiprocessing::Scheduler
       Paging.free_process_pdpt(current_process.phys_pg_struct)
     end
 
-    Serial.print "next: ", next_process.name, "\n"
+    # Serial.print "next: ", next_process.name, "\n"
+    # Serial.print "---\n"
     next_process
   end
 
