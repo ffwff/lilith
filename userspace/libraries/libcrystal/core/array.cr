@@ -159,6 +159,10 @@ class Array(T)
     true
   end
 
+  def clear
+    self.size = 0
+  end
+
   def each
     i = 0
     while i < size
