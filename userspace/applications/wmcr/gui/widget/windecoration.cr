@@ -15,7 +15,7 @@ class G::WindowDecoration < G::Widget
   def initialize(@x : Int32, @y : Int32,
                  @width : Int32, @height : Int32,
                  @title : String? = nil)
-    @bitmap = Gc.unsafe_malloc(@width.to_u64 * @height.to_u64 * sizeof(UInt32), true).as(UInt32*)
+    @bitmap = Painter.create_bitmap(width, height)
   end
 
   def self.new(window : G::Window, title : String? = nil)

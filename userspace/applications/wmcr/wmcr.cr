@@ -176,7 +176,7 @@ module Wm::Server
     @@selector = IO::Select.new
     LibC._ioctl fb.fd, LibC::TIOCGWINSZ, pointerof(@@ws).address
     @@framebuffer = fb.map_to_memory.as(UInt32*)
-    @@backbuffer = Gc.unsafe_malloc(screen_width.to_u64 * screen_height.to_u64 * sizeof(UInt32), true).as(UInt32*)
+    @@backbuffer = Painter.create_bitmap(screen_width, screen_height)
 
     @@focused = nil
 
