@@ -34,6 +34,31 @@ struct Char
     end
   end
 
+  def each_byte : Nil
+    # See http://en.wikipedia.org/wiki/UTF-8#Sample_code
+
+    c = ord
+    if c < 0x80
+      # 0xxxxxxx
+      yield c.to_u8
+    elsif c <= 0x7ff
+      # 110xxxxx  10xxxxxx
+      yield (0xc0 | c >> 6).to_u8
+      yield (0x80 | c & 0x3f).to_u8
+    elsif c <= 0xffff
+      # 1110xxxx  10xxxxxx  10xxxxxx
+      yield (0xe0 | (c >> 12)).to_u8
+      yield (0x80 | ((c >> 6) & 0x3f)).to_u8
+      yield (0x80 | (c & 0x3f)).to_u8
+    elsif c <= MAX_CODEPOINT
+      # 11110xxx  10xxxxxx  10xxxxxx  10xxxxxx
+      yield (0xf0 | (c >> 18)).to_u8
+      yield (0x80 | ((c >> 12) & 0x3f)).to_u8
+      yield (0x80 | ((c >> 6) & 0x3f)).to_u8
+      yield (0x80 | (c & 0x3f)).to_u8
+    end
+  end
+
   def to_s(io)
     c = self.ord.to_u8
     io.write Bytes.new(pointerof(c), 1)
