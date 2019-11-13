@@ -31,6 +31,14 @@ module G::Fonts
   end
 
   def blit(widget : G::Widget,
+           cx : Int, cy : Int, ch : Char)
+    blit widget.bitmap,
+      widget.width, widget.height,
+      cx, cy,
+      ch
+  end
+
+  def blit(widget : G::Widget,
            cx : Int, cy : Int, str : String)
     blit widget.bitmap,
       widget.width, widget.height,
