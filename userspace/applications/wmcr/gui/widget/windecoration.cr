@@ -3,7 +3,7 @@ class G::WindowDecoration < G::Widget
   @main_widget : G::Widget? = nil
   getter main_widget
 
-  def main_widget=(@main_widget)
+  def main_widget=(@main_widget : G::Widget)
     x, y, width, height = calculate_dimensions
     main_widget = @main_widget.not_nil!
     main_widget.move x, y
@@ -15,7 +15,7 @@ class G::WindowDecoration < G::Widget
   def initialize(@x : Int32, @y : Int32,
                  @width : Int32, @height : Int32,
                  @title : String? = nil)
-    @bitmap = Pointer(UInt32).malloc_atomic @width.to_usize * @height.to_usize
+    @bitmap = Gc.unsafe_malloc(@width.to_u64 * @height.to_u64 * sizeof(UInt32), true).as(UInt32*)
   end
 
   def self.new(window : G::Window, title : String? = nil)
@@ -48,6 +48,12 @@ class G::WindowDecoration < G::Widget
                        main_widget.bitmap,
                        main_widget.width, main_widget.height,
                        main_widget.x, main_widget.y
+    end
+  end
+
+  def io_event(io : IO::FileDescriptor)
+    if main_widget = @main_widget
+      main_widget.io_event io
     end
   end
 

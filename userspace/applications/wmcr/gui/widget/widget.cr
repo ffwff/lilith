@@ -30,11 +30,13 @@ abstract class G::Widget
 
   private macro def_event_d(name, type)
     def {{ name }}_event(data : {{ type }})
+      STDERR.print "{{name}}_event unimplemented!\n"
     end
   end
 
   def_event   setup
   def_event_d wm_message, Wm::IPC::Message
   def_event   draw
+  def_event_d io, IO::FileDescriptor
 
 end

@@ -10,6 +10,7 @@ lib LibC
     ws_ypixel : UInt16
   end
   TIOCGWINSZ = 2
+  TIOCGSTATE = 5
 
   @[Packed]
   struct MousePacket
@@ -20,7 +21,6 @@ lib LibC
 
 end
 
-FRAME_WAIT = 10000
 CURSOR_FILE = "/hd0/share/cursors/cursor.png"
 
 module Wm::Server
@@ -176,9 +176,11 @@ module Wm::Server
     @@selector = IO::Select.new
     LibC._ioctl fb.fd, LibC::TIOCGWINSZ, pointerof(@@ws).address
     @@framebuffer = fb.map_to_memory.as(UInt32*)
-    @@backbuffer = Pointer(UInt32).malloc_atomic(screen_width * screen_height)
+    @@backbuffer = Gc.unsafe_malloc(screen_width.to_u64 * screen_height.to_u64 * sizeof(UInt32), true).as(UInt32*)
 
     @@focused = nil
+
+    LibC._ioctl STDOUT.fd, LibC::TIOCGSTATE, 0
 
     # communication pipe
     if @@ipc = IPCServer.new("wm")
@@ -202,7 +204,7 @@ module Wm::Server
     @@windows.push cursor
 
     # default startup application
-    Process.new "windem",
+    Process.new "cterm",
         input: Process::Redirect::Inherit,
         output: Process::Redirect::Inherit,
         error: Process::Redirect::Inherit
@@ -219,6 +221,7 @@ module Wm::Server
         respond_ipc
       when Program::Socket
         respond_ipc_socket selected.as(Program::Socket)
+      else
       end
       @@windows.each do |window|
         window.render @@backbuffer,
@@ -228,7 +231,6 @@ module Wm::Server
       LibC.memcpy @@framebuffer,
                   @@backbuffer,
                   (screen_width * screen_height * 4)
-      usleep FRAME_WAIT
     end
   end
 

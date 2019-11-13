@@ -22,6 +22,12 @@ class G::Window < G::Widget
     @wm_window = app.client.create_window(@x, @y, @width, @height).not_nil!
   end
 
+  def io_event(io : IO::FileDescriptor)
+    if main_widget = @main_widget
+      main_widget.io_event io
+    end
+  end
+
   def draw_event
     if main_widget = @main_widget
       main_widget.draw_event
