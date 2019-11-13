@@ -29,7 +29,7 @@ class G::Termbox < G::Widget
 
   def resize(@width : Int32, @height : Int32)
     if @bitmap.null?
-      @bitmap = Gc.unsafe_malloc(@width.to_u64 * @height.to_u64 * sizeof(UInt32), true).as(UInt32*)
+      @bitmap = Painter.create_bitmap(@width, @height)
     else
       @bitmap = @bitmap.realloc @width.to_usize * @height.to_usize
     end

@@ -30,7 +30,6 @@ abstract class G::Widget
 
   private macro def_event_d(name, type)
     def {{ name }}_event(data : {{ type }})
-      STDERR.print "{{name}}_event unimplemented!\n"
     end
   end
 
