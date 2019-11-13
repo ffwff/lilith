@@ -41,6 +41,8 @@ class Wm::Client
       FixedMessageReader(Wm::IPC::Data::WindowCreate).read(header, @socket)
     when IPC::Data::RESPONSE_ID
       FixedMessageReader(Wm::IPC::Data::Response).read(header, @socket)
+    when IPC::Data::KBD_EVENT_ID
+      FixedMessageReader(Wm::IPC::Data::KeyboardEvent).read(header, @socket)
     else
       nil
     end

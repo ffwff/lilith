@@ -25,6 +25,7 @@ class G::Termbox < G::Widget
   def initialize(@x : Int32, @y : Int32,
                  width : Int32, height : Int32)
     resize width, height
+    @line = Array(UInt8).new 128
   end
 
   def resize(@width : Int32, @height : Int32)
@@ -45,19 +46,40 @@ class G::Termbox < G::Widget
   @cy = 0
   @cwidth = 0
   @cheight = 0
-  def putc(ch : UInt8, redraw? = true)
+  def putc(ch : Char, redraw? = true)
     if @cx == @cwidth
-      # TODO
+      newline
+    end
+    if ch == '\n'
+      newline
       return
     end
     G::Fonts.blit(self,
                   @cx * G::Fonts::WIDTH,
                   @cy * G::Fonts::HEIGHT,
-                  ch.unsafe_chr)
+                  ch)
     @cx += 1
     if redraw?
       @app.not_nil!.redraw
     end
+  end
+
+  def newline
+    @cx = 0
+    if @cy == @cheight - 1
+      # FIXME: scroll
+      return
+    else
+      @cy += 1
+    end
+  end
+
+  def key_event(ev : G::KeyboardEvent)
+    return if @line.size + ev.ch.bytesize >= @line.capacity
+    ev.ch.each_byte do |byte|
+      @line.push byte
+    end
+    putc ev.ch
   end
 
   def io_event(io : IO::FileDescriptor)
@@ -66,7 +88,8 @@ class G::Termbox < G::Widget
       while (nread = io.unbuffered_read(buffer.to_slice)) > 0
         buffer.each_with_index do |u8, i|
           break if i == nread
-          putc u8, false
+          # FIXME: decode unicode chars
+          putc u8.unsafe_chr, false
         end
       end
       app.redraw

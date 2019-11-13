@@ -24,5 +24,4 @@ Process.new("echo", ["Hello World"],
             output: output_fd,
             error: Process::Redirect::Inherit)
 
-app.main_widget.not_nil!.io_event STDOUT
 app.run

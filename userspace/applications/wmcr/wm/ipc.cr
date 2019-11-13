@@ -25,9 +25,19 @@ module Wm::IPC
       header : Header
       retval : Int32
     end
+
+    KBD_EVENT_ID = 3
+    @[Packed]
+    struct KeyboardEvent
+      header : Header
+      ch : Int32
+      modifiers : Int32
+    end
   end
 
-  alias Message = Data::WindowCreate | Data::Response
+  alias Message = Data::WindowCreate |
+                  Data::Response |
+                  Data::KeyboardEvent
 
   # Checks if bytes represents a valid IPC message
   def valid_msg?(msg : Bytes)
@@ -91,6 +101,18 @@ module Wm::IPC
       payload_size(Data::Response),
       Data::RESPONSE_ID)
     rep.value.retval = retval
+    msg
+  end
+
+  # Creates keyboard event message
+  def kbd_event_message(ch, modifiers)
+    msg = uninitialized UInt8[sizeof(Data::KeyboardEvent)]
+    rep = msg.to_unsafe.as(Data::KeyboardEvent*)
+    rep.value.header = create_header(
+      payload_size(Data::KeyboardEvent),
+      Data::KBD_EVENT_ID)
+    rep.value.ch = ch
+    rep.value.modifiers = modifiers
     msg
   end
 

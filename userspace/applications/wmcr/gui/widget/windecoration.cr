@@ -57,4 +57,9 @@ class G::WindowDecoration < G::Widget
     end
   end
 
+  def key_event(ev : G::KeyboardEvent)
+    if main_widget = @main_widget
+      main_widget.key_event ev
+    end
+  end
 end

@@ -1,11 +1,15 @@
+struct G::KeyboardEvent
+  getter ch
+
+  def initialize(@ch : Char)
+  end
+end
+
 abstract class G::Widget
 
   @app : G::Application? = nil
-  def app
-    @app.not_nil!
-  end
-  def app=(@app)
-  end
+  getter! app
+  setter app
 
   @x = 0
   @y = 0
@@ -37,5 +41,6 @@ abstract class G::Widget
   def_event_d wm_message, Wm::IPC::Message
   def_event   draw
   def_event_d io, IO::FileDescriptor
+  def_event_d key, KeyboardEvent
 
 end
