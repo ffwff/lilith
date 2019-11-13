@@ -47,6 +47,9 @@ class G::Application
           when Wm::IPC::Data::WindowCreate
           when Wm::IPC::Data::Response
             # skip
+          when Wm::IPC::Data::KeyboardEvent
+            msg = msg.as Wm::IPC::Data::KeyboardEvent
+            main_widget.key_event G::KeyboardEvent.new(msg.ch.unsafe_chr)
           else
             if msg
               main_widget.wm_message_event msg

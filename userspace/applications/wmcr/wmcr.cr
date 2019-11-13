@@ -3,6 +3,7 @@ require "./painter/*"
 require "socket"
 
 lib LibC
+  @[Packed]
   struct Winsize
     ws_row : UInt16
     ws_col : UInt16
@@ -19,6 +20,11 @@ lib LibC
     attr_byte : UInt32
   end
 
+  @[Packed]
+  struct KeyboardPacket
+    ch : Int32
+    modifiers : Int32
+  end
 end
 
 CURSOR_FILE = "/hd0/share/cursors/cursor.png"
@@ -100,12 +106,13 @@ module Wm::Server
       end
     end
 
+    @socket : Program::Socket
     @wid : Int32
     @bitmap_file : File
 
-    getter wid, bitmap
+    getter socket, wid, bitmap
 
-    def initialize(@x, @y, @width, @height)
+    def initialize(@socket, @x, @y, @width, @height)
       @wid = Server.next_wid
       @bitmap_file = File.new("/tmp/wm-bm:" + @wid.to_s, "rw").not_nil!
       @bitmap_file.truncate @width * @height * 4
@@ -121,12 +128,12 @@ module Wm::Server
 
   @@framebuffer = Pointer(UInt32).null
   @@backbuffer = Pointer(UInt32).null
-  def fb
-    @@fb.not_nil!
-  end
 
   @@windows = Array(Window).new 4
   @@focused : Window?
+
+  @@fb : File?
+  class_getter! fb
 
   # window id
   @@wid = 0
@@ -135,6 +142,7 @@ module Wm::Server
     @@wid += 1
     i
   end
+  @@focused : Program?
 
   # display size information
   @@ws = uninitialized LibC::Winsize
@@ -147,27 +155,23 @@ module Wm::Server
 
   # io selector
   @@selector : IO::Select? = nil
-  private def selector
-    @@selector.not_nil!
-  end
+  class_getter! selector
 
   # raw mouse hardware file
   @@mouse : File? = nil
-  private def mouse
-    @@mouse.not_nil!
-  end
+  class_getter! mouse
+
+  # raw keyboard hardware file
+  @@kbd : File? = nil
+  class_getter! kbd
 
   # window representing the cursor
   @@cursor : Cursor? = nil
-  private def cursor
-    @@cursor.not_nil!
-  end
+  class_getter! cursor
 
   # communication server
   @@ipc : IPCServer? = nil
-  private def ipc
-    @@ipc.not_nil!
-  end
+  class_getter! ipc
 
   def _init
     unless (@@fb = File.new("/fb0", "r"))
@@ -194,6 +198,13 @@ module Wm::Server
                                   @@ws.ws_row,
                                   0x000066cc)
 
+    # keyboard
+    if (@@kbd = File.new("/kbd/raw", "r"))
+      selector << kbd
+    else
+      abort "unable to open /kbd/raw"
+    end
+
     # mouse
     if (@@mouse = File.new("/mouse/raw", "r"))
       selector << mouse
@@ -215,6 +226,8 @@ module Wm::Server
     while true
       selected = selector.wait(1)
       case selected
+      when kbd
+        respond_kbd
       when mouse
         cursor.respond mouse
       when ipc
@@ -231,6 +244,17 @@ module Wm::Server
       LibC.memcpy @@framebuffer,
                   @@backbuffer,
                   (screen_width * screen_height * 4)
+    end
+  end
+
+  def respond_kbd
+    packet = uninitialized LibC::KeyboardPacket
+    if kbd.unbuffered_read(Bytes.new(pointerof(packet).as(UInt8*), sizeof(LibC::KeyboardPacket))) \
+      != sizeof(LibC::KeyboardPacket)
+      return
+    end
+    if focused = @@focused
+      focused.socket.unbuffered_write IPC.kbd_event_message(packet.ch, packet.modifiers).to_slice
     end
   end
 
@@ -268,7 +292,8 @@ module Wm::Server
             socket.unbuffered_write IPC.response_message(-1).to_slice
             next
           end
-          socket.program = program = Program.new(msg.x, msg.y, msg.width, msg.height)
+          socket.program = program = Program.new(socket, msg.x, msg.y, msg.width, msg.height)
+          @@focused = program
           @@windows.push program
           @@windows.sort!
 
