@@ -252,10 +252,7 @@ module Malloc
   end
 
   def free(ptr : Void*)
-    # dbg "FREE "; ptr.dbg; dbg "\n"
     return if ptr.null?
-
-    LibC.fprintf(LibC.stderr, "free %p\n", ptr)
 
     hdr = Pointer(Data::Header).new(ptr.address - sizeof(Data::Header))
     if hdr.value.magic != MAGIC
