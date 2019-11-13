@@ -1,4 +1,6 @@
 struct StaticArray(T, N)
+  include Enumerable(T)
+
   macro [](*args)
     %array = uninitialized StaticArray(typeof({{*args}}), {{args.size}})
     {% for arg, i in args %}
