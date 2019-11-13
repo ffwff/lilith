@@ -38,7 +38,7 @@ class G::Application
       main_widget.draw_event
     end
     while @running
-      io = @selector.wait
+      io = @selector.wait (-1).to_u64
       case io
       when @client.socket
         msg = @client.read_message
