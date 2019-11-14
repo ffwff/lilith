@@ -276,11 +276,6 @@ module Syscall
       str = try(checked_slice(arg(1), arg(2)))
       result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
       case result
-      when VFS_WAIT_POLL
-        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIoPoll
-        pudata.wait_object = fd
-        pudata.wait_usecs (-1).to_u64
-        Multiprocessing::Scheduler.switch_process(frame)
       when VFS_WAIT_QUEUE
         vfs_node = fd.node.not_nil!
         vfs_node.queue.not_nil!
@@ -515,9 +510,7 @@ module Syscall
       end
     when SC_WAITPID
       pid = arg(0).to_i32
-      # if fv.rdx != 0
-      #   arg = try(checked_pointer(SyscallData::WaitPidArgument32, fv.rdx))
-      # end
+      Serial.print "waitpid ", pid, '\n'
       if pid <= 0
         # wait for any child process
         Serial.print "waitpid: pid <= 0 unimplemented"
