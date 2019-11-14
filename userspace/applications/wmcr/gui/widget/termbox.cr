@@ -75,7 +75,16 @@ class G::Termbox < G::Widget
   end
 
   def key_event(ev : G::KeyboardEvent)
-    return if @line.size + ev.ch.bytesize >= @line.capacity
+    return if @line.size + ev.ch.bytesize >= @line.capacity - 2
+    if ev.ch == '\n'
+      @line.push '\n'.ord.to_u8
+      if fd = @input_fd
+        fd.unbuffered_write @line.to_slice
+      end
+      @line.clear
+      newline
+      return
+    end
     ev.ch.each_byte do |byte|
       @line.push byte
     end
@@ -96,9 +105,5 @@ class G::Termbox < G::Widget
     end
   end
 
-end
-
-fun breakpoint
-asm("nop" ::: "volatile")
 end
 
