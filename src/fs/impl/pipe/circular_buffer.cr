@@ -16,7 +16,7 @@ class CircularBuffer
   end
 
   def size
-    @write_pos - @read_pos
+    (@write_pos - @read_pos).abs
   end
 
   def read(slice : Slice(UInt8))
@@ -29,7 +29,9 @@ class CircularBuffer
       else
         @read_pos += 1
       end
-      return i + 1 if @read_pos == @write_pos
+      if @read_pos == @write_pos
+        return i + 1
+      end
     end
     slice.size
   end
@@ -47,7 +49,6 @@ class CircularBuffer
     init_buffer
     slice.size.times do |i|
       write(slice.to_unsafe[i])
-      return i + 1 if @read_pos == @write_pos
     end
     slice.size
   end

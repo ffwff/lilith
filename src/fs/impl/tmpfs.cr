@@ -198,7 +198,6 @@ private class TmpFSNode < VFSNode
   end
   
   def truncate(size : Int32) : Int32
-    Serial.print "trunc: ", size, '\n'
     new_npages = size.div_ceil 0x1000
     if size > @size
       @size = size
