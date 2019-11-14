@@ -29,23 +29,54 @@ class G::Termbox < G::Widget
   end
 
   def resize(@width : Int32, @height : Int32)
+    @cwidth = @width // G::Fonts::WIDTH
+    @cheight = @height // G::Fonts::HEIGHT
     if @bitmap.null?
       @bitmap = Painter.create_bitmap(@width, @height)
+      @cbuffer = Slice(Char).new @cwidth * @cheight
     else
-      @bitmap = @bitmap.realloc @width.to_usize * @height.to_usize
+      @bitmap = @bitmap.realloc @width * @height
+      @cbuffer = @cbuffer.realloc @cwidth * @cheight
     end
+    redraw_all
+  end
+
+  def scroll(redraw? = true)
+    (@cheight - 1).times do |y|
+      @cwidth.times do |x|
+        @cbuffer[y * @cwidth + x] = @cbuffer[(y + 1) * @cwidth + x]
+      end
+    end
+    @cwidth.times do |x|
+      @cbuffer[(@cheight - 1) * @cwidth + x] = '\0'
+    end
+    redraw_all
+    if redraw?
+      @app.not_nil!.redraw
+    end
+  end
+
+  def redraw_all
     Painter.blit_rect @bitmap,
                       @width, @height,
                       @width, @height,
                       0, 0, 0x00000000
-    @cwidth = @width // G::Fonts::WIDTH
-    @cheight = @height // G::Fonts::HEIGHT
+    @cheight.times do |y|
+      @cwidth.times do |x|
+        G::Fonts.blit(@bitmap,
+                      @width, @height,
+                      x * G::Fonts::WIDTH,
+                      y * G::Fonts::HEIGHT,
+                      @cbuffer[y * @cwidth + x])
+      end
+    end
   end
 
   @cx = 0
   @cy = 0
   @cwidth = 0
   @cheight = 0
+  @cbuffer = Slice(Char).empty
   def putc(ch : Char, redraw? = true)
     if @cx == @cwidth
       newline
@@ -54,6 +85,7 @@ class G::Termbox < G::Widget
       newline
       return
     end
+    @cbuffer[@cy * @cwidth + @cx] = ch
     G::Fonts.blit(self,
                   @cx * G::Fonts::WIDTH,
                   @cy * G::Fonts::HEIGHT,
@@ -67,8 +99,7 @@ class G::Termbox < G::Widget
   def newline
     @cx = 0
     if @cy == @cheight - 1
-      # FIXME: scroll
-      return
+      scroll
     else
       @cy += 1
     end
