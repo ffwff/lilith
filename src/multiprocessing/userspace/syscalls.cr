@@ -510,7 +510,6 @@ module Syscall
       end
     when SC_WAITPID
       pid = arg(0).to_i32
-      Serial.print "waitpid ", pid, '\n'
       if pid <= 0
         # wait for any child process
         Serial.print "waitpid: pid <= 0 unimplemented"

@@ -19,7 +19,6 @@ module Multiprocessing::Scheduler
       Normal
       Running
       WaitIo
-      WaitIoPoll
       WaitProcess
       WaitFd
       Sleep
@@ -29,8 +28,6 @@ module Multiprocessing::Scheduler
     private def wait_status?(status)
       case status
       when Status::WaitIo
-        true
-      when Status::WaitIoPoll
         true
       when Status::WaitProcess
         true
