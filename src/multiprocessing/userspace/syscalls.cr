@@ -276,15 +276,20 @@ module Syscall
       str = try(checked_slice(arg(1), arg(2)))
       result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
       case result
+      when VFS_WAIT_POLL
+        process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIoPoll
+        pudata.wait_object = fd
+        pudata.wait_usecs (-1).to_u64
+        Multiprocessing::Scheduler.switch_process(frame)
       when VFS_WAIT_QUEUE
-        vfs_node = fd.not_nil!.node.not_nil!
+        vfs_node = fd.node.not_nil!
         vfs_node.queue.not_nil!
           .enqueue(VFSMessage.new(VFSMessage::Type::Read,
           str, process, fd, vfs_node))
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
         Multiprocessing::Scheduler.switch_process(frame)
       when VFS_WAIT
-        vfs_node = fd.not_nil!.node.not_nil!
+        vfs_node = fd.node.not_nil!
         vfs_node.fs.queue.not_nil!
           .enqueue(VFSMessage.new(VFSMessage::Type::Read,
           str, process, fd, vfs_node))

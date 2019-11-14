@@ -125,7 +125,6 @@ private class PipeFSNode < VFSNode
     return VFS_EOF if @flags.includes?(Flags::Removed)
 
     process = process.not_nil!
-    Serial.print "rd from ", process.pid, "(", @m_pid, ",", @s_pid, ")", "\n"
     unless @flags.includes?(Flags::G_Read)
       if process.pid == @m_pid
         return 0 unless @flags.includes?(Flags::M_Read)
@@ -134,6 +133,10 @@ private class PipeFSNode < VFSNode
       else
         return 0
       end
+    end
+
+    if @flags.includes?(Flags::WaitRead) && size == 0
+      return VFS_WAIT_POLL
     end
 
     @pipe.read slice

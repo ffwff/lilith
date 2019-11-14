@@ -141,5 +141,6 @@ VFS_ERR        = -1
 VFS_WAIT       = -2
 VFS_WAIT_QUEUE = -3
 VFS_EOF        = -4
+VFS_WAIT_POLL  = -5
 
 VFS_CREATE_ANON = 1 << 24
