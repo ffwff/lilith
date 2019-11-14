@@ -178,6 +178,14 @@ class Array(T)
     end
   end
 
+  def reverse_each
+    i = size - 1
+    while i >= 0
+      yield to_unsafe[i]
+      i -= 1
+    end
+  end
+
   def to_s(io)
     io << "["
     i = 0

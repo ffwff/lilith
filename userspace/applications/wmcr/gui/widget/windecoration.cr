@@ -74,8 +74,8 @@ class G::WindowDecoration < G::Widget
         new_y = @app.not_nil!.y + delta_y
         @app.not_nil!.move(new_x, new_y)
       end
-      @last_mouse_x = ev.x
-      @last_mouse_y = ev.y
     end
+    @last_mouse_x = ev.x
+    @last_mouse_y = ev.y
   end
 end
