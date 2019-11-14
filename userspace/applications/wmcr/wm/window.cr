@@ -2,7 +2,7 @@ class Wm::Window
 
   @bitmap_file : File
   @bitmap : UInt32*
-  getter x, y, width, height
+  getter wid, x, y, width, height
 
   def initialize(@wid : Int32, @client : Wm::Client,
                  @x : Int32 = 0, @y : Int32 = 0,

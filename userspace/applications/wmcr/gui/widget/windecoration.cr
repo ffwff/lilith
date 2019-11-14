@@ -63,10 +63,19 @@ class G::WindowDecoration < G::Widget
     end
   end
 
-  @last_mouse_x = 0
-  @last_mouse_y = 0
+  def wm_message_event(ev : Wm::IPC::Message)
+    case ev
+    when Wm::IPC::Data::RefocusEvent
+      @last_mouse_x = -1
+      @last_mouse_y = -1
+    end
+  end
+
+  @last_mouse_x = -1
+  @last_mouse_y = -1
   def mouse_event(ev : G::MouseEvent)
-    if ev.modifiers.includes?(Wm::IPC::Data::MouseEventModifiers::LeftButton)
+    if ev.modifiers.includes?(Wm::IPC::Data::MouseEventModifiers::LeftButton) &&
+        (@last_mouse_x != -1 && @last_mouse_y != -1)
       delta_x = ev.x - @last_mouse_x
       delta_y = ev.y - @last_mouse_y
       if delta_x != 0 || delta_y != 0

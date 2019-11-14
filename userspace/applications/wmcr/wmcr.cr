@@ -284,11 +284,15 @@ module Wm::Server
       @@windows.reverse_each do |win|
         case win
         when Program
+          win = win.as(Program)
           if win.contains_point?(cursor.x, cursor.y)
+            break if win == @@focused
             if focused = @@focused
+              focused.socket.unbuffered_write IPC.refocus_event_message(win.wid, 0).to_slice
               focused.z_index = 1
             end
             @@focused = win
+            win.socket.unbuffered_write IPC.refocus_event_message(win.wid, 1).to_slice
             win.z_index = 2
             @@windows.sort!
             break
