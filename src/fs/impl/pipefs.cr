@@ -120,6 +120,9 @@ private class PipeFSNode < VFSNode
     VFS_OK
   end
 
+  @queue : VFSQueue? = nil
+  getter! queue
+
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
     return VFS_EOF if @flags.includes?(Flags::Removed)
@@ -136,7 +139,10 @@ private class PipeFSNode < VFSNode
     end
 
     if @flags.includes?(Flags::WaitRead) && size == 0
-      return VFS_WAIT_POLL
+      if @queue.nil?
+        @queue = VFSQueue.new
+      end
+      return VFS_WAIT_QUEUE
     end
 
     @pipe.read slice
@@ -147,7 +153,6 @@ private class PipeFSNode < VFSNode
     return VFS_EOF if @flags.includes?(Flags::Removed)
 
     process = process.not_nil!
-    Serial.print "wr from ", process.pid, "(", @m_pid, ",", @s_pid, ")", "\n"
     unless @flags.includes?(Flags::G_Write)
       if process.pid == @m_pid
         return 0 unless @flags.includes?(Flags::M_Write)
@@ -155,6 +160,14 @@ private class PipeFSNode < VFSNode
         return 0 unless @flags.includes?(Flags::S_Write)
       else
         return 0
+      end
+    end
+
+    if @flags.includes?(Flags::WaitRead)
+      if (queue = @queue) && (msg = queue.dequeue)
+        retval = msg.respond(slice)
+        msg.unawait retval
+        return retval
       end
     end
 

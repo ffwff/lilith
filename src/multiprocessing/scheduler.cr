@@ -94,20 +94,6 @@ module Multiprocessing::Scheduler
           process.unawait
           true
         end
-      when ProcessData::Status::WaitIoPoll
-        wait_object = process.udata.wait_object
-        case wait_object
-        when FileDescriptor
-          fd = wait_object.as(FileDescriptor)
-          if fd.node.not_nil!.available? process
-            process.unawait
-            true
-          else
-            false
-          end
-        else
-          false
-        end
       when ProcessData::Status::WaitFd
         wait_object = process.udata.wait_object
         case wait_object
