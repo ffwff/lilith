@@ -31,22 +31,26 @@ module Painter
     end
     if sy + sh > dh
       if dh < sy # dh - sy < 0
-        sh = 0
+        return
       else
-        sh = dh - sy
+        sh_clamp = dh - sy
       end
+    else
+      sh_clamp = sh
     end
     if sx + sw > dw
       if dw < sx # dw - sx < 0
-        sw = 0
+        return
       else
-        sw = dw - sx
+        sw_clamp = dw - sx
       end
+    else
+      sw_clamp = sw
     end
     sh.times do |y|
       fb_offset = ((sy + y) * dw + sx) * 4
       src_offset = y * sw * 4
-      copy_size = sw * 4
+      copy_size = sw_clamp * 4
       LibC.memcpy(db.as(UInt8*) + fb_offset,
                   sb.as(UInt8*) + src_offset,
                   copy_size)
