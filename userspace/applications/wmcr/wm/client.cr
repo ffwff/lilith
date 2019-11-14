@@ -48,6 +48,8 @@ class Wm::Client
       FixedMessageReader(Wm::IPC::Data::MouseEvent).read(header, @socket)
     when IPC::Data::MOVE_REQ_ID
       FixedMessageReader(Wm::IPC::Data::MoveRequest).read(header, @socket)
+    when IPC::Data::REFOCUS_ID
+      FixedMessageReader(Wm::IPC::Data::RefocusEvent).read(header, @socket)
     else
       nil
     end

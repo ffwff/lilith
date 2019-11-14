@@ -12,7 +12,7 @@ else
 fi
 
 CRYSTAL_PATH="$script_path" \
-  crystal build $1 --cross-compile --target $crystal_target --prelude prelude --release -Ddisable_overflow || exit $?
+  crystal build $1 --error-trace --cross-compile --target $crystal_target --prelude prelude --release -Ddisable_overflow || exit $?
 $opt_arch-gcc -O2 -o $output "$basename.o" $LDFLAGS || exit $?
 rm "$basename.o"
 exit 0

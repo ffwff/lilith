@@ -55,13 +55,22 @@ module Wm::IPC
       header : Header
       x, y : Int32
     end
+
+    REFOCUS_ID = 6
+    @[Packed]
+    struct RefocusEvent
+      header : Header
+      wid : Int32
+      focused : UInt8
+    end
   end
 
   alias Message = Data::WindowCreate |
                   Data::Response |
                   Data::KeyboardEvent |
                   Data::MouseEvent |
-                  Data::MoveRequest
+                  Data::MoveRequest | 
+                  Data::RefocusEvent
 
   # Checks if bytes represents a valid IPC message
   def valid_msg?(msg : Bytes) : Bool
@@ -162,6 +171,18 @@ module Wm::IPC
       Data::MOVE_REQ_ID)
     rep.value.x = x
     rep.value.y = y
+    msg
+  end
+
+  # Creates focus change message
+  def refocus_event_message(wid, focused)
+    msg = uninitialized UInt8[sizeof(Data::RefocusEvent)]
+    rep = msg.to_unsafe.as(Data::RefocusEvent*)
+    rep.value.header = create_header(
+      payload_size(Data::RefocusEvent),
+      Data::REFOCUS_ID)
+    rep.value.wid = wid
+    rep.value.focused = focused
     msg
   end
 

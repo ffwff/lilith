@@ -28,6 +28,12 @@ class G::Window < G::Widget
     end
   end
 
+  def wm_message_event(ev : Wm::IPC::Message)
+    if main_widget = @main_widget
+      main_widget.wm_message_event ev
+    end
+  end
+
   def mouse_event(ev : G::MouseEvent)
     if main_widget = @main_widget
       main_widget.mouse_event ev
