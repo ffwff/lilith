@@ -32,6 +32,13 @@ class G::Application
     end
   end
 
+  @x = 0
+  @y = 0
+  getter x, y
+  def move(@x : Int32, @y : Int32)
+    @client << Wm::IPC.move_request_message(@x, @y)
+  end
+
   def run
     if (main_widget = @main_widget)
       main_widget.setup_event
@@ -47,6 +54,9 @@ class G::Application
           when Wm::IPC::Data::WindowCreate
           when Wm::IPC::Data::Response
             # skip
+          when Wm::IPC::Data::MouseEvent
+            msg = msg.as Wm::IPC::Data::MouseEvent
+            main_widget.mouse_event G::MouseEvent.new(msg.x, msg.y, msg.modifiers)
           when Wm::IPC::Data::KeyboardEvent
             msg = msg.as Wm::IPC::Data::KeyboardEvent
             main_widget.key_event G::KeyboardEvent.new(msg.ch.unsafe_chr)

@@ -33,14 +33,38 @@ module Wm::IPC
       ch : Int32
       modifiers : Int32
     end
+
+    MOUSE_EVENT_ID = 4
+    @[Packed]
+    struct MouseEvent
+      header : Header
+      x, y : Int32
+      modifiers : MouseEventModifiers
+    end
+
+    @[Flags]
+    enum MouseEventModifiers : UInt32
+      LeftButton = 1 << 0
+      RightButton = 1 << 1
+      MiddleButton = 1 << 2
+    end
+
+    MOVE_REQ_ID = 5
+    @[Packed]
+    struct MoveRequest
+      header : Header
+      x, y : Int32
+    end
   end
 
   alias Message = Data::WindowCreate |
                   Data::Response |
-                  Data::KeyboardEvent
+                  Data::KeyboardEvent |
+                  Data::MouseEvent |
+                  Data::MoveRequest
 
   # Checks if bytes represents a valid IPC message
-  def valid_msg?(msg : Bytes)
+  def valid_msg?(msg : Bytes) : Bool
     return false if msg.size < sizeof(Data::Header)
     header = msg.to_unsafe.as(Data::Header*)
     if LibC.strncmp(header.value.magic.to_unsafe,
@@ -113,6 +137,31 @@ module Wm::IPC
       Data::KBD_EVENT_ID)
     rep.value.ch = ch
     rep.value.modifiers = modifiers
+    msg
+  end
+
+  # Creates mouse event message
+  def mouse_event_message(x, y, modifiers)
+    msg = uninitialized UInt8[sizeof(Data::MouseEvent)]
+    rep = msg.to_unsafe.as(Data::MouseEvent*)
+    rep.value.header = create_header(
+      payload_size(Data::MouseEvent),
+      Data::MOUSE_EVENT_ID)
+    rep.value.x = x
+    rep.value.y = y
+    rep.value.modifiers = modifiers
+    msg
+  end
+
+  # Creates move request message
+  def move_request_message(x, y)
+    msg = uninitialized UInt8[sizeof(Data::MoveRequest)]
+    rep = msg.to_unsafe.as(Data::MoveRequest*)
+    rep.value.header = create_header(
+      payload_size(Data::MoveRequest),
+      Data::MOVE_REQ_ID)
+    rep.value.x = x
+    rep.value.y = y
     msg
   end
 

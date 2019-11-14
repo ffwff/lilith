@@ -28,6 +28,12 @@ class G::Window < G::Widget
     end
   end
 
+  def mouse_event(ev : G::MouseEvent)
+    if main_widget = @main_widget
+      main_widget.mouse_event ev
+    end
+  end
+
   def key_event(ev : G::KeyboardEvent)
     if main_widget = @main_widget
       main_widget.key_event ev

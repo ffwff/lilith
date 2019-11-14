@@ -93,6 +93,7 @@ module Wm::Server
       else
         delta_y = 0
       end
+      packet
     end
   end
 
@@ -229,7 +230,7 @@ module Wm::Server
       when kbd
         respond_kbd
       when mouse
-        cursor.respond mouse
+        respond_mouse
       when ipc
         respond_ipc
       when Program::Socket
@@ -258,6 +259,14 @@ module Wm::Server
     end
   end
 
+  def respond_mouse
+    packet = cursor.respond mouse
+    if focused = @@focused
+      modifiers = IPC::Data::MouseEventModifiers.new(packet.attr_byte)
+      focused.socket.unbuffered_write IPC.mouse_event_message(cursor.x, cursor.y, modifiers).to_slice
+    end
+  end
+
   def respond_ipc
     if socket = ipc.accept?
       psocket = Program::Socket.new(socket.fd)
@@ -268,9 +277,11 @@ module Wm::Server
   private struct FixedMessageReader(T)
     def self.read(header, socket)
       msg = uninitialized T
+      msg.header = header
       payload = IPC.payload_bytes(msg)
       return if payload.size != header.length
       return if socket.unbuffered_read(payload) != payload.size
+      return if !IPC.valid_msg?(Bytes.new(pointerof(msg).as(UInt8*), sizeof(T)))
       msg
     end
   end
@@ -298,6 +309,13 @@ module Wm::Server
           @@windows.sort!
 
           socket.unbuffered_write IPC.response_message(program.wid).to_slice
+        end
+      when IPC::Data::MOVE_REQ_ID
+        if (msg = FixedMessageReader(IPC::Data::MoveRequest).read(header, socket))
+          if program = socket.program
+            program.x = msg.x
+            program.y = msg.y
+          end
         end
       end
     end
