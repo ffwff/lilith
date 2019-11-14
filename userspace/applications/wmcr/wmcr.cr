@@ -158,6 +158,10 @@ module Wm::Server
   @@selector : IO::Select? = nil
   class_getter! selector
 
+  # client sockets
+  @@clients : Array(Program::Socket)? = nil
+  class_getter! clients
+
   # raw mouse hardware file
   @@mouse : File? = nil
   class_getter! mouse
@@ -179,6 +183,7 @@ module Wm::Server
       abort "unable to open /fb0"
     end
     @@selector = IO::Select.new
+    @@clients = Array(Program::Socket).new
     LibC._ioctl fb.fd, LibC::TIOCGWINSZ, pointerof(@@ws).address
     @@framebuffer = fb.map_to_memory.as(UInt32*)
     @@backbuffer = Painter.create_bitmap(screen_width, screen_height)
@@ -233,9 +238,11 @@ module Wm::Server
         respond_mouse
       when ipc
         respond_ipc
-      when Program::Socket
-        respond_ipc_socket selected.as(Program::Socket)
       else
+        abort "unhandled socket" unless selected.nil?
+      end
+      clients.each do |socket|
+        respond_ipc_socket socket
       end
       @@windows.each do |window|
         window.render @@backbuffer,
@@ -270,7 +277,7 @@ module Wm::Server
   def respond_ipc
     if socket = ipc.accept?
       psocket = Program::Socket.new(socket.fd)
-      selector << psocket
+      clients.push psocket
     end
   end
 
@@ -315,6 +322,7 @@ module Wm::Server
           if program = socket.program
             program.x = msg.x
             program.y = msg.y
+            socket.unbuffered_write IPC.response_message(1).to_slice
           end
         end
       end
