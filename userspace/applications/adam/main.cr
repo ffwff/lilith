@@ -14,12 +14,7 @@ module Adam
   extend self
 
   @@cwd = Dir.current
-
-  def cwd
-    @@cwd
-  end
-  def cwd=(@@cwd)
-  end
+  class_property cwd
 end
 
 def getline : String?
