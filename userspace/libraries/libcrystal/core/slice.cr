@@ -20,6 +20,14 @@ struct Slice(T)
     new Pointer(T).null, 0
   end
 
+  def realloc(size : Int)
+    if @size == 0
+      Slice(T).new size
+    else
+      Slice(T).new Gc.realloc(@buffer.as(Void*), size.to_u64 * sizeof(T)).as(T*), size.to_i32
+    end
+  end
+
   def +(offset : Int)
     abort "Slice: out of range" if offset > @size
     Slice(T).new(@buffer + offset, @size - offset)
