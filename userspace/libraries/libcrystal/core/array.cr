@@ -133,6 +133,13 @@ class Array(T)
     retval
   end
 
+  def pop
+    return nil if size == 0
+    retval = to_unsafe[self.size - 1]
+    self.size = self.size - 1
+    retval
+  end
+
   def delete(obj)
     # FIXME: untested
     i = 0
