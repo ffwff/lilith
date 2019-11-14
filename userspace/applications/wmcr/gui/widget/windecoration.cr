@@ -67,7 +67,6 @@ class G::WindowDecoration < G::Widget
   @last_mouse_y = 0
   def mouse_event(ev : G::MouseEvent)
     if ev.modifiers.includes?(Wm::IPC::Data::MouseEventModifiers::LeftButton)
-      # FIXME: window lags behind mouse on moving
       delta_x = ev.x - @last_mouse_x
       delta_y = ev.y - @last_mouse_y
       if delta_x != 0 || delta_y != 0
