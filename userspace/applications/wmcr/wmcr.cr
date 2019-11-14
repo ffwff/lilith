@@ -45,6 +45,11 @@ module Wm::Server
     def <=>(other)
       @z_index <=> other.z_index
     end
+    
+    def contains_point?(x : Int, y : Int)
+      @x <= x && x <= (@x + @width) &&
+      @y <= y && y <= (@y + @height)
+    end
   end
 
   class Background < Window
@@ -268,9 +273,28 @@ module Wm::Server
 
   def respond_mouse
     packet = cursor.respond mouse
-    if focused = @@focused
-      modifiers = IPC::Data::MouseEventModifiers.new(packet.attr_byte)
+    modifiers = IPC::Data::MouseEventModifiers.new(packet.attr_byte)
+    if (focused = @@focused) && focused.contains_point?(cursor.x, cursor.y)
       focused.socket.unbuffered_write IPC.mouse_event_message(cursor.x, cursor.y, modifiers).to_slice
+    end
+    if modifiers.includes?(IPC::Data::MouseEventModifiers::LeftButton)
+      if (focused = @@focused) && focused.contains_point?(cursor.x, cursor.y)
+        return
+      end
+      @@windows.reverse_each do |win|
+        case win
+        when Program
+          if win.contains_point?(cursor.x, cursor.y)
+            if focused = @@focused
+              focused.z_index = 1
+            end
+            @@focused = win
+            win.z_index = 2
+            @@windows.sort!
+            break
+          end
+        end
+      end
     end
   end
 
@@ -312,6 +336,7 @@ module Wm::Server
           end
           socket.program = program = Program.new(socket, msg.x, msg.y, msg.width, msg.height)
           @@focused = program
+          program.z_index = 2
           @@windows.push program
           @@windows.sort!
 
@@ -320,8 +345,8 @@ module Wm::Server
       when IPC::Data::MOVE_REQ_ID
         if (msg = FixedMessageReader(IPC::Data::MoveRequest).read(header, socket))
           if program = socket.program
-            program.x = msg.x
-            program.y = msg.y
+            program.x = msg.x.clamp(0, screen_width)
+            program.y = msg.y.clamp(0, screen_height)
             socket.unbuffered_write IPC.response_message(1).to_slice
           end
         end
