@@ -41,6 +41,24 @@ class G::Termbox < G::Widget
     redraw_all
   end
 
+  def backspace(redraw? = true)
+    if @line.pop.nil?
+      return
+    end
+    if @cx == 0
+      if @cy != 0
+        @cy -= 1
+      end
+    else
+      @cx -= 1
+    end
+    @cbuffer[@cy * @cwidth + @cx] = '\0'
+    redraw_all
+    if redraw?
+      @app.not_nil!.redraw
+    end
+  end
+
   def scroll(redraw? = true)
     (@cheight - 1).times do |y|
       @cwidth.times do |x|
@@ -116,10 +134,14 @@ class G::Termbox < G::Widget
       newline
       return
     end
-    ev.ch.each_byte do |byte|
-      @line.push byte
+    if ev.ch == '\b'
+      backspace
+    else
+      ev.ch.each_byte do |byte|
+        @line.push byte
+      end
+      putc ev.ch
     end
-    putc ev.ch
   end
 
   def io_event(io : IO::FileDescriptor)
