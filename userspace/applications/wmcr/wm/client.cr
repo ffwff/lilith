@@ -25,6 +25,7 @@ class Wm::Client
       payload = IPC.payload_bytes(msg)
       return if payload.size != header.length
       return if socket.unbuffered_read(payload) != payload.size
+      return if !IPC.valid_msg?(Bytes.new(pointerof(msg).as(UInt8*), sizeof(T)))
       msg
     end
   end
@@ -43,6 +44,10 @@ class Wm::Client
       FixedMessageReader(Wm::IPC::Data::Response).read(header, @socket)
     when IPC::Data::KBD_EVENT_ID
       FixedMessageReader(Wm::IPC::Data::KeyboardEvent).read(header, @socket)
+    when IPC::Data::MOUSE_EVENT_ID
+      FixedMessageReader(Wm::IPC::Data::MouseEvent).read(header, @socket)
+    when IPC::Data::MOVE_REQ_ID
+      FixedMessageReader(Wm::IPC::Data::MoveRequest).read(header, @socket)
     else
       nil
     end
@@ -59,8 +64,6 @@ class Wm::Client
         return Wm::Window.new(response.retval, self,
                               x, y, width, height)
       end
-    else
-      nil
     end
   end
 

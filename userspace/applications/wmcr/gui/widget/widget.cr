@@ -5,6 +5,14 @@ struct G::KeyboardEvent
   end
 end
 
+struct G::MouseEvent
+  getter x, y, modifiers
+
+  def initialize(@x : Int32, @y : Int32,
+                 @modifiers : Wm::IPC::Data::MouseEventModifiers)
+  end
+end
+
 abstract class G::Widget
 
   @app : G::Application? = nil
@@ -42,5 +50,6 @@ abstract class G::Widget
   def_event   draw
   def_event_d io, IO::FileDescriptor
   def_event_d key, KeyboardEvent
+  def_event_d mouse, MouseEvent
 
 end
