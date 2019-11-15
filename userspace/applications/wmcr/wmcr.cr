@@ -77,7 +77,7 @@ module Wm::Server
     def render(buffer, bwidth, bheight)
       Painter.blit_img(buffer, bwidth, bheight,
                        @bytes.not_nil!.to_unsafe.as(UInt32*),
-                       @width, @height, @x, @y)
+                       @width, @height, @x, @y, true)
     end
 
     def respond(file)
