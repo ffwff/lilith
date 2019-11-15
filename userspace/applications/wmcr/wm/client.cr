@@ -31,25 +31,31 @@ class Wm::Client
   end
 
   def read_message : IPC::Message?
-    header = uninitialized Wm::IPC::Data::Header
+    header = uninitialized IPC::Data::Header
     if @socket.unbuffered_read(Bytes.new(pointerof(header).as(UInt8*),
-                                            sizeof(Wm::IPC::Data::Header))) \
-      != sizeof(Wm::IPC::Data::Header)
+                                            sizeof(IPC::Data::Header))) \
+      != sizeof(IPC::Data::Header)
       return
     end
     case header.type
     when IPC::Data::WINDOW_CREATE_ID
-      FixedMessageReader(Wm::IPC::Data::WindowCreate).read(header, @socket)
+      FixedMessageReader(IPC::Data::WindowCreate).read(header, @socket)
     when IPC::Data::RESPONSE_ID
-      FixedMessageReader(Wm::IPC::Data::Response).read(header, @socket)
+      FixedMessageReader(IPC::Data::Response).read(header, @socket)
     when IPC::Data::KBD_EVENT_ID
-      FixedMessageReader(Wm::IPC::Data::KeyboardEvent).read(header, @socket)
+      FixedMessageReader(IPC::Data::KeyboardEvent).read(header, @socket)
     when IPC::Data::MOUSE_EVENT_ID
-      FixedMessageReader(Wm::IPC::Data::MouseEvent).read(header, @socket)
+      FixedMessageReader(IPC::Data::MouseEvent).read(header, @socket)
     when IPC::Data::MOVE_REQ_ID
-      FixedMessageReader(Wm::IPC::Data::MoveRequest).read(header, @socket)
+      FixedMessageReader(IPC::Data::MoveRequest).read(header, @socket)
     when IPC::Data::REFOCUS_ID
-      FixedMessageReader(Wm::IPC::Data::RefocusEvent).read(header, @socket)
+      FixedMessageReader(IPC::Data::RefocusEvent).read(header, @socket)
+    when IPC::Data::QUERY_ID
+      FixedMessageReader(IPC::Data::Query).read(header, @socket)
+    when IPC::Data::DYN_RESPONSE_ID
+      payload = Bytes.new header.length
+      return if socket.unbuffered_read(payload) != payload.size
+      IPC::DynamicResponse.new payload
     else
       nil
     end
@@ -57,14 +63,27 @@ class Wm::Client
 
   def create_window(x = 0, y = 0,
                     width = 400, height = 300)
-    self << Wm::IPC.window_create_message(x, y, width, height)
+    self << IPC.window_create_message(x, y, width, height)
     IO::Select.wait @socket, timeout: (-1).to_u32
     response = read_message
     case response
-    when Wm::IPC::Data::Response
+    when IPC::Data::Response
       if response.retval != -1
-        return Wm::Window.new(response.retval, self,
-                              x, y, width, height)
+        return Window.new(response.retval, self,
+                          x, y, width, height)
+      end
+    end
+  end
+
+  def screen_resolution : Tuple(Int32, Int32)?
+    self << IPC.query_message(IPC::Data::QueryType::ScreenDim)
+    IO::Select.wait @socket, timeout: (-1).to_u32
+    response = read_message
+    case response
+    when IPC::DynamicResponse
+      if response.buffer.size == 8
+        ptr = response.buffer.to_unsafe.as(Int32*)
+        return Tuple.new(ptr[0], ptr[1])
       end
     end
   end
