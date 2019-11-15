@@ -354,6 +354,18 @@ module Wm::Server
             socket.unbuffered_write IPC.response_message(1).to_slice
           end
         end
+      when IPC::Data::QUERY_ID
+        if (msg = FixedMessageReader(IPC::Data::Query).read(header, socket))
+          case msg.type
+          when IPC::Data::QueryType::ScreenDim
+            msg = IPC::DynamicWriter(8).write do |buffer|
+              data = buffer.to_unsafe.as(Int32*)
+              data[0] = screen_width
+              data[1] = screen_height
+            end
+            socket.unbuffered_write msg.to_slice
+          end
+        end
       end
     end
   end

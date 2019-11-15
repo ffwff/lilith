@@ -9,6 +9,7 @@ module Wm::IPC
       length : UInt8
       type : UInt8
     end
+    HEADER_SIZE = 8
 
     TEST_MESSAGE_ID = 0
 
@@ -63,6 +64,25 @@ module Wm::IPC
       wid : Int32
       focused : UInt8
     end
+
+    QUERY_ID = 7
+    @[Packed]
+    struct Query
+      header : Header
+      type : QueryType
+    end
+
+    enum QueryType : Int32
+      ScreenDim = 0
+    end
+
+    DYN_RESPONSE_ID = 8
+  end
+
+  struct DynamicResponse
+    getter buffer
+    def initialize(@buffer : Bytes)
+    end
   end
 
   alias Message = Data::WindowCreate |
@@ -70,7 +90,9 @@ module Wm::IPC
                   Data::KeyboardEvent |
                   Data::MouseEvent |
                   Data::MoveRequest | 
-                  Data::RefocusEvent
+                  Data::RefocusEvent |
+                  Data::Query |
+                  DynamicResponse
 
   # Checks if bytes represents a valid IPC message
   def valid_msg?(msg : Bytes) : Bool
@@ -184,6 +206,32 @@ module Wm::IPC
     rep.value.wid = wid
     rep.value.focused = focused
     msg
+  end
+
+  # Creates query message
+  def query_message(type)
+    msg = uninitialized UInt8[sizeof(Data::Query)]
+    rep = msg.to_unsafe.as(Data::Query*)
+    rep.value.header = create_header(
+      payload_size(Data::Query),
+      Data::QUERY_ID)
+    rep.value.type = type
+    msg
+  end
+
+  # Creates a dynamically sized response message
+  struct DynamicWriter(N)
+    def self.write(&block)
+      {% if N > 0 %}
+        msg = uninitialized UInt8[{{ N + 8 }}]
+        header = msg.to_unsafe.as(Data::Header*)
+        header.value = IPC.create_header(
+          {{ N }},
+          Data::DYN_RESPONSE_ID)
+        yield msg.to_slice + sizeof(Data::Header)
+        msg
+      {% end %}
+    end
   end
 
 end

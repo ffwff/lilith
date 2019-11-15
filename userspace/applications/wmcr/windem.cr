@@ -1,4 +1,5 @@
 require "./wm/*"
 
 client = Wm::Client.new.not_nil!
-client << Wm::IPC.test_message
+w, h = client.screen_resolution.not_nil!
+STDERR.print w, ' ', h, '\n'
