@@ -1,3 +1,5 @@
+require "./fat/cache.cr"
+
 private lib Fat16Structs
   @[Packed]
   struct Fat16BootSector
@@ -103,6 +105,8 @@ private def name_from_entry(entry)
 end
 
 private class Fat16Node < VFSNode
+  include FatCache
+
   @parent : Fat16Node? = nil
   property parent
 
@@ -189,7 +193,9 @@ private class Fat16Node < VFSNode
     fat_sector
   end
 
-  def read(read_size = 0, offset = 0, allocator = nil, &block)
+  MAX_RETRIES = 3
+
+  def read(read_size = 0, offset : UInt32 = 0, allocator : StackAllocator? = nil, &block)
     return if directory?
 
     # check arguments
@@ -216,11 +222,16 @@ private class Fat16Node < VFSNode
 
     # skip clusters
     offset_factor = fs.sectors_per_cluster * 512
-    offset_clusters = offset // offset_factor
-    while offset_clusters > 0 && cluster < 0xFFF8
-      fat_sector = read_fat_table fat_table, cluster, fat_sector
-      cluster = fat_table[ent_for cluster]
-      offset_clusters -= 1
+    if cached_cluster = get_cache(offset.to_i32)
+      cluster = cached_cluster
+      fat_sector = read_fat_table fat_table, cluster
+    else
+      offset_clusters = offset // offset_factor
+      while offset_clusters > 0 && cluster < 0xFFF8
+        fat_sector = read_fat_table fat_table, cluster, fat_sector
+        cluster = fat_table[ent_for cluster]
+        offset_clusters -= 1
+      end
     end
     offset_bytes = offset % offset_factor
 
@@ -235,9 +246,20 @@ private class Fat16Node < VFSNode
       sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
       read_sector = 0
       while remaining_bytes > 0 && read_sector < fs.sectors_per_cluster
-        unless fs.device.read_sector(file_buffer, sector + read_sector)
-          panic "unable to read!"
+        # TODO: move retry code to read_sector
+        retries = 0
+        while retries < MAX_RETRIES
+          if fs.device.read_sector(file_buffer, sector + read_sector)
+            break
+          end
+          retries += 1
         end
+        if retries == MAX_RETRIES
+          Serial.print "unable to read from device, returning garbage!"
+          remaining_bytes = 0
+          break
+        end
+
         file_buffer.each do |word|
           u8 = (word >> 8) & 0xFF
           u8_1 = word & 0xFF
@@ -246,6 +268,7 @@ private class Fat16Node < VFSNode
               offset_bytes -= 1
             else
               yield u8_1.to_u8
+              offset += 1
               remaining_bytes -= 1
             end
             if remaining_bytes > 0
@@ -253,6 +276,7 @@ private class Fat16Node < VFSNode
                 offset_bytes -= 1
               else
                 yield u8.to_u8
+                offset += 1
                 remaining_bytes -= 1
               end
             else
@@ -265,6 +289,7 @@ private class Fat16Node < VFSNode
         read_sector += 1
       end
       fat_sector = read_fat_table fat_table, cluster, fat_sector
+      insert_cache offset, cluster.to_u32
       cluster = fat_table[ent_for cluster]
     end
 
@@ -318,6 +343,9 @@ private class Fat16Node < VFSNode
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
+    unless directory?
+      init_cache
+    end
     if offset >= @size
       return VFS_EOF
     end
@@ -325,11 +353,14 @@ private class Fat16Node < VFSNode
   end
 
   def spawn(udata : Multiprocessing::Process::UserData) : Int32
+    return VFS_ERR if directory?
+    init_cache
     VFS_WAIT
   end
 
   def write(slice : Slice, offset : UInt32,
             process : Multiprocessing::Process? = nil) : Int32
+    return VFS_ERR if directory?
     VFS_ERR
   end
 
@@ -457,8 +488,8 @@ class Fat16FS < VFS
         case msg.type
         when VFSMessage::Type::Read
           fat16_node.read(msg.slice_size,
-            msg.file_offset,
-            allocator: @process_allocator) do |ch|
+                          msg.file_offset.to_u32,
+                          allocator: @process_allocator) do |ch|
             msg.respond(ch)
           end
           msg.unawait
