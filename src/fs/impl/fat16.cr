@@ -240,6 +240,7 @@ private class Fat16Node < VFSNode
                     sz = 256
                     Slice(UInt16).new(allocator.not_nil!.malloc(sz * sizeof(UInt16)).as(UInt16*), sz)
                   end
+    last_cluster = 0
     while remaining_bytes > 0 && cluster < 0xFFF8
       sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
       read_sector = 0
@@ -279,9 +280,10 @@ private class Fat16Node < VFSNode
         read_sector += 1
       end
       fat_sector = read_fat_table fat_table, cluster, fat_sector
-      insert_cache offset, cluster.to_u32
+      last_cluster = cluster
       cluster = fat_table[ent_for cluster]
     end
+    insert_cache offset, last_cluster.to_u32
 
     # clean up within function call
     if allocator.nil?
