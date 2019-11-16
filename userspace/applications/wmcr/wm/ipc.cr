@@ -18,6 +18,12 @@ module Wm::IPC
     struct WindowCreate
       header : Header
       x, y, width, height : Int32
+      flags : WindowFlags
+    end
+
+    @[Flags]
+    enum WindowFlags : Int32
+      Background = 1 << 0
     end
 
     RESPONSE_ID = 2
@@ -135,7 +141,7 @@ module Wm::IPC
   end
 
   # Creates window create message
-  def window_create_message(x, y, width, height)
+  def window_create_message(x, y, width, height, flags = Data::WindowFlags::None)
     msg = uninitialized UInt8[sizeof(Data::WindowCreate)]
     wc = msg.to_unsafe.as(Data::WindowCreate*)
     wc.value.header = create_header(
@@ -145,6 +151,7 @@ module Wm::IPC
     wc.value.y = y
     wc.value.width = width
     wc.value.height = height
+    wc.value.flags = flags
     msg
   end
 

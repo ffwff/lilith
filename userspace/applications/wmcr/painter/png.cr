@@ -44,7 +44,7 @@ module Painter
     end
   end
 
-  def load_png(filename) : Image?
+  private def internal_load_png(filename, &block)
     if (fp = LibC.fopen(filename, "r")).null?
       return nil
     end
@@ -86,14 +86,31 @@ module Painter
 
     LibPNG.png_read_update_info(png_ptr, info_ptr)
 
-    bytes = Bytes.new(width * height * 4)
-    height.times do |y|
-      LibPNG.png_read_row png_ptr, bytes.to_unsafe + (y * width * 4), Pointer(UInt8).null
-    end
+    yield Tuple.new(width, height, png_ptr)
 
     LibPNG.png_destroy_read_struct pointerof(png_ptr), pointerof(info_ptr), Pointer(Void*).null
+  end
 
-    Image.new width.to_i32, height.to_i32, bytes
+  def load_png(filename : String, bytes : Bytes)
+    internal_load_png(filename) do |width, height, png_ptr|
+      if bytes.size == (width * height * 4)
+        height.times do |y|
+          LibPNG.png_read_row png_ptr, bytes.to_unsafe + (y * width * 4), Pointer(UInt8).null
+        end
+      end
+    end
+  end
+
+  def load_png(filename : String) : Image?
+    img = nil
+    internal_load_png(filename) do |width, height, png_ptr|
+      bytes = Bytes.new(width * height * 4)
+      height.times do |y|
+        LibPNG.png_read_row png_ptr, bytes.to_unsafe + (y * width * 4), Pointer(UInt8).null
+      end
+      img = Image.new width.to_i32, height.to_i32, bytes
+    end
+    img
   end
 
 end

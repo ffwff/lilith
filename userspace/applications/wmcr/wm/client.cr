@@ -62,8 +62,9 @@ class Wm::Client
   end
 
   def create_window(x = 0, y = 0,
-                    width = 400, height = 300)
-    self << IPC.window_create_message(x, y, width, height)
+                    width = 400, height = 300,
+                    flags = IPC::Data::WindowFlags::None)
+    self << IPC.window_create_message(x, y, width, height, flags)
     IO::Select.wait @socket, timeout: (-1).to_u32
     response = read_message
     case response

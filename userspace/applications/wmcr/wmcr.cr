@@ -226,10 +226,10 @@ module Wm::Server
     @@windows.push cursor
 
     # default startup application
-    Process.new "cterm",
-        input: Process::Redirect::Inherit,
-        output: Process::Redirect::Inherit,
-        error: Process::Redirect::Inherit
+    Process.new "desktop",
+      input: Process::Redirect::Inherit,
+      output: Process::Redirect::Inherit,
+      error: Process::Redirect::Inherit
   end
 
 
@@ -285,7 +285,7 @@ module Wm::Server
         case win
         when Program
           win = win.as(Program)
-          if win.contains_point?(cursor.x, cursor.y)
+          if win.contains_point?(cursor.x, cursor.y) && win.z_index == -1
             break if win == @@focused
             if focused = @@focused
               focused.socket.unbuffered_write IPC.refocus_event_message(win.wid, 0).to_slice
@@ -338,9 +338,24 @@ module Wm::Server
             socket.unbuffered_write IPC.response_message(-1).to_slice
             next
           end
+
+          if msg.flags.includes?(IPC::Data::WindowFlags::Background)
+            case @@windows[0]
+            when Background
+            else
+              socket.unbuffered_write IPC.response_message(-1).to_slice
+              next
+            end
+          end
+
           socket.program = program = Program.new(socket, msg.x, msg.y, msg.width, msg.height)
           @@focused = program
-          program.z_index = 2
+          if msg.flags.includes?(IPC::Data::WindowFlags::Background)
+            program.z_index = -1
+            @@windows.shift
+          else
+            program.z_index = 2
+          end
           @@windows.push program
           @@windows.sort!
 
