@@ -16,6 +16,10 @@ struct Slice(T)
     new Pointer(T).malloc(sz), sz
   end
 
+  def self.malloc_atomic(sz)
+    new Pointer(T).malloc_atomic(sz), sz
+  end
+
   def self.mmalloc_a(sz, allocator)
     new allocator.malloc(sz * sizeof(T)).as(T*), sz
   end
