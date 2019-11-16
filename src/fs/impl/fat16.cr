@@ -193,8 +193,6 @@ private class Fat16Node < VFSNode
     fat_sector
   end
 
-  MAX_RETRIES = 3
-
   def read(read_size = 0, offset : UInt32 = 0, allocator : StackAllocator? = nil, &block)
     return if directory?
 
@@ -246,15 +244,7 @@ private class Fat16Node < VFSNode
       sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
       read_sector = 0
       while remaining_bytes > 0 && read_sector < fs.sectors_per_cluster
-        # TODO: move retry code to read_sector
-        retries = 0
-        while retries < MAX_RETRIES
-          if fs.device.read_sector(file_buffer, sector + read_sector)
-            break
-          end
-          retries += 1
-        end
-        if retries == MAX_RETRIES
+        unless fs.device.read_sector(file_buffer, sector + read_sector)
           Serial.print "unable to read from device, returning garbage!"
           remaining_bytes = 0
           break
