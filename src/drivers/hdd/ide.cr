@@ -357,20 +357,27 @@ class AtaDevice
 
   @lock = Spinlock.new
 
+  MAX_RETRIES = 3
   def read_sector(ptr, sector : UInt64)
     panic "can't access atapi" if @type == Type::Atapi
 
-    retval = true
+    retval = false
     @lock.with do
-      Ata.read sector, disk_port, slave
-      # poll
-      if !Ata.wait(disk_port, true)
-        retval = false
+      retries = 0
+      while retries < MAX_RETRIES
+        Ata.read sector, disk_port, slave
+        # poll
+        unless Ata.wait(disk_port, true)
+          retval = false
+          retries += 1
+          next
+        end
+        # read from sector
+        256.times do |i|
+          ptr[i] = X86.inw disk_port
+        end
+        retval = true
         break
-      end
-      # read from sector
-      256.times do |i|
-        ptr[i] = X86.inw disk_port
       end
     end
 
