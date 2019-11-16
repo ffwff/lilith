@@ -11,7 +11,8 @@ class G::Window < G::Widget
   end
 
   def initialize(@x : Int32, @y : Int32,
-                 @width : Int32, @height : Int32)
+                 @width : Int32, @height : Int32,
+                 @flags = Wm::IPC::Data::WindowFlags::None)
   end
 
   def bitmap
@@ -19,7 +20,9 @@ class G::Window < G::Widget
   end
 
   def setup_event
-    @wm_window = app.client.create_window(@x, @y, @width, @height).not_nil!
+    if @wm_window.nil?
+      @wm_window = app.client.create_window(@x, @y, @width, @height, @flags).not_nil!
+    end
   end
 
   def io_event(io : IO::FileDescriptor)
