@@ -278,14 +278,11 @@ module Wm::Server
       focused.socket.unbuffered_write IPC.mouse_event_message(cursor.x, cursor.y, modifiers).to_slice
     end
     if modifiers.includes?(IPC::Data::MouseEventModifiers::LeftButton)
-      if (focused = @@focused) && focused.contains_point?(cursor.x, cursor.y)
-        return
-      end
       @@windows.reverse_each do |win|
         case win
         when Program
           win = win.as(Program)
-          if win.contains_point?(cursor.x, cursor.y) && win.z_index == -1
+          if win.contains_point?(cursor.x, cursor.y) && win.z_index != -1
             break if win == @@focused
             if focused = @@focused
               focused.socket.unbuffered_write IPC.refocus_event_message(win.wid, 0).to_slice
