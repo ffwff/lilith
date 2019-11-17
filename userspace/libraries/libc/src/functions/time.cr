@@ -30,7 +30,7 @@ lib LibC
 end
 
 private UNIX_YEAR   = 1970
-private SECS_MINUTE =   60
+private SECS_MINUTE =   60u64
 private SECS_HOUR   = SECS_MINUTE * 60
 private SECS_DAY    = SECS_HOUR * 24
 
@@ -40,6 +40,7 @@ end
 
 private def days_in_month_of_year(month, year)
   case month
+  when 12; 31
   when 11; 30
   when 10; 31
   when  9; 30
@@ -87,7 +88,7 @@ end
 fun localtime(time_t : LibC::TimeT*) : LibC::Tm*
   seconds = time_t.value
 
-  years = 1970
+  years = UNIX_YEAR
   while seconds > 0
     seconds_in_year = (leap_year?(years) ? 366 : 365) * SECS_DAY
     if seconds_in_year <= seconds
@@ -99,9 +100,9 @@ fun localtime(time_t : LibC::TimeT*) : LibC::Tm*
   end
 
   months = 1
-  while seconds > 0
+  while seconds > 0 && months < 12
     days = days_in_month_of_year(months, years)
-    seconds_in_month = days * SECS_DAY
+    seconds_in_month = (days * SECS_DAY).to_u64
     if seconds_in_month <= seconds
       seconds -= seconds_in_month
       months += 1
@@ -120,7 +121,7 @@ fun localtime(time_t : LibC::TimeT*) : LibC::Tm*
     end
   end
 
-  while days >= days_in_month_of_year(months, years)
+  while days >= days_in_month_of_year(months, years) && months < 12
     days -= days_in_month_of_year(months, years)
     months += 1
   end
