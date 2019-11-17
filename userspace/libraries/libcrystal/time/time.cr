@@ -43,6 +43,7 @@ struct Time
     tm = LibC::Tm.new
     tm.tm_year = @year
     tm.tm_mon = @month
+    tm.tm_mday = @day
     tm.tm_hour = @hour
     tm.tm_min = @minute
     tm.tm_sec = @second
