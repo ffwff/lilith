@@ -11,11 +11,15 @@ class G::Application
   end
 
   @running = true
+  @selector_timeout : UInt64
 
   def initialize
     @client = Wm::Client.new.not_nil!
     @selector = IO::Select.new
     @selector << @client.socket
+
+    @timers = [] of G::Timer
+    @selector_timeout = (-1).to_u64
   end
 
   def watch_io(io : IO::FileDescriptor)
@@ -24,6 +28,11 @@ class G::Application
 
   def unwatch_io(io : IO::FileDescriptor)
     @selector.delete io
+  end
+
+  def register_timer(timer : G::Timer)
+    @timers.push timer
+    @selector_timeout = Math.min(@selector_timeout, timer.interval.to_u64 * 1000000)
   end
 
   def redraw
@@ -45,7 +54,7 @@ class G::Application
       main_widget.draw_event
     end
     while @running
-      io = @selector.wait (-1).to_u64
+      io = @selector.wait @selector_timeout
       case io
       when @client.socket
         msg = @client.read_message
@@ -69,6 +78,15 @@ class G::Application
       when IO::FileDescriptor
         if main_widget = @main_widget
           main_widget.io_event io
+        end
+      end
+      if @timers.size > 0
+        cur_time = Time.unix
+        @timers.each do |timer|
+          if cur_time - timer.last_tick >= timer.interval
+            timer.on_tick
+            timer.last_tick = cur_time
+          end
         end
       end
     end
