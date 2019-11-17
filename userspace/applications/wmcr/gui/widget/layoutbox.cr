@@ -24,7 +24,7 @@ class G::LayoutBox < G::Widget
           Painter.blit_img bitmap, @width, @height,
                            widget.bitmap,
                            widget.width, widget.height,
-                           0, 0
+                           widget.x, widget.y
         end
       end
     end
