@@ -28,8 +28,12 @@ struct Time
                  @second : Int32 = 0)
   end
 
+  def self.unix : UInt64
+    LibC._sys_time
+  end
+
   def self.local : Time
-    stamp = LibC._sys_time
+    stamp = Time.unix
     tm = LibC.localtime(pointerof(stamp)).value
     Time.new tm.tm_year,
       tm.tm_mon,
