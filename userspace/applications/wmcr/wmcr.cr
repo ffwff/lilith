@@ -226,7 +226,7 @@ module Wm::Server
     @@windows.push cursor
 
     # default startup application
-    Process.new "cbar",
+    Process.new "desktop",
       input: Process::Redirect::Inherit,
       output: Process::Redirect::Inherit,
       error: Process::Redirect::Inherit
