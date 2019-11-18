@@ -212,9 +212,9 @@ static int __printf(nputs_fn_t nputs_fn, void *userptr,
           }
         }
         default: {
-          fputs("unsupported format: ", stderr);
+          /* fputs("unsupported format: ", stderr);
           fputc(*format, stderr);
-          fputc('\n', stderr);
+          fputc('\n', stderr); */
           return written;
         }
       }
