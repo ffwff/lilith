@@ -407,7 +407,7 @@ module Malloc
 end
 
 # c functions
-  fun calloc(nmemb : LibC::SizeT, size : LibC::SizeT) : Void*
+fun calloc(nmemb : LibC::SizeT, size : LibC::SizeT) : Void*
   ptr = Malloc.malloc nmemb * size
   memset ptr.as(UInt8*), 0, nmemb * size
   ptr

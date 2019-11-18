@@ -189,18 +189,22 @@ end
 
 # memory
 fun memset(dst : UInt8*, c : LibC::UInt, n : LibC::SizeT) : Void*
+  r0 = r1 = r2 = 0
   asm(
     "cld\nrep stosb"
-          :: "{al}"(c.to_u8), "{Di}"(dst), "{cx}"(n)
+          : "={al}"(r0), "={Di}"(r1), "={cx}"(r2)
+          : "{al}"(c.to_u8), "{Di}"(dst), "{cx}"(n)
           : "volatile", "memory"
   )
   dst.as(Void*)
 end
 
 fun memcpy(dst : UInt8*, src : UInt8*, n : LibC::SizeT) : Void*
+  r0 = r1 = r2 = 0
   asm(
     "cld\nrep movsb"
-          :: "{Di}"(dst), "{Si}"(src), "{cx}"(n)
+          : "={Di}"(r0), "={Si}"(r1), "={cx}"(r2)
+          : "{Di}"(dst), "{Si}"(src), "{cx}"(n)
           : "volatile", "memory"
   )
   dst.as(Void*)

@@ -48,20 +48,27 @@ double frexp(double, int *);
 #define FP_NORMAL    4
 
 int __fpclassify(double);
-int __fpclassifyf(float);
+// int __fpclassifyf(float);
 int __fpclassifyl(long double);
 
-static __inline unsigned __FLOAT_BITS(float __f)
-{
-    union {float __f; unsigned __i;} __u;
-    __u.__f = __f;
-    return __u.__i;
+// FIXME: move these to another file
+static int __fpclassifyf(float x) {
+	union {float f; uint32_t i;} u = {x};
+	int e = u.i>>23 & 0xff;
+	if (!e) return u.i<<1 ? FP_SUBNORMAL : FP_ZERO;
+	if (e==0xff) return u.i<<9 ? FP_NAN : FP_INFINITE;
+	return FP_NORMAL;
 }
-static __inline unsigned long long __DOUBLE_BITS(double __f)
-{
-    union {double __f; unsigned long long __i;} __u;
-    __u.__f = __f;
-    return __u.__i;
+
+static __inline unsigned __FLOAT_BITS(float __f) {
+  union {float __f; unsigned __i;} __u;
+  __u.__f = __f;
+  return __u.__i;
+}
+static __inline unsigned long long __DOUBLE_BITS(double __f) {
+  union {double __f; unsigned long long __i;} __u;
+  __u.__f = __f;
+  return __u.__i;
 }
 
 #define fpclassify(x) ( \
@@ -111,3 +118,14 @@ int __signbitl(long double);
 #define M_PI 3.14159265358979323846264338327950288
 
 double modf(double x, double *iptr);
+
+static inline double fmin(double x, double y) {
+  if (isnan(x))
+		return y;
+	if (isnan(y))
+		return x;
+	/* handle signed zeros, see C99 Annex F.9.9.2 */
+	if (signbit(x) != signbit(y))
+    return signbit(x) ? x : y;
+	return x < y ? x : y;
+}
