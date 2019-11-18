@@ -1,0 +1,12 @@
+--- spng-old.c	2019-11-18 15:51:31.118881578 +0700
++++ spng.c	2019-11-18 16:01:42.604205969 +0700
+@@ -32,7 +32,8 @@
+         #define SPNG_DISABLE_OPT
+     #endif
+ 
+-    #if defined(SPNG_X86) && ((__GNUC__ >= 7) && !defined(__clang__) && !defined(__INTEL_COMPILER)) && !defined(_WIN32)
++    #if defined(SPNG_X86) && ((__GNUC__ >= 7) && !defined(__clang__) && !defined(__INTEL_COMPILER)) && !defined(_WIN32) \
++          && !defined(SPNG_NO_TARGET_CLONES)
+         #undef SPNG_TARGET_CLONES
+         #define SPNG_TARGET_CLONES(x) __attribute__((target_clones(x)))
+     #else
