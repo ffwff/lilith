@@ -73,6 +73,11 @@ class Array(T)
 
   def self.build(capacity : Int) : self
     ary = Array(T).new(capacity)
+    # set the array's size to capacity beforehand
+    # so when the array is scanned by the gc, its values won't be deleted
+    # before the actual size is set
+    LibC.memset(ary.to_unsafe, 0, sizeof(T) * capacity)
+    ary.size = capacity
     ary.size = (yield ary.to_unsafe).to_i
     ary
   end
