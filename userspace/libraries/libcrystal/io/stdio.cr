@@ -5,6 +5,8 @@ lib LibC
   SEEK_SET = 0
   SEEK_CUR = 1
   SEEK_END = 2
+
+  fun close(fd : LibC::Int) : LibC::Int
 end
 
 class IO::FileDescriptor < IO
@@ -13,6 +15,10 @@ class IO::FileDescriptor < IO
   getter fd
 
   def initialize(@fd : LibC::Int, blocking = false)
+  end
+
+  def close
+    LibC.close @fd
   end
 
   def unbuffered_read(slice : Bytes)
