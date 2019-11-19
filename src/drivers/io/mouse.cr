@@ -5,6 +5,12 @@ class Mouse
   def initialize
     Idt.register_irq 12, ->callback
 
+    # FIXME: move setup + hw communication code to
+    # separate file
+    wait true
+    X86.outb(0x64, 0xFF)
+    read
+
     # enable auxillary mouse device
     wait true
     X86.outb(0x64, 0xA8)

@@ -76,10 +76,7 @@ class Keyboard
 
   def initialize
     Idt.register_irq 1, ->callback
-    # use scan code set 1
-    X86.outb 0xF0, 1
-    # enable scanning
-    X86.outb 0xF4, 0
+    # setup is done in mouse.cr
   end
 
   @last_e0 = false
