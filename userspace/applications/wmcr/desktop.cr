@@ -1,6 +1,7 @@
 startup = [
   ["pape", "/hd0/share/papes/violet.png"],
   ["cterm"],
+  ["cbar"],
 ]
 startup.each do |args|
   program = args.shift.not_nil!
