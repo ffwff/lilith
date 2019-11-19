@@ -4,7 +4,7 @@ app = G::Application.new
 window = G::Window.new(0, 0, 400, 300)
 app.main_widget = window
 
-decoration = G::WindowDecoration.new(window, "Test")
+decoration = G::WindowDecoration.new(window, "terminal")
 
 termbox = G::Termbox.new 0, 0, 0, 0
 decoration.main_widget = termbox

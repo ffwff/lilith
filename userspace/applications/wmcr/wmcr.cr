@@ -345,6 +345,10 @@ module Wm::Server
             end
           end
 
+          if focused = @@focused
+            focused.socket.unbuffered_write IPC.refocus_event_message(win.wid, 0).to_slice
+            focused.z_index = 1
+          end
           socket.program = program = Program.new(socket, msg.x, msg.y, msg.width, msg.height)
           @@focused = program
           if msg.flags.includes?(IPC::Data::WindowFlags::Background)
