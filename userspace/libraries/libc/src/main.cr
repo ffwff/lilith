@@ -22,6 +22,16 @@ end
     asm("add $$8, %rsp
          pop %rdi
          pop %rsi
+         # check if rsp is aligned
+         mov %rsp, %r12
+         and $$0xf, %r12
+         test %r12, %r12
+         # 16-byte align it if its not
+         je 1f
+         shr $$4, %rsp
+         dec %rsp
+         shl $$4, %rsp
+        1:
          call __start_common"
         ::: "volatile", "memory", "rsi", "rdi")
   end
