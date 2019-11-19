@@ -16,12 +16,19 @@ class G::LayoutBox < G::Widget
     @layout.not_nil!.add_widget widget
   end
 
+  @bgcolor : UInt32 = 0x0
+  property bgcolor
+
   def draw_event
     if layout = @layout
+      Painter.blit_rect @bitmap,
+                        @width, @height,
+                        @width, @height,
+                        0, 0, @bgcolor
       layout.widgets.each do |widget|
         widget.draw_event
         unless widget.bitmap.null?
-          Painter.blit_img bitmap, @width, @height,
+          Painter.blit_img @bitmap, @width, @height,
                            widget.bitmap,
                            widget.width, widget.height,
                            widget.x, widget.y
