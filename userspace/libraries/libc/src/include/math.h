@@ -52,6 +52,7 @@ int __fpclassify(double);
 int __fpclassifyl(long double);
 
 // FIXME: move these to another file
+#include <stdint.h>
 static int __fpclassifyf(float x) {
 	union {float f; uint32_t i;} u = {x};
 	int e = u.i>>23 & 0xff;
