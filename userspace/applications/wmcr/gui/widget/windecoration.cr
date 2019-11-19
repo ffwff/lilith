@@ -4,7 +4,7 @@ class G::WindowDecoration < G::Widget
   getter main_widget
 
   def main_widget=(@main_widget : G::Widget)
-    x, y, width, height = calculate_dimensions
+    x, y, width, height = calculate_main_dimensions
     main_widget = @main_widget.not_nil!
     main_widget.move x, y
     main_widget.resize width, height
@@ -24,19 +24,43 @@ class G::WindowDecoration < G::Widget
     decoration
   end
 
-  def calculate_dimensions
-    x = 0
+  def calculate_main_dimensions
+    x = 3
     y = 15
-    width = @width
-    height = @height - y
+    width = @width - 6
+    height = @height - y - 3
     {x, y, width, height}
+  end
+
+  FOCUSED_BORDER = 0xffffff
+  UNFOCUSED_BORDER = 0x999999
+
+  @focused = true
+  def border_color
+    @focused ? FOCUSED_BORDER : UNFOCUSED_BORDER
   end
 
   def draw_event
     Painter.blit_rect @bitmap,
                       @width, @height,
                       @width, @height,
-                      0, 0, 0x00ff0000
+                      0, 0, 0x3a434b
+    Painter.blit_rect @bitmap,
+                      @width, @height,
+                      @width, 1,
+                      0, 0, border_color
+    Painter.blit_rect @bitmap,
+                      @width, @height,
+                      @width, 1,
+                      0, @height - 1, border_color
+    Painter.blit_rect @bitmap,
+                      @width, @height,
+                      1, @height,
+                      0, 0, border_color
+    Painter.blit_rect @bitmap,
+                      @width, @height,
+                      1, @height,
+                      @width - 1, 0, border_color
     if (title = @title)
       tx, ty = (@width - G::Fonts.text_width(title)) // 2, 3
       G::Fonts.blit(self, tx, ty, title)
@@ -68,6 +92,8 @@ class G::WindowDecoration < G::Widget
     when Wm::IPC::Data::RefocusEvent
       @last_mouse_x = -1
       @last_mouse_y = -1
+      @focused = ev.focused > 0
+      @app.not_nil!.redraw
     end
   end
 
