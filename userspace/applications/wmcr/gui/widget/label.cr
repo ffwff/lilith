@@ -6,15 +6,22 @@ class G::Label < G::Widget
     @width = G::Fonts.text_width(text)
     @height = G::Fonts::HEIGHT
     @bitmap = Painter.create_bitmap(@width, @height)
+    redraw
+  end
+
+  @bgcolor : UInt32 = 0x0
+  property bgcolor
+
+  def redraw
+    Painter.blit_rect @bitmap,
+                      @width, @height,
+                      @width, @height,
+                      0, 0, @bgcolor
     G::Fonts.blit self, 0, 0, @text
   end
 
   def text=(@text)
-    Painter.blit_rect @bitmap,
-                      @width, @height,
-                      @width, @height,
-                      0, 0, 0x0
-    G::Fonts.blit self, 0, 0, @text
+    redraw
   end
 
 end
