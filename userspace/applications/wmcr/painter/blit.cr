@@ -6,10 +6,12 @@ module Painter
   end
 
   def blit_u32(dst : UInt32*, c : UInt32, n : LibC::SizeT)
+    r0 = r1 = r2 = 0
     asm(
       "cld\nrep stosl"
-        :: "{eax}"(c), "{Di}"(dst), "{ecx}"(n)
-        : "volatile", "memory", "Di", "eax", "ecx"
+        : "={eax}"(r0), "={Di}"(r1), "={ecx}"(r2)
+        : "{eax}"(c), "{Di}"(dst), "{ecx}"(n)
+        : "volatile", "memory"
     )
   end
 
@@ -56,7 +58,7 @@ module Painter
     else
       sw_clamp = sw
     end
-    sh.times do |y|
+    sh_clamp.times do |y|
       fb_offset = ((sy + y) * dw + sx) * 4
       src_offset = y * sw * 4
       if alpha?
