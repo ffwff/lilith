@@ -1,10 +1,12 @@
 require "./enumerable.cr"
+require "./indexable.cr"
 
 GC_ARRAY_HEADER_TYPE = 0xFFFF_FFFF.to_usize
 GC_ARRAY_HEADER_SIZE = sizeof(USize) * 2
 
 class Array(T)
   include Enumerable(T)
+  include Indexable(T)
 
   @capacity : Int32
   getter capacity
