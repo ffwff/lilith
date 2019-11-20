@@ -197,9 +197,9 @@ private def dump_frame(frame : IdtData::ExceptionRegisters*)
                  "int_no", "errcode",
                  "rip", "cs", "rflags", "userrsp", "ss",
                ] %}
-  Serial.print {{ id }}, "="
-  frame.value.{{ id.id }}.to_s Serial, 16
-  Serial.print "\n"
+    Serial.print {{ id }}, "="
+    frame.value.{{ id.id }}.to_s Serial, 16
+    Serial.print "\n"
   {% end %}
 end
 
@@ -207,18 +207,19 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
   errcode = frame.value.errcode
   case frame.value.int_no
   when EX_PAGEFAULT
+    faulting_address = 0u64
+    asm("mov %cr2, $0" : "=r"(faulting_address) :: "volatile")
+
+    present = (errcode & 0x1) == 0
+    rw = (errcode & 0x2) != 0
+    user = (errcode & 0x4) != 0
+    reserved = (errcode & 0x8) != 0
+    id = (errcode & 0x10) != 0
+
+    Serial.print Pointer(Void).new(faulting_address), user, " ", Pointer(Void).new(frame.value.rip), "\n"
+
     {% if false %}
-      faulting_address = 0u64
-      asm("mov %cr2, $0" : "=r"(faulting_address) :: "volatile")
-
-      present = (errcode & 0x1) == 0
-      rw = (errcode & 0x2) != 0
-      user = (errcode & 0x4) != 0
-      reserved = (errcode & 0x8) != 0
-      id = (errcode & 0x10) != 0
-
-      Serial.print Pointer(Void).new(faulting_address), user, " ", Pointer(Void).new(frame.value.rip), "\n"
-      process = Multiprocessing.current_process.not_nil!
+      process = Multiprocessing::Scheduler.current_process.not_nil!
       if process.kernel_process?
         panic "segfault from kernel process"
       elsif frame.value.rip > KERNEL_OFFSET
@@ -237,7 +238,7 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
           end
           return
         else
-          Multiprocessing.switch_process_and_terminate
+          Multiprocessing::Scheduler.switch_process_and_terminate
         end
       end
     {% end %}
