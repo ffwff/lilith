@@ -35,11 +35,16 @@ def interpret_line(line)
     end
   else
     cmd = argv.shift.not_nil!
+    wait = true
+    if argv.last? == "&"
+      argv.pop
+      wait = false
+    end
     if proc = Process.new(cmd, argv,
           input: Process::Redirect::Inherit,
           output: Process::Redirect::Inherit,
           error: Process::Redirect::Inherit)
-      proc.wait
+      proc.wait if wait
     else
       print "unable to spawn ", cmd, '\n'
     end
