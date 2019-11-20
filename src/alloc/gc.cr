@@ -106,22 +106,29 @@ module Gc
     end
   end
 
+  private def get_heap_region
+    {% if flag?(:kernel) %}
+      Tuple.new(KernelArena.start_addr, KernelArena.placement_addr)
+    {% else %}
+      Tuple.new(LibC.__libc_heap_start.address, LibC.__libc_heap_placement.address)
+    {% end %}
+  end
+
   # gc algorithm
-  private def scan_region(start_addr : UInt64, end_addr : UInt64, move_list = true)
+  private def scan_region(start_addr : UInt64, end_addr : UInt64, move_list = true, registers = false)
     # due to the way this rechains the linked list of white nodes
     # please set move_list=false when not scanning for root nodes
     fix_white = false
-
-    heap_start, heap_placement = {% if flag?(:kernel) %}
-                                   {KernelArena.start_addr, KernelArena.placement_addr}
-                                 {% else %}
-                                   {LibC.__libc_heap_start.address, LibC.__libc_heap_placement.address}
-                                 {% end %}
+    heap_start, heap_placement = get_heap_region
 
     # FIXME: scan_region fails if overflow checking is enabled
     i = start_addr
     scan_end = end_addr - sizeof(Void*) + 1
-    until scan_end.to_usize == i.to_usize
+    until scan_end == i
+      if i >= @@registers.to_unsafe.address && i <= (@@registers.to_unsafe + @@registers.size).address
+        i += 1
+        next
+      end
       word = Pointer(USize).new(i).value
       # subtract to get the pointer to the header
       word -= sizeof(LibCrystal::GcNode)
@@ -172,11 +179,72 @@ module Gc
     Sweep
   end
 
+  {% if flag?(:x86_64) %}
+    @@registers = uninitialized UInt64[13]
+  {% end %}
+
   def cycle : CycleType
     @@ticks += 1
 
     # marking phase
     if !@@root_scanned
+      # store registers which will be scanned
+      {% if flag?(:x86_64) %}
+        # x64 has a lot of registers which is used to store variables
+        registers = @@registers.to_unsafe
+        asm("mov %rax, (%rdi)
+             mov %rbx, 0x8(%rdi)
+             mov %rcx, 0x10(%rdi)
+             mov %rdx, 0x18(%rdi)
+             mov %rsi, 0x20(%rdi)
+             mov %r8,  0x28(%rdi)
+             mov %r9,  0x30(%rdi)
+             mov %r10, 0x38(%rdi)
+             mov %r11, 0x40(%rdi)
+             mov %r12, 0x48(%rdi)
+             mov %r13, 0x50(%rdi)
+             mov %r14, 0x58(%rdi)
+             mov %r15, 0x60(%rdi)"
+            :: "{rdi}"(registers)
+            : "volatile", "memory")
+      {% end %}
+
+      {% if flag?(:x86_64) %}
+        heap_start, heap_placement = get_heap_region
+        @@registers.each do |word|
+          gcword = word - sizeof(LibCrystal::GcNode)
+          if (word >= heap_start && word <= heap_placement) ||
+             (gcword >= heap_start && gcword <= heap_placement)
+            each_node(@@first_white_node) do |node, prev|
+              if node.address == word || node.address == gcword
+                # word looks like a valid gc header pointer!
+                # remove from current list
+                if !prev.null?
+                  prev.value.next_node = node.value.next_node
+                else
+                  @@first_white_node = node.value.next_node
+                end
+                # add to gray list
+                case node.value.magic
+                when GC_NODE_MAGIC
+                  node.value.magic = GC_NODE_MAGIC_GRAY
+                  push(@@first_gray_node, node)
+                when GC_NODE_MAGIC_ATOMIC
+                  node.value.magic = GC_NODE_MAGIC_GRAY_ATOMIC
+                  push(@@first_gray_node, node)
+                when GC_NODE_MAGIC_BLACK
+                  panic "invariance broken"
+                when GC_NODE_MAGIC_BLACK_ATOMIC
+                  panic "invariance broken"
+                else
+                  # this node is gray
+                end
+              end
+            end
+          end
+        end
+      {% end %}
+
       # we don't have any gray/black nodes at the beginning of a cycle
       # conservatively scan the stack for pointers
       scan_region @@data_start.not_nil!, @@data_end.not_nil!
