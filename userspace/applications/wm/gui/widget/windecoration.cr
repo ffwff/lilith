@@ -63,7 +63,7 @@ class G::WindowDecoration < G::Widget
                       @width - 1, 0, border_color
     if (title = @title)
       tx, ty = (@width - G::Fonts.text_width(title)) // 2, 3
-      G::Fonts.blit(self, tx, ty, title)
+      G::Fonts.blit self, tx, ty, title
     end
     if (main_widget = @main_widget)
       main_widget.draw_event
