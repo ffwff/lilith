@@ -163,13 +163,15 @@ index c40b58ab1..995b76ed9 100644
          else
            @last = malloc_atomic struct_type
 diff --git a/src/compiler/crystal/codegen/fun.cr b/src/compiler/crystal/codegen/fun.cr
-index 502b03a06..759a2f749 100644
+index 502b03a06..9c1526a22 100644
 --- a/src/compiler/crystal/codegen/fun.cr
 +++ b/src/compiler/crystal/codegen/fun.cr
-@@ -387,6 +387,14 @@ class Crystal::CodeGenVisitor
+@@ -386,6 +386,15 @@ class Crystal::CodeGenVisitor
+     context.fun.add_attribute LLVM::Attribute::ReturnsTwice if target_def.returns_twice?
      context.fun.add_attribute LLVM::Attribute::Naked if target_def.naked?
      context.fun.add_attribute LLVM::Attribute::NoReturn if target_def.no_returns?
- 
++    context.fun.add_attribute LLVM::Attribute::StackRealign if target_def.stack_realign?
++
 +    if target_def.weak?
 +      context.fun.linkage = LLVM::Linkage::ExternalWeak     
 +    end
@@ -177,10 +179,9 @@ index 502b03a06..759a2f749 100644
 +    unless target_def.generate_red_zone?
 +      context.fun.add_attribute LLVM::Attribute::NoRedZone
 +    end
-+
+ 
      if target_def.no_inline?
        context.fun.add_attribute LLVM::Attribute::NoInline
-       context.fun.linkage = LLVM::Linkage::External
 diff --git a/src/compiler/crystal/codegen/target.cr b/src/compiler/crystal/codegen/target.cr
 index b4ee5475d..e9b674678 100644
 --- a/src/compiler/crystal/codegen/target.cr
@@ -311,7 +312,7 @@ index 7b13beee3..200c77d1e 100644
        stderr.print colorize("Error: ").red.bold
        stderr.print "llc: "
 diff --git a/src/compiler/crystal/program.cr b/src/compiler/crystal/program.cr
-index 6171ff1c0..e589de1c5 100644
+index 6171ff1c0..1aad0e209 100644
 --- a/src/compiler/crystal/program.cr
 +++ b/src/compiler/crystal/program.cr
 @@ -118,6 +118,8 @@ module Crystal
@@ -323,33 +324,38 @@ index 6171ff1c0..e589de1c5 100644
      # Which kind of warnings wants to be detected.
      property warnings : Warnings = Warnings::All
  
-@@ -242,6 +244,7 @@ module Crystal
+@@ -242,6 +244,8 @@ module Crystal
        types["ReturnsTwice"] = @returns_twice_annotation = AnnotationType.new self, self, "ReturnsTwice"
        types["ThreadLocal"] = @thread_local_annotation = AnnotationType.new self, self, "ThreadLocal"
        types["Deprecated"] = @deprecated_annotation = AnnotationType.new self, self, "Deprecated"
 +      types["Weak"] = @weak_annotation = AnnotationType.new self, self, "Weak"
++      types["StackRealign"] = @stack_realign_annotation = AnnotationType.new self, self, "StackRealign"
  
        define_crystal_constants
      end
-@@ -463,7 +466,7 @@ module Crystal
+@@ -463,7 +467,8 @@ module Crystal
                       packed_annotation thread_local_annotation no_inline_annotation
                       always_inline_annotation naked_annotation returns_twice_annotation
                       raises_annotation primitive_annotation call_convention_annotation
 -                     flags_annotation link_annotation extern_annotation deprecated_annotation) %}
-+                     flags_annotation link_annotation extern_annotation deprecated_annotation weak_annotation) %}
++                     flags_annotation link_annotation extern_annotation deprecated_annotation
++                     weak_annotation stack_realign_annotation) %}
        def {{name.id}}
          @{{name.id}}.not_nil!
        end
 diff --git a/src/compiler/crystal/semantic/ast.cr b/src/compiler/crystal/semantic/ast.cr
-index 763b958e2..f5e8c6968 100644
+index 763b958e2..590781322 100644
 --- a/src/compiler/crystal/semantic/ast.cr
 +++ b/src/compiler/crystal/semantic/ast.cr
-@@ -144,6 +144,12 @@ module Crystal
+@@ -144,6 +144,15 @@ module Crystal
      # `true` if this def has the `@[Naked]` annotation
      property? naked = false
  
 +    # `true` if this def has the @[Weak]` annotation
 +    property? weak = false
++
++    # `true` if this def has the @[StackRealign]` annotation
++    property? stack_realign = false
 +
 +    # `true` if program doesn't generate red zone
 +    property? generate_red_zone = false
@@ -357,16 +363,17 @@ index 763b958e2..f5e8c6968 100644
      # Is this a `new` method that was expanded from an initialize?
      property? new = false
  
-@@ -220,6 +226,7 @@ module Crystal
+@@ -220,6 +229,8 @@ module Crystal
        a_def.previous = previous
        a_def.raises = raises?
        a_def.no_inline = no_inline?
 +      a_def.weak = weak?
++      a_def.stack_realign = stack_realign?
        a_def.always_inline = always_inline?
        a_def.returns_twice = returns_twice?
        a_def.naked = naked?
 diff --git a/src/compiler/crystal/semantic/top_level_visitor.cr b/src/compiler/crystal/semantic/top_level_visitor.cr
-index 52f7219a3..e611c1d70 100644
+index 52f7219a3..ea0ff76dd 100644
 --- a/src/compiler/crystal/semantic/top_level_visitor.cr
 +++ b/src/compiler/crystal/semantic/top_level_visitor.cr
 @@ -857,6 +857,8 @@ class Crystal::TopLevelVisitor < Crystal::SemanticVisitor
@@ -378,12 +385,34 @@ index 52f7219a3..e611c1d70 100644
      # We fill the arguments and return type in TypeDeclarationVisitor
      external.doc = node.doc
      external.call_convention = call_convention
-@@ -1078,6 +1080,8 @@ class Crystal::TopLevelVisitor < Crystal::SemanticVisitor
+@@ -1078,6 +1080,10 @@ class Crystal::TopLevelVisitor < Crystal::SemanticVisitor
          node.returns_twice = true
        when @program.raises_annotation
          node.raises = true
 +      when @program.weak_annotation
 +        node.weak = true
++      when @program.stack_realign_annotation
++        node.stack_realign = true
        when @program.deprecated_annotation
          # Check whether a DeprecatedAnnotation can be built.
          # There is no need to store it, but enforcing
+diff --git a/src/llvm/enums.cr b/src/llvm/enums.cr
+index 7e3330447..cc56ee552 100644
+--- a/src/llvm/enums.cr
++++ b/src/llvm/enums.cr
+@@ -54,6 +54,7 @@ module LLVM
+       UWTable                     = 1 << 49
+       WriteOnly                   = 1 << 50
+       ZExt                        = 1 << 51
++      StackRealign                = 1 << 52      
+ 
+       @@kind_ids = load_llvm_kinds_from_names.as(Hash(Attribute, UInt32))
+ 
+@@ -126,6 +127,7 @@ module LLVM
+         kinds[UWTable] = kind_for_name("uwtable")
+         kinds[WriteOnly] = kind_for_name("writeonly")
+         kinds[ZExt] = kind_for_name("zeroext")
++        kinds[StackRealign] = kind_for_name("stackrealign")
+         kinds
+       end
+ 
