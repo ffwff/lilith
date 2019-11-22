@@ -7,7 +7,6 @@ STACK_SIZE = 16384
 .include "idt.s"
 .include "syscalls.s"
 .include "user.s"
-.include "sse2-blend.s"
 
 .extern _BSS_START
 .extern _BSS_END
