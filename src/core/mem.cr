@@ -20,17 +20,6 @@ fun memcpy(dst : UInt8*, src : UInt8*, n : USize) : Void*
   dst.as(Void*)
 end
 
-@[AlwaysInline]
-def memset_long(dst : UInt32*, c : UInt32, n : USize)
-  r0 = r1 = r2 = 0
-  asm(
-    "cld\nrep stosl"
-          : "={eax}"(r0), "={Di}"(r1), "={cx}"(r2)
-          : "{eax}"(c), "{Di}"(dst), "{cx}"(n)
-          : "volatile", "memory"
-  )
-end
-
 fun memcmp(s1 : UInt8*, s2 : UInt8*, n : Int32) : Int32
   while n > 0 && (s1.value == s2.value)
     s1 += 1
