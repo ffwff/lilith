@@ -183,7 +183,7 @@ clean:
 # crystal
 toolchain/crystal:
 	cd toolchain && git clone https://github.com/crystal-lang/crystal && \
-	cd crystal && git checkout 0.30.0 && \
+	cd crystal && git checkout 0.31.1 && \
 	patch -p1 < ../crystal.patch
 
 $(CR): toolchain/crystal
