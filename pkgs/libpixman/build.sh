@@ -12,7 +12,7 @@ build() {
     fi
     pushd .
         cd $build_dir/pixman-$version
-        ./configure --host=$opt_arch --prefix="$opt_toolsdir" --enable-shared=no
+        ./configure --host=$opt_arch --prefix="$opt_toolsdir" --enable-shared=no --enable-intel-sse=yes
         make install -j`nproc`
     popd
 }

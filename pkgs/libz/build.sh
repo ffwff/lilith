@@ -11,7 +11,7 @@ build() {
     fi
     pushd .
         cd $build_dir/zlib-$version
-        CC=${opt_arch}-gcc ./configure --prefix="$opt_toolsdir"
+        CC=${opt_arch}-gcc ./configure --prefix="$opt_toolsdir" --static
         make install -j`nproc`
     popd
 }
