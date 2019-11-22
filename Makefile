@@ -9,7 +9,7 @@ LD32=$(ARCH32)-ld
 CR=toolchain/crystal/.build/crystal
 LLC=llc
 
-CRFLAGS=-Dkernel --cross-compile --target $(ARCH) --prelude ./prelude.cr --error-trace --mcmodel kernel --mno-red-zone -Ddisable_overflow --mstackrealign
+CRFLAGS=-Dkernel --cross-compile --target $(ARCH) --prelude ./prelude.cr --error-trace --mcmodel kernel --mno-red-zone -Ddisable_overflow
 ASFLAGS=-Isrc/asm/x64
 LDFLAGS=-T link64.ld
 KERNEL_OBJ=build/main.o build/boot.o
@@ -183,7 +183,7 @@ clean:
 # crystal
 toolchain/crystal:
 	cd toolchain && git clone https://github.com/crystal-lang/crystal && \
-	cd crystal && git checkout 0.31.1 && \
+	cd crystal && git checkout 0.30.0 && \
 	patch -p1 < ../crystal.patch
 
 $(CR): toolchain/crystal
