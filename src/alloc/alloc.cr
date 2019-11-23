@@ -79,17 +79,17 @@ private struct Pool
 
   # obtain a free block and pop it from the pool
   # returns a pointer to the buffer
-  def get_free_block : USize
+  def get_free_block : Void*
     block = first_free_block
     # Serial.print "allocate block of size ", block_buffer_size, '\n'
     @header.value.first_free_block = block.value.next_free_block
-    block.address + BLOCK_HEADER_SIZE
+    block.as(Void*) + BLOCK_HEADER_SIZE
   end
 
   # release a free block
-  def release_block(addr : USize)
+  def release_block(addr : Void*)
     # Serial.print "free block of size ", block_buffer_size, '\n'
-    block = Pointer(Kernel::PoolBlockHeader).new(addr - BLOCK_HEADER_SIZE)
+    block = Pointer(Kernel::PoolBlockHeader).new(addr.address - BLOCK_HEADER_SIZE)
     block.value.next_free_block = @header.value.first_free_block
     @header.value.first_free_block = block
   end
@@ -98,33 +98,32 @@ end
 module KernelArena
   extend self
 
-  # linked list free pools for sizes of 2^4, 2^5 ... 2^10
+  # linked list of free pools
   @@free_pools = uninitialized Kernel::PoolHeader*[6]
-  @@start_addr = 0u64
-  @@placement_addr = 0u64
 
-  def start_addr
-    @@start_addr
-  end
+  @@start_addr = 0u64
+  class_getter start_addr
+
+  @@placement_addr = 0u64
+  class_getter placement_addr
 
   def start_addr=(@@start_addr)
     @@placement_addr = @@start_addr
   end
 
-  def placement_addr
-    @@placement_addr
+  # free pool chaining
+  private def pool_size_for_bytes(sz : Int)
+    {% for k, i in [32, 64, 128, 256, 540, 1024] %}
+      return {{ k }} if sz <= {{ k }}
+    {% end %}
+    return -1
   end
 
-  # free pool chaining
-  private def idx_for_pool_size(sz : USize)
-    case sz
-    when  32; 0
-    when  64; 1
-    when 128; 2
-    when 256; 3
-    when 512; 4
-    else      5
-    end
+  private def idx_for_pool_size(sz : Int)
+    {% for k, i in [32, 64, 128, 256, 540, 1024] %}
+      return {{ i }} if sz == {{ k }}
+    {% end %}
+    return -1
   end
 
   # pool
@@ -144,11 +143,13 @@ module KernelArena
   end
 
   # manual functions
-  def malloc(sz : USize) : USize
+  def malloc(sz : USize) : Void*
     Multiprocessing::DriverThread.assert_unlocked
 
-    panic "only supports sizes of <= 1024" if sz > 1024
-    pool_size = Math.max(32u64, sz.nearest_power_of_2.to_usize)
+    pool_size = pool_size_for_bytes sz
+    panic "unable to alloc" if pool_size == -1
+
+    pool_size = pool_size.to_usize
     idx = idx_for_pool_size pool_size
     if @@free_pools[idx].null?
       # create a new pool if there isn't any freed
@@ -191,7 +192,7 @@ module KernelArena
   def free(ptr : Void*)
     pool_hdr = Pointer(Kernel::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
     pool = Pool.new pool_hdr
-    pool.release_block ptr.address
+    pool.release_block ptr
     chain_pool pool
   end
 

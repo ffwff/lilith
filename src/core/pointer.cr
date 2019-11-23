@@ -65,7 +65,7 @@ struct Pointer(T)
   end
 
   def self.mmalloc(size = 1)
-    new KernelArena.malloc(size.to_usize * sizeof(T))
+    KernelArena.malloc(size.to_usize * sizeof(T)).as(T*)
   end
 
   def mfree
