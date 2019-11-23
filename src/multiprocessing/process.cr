@@ -79,7 +79,6 @@ module Multiprocessing
     property frame
 
     # sse state
-    # FIXME: fxsave_region is manually allocated to save memory
     @fxsave_region = Pointer(UInt8).null
     getter fxsave_region
 
@@ -231,7 +230,7 @@ module Multiprocessing
 
       Idt.disable
 
-      @fxsave_region = Pointer(UInt8).mmalloc(FXSAVE_SIZE)
+      @fxsave_region = Pointer(UInt8).malloc_atomic(FXSAVE_SIZE)
       memcpy(@fxsave_region, Multiprocessing.fxsave_region_base, FXSAVE_SIZE)
 
       # create vmm map and save old vmm map
@@ -491,10 +490,8 @@ module Multiprocessing
           end
         end
       end
-      # cleanup manually allocated fxsave region
-      @fxsave_region.mfree
-      @fxsave_region = Pointer(UInt8).null
       # cleanup gc data so as to minimize leaks
+      @fxsave_region = Pointer(UInt8).null
       @udata = nil
       @frame = nil
       @prev_process = nil

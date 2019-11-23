@@ -441,7 +441,7 @@ module Gc
     end
     size += sizeof(LibCrystal::GcNode)
     header = {% if flag?(:kernel) %}
-               Pointer(LibCrystal::GcNode).new(KernelArena.malloc(size))
+               KernelArena.malloc(size).as(LibCrystal::GcNode*)
              {% else %}
                LibC.malloc(size).as(LibCrystal::GcNode*)
              {% end %}
