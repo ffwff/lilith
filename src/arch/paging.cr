@@ -453,9 +453,9 @@ module Paging
   end
 
   # userspace address checking
-  def check_user_addr(addr : UInt64)
-    # TODO: check for kernel/unmapped pages
-    pdpt_idx, dir_idx, table_idx, page_idx = page_layer_indexes(addr)
+  def check_user_addr(ptr : Void*)
+    # FIXME: check for kernel/unmapped pages
+    pdpt_idx, dir_idx, table_idx, page_idx = page_layer_indexes(ptr.address)
 
     pml4_table = Pointer(PageStructs::PML4Table).new(mt_addr @@pml4_table.address)
 
@@ -470,5 +470,20 @@ module Paging
     pt = Pointer(PageStructs::PageTable).new(mt_addr pd.value.tables[table_idx])
 
     pt.value.pages[page_idx] != 0
+  end
+
+  # translate virtual to physical address
+  def virt_to_phys_address(ptr : Void*)
+    pdpt_idx, dir_idx, table_idx, page_idx = page_layer_indexes(ptr.address)
+    pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+      .new(mt_addr pml4_table.value.pdpt[pdpt_idx])
+
+    return 0u64 if pdpt.value.dirs[dir_idx] == 0u64
+    pd = Pointer(PageStructs::PageDirectory).new(mt_addr pdpt.value.dirs[dir_idx])
+
+    return 0u64 if pd.value.tables[table_idx] == 0u64
+    pt = Pointer(PageStructs::PageTable).new(mt_addr pd.value.tables[table_idx])
+
+    t_addr pt.value.pages[page_idx] 
   end
 end
