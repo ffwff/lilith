@@ -4,28 +4,28 @@
 
 require "../arch/paging.cr"
 
-private MAGIC_POOL_HEADER = 0xC0FEC0FE
-
-private lib Kernel
-  struct PoolHeader
-    next_pool : PoolHeader*
-    first_free_block : PoolBlockHeader*
-    block_buffer_size : USize
-    magic_number : USize
-  end
-
-  struct PoolBlockHeader
-    next_free_block : PoolBlockHeader*
-  end
-end
-
 private struct Pool
-  POOL_SIZE         = 0x1000
-  HEADER_SIZE       = sizeof(Kernel::PoolHeader)
-  BLOCK_HEADER_SIZE = sizeof(Kernel::PoolBlockHeader)
 
-  def initialize(@header : Kernel::PoolHeader*)
-    if @header.value.magic_number != MAGIC_POOL_HEADER
+  lib Data
+    struct PoolHeader
+      next_pool : PoolHeader*
+      first_free_block : PoolBlockHeader*
+      block_buffer_size : USize
+      magic_number : USize
+    end
+
+    struct PoolBlockHeader
+      next_free_block : PoolBlockHeader*
+    end
+  end
+
+  MAGIC_HEADER      = 0xC0FEC0FE
+  POOL_SIZE         = 0x1000
+  HEADER_SIZE       = sizeof(Data::PoolHeader)
+  BLOCK_HEADER_SIZE = sizeof(Data::PoolBlockHeader)
+
+  def initialize(@header : Data::PoolHeader*)
+    if @header.value.magic_number != MAGIC_HEADER
       panic "magic pool number is overwritten!"
     end
   end
@@ -39,7 +39,7 @@ private struct Pool
 
   # full size of a block
   def block_size
-    block_buffer_size + sizeof(Kernel::PoolBlockHeader)
+    block_buffer_size + sizeof(Data::PoolBlockHeader)
   end
 
   # how many blocks can this pool store
@@ -59,13 +59,13 @@ private struct Pool
     end_addr = @header.address + POOL_SIZE - block_size * 2
     # fill next_free_block field of all except last one
     while i < end_addr
-      ptr = Pointer(Kernel::PoolBlockHeader).new i
-      ptr.value.next_free_block = Pointer(Kernel::PoolBlockHeader).new(i + block_size)
+      ptr = Pointer(Data::PoolBlockHeader).new i
+      ptr.value.next_free_block = Pointer(Data::PoolBlockHeader).new(i + block_size)
       i += block_size
     end
     # fill last one with zero
-    ptr = Pointer(Kernel::PoolBlockHeader).new i
-    ptr.value.next_free_block = Pointer(Kernel::PoolBlockHeader).null
+    ptr = Pointer(Data::PoolBlockHeader).new i
+    ptr.value.next_free_block = Pointer(Data::PoolBlockHeader).null
   end
 
   def to_s(io)
@@ -89,7 +89,7 @@ private struct Pool
   # release a free block
   def release_block(addr : Void*)
     # Serial.print "free block of size ", block_buffer_size, '\n'
-    block = Pointer(Kernel::PoolBlockHeader).new(addr.address - BLOCK_HEADER_SIZE)
+    block = Pointer(Data::PoolBlockHeader).new(addr.address - BLOCK_HEADER_SIZE)
     block.value.next_free_block = @header.value.first_free_block
     @header.value.first_free_block = block
   end
@@ -99,7 +99,7 @@ module KernelArena
   extend self
 
   # linked list of free pools
-  @@free_pools = uninitialized Kernel::PoolHeader*[6]
+  @@free_pools = uninitialized Pool::Data::PoolHeader*[6]
 
   @@start_addr = 0u64
   class_getter start_addr
@@ -132,11 +132,11 @@ module KernelArena
     Paging.alloc_page_pg(@@placement_addr, true, false)
     @@placement_addr += 0x1000
 
-    pool_hdr = Pointer(Kernel::PoolHeader).new(addr)
+    pool_hdr = Pointer(Pool::Data::PoolHeader).new(addr)
     pool_hdr.value.block_buffer_size = buffer_size
-    pool_hdr.value.next_pool = Pointer(Kernel::PoolHeader).null
-    pool_hdr.value.first_free_block = Pointer(Kernel::PoolBlockHeader).new(addr + Pool::HEADER_SIZE)
-    pool_hdr.value.magic_number = MAGIC_POOL_HEADER
+    pool_hdr.value.next_pool = Pointer(Pool::Data::PoolHeader).null
+    pool_hdr.value.first_free_block = Pointer(Pool::Data::PoolBlockHeader).new(addr + Pool::HEADER_SIZE)
+    pool_hdr.value.magic_number = Pool::MAGIC_HEADER
     pool = Pool.new pool_hdr
     pool.init_blocks
     pool
@@ -166,7 +166,7 @@ module KernelArena
         while !cur_pool.null?
           next_pool = cur_pool.value.next_pool
           if cur_pool.value.first_free_block.null?
-            cur_pool.value.next_pool = Pointer(Kernel::PoolHeader).null
+            cur_pool.value.next_pool = Pointer(Pool::Data::PoolHeader).null
           else
             break
           end
@@ -190,7 +190,7 @@ module KernelArena
   # FIXME: release optimizations causes weird behavior when free is called from Gc; NoInline fixes it for some reason
   @[NoInline]
   def free(ptr : Void*)
-    pool_hdr = Pointer(Kernel::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
+    pool_hdr = Pointer(Pool::Data::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
     pool = Pool.new pool_hdr
     pool.release_block ptr
     chain_pool pool
@@ -210,7 +210,7 @@ module KernelArena
   end
 
   def block_size_for_ptr(ptr)
-    pool_hdr = Pointer(Kernel::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
+    pool_hdr = Pointer(Pool::Data::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
     pool_hdr.value.block_buffer_size
   end
 end
