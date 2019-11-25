@@ -1,71 +1,71 @@
 GDT_REGULARS = 9
 
-private lib Kernel
-  @[Packed]
-  struct Gdtr
-    size : UInt16
-    offset : UInt64
-  end
-
-  @[Packed]
-  struct GdtEntry
-    limit_low : UInt16
-    base_low : UInt16
-    base_middle : UInt8
-    access : UInt8
-    granularity : UInt8
-    base_high : UInt8
-  end
-
-  @[Packed]
-  struct GdtSystemEntry
-    limit_low : UInt16
-    base_low : UInt16
-    base_middle : UInt8
-    access : UInt8
-    granularity : UInt8
-    base_high : UInt8
-    base_higher : UInt32
-    reserved : UInt32
-  end
-
-  @[Packed]
-  struct Tss
-    reserved : UInt32
-    rsp0 : UInt64
-    rsp1 : UInt64
-    rsp2 : UInt64
-    reserved_1 : UInt64
-    ist_1 : UInt64
-    ist_2 : UInt64
-    ist_3 : UInt64
-    ist_4 : UInt64
-    ist_5 : UInt64
-    ist_6 : UInt64
-    ist_7 : UInt64
-    reserved_2 : UInt64
-    reserved_3 : UInt32
-    iopb : UInt32
-  end
-
-  @[Packed]
-  struct Gdt
-    entries : Kernel::GdtEntry[GDT_REGULARS]
-    sys_entries : GdtSystemEntry[1] # tss
-  end
-
-  fun kload_gdt(ptr : Gdtr*)
-end
-
 module Gdt
   extend self
 
-  @@gdtr = uninitialized Kernel::Gdtr
-  @@gdt = uninitialized Kernel::Gdt
-  @@tss = uninitialized Kernel::Tss
+  private lib Data
+    @[Packed]
+    struct Gdtr
+      size : UInt16
+      offset : UInt64
+    end
+
+    @[Packed]
+    struct GdtEntry
+      limit_low : UInt16
+      base_low : UInt16
+      base_middle : UInt8
+      access : UInt8
+      granularity : UInt8
+      base_high : UInt8
+    end
+
+    @[Packed]
+    struct GdtSystemEntry
+      limit_low : UInt16
+      base_low : UInt16
+      base_middle : UInt8
+      access : UInt8
+      granularity : UInt8
+      base_high : UInt8
+      base_higher : UInt32
+      reserved : UInt32
+    end
+
+    @[Packed]
+    struct Tss
+      reserved : UInt32
+      rsp0 : UInt64
+      rsp1 : UInt64
+      rsp2 : UInt64
+      reserved_1 : UInt64
+      ist_1 : UInt64
+      ist_2 : UInt64
+      ist_3 : UInt64
+      ist_4 : UInt64
+      ist_5 : UInt64
+      ist_6 : UInt64
+      ist_7 : UInt64
+      reserved_2 : UInt64
+      reserved_3 : UInt32
+      iopb : UInt32
+    end
+
+    @[Packed]
+    struct Gdt
+      entries : Data::GdtEntry[GDT_REGULARS]
+      sys_entries : GdtSystemEntry[1] # tss
+    end
+
+    fun kload_gdt(ptr : Gdtr*)
+  end
+
+  @@gdtr = uninitialized Data::Gdtr
+  @@gdt = uninitialized Data::Gdt
+  @@tss = uninitialized Data::Tss
 
   def init_table
-    @@gdtr.size = sizeof(Kernel::Gdt) - 1
+    @@gdtr.size = sizeof(Data::Gdt) - 1
     @@gdtr.offset = pointerof(@@gdt).address
 
     # this must be placed in the following order
@@ -81,12 +81,12 @@ module Gdt
     init_gdt_entry 8, 0x0, 0xFFFFFFFF, 0xB2, 0xAF # device data (CPL=1)
     init_tss
 
-    Kernel.kload_gdt pointerof(@@gdtr)
+    Data.kload_gdt pointerof(@@gdtr)
   end
 
   private def init_gdt_entry(num : ISize,
                              base : USize, limit : USize, access : USize, gran : USize)
-    entry = Kernel::GdtEntry.new
+    entry = Data::GdtEntry.new
 
     entry.base_low = (base & 0xFFFF).to_u16
     entry.base_middle = ((base >> 16) & 0xFF).to_u8
@@ -103,7 +103,7 @@ module Gdt
 
   private def init_gdt_sys_entry(num : ISize,
                                  base : USize, limit : USize, access : USize, gran : USize)
-    entry = Kernel::GdtSystemEntry.new
+    entry = Data::GdtSystemEntry.new
 
     entry.base_low = (base & 0xFFFF).to_u16
     entry.base_middle = ((base >> 16) & 0xFF).to_u8
@@ -121,9 +121,9 @@ module Gdt
   end
 
   private def init_tss
-    @@tss.iopb = sizeof(Kernel::Tss)
+    @@tss.iopb = sizeof(Data::Tss)
     base = pointerof(@@tss).address
-    limit = sizeof(Kernel::Tss).to_usize - 1
+    limit = sizeof(Data::Tss).to_usize - 1
     init_gdt_sys_entry 0, base, limit, 0x89, 0x0
   end
 

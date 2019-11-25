@@ -1,34 +1,34 @@
-private lib Kernel
-  # T13/1699-D Revision 3f
-  # 7.16 IDENTIFY DEVICE, pg 90
-  # also see ftp://ftp.seagate.com/acrobat/reference/111-1c.pdf
-  @[Packed]
-  struct AtaIdentify
-    flags : UInt16
-    unused1 : UInt16[9]
-    serial : UInt8[20]
-    unused2 : UInt16[3]
-    firmware : UInt8[8]
-    model : UInt8[40]
-    # Maximum number of logical sectors that shall be transferred per DRQ data block on READ/WRITE MULTIPLE commands
-    sectors_per_int : UInt16
-    unused3 : UInt16
-    capabilities : UInt16[2]
-    unused4 : UInt16[2]
-    valid_ext_data : UInt16
-    unused5 : UInt16[5]
-    size_of_rw_mult : UInt16
-    # Total number of user addressable logical sectors
-    sectors_28 : UInt32
-    unused6 : UInt16[38]
-    # Total Number of User Addressable Sectors for the 48-bit Address feature set
-    sectors_48 : UInt64
-    unused7 : UInt16[152]
-  end
-end
-
-private module Ata
+module Ata
   extend self
+
+  lib Data
+    # T13/1699-D Revision 3f
+    # 7.16 IDENTIFY DEVICE, pg 90
+    # also see ftp://ftp.seagate.com/acrobat/reference/111-1c.pdf
+    @[Packed]
+    struct AtaIdentify
+      flags : UInt16
+      unused1 : UInt16[9]
+      serial : UInt8[20]
+      unused2 : UInt16[3]
+      firmware : UInt8[8]
+      model : UInt8[40]
+      # Maximum number of logical sectors that shall be transferred per DRQ data block on READ/WRITE MULTIPLE commands
+      sectors_per_int : UInt16
+      unused3 : UInt16
+      capabilities : UInt16[2]
+      unused4 : UInt16[2]
+      valid_ext_data : UInt16
+      unused5 : UInt16[5]
+      size_of_rw_mult : UInt16
+      # Total number of user addressable logical sectors
+      sectors_28 : UInt32
+      unused6 : UInt16[38]
+      # Total Number of User Addressable Sectors for the 48-bit Address feature set
+      sectors_48 : UInt64
+      unused7 : UInt16[152]
+    end
+  end
 
   # statuses
   SR_BSY  = 0x80
@@ -301,7 +301,7 @@ class AtaDevice
     @name = builder.to_s
 
     # read device identifier
-    device = Pointer(Kernel::AtaIdentify).mmalloc
+    device = Pointer(Ata::Data::AtaIdentify).mmalloc
 
     case @type
     when Type::Ata
@@ -343,12 +343,6 @@ class AtaDevice
         i += 2
       end
     {% end %}
-    Serial.print "Type: ", @type, '\n'
-    Serial.print "Detected: "
-    device.value.model.each do |ch|
-      Serial.print ch.unsafe_chr
-    end
-    Serial.print "\n"
 
     # cleanup
     device.mfree
