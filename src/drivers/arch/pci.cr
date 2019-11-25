@@ -43,7 +43,7 @@ module PCI
     X86.outl PCI_ADDRESS_PORT, address
   end
 
-  def read_field(bus : UInt32, slot : UInt32, func : UInt32, field : UInt32, size)
+  def read_field(bus : UInt32, slot : UInt32, func : UInt32, field : UInt32, size : Int)
     config_address bus, slot, func, field
     case size
     when 4
@@ -52,6 +52,20 @@ module PCI
       X86.inw PCI_VALUE_PORT + (field & 2)
     when 1
       X86.inb PCI_VALUE_PORT + (field & 3)
+    else
+      0xFFFF
+    end
+  end
+
+  def write_field(bus : UInt32, slot : UInt32, func : UInt32, field : UInt32, value : Int, size : Int)
+    config_address bus, slot, func, field
+    case size
+    when 4
+      X86.outl PCI_VALUE_PORT, value.to_u32
+    when 2
+      X86.outw PCI_VALUE_PORT + (field & 2), value.to_u16
+    when 1
+      X86.outb PCI_VALUE_PORT + (field & 3), value.to_u8
     else
       0xFFFF
     end
@@ -102,5 +116,12 @@ module PCI
         func += 1
       end
     end
+  end
+
+  def enable_bus_mastering(bus : UInt32, slot : UInt32, func : UInt32)
+    value = read_field bus, slot, func, PCI_COMMAND, 2
+    value |= (1 << 2)
+    value |= (1 << 0)
+    write_field bus, slot, func, PCI_COMMAND, value, 2
   end
 end
