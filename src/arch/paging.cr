@@ -475,6 +475,11 @@ module Paging
   # translate virtual to physical address
   def virt_to_phys_address(ptr : Void*)
     pdpt_idx, dir_idx, table_idx, page_idx = page_layer_indexes(ptr.address)
+    offset = ptr.address & 0xFFF
+
+    pml4_table = Pointer(PageStructs::PML4Table).new(mt_addr @@pml4_table.address)
+
+    return 0u64 if pml4_table.value.pdpt[pdpt_idx] == 0u64
     pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
       .new(mt_addr pml4_table.value.pdpt[pdpt_idx])
 
@@ -484,6 +489,6 @@ module Paging
     return 0u64 if pd.value.tables[table_idx] == 0u64
     pt = Pointer(PageStructs::PageTable).new(mt_addr pd.value.tables[table_idx])
 
-    t_addr pt.value.pages[page_idx] 
+    t_addr(pt.value.pages[page_idx]) + offset
   end
 end
