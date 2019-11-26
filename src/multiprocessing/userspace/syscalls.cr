@@ -41,14 +41,19 @@ module Syscall
   extend self
 
   def lock
-    Idt.status_mask = true
+    # NOTE: we disable process switching because
+    # other processes might do another syscall
+    # while the current syscall is still being processed
+    Idt.switch_processes = false
+    Idt.enable
     if Multiprocessing::Scheduler.current_process.not_nil!.kernel_process?
       Multiprocessing::DriverThread.unlock
     end
   end
 
   def unlock
-    Idt.status_mask = false
+    Idt.switch_processes = true
+    Idt.disable
     if Multiprocessing::Scheduler.current_process.not_nil!.kernel_process?
       Multiprocessing::DriverThread.lock
     end
