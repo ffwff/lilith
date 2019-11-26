@@ -149,8 +149,8 @@ module Ata
   end
 
   # wait functions
-  def wait_io(bus)
-    4.times do
+  def wait_io(bus, n = 4)
+    n.times do
       X86.inb(bus + REG_ALTSTATUS)
     end
   end
@@ -214,7 +214,7 @@ module Ata
     # write PRDT location
     X86.outl(Ide.bus_master + 4, Ide.prdt_ptr_phys.to_u32)
     # clear irq/err flags
-    X86.outb(Ide.bus_master + 2, X86.inb(Ide.bus_master + 2) & ~0x6)
+    X86.outb(Ide.bus_master + 2, X86.inb(Ide.bus_master + 2) | 0x6)
     # transfer direction
     X86.outb(Ide.bus_master, 0x8)
 
@@ -275,6 +275,10 @@ module Ata
     X86.inb(bus + REG_ALTSTATUS)
   end
 
+  def flush_dma
+    X86.outb(Ide.bus_master + 2, X86.inb(Ide.bus_master + 2) | 0x6)
+  end
+
   def flush_cache(bus)
     X86.outb(bus + REG_COMMAND, CMD_CACHE_FLUSH)
   end
@@ -283,11 +287,12 @@ module Ata
   @@interrupted = false
   class_property interrupted
   def irq_handler(bus)
-    @@interrupted = true
+    # Serial.print "irq", Idt.switch_processes, "!\n"
     status = X86.inb(bus + REG_STATUS)
     if (status & SR_ERR) != 0
       err = X86.inb(bus + REG_ERROR)
     end
+    @@interrupted = true
   end
 end
 
@@ -313,6 +318,10 @@ class AtaDevice
   end
   @type = Type::Ata
   getter type
+
+  def irq
+    @primary ? 14 : 15
+  end
 
   # NOTE: idx must be between 0..3
   def initialize(@primary = true, @slave = false)
@@ -415,16 +424,17 @@ class AtaDevice
       retries = 0
       while retries < MAX_RETRIES
         if @can_dma
-          PIC.disable irq
           Ata.interrupted = false
           Ata.read_dma sector, disk_port, cmd_port, slave
           # poll
           while !Ata.interrupted
+            # FIXME: without this nop the loop doesn't break
+            # sometimes in release mode, might be a compiler
+            # misoptimization
+            asm("nop")
           end
-          # read from buffer
           memcpy(ptr, Ide.dma_buffer, 512)
-          # flush dma
-          Ata.flush_cache disk_port
+          Ata.flush_dma
         else
           Ata.read sector, disk_port, slave
           # poll

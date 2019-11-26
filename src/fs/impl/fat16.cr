@@ -416,7 +416,6 @@ class Fat16FS < VFS
     panic "device must be ATA" if @device.type != AtaDevice::Type::Ata
 
     bs = Pointer(Fat16Structs::Fat16BootSector).mmalloc
-    Serial.print bs, ' ', sizeof(Fat16Structs::Fat16BootSector), '\n'
 
     device.read_sector(bs.as(UInt8*), partition.first_sector.to_u64)
     idx = 0
