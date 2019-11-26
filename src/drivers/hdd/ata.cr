@@ -115,6 +115,11 @@ module Ata
 
   SCSI_PACKET_SIZE = 12
 
+  DISK_PORT_PRIMARY   = 0x1F0u16
+  CMD_PORT_PRIMARY    = 0x3F6u16
+  DISK_PORT_SECONDARY = 0x170u16
+  CMD_PORT_SECONDARY  = 0x3F4u16
+
   def read_cyl(bus)
     cl = X86.inb(bus + REG_LBA1)
     ch = X86.inb(bus + REG_LBA2)
@@ -123,8 +128,12 @@ module Ata
 
   # drive = 0 => primary
   # drive = 1 => secondary
-  def select(bus, slave = 0u8)
-    X86.outb(bus + REG_HDDEVSEL, 0xA0.to_u8 | (slave << 4))
+  def select(bus, slave)
+    devsel = 0xA0
+    if slave
+      devsel |= 1 << 4
+    end
+    X86.outb(bus + REG_HDDEVSEL, devsel.to_u8)
   end
 
   def identify(bus)
@@ -141,7 +150,9 @@ module Ata
 
   # wait functions
   def wait_io(bus)
-    4.times { |i| X86.inb(bus + REG_ALTSTATUS) }
+    4.times do
+      X86.inb(bus + REG_ALTSTATUS)
+    end
   end
 
   def wait_ready(bus)
@@ -172,12 +183,20 @@ module Ata
     true
   end
 
+  def devsel(slave)
+    retval = 0xe0
+    if slave
+      retval |= 1 << 4
+    end
+    retval
+  end
+
   # read functions
   def read(sector : UInt64, bus, slave)
     # PIO 24-bit
     wait_ready bus
 
-    X86.outb(bus + REG_HDDEVSEL, (0xe0 | (slave << 4) |
+    X86.outb(bus + REG_HDDEVSEL, (devsel(slave) |
                                   ((sector & 0x0f000000) >> 24)).to_u8)
     X86.outb(bus + REG_FEATURES, 0x00)
     X86.outb(bus + REG_SECCOUNT0, 1)
@@ -185,6 +204,36 @@ module Ata
     X86.outb(bus + REG_LBA1, ((sector & 0x0000ff00) >> 8).to_u8)
     X86.outb(bus + REG_LBA2, ((sector & 0x00ff0000) >> 16).to_u8)
     X86.outb(bus + REG_COMMAND, CMD_READ_PIO)
+  end
+
+  def read_dma(sector : UInt64, bus, control, slave)
+    Ide.prdt_ptr.value.size = 512
+
+    # reset bus master
+    X86.outb(Ide.bus_master, 0u8)
+    # write PRDT location
+    X86.outl(Ide.bus_master + 4, Ide.prdt_ptr_phys.to_u32)
+    # clear irq/err flags
+    X86.outb(Ide.bus_master + 2, X86.inb(Ide.bus_master + 2) & ~0x6)
+    # transfer direction
+    X86.outb(Ide.bus_master, 0x8)
+
+    wait_ready bus
+
+    X86.outb(control, 0)
+    X86.outb(bus + REG_HDDEVSEL, (devsel(slave) |
+                                  ((sector & 0x0f000000) >> 24)).to_u8)
+    X86.outb(bus + REG_FEATURES, 0x00)
+    X86.outb(bus + REG_SECCOUNT0, 1)
+    X86.outb(bus + REG_LBA0, (sector & 0x000000ff).to_u8)
+    X86.outb(bus + REG_LBA1, ((sector & 0x0000ff00) >> 8).to_u8)
+    X86.outb(bus + REG_LBA2, ((sector & 0x00ff0000) >> 16).to_u8)
+
+    X86.outb(bus + REG_COMMAND, CMD_READ_DMA)
+    wait_io bus
+
+    # start bus master
+    X86.outb(Ide.bus_master, 0x9)
   end
 
   def read_atapi(sector, bus, slave)
@@ -231,29 +280,32 @@ module Ata
   end
 
   # irq handler
+  @@interrupted = false
+  class_property interrupted
   def irq_handler(bus)
-    X86.inb(bus + REG_STATUS)
+    @@interrupted = true
+    status = X86.inb(bus + REG_STATUS)
+    if (status & SR_ERR) != 0
+      err = X86.inb(bus + REG_ERROR)
+    end
   end
 end
 
-private DISK_PORT_PRIMARY   = 0x1F0u16
-private CMD_PORT_PRIMARY    = 0x3F6u16
-private DISK_PORT_SECONDARY = 0x170u16
-private CMD_PORT_SECONDARY  = 0x3F4u16
-
 class AtaDevice
   def disk_port
-    @primary ? DISK_PORT_PRIMARY : DISK_PORT_SECONDARY
+    @primary ? Ata::DISK_PORT_PRIMARY : Ata::DISK_PORT_SECONDARY
   end
 
   def cmd_port
-    @primary ? CMD_PORT_PRIMARY : CMD_PORT_SECONDARY
+    @primary ? Ata::CMD_PORT_PRIMARY : Ata::CMD_PORT_SECONDARY
   end
 
-  #
   getter primary, slave
+
   @name : String? = nil
   getter! name
+
+  @can_dma = false
 
   enum Type
     Ata
@@ -263,10 +315,10 @@ class AtaDevice
   getter type
 
   # NOTE: idx must be between 0..3
-  def initialize(@primary = true, @slave = 0)
+  def initialize(@primary = true, @slave = false)
   end
 
-  #
+  # initialize device
   def init_device
     X86.outb disk_port + 1, 1
     X86.outb disk_port + 0x306, 0
@@ -309,7 +361,7 @@ class AtaDevice
       Ata.wait_io disk_port
 
       status = Ata.status disk_port
-      debug "status: ", status, '\n'
+      # Serial.print "status: ", status, '\n'
       if status == 0
         # cleanup
         device.mfree
@@ -320,7 +372,7 @@ class AtaDevice
       Ata.wait_io disk_port
 
       status = Ata.status disk_port
-      debug "status: ", status, '\n'
+      # Serial.print "status: ", status, '\n'
       if status == 0
         # cleanup
         device.mfree
@@ -331,6 +383,10 @@ class AtaDevice
     buf = device.as(UInt16*)
     256.times do |i|
       buf[i] = X86.inw disk_port
+    end
+    
+    if (device.value.capabilities[0] & (1 << 8)) != 0
+      @can_dma = true
     end
 
     # fix model name from endianness
@@ -349,26 +405,40 @@ class AtaDevice
     true
   end
 
-  @lock = Spinlock.new
-
   MAX_RETRIES = 3
-  def read_sector(ptr, sector : UInt64)
+  def read_sector(ptr : UInt8*, sector : UInt64)
     panic "can't access atapi" if @type == Type::Atapi
+    # Serial.print "ata read ", sector, '\n'
 
     retval = false
-    @lock.with do
+    Ide.lock do
       retries = 0
       while retries < MAX_RETRIES
-        Ata.read sector, disk_port, slave
-        # poll
-        unless Ata.wait(disk_port, true)
-          retval = false
-          retries += 1
-          next
-        end
-        # read from sector
-        256.times do |i|
-          ptr[i] = X86.inw disk_port
+        if @can_dma
+          PIC.disable irq
+          Ata.interrupted = false
+          Ata.read_dma sector, disk_port, cmd_port, slave
+          # poll
+          while !Ata.interrupted
+          end
+          # read from buffer
+          memcpy(ptr, Ide.dma_buffer, 512)
+          # flush dma
+          Ata.flush_cache disk_port
+        else
+          Ata.read sector, disk_port, slave
+          # poll
+          unless Ata.wait(disk_port, true)
+            retval = false
+            retries += 1
+            next
+          end
+          # read from sector
+          l0 = l1 = 0
+          asm("rep insw"
+             : "={Di}"(l0), "={cx}"(l1)
+             : "{Di}"(ptr), "{cx}"(256), "{dx}"(disk_port)
+             : "volatile", "memory")
         end
         retval = true
         break
@@ -377,15 +447,19 @@ class AtaDevice
 
     retval
   end
-
-  #
-  def debug(*args)
-    Console.print *args
-  end
 end
 
 module Ide
   extend self
+
+  lib Data
+    @[Packed]
+    struct PhysicalRegionDescriptor
+      address : UInt32
+      size : UInt16
+      end_of_table : UInt16
+    end
+  end
 
   @@hd_idx = 0
   @@cdrom_idx = 0
@@ -402,18 +476,44 @@ module Ide
     idx
   end
 
-  def device(idx)
-    @@devices.not_nil![idx].not_nil!
+  @@bus_master = 0u16
+  class_getter bus_master
+  class_getter! devices
+
+  @@prdt = uninitialized Data::PhysicalRegionDescriptor
+  def prdt_ptr
+    pointerof(@@prdt)
+  end
+  def prdt_ptr_phys
+    Paging.virt_to_phys_address(prdt_ptr.as(Void*))
   end
 
-  def init_controller
-    @@devices = Array(AtaDevice?).new 4
-    devices = @@devices.not_nil!
+  @@dma_buffer = Pointer(UInt8).null
+  class_getter dma_buffer
+  private def dma_buffer_phys
+    @@dma_buffer.address & ~PTR_IDENTITY_MASK
+  end
 
-    devices.push AtaDevice.new(true, 0)
-    devices.push AtaDevice.new(true, 1)
-    devices.push AtaDevice.new(false, 0)
-    devices.push AtaDevice.new(false, 1)
+  @@bus = 0u32
+  @@device = 0u32
+  @@func = 0u32
+
+  def init_controller(@@bus : UInt32, @@device : UInt32, @@func : UInt32)
+    # set up dma transfers
+    PCI.enable_bus_mastering @@bus, @@device, @@func
+    @@bus_master = (PCI.read_field(@@bus, @@device, @@func, PCI::PCI_BAR4, 4) & 0xFFFC).to_u16
+
+    @@dma_buffer = Pointer(UInt8).new(FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK)
+    zero_page @@dma_buffer
+    @@prdt.address = dma_buffer_phys
+    @@prdt.end_of_table = 0x8000
+
+    @@devices = Array(AtaDevice?).new 4
+
+    devices.push AtaDevice.new(true, false)
+    devices.push AtaDevice.new(true, true)
+    devices.push AtaDevice.new(false, false)
+    devices.push AtaDevice.new(false, true)
 
     Idt.register_irq 14, ->ata_primary_irq_handler
     Idt.register_irq 15, ->ata_secondary_irq_handler
@@ -426,15 +526,23 @@ module Ide
 
   # interrupts
   def ata_primary_irq_handler
-    Ata.irq_handler DISK_PORT_PRIMARY
+    Ata.irq_handler Ata::DISK_PORT_PRIMARY
   end
 
   def ata_secondary_irq_handler
-    Ata.irq_handler DISK_PORT_SECONDARY
+    Ata.irq_handler Ata::DISK_PORT_SECONDARY
   end
 
   # check pci device
   def pci_device?(vendor_id, device_id)
     (vendor_id == 0x8086) && (device_id == 0x7010 || device_id == 0x7111)
+  end
+
+  # lock
+  @@lock = Spinlock.new
+  def lock(&block)
+    @@lock.with do
+      yield
+    end
   end
 end

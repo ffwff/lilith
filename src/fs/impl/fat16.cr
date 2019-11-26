@@ -189,7 +189,7 @@ private class Fat16Node < VFSNode
       return fat_sector
     end
 
-    fs.device.read_sector(fat_table, fat_sector.to_u64)
+    fs.device.read_sector(fat_table.to_unsafe.as(UInt8*), fat_sector.to_u64)
     fat_sector
   end
 
@@ -245,7 +245,7 @@ private class Fat16Node < VFSNode
       sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
       read_sector = 0
       while remaining_bytes > 0 && read_sector < fs.sectors_per_cluster
-        unless fs.device.read_sector(file_buffer, sector + read_sector)
+        unless fs.device.read_sector(file_buffer.to_unsafe.as(UInt8*), sector + read_sector)
           Serial.print "unable to read from device, returning garbage!"
           remaining_bytes = 0
           break
@@ -308,7 +308,7 @@ private class Fat16Node < VFSNode
       sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
       read_sector = 0
       while read_sector < fs.sectors_per_cluster
-        fs.device.read_sector(entries.to_unsafe.as(UInt16*), sector + read_sector)
+        fs.device.read_sector(entries.to_unsafe.as(UInt8*), sector + read_sector)
         entries.each do |entry|
           load_entry(entry)
         end
@@ -416,8 +416,9 @@ class Fat16FS < VFS
     panic "device must be ATA" if @device.type != AtaDevice::Type::Ata
 
     bs = Pointer(Fat16Structs::Fat16BootSector).mmalloc
+    Serial.print bs, ' ', sizeof(Fat16Structs::Fat16BootSector), '\n'
 
-    device.read_sector(bs.as(UInt16*), partition.first_sector.to_u64)
+    device.read_sector(bs.as(UInt8*), partition.first_sector.to_u64)
     idx = 0
     bs.value.fs_type.each do |ch|
       panic "only FAT16 is accepted" if ch != FS_TYPE.to_unsafe[idx]
@@ -439,7 +440,7 @@ class Fat16FS < VFS
 
     bs.value.root_dir_entries.times do |i|
       break if sector + i > @data_sector
-      device.read_sector(entries.to_unsafe.as(UInt16*), sector + i)
+      device.read_sector(entries.to_unsafe.as(UInt8*), sector + i)
       entries.each do |entry|
         if pointerof(entry).as(UInt8*)[0] == 0
           break
