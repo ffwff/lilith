@@ -46,7 +46,6 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Console.print "initializing idt...\n"
   Idt.init_interrupts
   Idt.init_table
-  Idt.status_mask = true
 
   # paging
   Console.print "initializing paging...\n"
@@ -73,13 +72,16 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Gdt.flush_tss
   Kernel.ksyscall_setup
 
+  Idt.status_mask = false
+  Idt.enable
+
   # hardware
   # pci
   Console.print "checking PCI buses...\n"
   PCI.check_all_buses do |bus, device, func, vendor_id|
     device_id = PCI.read_field bus, device, func, PCI::PCI_DEVICE_ID, 2
     if Ide.pci_device?(vendor_id, device_id)
-      Ide.init_controller
+      Ide.init_controller bus, device, func
     elsif BGA.pci_device?(vendor_id, device_id)
       BGA.init_controller bus, device, func
       Console.text_mode = false
@@ -102,10 +104,16 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   RootFS.append(SocketFS.new)
 
   # file systems
+  root_device = Ide.devices[0]
+  if root_device.nil?
+    panic "no disk found!"
+  end
+  root_device = root_device.not_nil!
+
   main_bin : VFSNode? = nil
-  if (mbr = MBR.read(Ide.device(0)))
+  if (mbr = MBR.read(root_device))
     Console.print "found MBR header...\n"
-    fs = Fat16FS.new Ide.device(0), mbr.to_unsafe.value.partitions[0]
+    fs = Fat16FS.new root_device, mbr.to_unsafe.value.partitions[0]
     fs.root.each_child do |node|
       if node.name == "main"
         main_bin = node
@@ -149,8 +157,9 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
         .enqueue(VFSMessage.new(udata, main_bin))
     end
 
-    Idt.status_mask = false
     # switch to pid 1
+    Idt.disable # disable so the cpu doesn't interrupt mid context switch
+    Idt.switch_processes = true
     Multiprocessing.first_process.not_nil!
       .next_process.not_nil!
       .initial_switch
