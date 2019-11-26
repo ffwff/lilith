@@ -332,6 +332,7 @@ module Multiprocessing::Scheduler
 
   # context switch
   private def switch_process_save_and_load(remove = false, &block)
+    # Serial.print "---\n"
     # switching from idle process
     if @@current_process.nil?
       @@current_process = get_next_process
@@ -383,7 +384,6 @@ module Multiprocessing::Scheduler
     end
 
     # Serial.print "next: ", next_process.name, "\n"
-    # Serial.print "---\n"
     next_process
   end
 
@@ -395,16 +395,16 @@ module Multiprocessing::Scheduler
   end
 
   def switch_process(frame : SyscallData::Registers*)
+    Syscall.unlock
     current_process = switch_process_save_and_load do |process|
       process.new_frame_from_syscall frame
     end
-    Syscall.unlock
     Kernel.ksyscall_switch(current_process.frame.not_nil!.to_unsafe)
   end
 
   def switch_process_and_terminate
-    current_process = switch_process_save_and_load(true) { }
     Syscall.unlock
+    current_process = switch_process_save_and_load(true) { }
     Kernel.ksyscall_switch(current_process.frame.not_nil!.to_unsafe)
   end
 end
