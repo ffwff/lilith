@@ -4,8 +4,8 @@ module UserAddressSanitiser
   def checked_pointer(size, addr) : Void*?
     addr = addr.to_u64
     size = size.to_u64
-    i = addr
-    while i < (addr + size)
+    i = Pointer(Void).new(addr)
+    while i.address < (addr + size)
       return nil unless Paging.check_user_addr(i)
       i += 0x1000u64
     end
@@ -15,8 +15,8 @@ module UserAddressSanitiser
   def checked_slice(addr, len) : Slice(UInt8)?
     addr = addr.to_u64
     len = len.to_u64
-    i = addr
-    while i < (addr + len)
+    i = Pointer(Void).new(addr)
+    while i.address < (addr + len)
       return nil unless Paging.check_user_addr(i)
       i += 0x1000u64
     end
