@@ -95,7 +95,7 @@ module Idt
 
     # cpu exception handlers
     {% for i in 0..31 %}
-      init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
+      # init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
     {% end %}
 
     # hw interrupts
@@ -119,9 +119,7 @@ module Idt
   end
 
   # handlers
-  def irq_handlers
-    @@irq_handlers
-  end
+  class_getter irq_handlers
 
   def register_irq(idx : Int, handler : InterruptHandler)
     @@irq_handlers[idx] = handler
@@ -129,8 +127,7 @@ module Idt
 
   # status
   @@status_mask = false
-
-  def status_mask=(@@status_mask); end
+  class_property status_mask
 
   def enable
     if !@@status_mask
@@ -152,16 +149,13 @@ module Idt
     yield
     @@status_mask = false
   end
+
+  @@switch_processes = false
+  class_property switch_processes
 end
 
 fun kirq_handler(frame : IdtData::Registers*)
-  # send EOI signal to PICs
-  if frame.value.int_no >= 8
-    # send to slave
-    X86.outb 0xA0, 0x20
-  end
-  # send to master
-  X86.outb 0x20, 0x20
+  PIC.eoi frame.value.int_no
 
   if Idt.irq_handlers[frame.value.int_no].pointer.null?
     Serial.print "no handler for ", frame.value.int_no, "\n"
@@ -171,7 +165,7 @@ fun kirq_handler(frame : IdtData::Registers*)
     end
   end
 
-  if frame.value.int_no == 0
+  if frame.value.int_no == 0 && Idt.switch_processes
     # preemptive multitasking...
     if (current_process = Multiprocessing::Scheduler.current_process)
       if current_process.sched_data.time_slice > 0
