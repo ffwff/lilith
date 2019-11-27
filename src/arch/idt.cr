@@ -1,65 +1,62 @@
-IDT_SIZE            =     256
 INTERRUPT_GATE      = 0x8Eu16
 KERNEL_CODE_SEGMENT = 0x08u16
 
-private lib Kernel
+lib Kernel
   {% for i in 0..31 %}
     fun kcpuex{{ i.id }}
   {% end %}
   {% for i in 0..15 %}
     fun kirq{{ i.id }}
   {% end %}
-
-  @[Packed]
-  struct Idt
-    limit : UInt16
-    base : UInt64
-  end
-
-  @[Packed]
-  struct IdtEntry
-    offset_1 : UInt16 # offset bits 0..15
-    selector : UInt16 # a code segment selector in GDT or LDT
-    ist : UInt8
-    type_attr : UInt8 # type and attributes
-    offset_2 : UInt16 # offset bits 16..31
-    offset_3 : UInt32 # offset bits 32..63
-    zero : UInt32
-  end
-
-  fun kload_idt(idtr : UInt32)
 end
-
-lib IdtData
-  struct Registers
-    # Pushed by pushad:
-    ds,
-rbp, rdi, rsi,
-r15, r14, r13, r12, r11, r10, r9, r8,
-rdx, rcx, rbx, rax : UInt64
-    # Interrupt number
-    int_no : UInt64
-    # Pushed by the processor automatically.
-    rip, cs, rflags, userrsp, ss : UInt64
-  end
-
-  struct ExceptionRegisters
-    # Pushed by pushad:
-    ds,
-rbp, rdi, rsi,
-r15, r14, r13, r12, r11, r10, r9, r8,
-rdx, rcx, rbx, rax : UInt64
-    # Interrupt number
-    int_no, errcode : UInt64
-    # Pushed by the processor automatically.
-    rip, cs, rflags, userrsp, ss : UInt64
-  end
-end
-
-alias InterruptHandler = -> Nil
 
 module Idt
   extend self
+
+  lib Data
+    @[Packed]
+    struct Idt
+      limit : UInt16
+      base : UInt64
+    end
+
+    @[Packed]
+    struct IdtEntry
+      offset_1 : UInt16 # offset bits 0..15
+      selector : UInt16 # a code segment selector in GDT or LDT
+      ist : UInt8
+      type_attr : UInt8 # type and attributes
+      offset_2 : UInt16 # offset bits 16..31
+      offset_3 : UInt32 # offset bits 32..63
+      zero : UInt32
+    end
+
+    struct Registers
+      # Pushed by pushad:
+      ds,
+      rbp, rdi, rsi,
+      r15, r14, r13, r12, r11, r10, r9, r8,
+      rdx, rcx, rbx, rax : UInt64
+      # Interrupt number
+      int_no : UInt64
+      # Pushed by the processor automatically.
+      rip, cs, rflags, userrsp, ss : UInt64
+    end
+
+    struct ExceptionRegisters
+      # Pushed by pushad:
+      ds,
+      rbp, rdi, rsi,
+      r15, r14, r13, r12, r11, r10, r9, r8,
+      rdx, rcx, rbx, rax : UInt64
+      # Interrupt number
+      int_no, errcode : UInt64
+      # Pushed by the processor automatically.
+      rip, cs, rflags, userrsp, ss : UInt64
+    end
+  end
+
+  alias InterruptHandler = -> Nil
 
   # initialize
   IRQ_COUNT = 16
@@ -86,11 +83,11 @@ module Idt
 
   # table init
   IDT_SIZE = 256
-  @@idtr = uninitialized Kernel::Idt
-  @@idt = uninitialized Kernel::IdtEntry[IDT_SIZE]
+  @@idtr = uninitialized Data::Idt
+  @@idt = uninitialized Data::IdtEntry[IDT_SIZE]
 
   def init_table
-    @@idtr.limit = sizeof(Kernel::IdtEntry) * IDT_SIZE - 1
+    @@idtr.limit = sizeof(Data::IdtEntry) * IDT_SIZE - 1
     @@idtr.base = @@idt.to_unsafe.address
 
     # cpu exception handlers
@@ -103,11 +100,11 @@ module Idt
       init_idt_entry {{ i + 32 }}, KERNEL_CODE_SEGMENT, (->Kernel.kirq{{ i.id }}).pointer.address, INTERRUPT_GATE
     {% end %}
 
-    Kernel.kload_idt pointerof(@@idtr).address.to_u32
+    asm("lidt $0" :: "m"(pointerof(@@idtr)) : "volatile")
   end
 
   def init_idt_entry(num : Int32, selector : UInt16, offset : UInt64, type : UInt16)
-    idt = Kernel::IdtEntry.new
+    idt = Data::IdtEntry.new
     idt.offset_1 = (offset & 0xFFFF)
     idt.ist = 0
     idt.selector = selector
@@ -154,7 +151,7 @@ module Idt
   class_property switch_processes
 end
 
-fun kirq_handler(frame : IdtData::Registers*)
+fun kirq_handler(frame : Idt::Data::Registers*)
   PIC.eoi frame.value.int_no
 
   if Idt.irq_handlers[frame.value.int_no].pointer.null?
@@ -182,7 +179,7 @@ end
 
 EX_PAGEFAULT = 14
 
-private def dump_frame(frame : IdtData::ExceptionRegisters*)
+private def dump_frame(frame : Idt::Data::ExceptionRegisters*)
   {% for id in [
                  "ds",
                  "rbp", "rdi", "rsi",
@@ -197,7 +194,7 @@ private def dump_frame(frame : IdtData::ExceptionRegisters*)
   {% end %}
 end
 
-fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
+fun kcpuex_handler(frame : Idt::Data::ExceptionRegisters*)
   errcode = frame.value.errcode
   case frame.value.int_no
   when EX_PAGEFAULT
@@ -211,6 +208,7 @@ fun kcpuex_handler(frame : IdtData::ExceptionRegisters*)
     id = (errcode & 0x10) != 0
 
     Serial.print Pointer(Void).new(faulting_address), user, " ", Pointer(Void).new(frame.value.rip), "\n"
+    while true; end
 
     {% if false %}
       process = Multiprocessing::Scheduler.current_process.not_nil!

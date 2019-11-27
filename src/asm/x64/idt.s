@@ -54,11 +54,6 @@
     popa64_no_ds
 .endm
 
-.global kload_idt
-kload_idt:
-    lidt (%rdi)
-    ret
-
 .global kcpuex_stub
 .extern kcpuex_handler
 kcpuex_stub:

@@ -1,5 +1,5 @@
 private lib Kernel
-  fun ksyscall_switch(frame : IdtData::Registers*) : NoReturn
+  fun ksyscall_switch(frame : Idt::Data::Registers*) : NoReturn
 end
 
 module Multiprocessing::Scheduler
@@ -387,7 +387,7 @@ module Multiprocessing::Scheduler
     next_process
   end
 
-  def switch_process(frame : IdtData::Registers*)
+  def switch_process(frame : Idt::Data::Registers*)
     current_process = switch_process_save_and_load do |process|
       process.frame.not_nil!.to_unsafe.value = frame.value
     end

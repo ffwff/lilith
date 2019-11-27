@@ -291,6 +291,7 @@ module Ata
     status = X86.inb(bus + REG_STATUS)
     if (status & SR_ERR) != 0
       err = X86.inb(bus + REG_ERROR)
+      Serial.print "error: ", err, '\n'
     end
     @@interrupted = true
   end
