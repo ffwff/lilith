@@ -2,7 +2,7 @@ require "./userspace/*"
 require "./driver_thread.cr"
 
 private lib Kernel
-  fun ksyscall_switch(frame : IdtData::Registers*) : NoReturn
+  fun ksyscall_switch(frame : Idt::Data::Registers*) : NoReturn
 end
 
 module Multiprocessing
@@ -75,7 +75,7 @@ module Multiprocessing
     property phys_user_pg_struct
 
     # interrupt frame for preemptive multitasking
-    @frame : Box(IdtData::Registers)? = nil
+    @frame : Box(Idt::Data::Registers)? = nil
     property frame
 
     # sse state
@@ -309,7 +309,7 @@ module Multiprocessing
 
     # new register frame for multitasking
     def new_frame
-      frame = IdtData::Registers.new
+      frame = Idt::Data::Registers.new
       frame.userrsp = @initial_sp
       frame.rip = @initial_ip
       if kernel_process?
@@ -338,7 +338,7 @@ module Multiprocessing
     end
 
     def new_frame_from_syscall(syscall_frame : SyscallData::Registers*)
-      frame = IdtData::Registers.new
+      frame = Idt::Data::Registers.new
 
       {% for id in [
                      "rbp", "rdi", "rsi",
