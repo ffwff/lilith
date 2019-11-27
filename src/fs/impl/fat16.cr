@@ -234,50 +234,32 @@ private class Fat16Node < VFSNode
     offset_bytes = offset % offset_factor
 
     # read file
-    file_buffer = if allocator.nil?
-                    Slice(UInt16).mmalloc(256)
-                  else
-                    sz = 256
-                    Slice(UInt16).new(allocator.not_nil!.malloc(sz * sizeof(UInt16)).as(UInt16*), sz)
-                  end
+    cluster_bufsz = 512 * fs.sectors_per_cluster
+    cluster_buffer = if allocator.nil?
+                      Slice(UInt8).mmalloc(cluster_bufsz)
+                     else
+                      Slice(UInt8).new(allocator.not_nil!.malloc(cluster_bufsz).as(UInt8*), cluster_bufsz)
+                     end
     last_cluster = 0
     while remaining_bytes > 0 && cluster < 0xFFF8
       sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
-      read_sector = 0
-      while remaining_bytes > 0 && read_sector < fs.sectors_per_cluster
-        unless fs.device.read_sector(file_buffer.to_unsafe.as(UInt8*), sector + read_sector)
-          Serial.print "unable to read from device, returning garbage!"
-          remaining_bytes = 0
+      unless fs.device.read_sector(cluster_buffer.to_unsafe, sector, fs.sectors_per_cluster)
+        Serial.print "unable to read from device, returning garbage!"
+        remaining_bytes = 0
+        break
+      end
+      cluster_buffer.each do |byte|
+        if remaining_bytes > 0
+          if offset_bytes > 0
+            offset_bytes -= 1
+          else
+            yield byte
+            offset += 1
+            remaining_bytes -= 1
+          end
+        else
           break
         end
-
-        file_buffer.each do |word|
-          u8 = (word >> 8) & 0xFF
-          u8_1 = word & 0xFF
-          if remaining_bytes > 0
-            if offset_bytes > 0
-              offset_bytes -= 1
-            else
-              yield u8_1.to_u8
-              offset += 1
-              remaining_bytes -= 1
-            end
-            if remaining_bytes > 0
-              if offset_bytes > 0
-                offset_bytes -= 1
-              else
-                yield u8.to_u8
-                offset += 1
-                remaining_bytes -= 1
-              end
-            else
-              break
-            end
-          else
-            break
-          end
-        end
-        read_sector += 1
       end
       fat_sector = read_fat_table fat_table, cluster, fat_sector
       last_cluster = cluster
@@ -287,7 +269,7 @@ private class Fat16Node < VFSNode
 
     # clean up within function call
     if allocator.nil?
-      file_buffer.mfree
+      cluster_buffer.mfree
       fat_table.mfree
     else
       allocator.not_nil!.clear
@@ -460,7 +442,7 @@ class Fat16FS < VFS
         ->(ptr : Void*) { ptr.as(Fat16FS).process },
         self.as(Void*),
         stack_pages: 4) do |process|
-      Paging.alloc_page_pg(Multiprocessing::KERNEL_HEAP_INITIAL, true, false)
+      Paging.alloc_page_pg(Multiprocessing::KERNEL_HEAP_INITIAL, true, false, 2)
     end
 
     @queue = VFSQueue.new(@process)
