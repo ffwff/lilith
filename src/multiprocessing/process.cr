@@ -234,14 +234,14 @@ module Multiprocessing
       memcpy(@fxsave_region, Multiprocessing.fxsave_region_base, FXSAVE_SIZE)
 
       # create vmm map and save old vmm map
-      last_pg_struct = Pointer(PageStructs::PageDirectoryPointerTable).null
+      last_pg_struct = Pointer(Paging::Data::PDPTable).null
       page_struct = Paging.alloc_process_pdpt
       if kernel_process?
         last_pg_struct = Paging.current_kernel_pdpt
-        Paging.current_kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_struct
+        Paging.current_kernel_pdpt = Pointer(Paging::Data::PDPTable).new page_struct
       else
         last_pg_struct = Paging.current_pdpt
-        Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new page_struct
+        Paging.current_pdpt = Pointer(Paging::Data::PDPTable).new page_struct
       end
       Paging.flush
       @phys_pg_struct = page_struct
@@ -298,10 +298,10 @@ module Multiprocessing
       panic "page dir is nil" if @phys_pg_struct == 0
       if kernel_process?
         DriverThread.lock
-        Paging.current_kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(@phys_pg_struct)
+        Paging.current_kernel_pdpt = Pointer(Paging::Data::PDPTable).new(@phys_pg_struct)
         Paging.flush
       else
-        Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable).new(@phys_pg_struct)
+        Paging.current_pdpt = Pointer(Paging::Data::PDPTable).new(@phys_pg_struct)
         Paging.flush
       end
       Kernel.ksyscall_switch(@frame.not_nil!.to_unsafe)
@@ -388,12 +388,12 @@ module Multiprocessing
     @[NoInline]
     def self.spawn_user(udata : UserData, result : ElfReader::Result)
       udata.is64 = result.is64
-      old_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+      old_pdpt = Pointer(Paging::Data::PDPTable)
         .new(Paging.mt_addr(Paging.current_pdpt.address))
       Multiprocessing::Process.new(udata.argv[0].not_nil!, udata) do |process|
         process.initial_ip = result.initial_ip
 
-        new_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+        new_pdpt = Pointer(Paging::Data::PDPTable)
           .new(Paging.mt_addr(process.phys_pg_struct))
 
         512.times do |dir_idx|
@@ -519,13 +519,13 @@ module Multiprocessing
       offset = virt_addr & 0xFFF
       _, dir_idx, table_idx, page_idx = Paging.page_layer_indexes(virt_addr)
 
-      pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+      pdpt = Pointer(Paging::Data::PDPTable)
         .new(Paging.mt_addr @phys_pg_struct)
 
-      pd = Pointer(PageStructs::PageDirectory).new(Paging.mt_addr pdpt.value.dirs[dir_idx])
+      pd = Pointer(Paging::Data::PageDirectory).new(Paging.mt_addr pdpt.value.dirs[dir_idx])
       return false if pd.null?
 
-      pt = Pointer(PageStructs::PageTable).new(Paging.mt_addr pd.value.tables[table_idx])
+      pt = Pointer(Paging::Data::PageTable).new(Paging.mt_addr pd.value.tables[table_idx])
       return false if pt.null?
 
       bytes = Pointer(UInt8).new(Paging.mt_addr(pt.value.pages[page_idx]))
@@ -541,13 +541,13 @@ module Multiprocessing
 
       _, dir_idx, table_idx, page_idx = Paging.page_layer_indexes(virt_addr)
 
-      pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+      pdpt = Pointer(Paging::Data::PDPTable)
         .new(Paging.mt_addr @phys_pg_struct)
 
-      pd = Pointer(PageStructs::PageDirectory).new(Paging.mt_addr pdpt.value.dirs[dir_idx])
+      pd = Pointer(Paging::Data::PageDirectory).new(Paging.mt_addr pdpt.value.dirs[dir_idx])
       return if pd.null?
 
-      pt = Pointer(PageStructs::PageTable).new(Paging.mt_addr pd.value.tables[table_idx])
+      pt = Pointer(Paging::Data::PageTable).new(Paging.mt_addr pd.value.tables[table_idx])
       return if pt.null?
 
       Pointer(UInt8).new(Paging.mt_addr(pt.value.pages[page_idx]))

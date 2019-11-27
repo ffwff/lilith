@@ -299,12 +299,12 @@ module Multiprocessing::Scheduler
 
     # switch page directory
     if process.kernel_process?
-      Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+      Paging.current_pdpt = Pointer(Paging::Data::PDPTable)
         .new(process.phys_user_pg_struct)
-      Paging.current_kernel_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+      Paging.current_kernel_pdpt = Pointer(Paging::Data::PDPTable)
         .new(process.phys_pg_struct)
     else
-      Paging.current_pdpt = Pointer(PageStructs::PageDirectoryPointerTable)
+      Paging.current_pdpt = Pointer(Paging::Data::PDPTable)
         .new(process.phys_pg_struct)
     end
     Paging.flush
