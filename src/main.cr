@@ -42,9 +42,9 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   # drivers
   Pit.init_device
 
-  # interrupt tables
+  # interrupts
   Console.print "initializing idt...\n"
-  Idt.init_interrupts
+  PIC.init_interrupts
   Idt.init_table
 
   # paging

@@ -68,19 +68,6 @@ module Idt
     {% end %}
   end
 
-  def init_interrupts
-    X86.outb 0x20, 0x11
-    X86.outb 0xA0, 0x11
-    X86.outb 0x21, 0x20
-    X86.outb 0xA1, 0x28
-    X86.outb 0x21, 0x04
-    X86.outb 0xA1, 0x02
-    X86.outb 0x21, 0x01
-    X86.outb 0xA1, 0x01
-    X86.outb 0x21, 0x0
-    X86.outb 0xA1, 0x0
-  end
-
   # table init
   IDT_SIZE = 256
   @@idtr = uninitialized Data::Idt
