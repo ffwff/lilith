@@ -87,7 +87,7 @@ module Idt
       init_idt_entry {{ i + 32 }}, KERNEL_CODE_SEGMENT, (->Kernel.kirq{{ i.id }}).pointer.address, INTERRUPT_GATE
     {% end %}
 
-    asm("lidt $0" :: "m"(pointerof(@@idtr)) : "volatile")
+    asm("lidt ($0)" :: "r"(pointerof(@@idtr)) : "volatile")
   end
 
   def init_idt_entry(num : Int32, selector : UInt16, offset : UInt64, type : UInt16)
