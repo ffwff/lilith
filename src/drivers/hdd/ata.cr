@@ -192,22 +192,22 @@ module Ata
   end
 
   # read functions
-  def read(sector : UInt64, bus, slave)
+  def read(sector : UInt64, bus, slave, nsectors = 1)
     # PIO 24-bit
     wait_ready bus
 
     X86.outb(bus + REG_HDDEVSEL, (devsel(slave) |
                                   ((sector & 0x0f000000) >> 24)).to_u8)
     X86.outb(bus + REG_FEATURES, 0x00)
-    X86.outb(bus + REG_SECCOUNT0, 1)
+    X86.outb(bus + REG_SECCOUNT0, nsectors)
     X86.outb(bus + REG_LBA0, (sector & 0x000000ff).to_u8)
     X86.outb(bus + REG_LBA1, ((sector & 0x0000ff00) >> 8).to_u8)
     X86.outb(bus + REG_LBA2, ((sector & 0x00ff0000) >> 16).to_u8)
     X86.outb(bus + REG_COMMAND, CMD_READ_PIO)
   end
 
-  def read_dma(sector : UInt64, bus, control, slave)
-    Ide.prdt_ptr.value.size = 512
+  def read_dma(sector : UInt64, bus, control, slave, nsectors = 1)
+    Ide.prdt_ptr.value.size = 512 * nsectors
 
     # reset bus master
     X86.outb(Ide.bus_master, 0u8)
@@ -224,7 +224,7 @@ module Ata
     X86.outb(bus + REG_HDDEVSEL, (devsel(slave) |
                                   ((sector & 0x0f000000) >> 24)).to_u8)
     X86.outb(bus + REG_FEATURES, 0x00)
-    X86.outb(bus + REG_SECCOUNT0, 1)
+    X86.outb(bus + REG_SECCOUNT0, nsectors)
     X86.outb(bus + REG_LBA0, (sector & 0x000000ff).to_u8)
     X86.outb(bus + REG_LBA1, ((sector & 0x0000ff00) >> 8).to_u8)
     X86.outb(bus + REG_LBA2, ((sector & 0x00ff0000) >> 16).to_u8)
@@ -416,7 +416,7 @@ class AtaDevice
   end
 
   MAX_RETRIES = 3
-  def read_sector(ptr : UInt8*, sector : UInt64)
+  def read_sector(ptr : UInt8*, sector : UInt64, nsectors : Int = 1)
     panic "can't access atapi" if @type == Type::Atapi
     # Serial.print "ata read ", sector, '\n'
 
@@ -426,7 +426,7 @@ class AtaDevice
       while retries < MAX_RETRIES
         if @can_dma
           Ata.interrupted = false
-          Ata.read_dma sector, disk_port, cmd_port, slave
+          Ata.read_dma sector, disk_port, cmd_port, slave, nsectors.to_u8
           # poll
           while !Ata.interrupted
             # FIXME: without this nop the loop doesn't break
@@ -434,10 +434,10 @@ class AtaDevice
             # misoptimization
             asm("nop")
           end
-          memcpy(ptr, Ide.dma_buffer, 512)
+          memcpy(ptr, Ide.dma_buffer, 512u64 * nsectors)
           Ata.flush_dma
         else
-          Ata.read sector, disk_port, slave
+          Ata.read sector, disk_port, slave, nsectors.to_u8
           # poll
           unless Ata.wait(disk_port, true)
             retval = false
@@ -446,9 +446,10 @@ class AtaDevice
           end
           # read from sector
           l0 = l1 = 0
+          nwords = 256 * nsectors
           asm("rep insw"
              : "={Di}"(l0), "={cx}"(l1)
-             : "{Di}"(ptr), "{cx}"(256), "{dx}"(disk_port)
+             : "{Di}"(ptr), "{cx}"(nwords), "{dx}"(disk_port)
              : "volatile", "memory")
         end
         retval = true
