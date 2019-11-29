@@ -2,7 +2,7 @@
 # reference: https://moss.cs.iit.edu/cs351/slides/slides-malloc.pdf
 lib LibC
   $stderr : Void*
-  fun fprintf(stream : Void*, fmt : LibC::UString, ...) : LibC::Int
+  fun fprintf(stream : Void*, fmt : UInt8*, ...) : LibC::Int
 end
 
 module Malloc

@@ -1,4 +1,4 @@
-fun setlocale(category : LibC::Int, locale : LibC::String) : LibC::String
+fun setlocale(category : LibC::Int, locale : UInt8*) : UInt8*
   abort
   locale
 end

@@ -1,6 +1,4 @@
 lib LibC
-  alias String = Int8*
-  alias UString = UInt8*
   alias Pid = LibC::Int
 
   alias Int = Int32

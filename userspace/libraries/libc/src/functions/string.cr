@@ -1,4 +1,4 @@
-fun strlen(str : LibC::String) : LibC::SizeT
+fun strlen(str : UInt8*) : LibC::SizeT
   if str.null?
     return 0.to_usize
   end
@@ -10,17 +10,17 @@ fun strlen(str : LibC::String) : LibC::SizeT
 end
 
 # dup
-fun strdup(str : LibC::String) : LibC::String
+fun strdup(str : UInt8*) : UInt8*
   if str.null?
-    return LibC::String.null
+    return Pointer(UInt8).null
   end
-  new_str = calloc(strlen(str) + 1, 1).as(LibC::String)
+  new_str = calloc(strlen(str) + 1, 1).as(UInt8*)
   strcpy new_str, str
   new_str
 end
 
 # cmp
-fun strcmp(s1 : LibC::UString, s2 : LibC::UString) : LibC::Int
+fun strcmp(s1 : UInt8*, s2 : UInt8*) : LibC::Int
   while s1.value != 0 && (s1.value == s2.value)
     s1 += 1
     s2 += 1
@@ -28,7 +28,7 @@ fun strcmp(s1 : LibC::UString, s2 : LibC::UString) : LibC::Int
   (s1.value - s2.value).to_int
 end
 
-fun strncmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : LibC::Int
+fun strncmp(s1 : UInt8*, s2 : UInt8*, n : LibC::SizeT) : LibC::Int
   while n > 0 && s1.value != 0 && (s1.value == s2.value)
     s1 += 1
     s2 += 1
@@ -39,7 +39,7 @@ fun strncmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : LibC::Int
 end
 
 # cpy
-fun strcpy(dst : LibC::String, src : LibC::String) : LibC::String
+fun strcpy(dst : UInt8*, src : UInt8*) : UInt8*
   retval = dst
   until src.value == 0
     dst.value = src.value
@@ -50,7 +50,7 @@ fun strcpy(dst : LibC::String, src : LibC::String) : LibC::String
   retval
 end
 
-fun strncpy(dst : LibC::String, src : LibC::String, n : LibC::SizeT) : LibC::String
+fun strncpy(dst : UInt8*, src : UInt8*, n : LibC::SizeT) : UInt8*
   retval = dst
   until n == 0
     dst.value = src.value
@@ -66,13 +66,13 @@ end
 private module Strtok
   extend self
 
-  @@saveptr = LibC::String.null
+  @@saveptr = Pointer(UInt8).null
 
   def saveptr
     pointerof(@@saveptr)
   end
 
-  private def check_delim?(ch, delim : LibC::String)
+  private def check_delim?(ch, delim : UInt8*)
     until delim.value == 0
       return true if ch == delim.value
       delim += 1
@@ -80,7 +80,7 @@ private module Strtok
     false
   end
 
-  def strtok_r(str : LibC::String, delim : LibC::String, saveptr : LibC::String*) : LibC::String
+  def strtok_r(str : UInt8*, delim : UInt8*, saveptr : UInt8**) : UInt8*
     arg_begin = str.null? ? saveptr.value : str
     return saveptr.value if str.null? && saveptr.value.null?
     arg = arg_begin
@@ -92,21 +92,21 @@ private module Strtok
       end
       arg += 1
     end
-    saveptr.value = LibC::String.null
+    saveptr.value = Pointer(UInt8).null
     arg_begin
   end
 end
 
-fun strtok(str : LibC::String, delim : LibC::String) : LibC::String
+fun strtok(str : UInt8*, delim : UInt8*) : UInt8*
   Strtok.strtok_r(str, delim, Strtok.saveptr)
 end
 
-fun strtok_r(str : LibC::String, delim : LibC::String, saveptr : LibC::String*) : LibC::String
+fun strtok_r(str : UInt8*, delim : UInt8*, saveptr : UInt8**) : UInt8*
   Strtok.strtok_r(str, delim, saveptr)
 end
 
 # cat
-fun strcat(dst : LibC::String, src : LibC::String) : LibC::String
+fun strcat(dst : UInt8*, src : UInt8*) : UInt8*
   ret = dst
   until dst.value == 0
     dst += 1
@@ -120,7 +120,7 @@ fun strcat(dst : LibC::String, src : LibC::String) : LibC::String
   ret # unreachable
 end
 
-fun strncat(dst : LibC::String, src : LibC::String, n : LibC::SizeT) : LibC::String
+fun strncat(dst : UInt8*, src : UInt8*, n : LibC::SizeT) : UInt8*
   ret = dst
   until dst.value == 0
     dst += 1
@@ -137,16 +137,16 @@ fun strncat(dst : LibC::String, src : LibC::String, n : LibC::SizeT) : LibC::Str
 end
 
 # chr
-fun strchr(str : LibC::String, c : LibC::Int) : LibC::String
+fun strchr(str : UInt8*, c : LibC::Int) : UInt8*
   until str.value == c
-    return LibC::String.null if str.value == 0
+    return Pointer(UInt8).null if str.value == 0
     str += 1
   end
   str
 end
 
-fun strrchr(str : LibC::String, c : LibC::Int) : LibC::String
-  retval = LibC::String.null
+fun strrchr(str : UInt8*, c : LibC::Int) : UInt8*
+  retval = Pointer(UInt8).null
   until str.value == 0
     if str.value == c.to_u8
       retval = str
@@ -157,16 +157,16 @@ fun strrchr(str : LibC::String, c : LibC::Int) : LibC::String
 end
 
 # pbrk
-fun strpbrk(s1 : LibC::String, s2 : LibC::String) : LibC::String
+fun strpbrk(s1 : UInt8*, s2 : UInt8*) : UInt8*
   until s1.value == 0
     return s1 if strchr(s2, s1.value.to_int)
     s1 += 1
   end
-  LibC::String.null
+  Pointer(UInt8).null
 end
 
 # spn
-fun strspn(s1 : LibC::String, s2 : LibC::String) : LibC::SizeT
+fun strspn(s1 : UInt8*, s2 : UInt8*) : LibC::SizeT
   ret = 0.to_usize
   while s1.value != 0 && strchr(s2, s1.value.to_int)
     s1 += 1
@@ -176,15 +176,15 @@ fun strspn(s1 : LibC::String, s2 : LibC::String) : LibC::SizeT
 end
 
 # str
-fun strstr(s1 : LibC::UString, s2 : LibC::UString) : LibC::UString
-  n = strlen s2.as(LibC::String)
+fun strstr(s1 : UInt8*, s2 : UInt8*) : UInt8*
+  n = strlen s2.as(UInt8*)
   until s1.value == 0
     if memcmp(s1, s2, n) == 0
       return s1
     end
     s1 += 1
   end
-  LibC::UString.null
+  Pointer(UInt8).null
 end
 
 # memory
@@ -226,7 +226,7 @@ fun memmove(dst : UInt8*, src : UInt8*, n : LibC::SizeT) : Void*
   dst.as(Void*)
 end
 
-fun memcmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : LibC::Int
+fun memcmp(s1 : UInt8*, s2 : UInt8*, n : LibC::SizeT) : LibC::Int
   while n > 0 && (s1.value == s2.value)
     s1 += 1
     s2 += 1
@@ -236,7 +236,7 @@ fun memcmp(s1 : LibC::UString, s2 : LibC::UString, n : LibC::SizeT) : LibC::Int
   (s1.value - s2.value).to_int
 end
 
-fun memchr(str : LibC::String, c : LibC::Int, n : LibC::SizeT) : LibC::String
+fun memchr(str : UInt8*, c : LibC::Int, n : LibC::SizeT) : UInt8*
   until n == 0
     str += 1
     if str.value == c
@@ -244,10 +244,10 @@ fun memchr(str : LibC::String, c : LibC::Int, n : LibC::SizeT) : LibC::String
     end
     n -= 1
   end
-  LibC::String.null
+  Pointer(UInt8).null
 end
 
 # errors
-fun strerror(errnum : LibC::Int) : LibC::String
-  LibC::String.null
+fun strerror(errnum : LibC::Int) : UInt8*
+  Pointer(UInt8).null
 end
