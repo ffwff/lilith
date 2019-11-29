@@ -1,9 +1,9 @@
 lib LibC
-  fun sscanf(str : LibC::String, fmt : LibC::UString, ...) : LibC::Int
+  fun sscanf(str : UInt8*, fmt : UInt8*, ...) : LibC::Int
 end
 
 # string conversion
-fun strtod(nptr : LibC::String, endptr : LibC::String*) : Float64
+fun strtod(nptr : UInt8*, endptr : UInt8**) : Float64
   retval = 0.0f64
   written = LibC.sscanf nptr, "%lf", pointerof(retval)
   unless endptr.null?
@@ -12,7 +12,7 @@ fun strtod(nptr : LibC::String, endptr : LibC::String*) : Float64
   retval
 end
 
-fun strtof(nptr : LibC::String, endptr : LibC::String*) : Float32
+fun strtof(nptr : UInt8*, endptr : UInt8**) : Float32
   retval = 0.0f32
   written = LibC.sscanf nptr, "%f", pointerof(retval)
   unless endptr.null?
@@ -21,38 +21,38 @@ fun strtof(nptr : LibC::String, endptr : LibC::String*) : Float32
   retval
 end
 
-fun strtol(nptr : LibC::String, endptr : LibC::String*, base : LibC::Int) : LibC::Long
+fun strtol(nptr : UInt8*, endptr : UInt8**, base : LibC::Int) : LibC::Long
   abort
   0.to_long
 end
 
-fun strtoul(nptr : LibC::String, endptr : LibC::String*, base : LibC::Int) : LibC::ULong
+fun strtoul(nptr : UInt8*, endptr : UInt8**, base : LibC::Int) : LibC::ULong
   abort
   0.to_ulong
 end
 
-fun atof(nptr : LibC::String) : Float64
+fun atof(nptr : UInt8*) : Float64
   retval = 0.0f64
   written = LibC.sscanf nptr, "%lf", pointerof(retval)
   retval
 end
 
-fun atoi(nptr : LibC::String) : LibC::Int
+fun atoi(nptr : UInt8*) : LibC::Int
   abort
   0
 end
 
-fun atol(nptr : LibC::String) : LibC::Long
+fun atol(nptr : UInt8*) : LibC::Long
   abort
   0.to_long
 end
 
 # environ
-fun getenv(name : LibC::String) : LibC::String
-  LibC::String.null
+fun getenv(name : UInt8*) : UInt8*
+  Pointer(UInt8).null
 end
 
-fun setenv(name : LibC::String, value : LibC::String, overwrite : LibC::Int) : LibC::Int
+fun setenv(name : UInt8*, value : UInt8*, overwrite : LibC::Int) : LibC::Int
   0
 end
 
@@ -77,6 +77,6 @@ fun llabs(j : LibC::LongLong) : LibC::LongLong
 end
 
 # spawn
-fun system(command : LibC::String) : LibC::Int
+fun system(command : UInt8*) : LibC::Int
   0
 end

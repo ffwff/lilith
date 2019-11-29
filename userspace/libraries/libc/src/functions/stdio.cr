@@ -61,7 +61,7 @@ class FileBuffer
   def flush(fd, submit_kernel = true)
     retval = EOF
     if @is_write && submit_kernel
-      retval = write(fd, @buffer.as(LibC::String), @pos)
+      retval = write(fd, @buffer.as(UInt8*), @pos)
     end
     @pos = 0.to_usize
     retval
@@ -103,7 +103,7 @@ class File
   def initialize(@fd, @status, @buffering)
   end
 
-  def initialize(@fd, mode : LibC::String)
+  def initialize(@fd, mode : UInt8*)
     @status = Status::None
     until mode.value == 0
       ch = mode.value.unsafe_chr
@@ -116,7 +116,7 @@ class File
     end
   end
 
-  def self.open_mode(mode : LibC::String)
+  def self.open_mode(mode : UInt8*)
     retval = 0
     until mode.value == 0
       ch = mode.value.unsafe_chr
@@ -161,7 +161,7 @@ class File
 
   # reading
   def fputs(str : String)
-    write(@fd, str.to_unsafe.as(LibC::String),
+    write(@fd, str.to_unsafe.as(UInt8*),
           str.size.to_usize).to_int
   end
 
@@ -187,8 +187,8 @@ class File
 
   def fputc(c)
     return -1 unless @status.includes?(Status::Write)
-    buffer = uninitialized Int8[1]
-    buffer.to_unsafe[0] = c.to_i8
+    buffer = uninitialized UInt8[1]
+    buffer.to_unsafe[0] = c.to_u8
     write(@fd, buffer.to_unsafe, 1).to_int
   end
 
@@ -199,7 +199,7 @@ class File
       idx = read @fd, str, size.to_usize
       if idx == EOF
         @status |= Status::EOF
-        LibC::String.null
+        Pointer(UInt8).null
       elsif idx == SYSCALL_ERR
         # TODO
         abort
@@ -217,7 +217,7 @@ class File
     return -1 unless @status.includes?(Status::Read)
     if @buffering == Buffering::Unbuffered
       retval = 0
-      if read(@fd, pointerof(retval).as(LibC::String), 1) == EOF
+      if read(@fd, pointerof(retval).as(UInt8*), 1) == EOF
         @status |= Status::EOF
         return EOF
       end
@@ -236,10 +236,10 @@ class File
 
   GETLINE_INITIAL = 128.to_usize
 
-  def getline(lineptr : LibC::String*, n : LibC::SizeT*) : LibC::SSizeT
+  def getline(lineptr : UInt8**, n : LibC::SizeT*) : LibC::SSizeT
     if lineptr.value.null? && n.value == 0
       n.value = GETLINE_INITIAL
-      lineptr.value = LibC::String.malloc(GETLINE_INITIAL)
+      lineptr.value = Pointer(UInt8).malloc(GETLINE_INITIAL)
     end
     line = lineptr.value
     line_size = n.value
@@ -258,7 +258,7 @@ class File
         line = line.realloc(line_size)
         lineptr.value = line
       end
-      line[i] = ch.to_i8
+      line[i] = ch.to_u8
       if ch == 0
         return i
       elsif ch == '\n'.ord
@@ -275,7 +275,7 @@ class File
   def fread(ptr, len)
     return 0.to_usize unless @status.includes?(Status::Read)
     if @buffering == Buffering::Unbuffered
-      retval = read(@fd, ptr.as(LibC::String),
+      retval = read(@fd, ptr.as(UInt8*),
                     len.to_usize).to_usize
       if retval < 0
         if retval == EOF
@@ -295,7 +295,7 @@ class File
   def fwrite(ptr, len)
     return 0.to_usize unless @status.includes?(Status::Write)
     if @buffering == Buffering::Unbuffered
-      write(@fd, ptr.as(LibC::String),
+      write(@fd, ptr.as(UInt8*),
             len.to_usize).to_usize
     else
       ret = @wbuffer.fwrite(@fd, ptr.as(UInt8*),
@@ -354,7 +354,7 @@ module Stdio
 end
 
 # file operations
-fun fopen(file : LibC::String, mode : LibC::String) : Void*
+fun fopen(file : UInt8*, mode : UInt8*) : Void*
   # TODO: mode
   fd = _open(file, File.open_mode(mode))
   if fd.to_u32 == SYSCALL_ERR
@@ -363,7 +363,7 @@ fun fopen(file : LibC::String, mode : LibC::String) : Void*
   File.new(fd, mode).as(Void*)
 end
 
-fun freopen(file : LibC::String, mode : LibC::String, stream : Void*) : Void*
+fun freopen(file : UInt8*, mode : UInt8*, stream : Void*) : Void*
   # TODO
   abort
   Pointer(Void).null
@@ -375,10 +375,10 @@ fun tmpfile : Void*
   Pointer(Void).null
 end
 
-fun tmpnam(str : LibC::String) : LibC::String
+fun tmpnam(str : UInt8*) : UInt8*
   # TODO
   abort
-  LibC::String.null
+  Pointer(UInt8).null
 end
 
 fun fclose(stream : Void*) : LibC::Int
@@ -431,7 +431,7 @@ fun fwrite(ptr : UInt8*, size : LibC::SizeT, nmemb : LibC::SizeT, stream : Void*
   stream.as(File).fwrite(ptr, size * nmemb)
 end
 
-fun fgets(str : LibC::String, size : LibC::Int, stream : Void*) : LibC::String
+fun fgets(str : UInt8*, size : LibC::Int, stream : Void*) : UInt8*
   stream.as(File).fgets(str, size)
 end
 
@@ -443,7 +443,7 @@ fun ungetc(ch : LibC::Int, stream : Void*) : LibC::Int
   stream.as(File).ungetc ch
 end
 
-fun setvbuf(stream : Void*, buffer : LibC::String, mode : LibC::Int, size : LibC::SizeT)
+fun setvbuf(stream : Void*, buffer : UInt8*, mode : LibC::Int, size : LibC::SizeT)
   ::LibC::Int
   # TODO
   abort
@@ -461,28 +461,28 @@ end
 fun clearerr(stream : Void*)
 end
 
-fun fputs(str : LibC::String, stream : Void*) : LibC::Int
+fun fputs(str : UInt8*, stream : Void*) : LibC::Int
   stream.as(File).fputs str
 end
 
-fun fnputs(data : LibC::String, len : LibC::SizeT, stream : Void*) : LibC::Int
+fun fnputs(data : UInt8*, len : LibC::SizeT, stream : Void*) : LibC::Int
   stream.as(File).fnputs data, len
 end
 
 # prints
-fun puts(data : LibC::String) : LibC::Int
+fun puts(data : UInt8*) : LibC::Int
   ret = write(STDOUT, data, strlen(data).to_usize)
   ret += putchar '\n'.ord.to_int
   ret
 end
 
-fun nputs(data : LibC::String, len : LibC::SizeT) : LibC::Int
+fun nputs(data : UInt8*, len : LibC::SizeT) : LibC::Int
   write(STDOUT, data, len.to_usize)
 end
 
 fun putchar(c : LibC::Int) : LibC::Int
-  buffer = uninitialized Int8[1]
-  buffer.to_unsafe[0] = c.to_i8
+  buffer = uninitialized UInt8[1]
+  buffer.to_unsafe[0] = c.to_u8
   write(STDOUT, buffer.to_unsafe, 1)
 end
 
@@ -497,14 +497,14 @@ end
 # get
 fun getchar : LibC::Int
   retval = 0
-  read(STDIN, pointerof(retval).as(LibC::String), 1)
+  read(STDIN, pointerof(retval).as(UInt8*), 1)
   retval
 end
 
-fun getline(lineptr : LibC::String*, n : LibC::SizeT*, stream : Void*) : LibC::SSizeT
+fun getline(lineptr : UInt8**, n : LibC::SizeT*, stream : Void*) : LibC::SSizeT
   stream.as(File).getline lineptr, n
 end
 
 # errors
-fun perror(s : LibC::String)
+fun perror(s : UInt8*)
 end

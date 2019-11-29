@@ -18,7 +18,7 @@ lib LibC
   end
 end
 
-fun opendir(dirname : LibC::String) : LibC::DIR*
+fun opendir(dirname : UInt8*) : LibC::DIR*
   dirp = Pointer(LibC::DIR).malloc
   if (dirp.value.fd = _open(dirname, 0)) == SYSCALL_ERR
     dirp.free

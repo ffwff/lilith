@@ -21,9 +21,9 @@ lib LibC
     tm_isdst : LibC::Int
   end
 
-  fun snprintf(str : LibC::UString,
+  fun snprintf(str : UInt8*,
                size : LibC::SizeT,
-               format : LibC::UString, ...) : LibC::Int
+               format : UInt8*, ...) : LibC::Int
 
   $__libc_timeval : Timeval
   $__libc_tm : Tm
@@ -181,8 +181,8 @@ private macro format!(fmt, num)
   return j if j == max
 end
 
-fun strftime(s : LibC::UString, max : LibC::SizeT,
-             format : LibC::UString, tm : LibC::Tm*) : LibC::SizeT
+fun strftime(s : UInt8*, max : LibC::SizeT,
+             format : UInt8*, tm : LibC::Tm*) : LibC::SizeT
   i : LibC::SizeT = 0
   j : LibC::SizeT = 0
   until format[i] == 0
