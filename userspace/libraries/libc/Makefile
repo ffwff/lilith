@@ -17,9 +17,7 @@ MATH_OBJ = \
 CRYSTAL_SRC = $(wildcard src/*.cr) $(wildcard src/functions/*.cr)
 MATH_SRC=$(wildcard src/functions/math/*.cr)
 
-# TODO: not hard code CR
-CR=$(shell pwd)/../../../toolchain/crystal/.build/crystal
-
+CR=crystal
 CRFLAGS=--cross-compile --target $(CRTARGET) --prelude ./prelude.cr -Ddisable_overflow
 CCFLAGS = -Isrc/include -nostdlib -Wall
 

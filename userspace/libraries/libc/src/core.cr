@@ -19,6 +19,12 @@ lib LibC
   {% end %}
 end
 
+struct Tuple
+  def self.new(*args : *T)
+    args
+  end
+end
+
 # Bools
 struct Bool
   def to_int
