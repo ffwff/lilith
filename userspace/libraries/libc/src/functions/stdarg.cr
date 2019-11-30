@@ -19,4 +19,8 @@ struct VaList
       Intrinsics.va_end pointerof(ap)
     end
   end
+  
+  @[Primitive(:va_arg)]
+  def next(type)
+  end
 end
