@@ -174,7 +174,7 @@ fun getpid : LibC::Pid
   lilith_syscall(SC_GETPID, 0).to_int
 end
 
-fun abort
+fun abort : NoReturn
   Pointer(LibC::UInt).null.value = 0
   while true
   end
