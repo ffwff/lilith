@@ -1,5 +1,16 @@
 lib LibC
-  type VaList = Void*
+  {% if flag?(:i386) %}
+    type VaList = Void*
+  {% elsif flag?(:x86_64) %}
+    struct VaListTag
+      gp_offset : UInt
+      fp_offset : UInt
+      overflow_arg_area : Void*
+      reg_save_area : Void*
+    end
+
+    type VaList = VaListTag[1]
+  {% end %}
 end
 
 struct VaList
