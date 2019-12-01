@@ -92,6 +92,10 @@ struct Int
     self.unsafe_shr other
   end
 
+  def //(other)
+    self.unsafe_div other
+  end
+
   def %(other)
     self.unsafe_mod other
   end
@@ -180,6 +184,18 @@ end
 struct StaticArray(T, N)
   def to_unsafe : Pointer(T)
     pointerof(@buffer)
+  end
+
+  def size
+    N
+  end
+
+  def [](idx : Int)
+    to_unsafe[idx]
+  end
+
+  def []=(idx : Int, val : T)
+    to_unsafe[idx] = val
   end
 end
 
