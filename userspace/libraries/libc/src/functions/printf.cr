@@ -1,8 +1,12 @@
 private NULL_STR = "(null)"
 private HEX_STR = "0x"
+private NINF_STR = "-inf"
+private PINF_STR = "inf"
+private NNAN_STR = "-nan"
+private PNAN_STR = "nan"
 private BASE = "0123456789abcdefghijklmnopqrstuvwxyz"
 
-private def printf_int(intg : Int, base = 10)
+private def printf_int(intg, base = 10)
   s = uninitialized UInt8[128]
   sign = intg < 0
   n = intg < 0 ? (intg * -1) : intg
@@ -27,6 +31,10 @@ private def printf_int(intg : Int, base = 10)
     j -= 1
   end
   Tuple.new(s, len + 1)
+end
+
+private def str_to_tuple(str : String)
+  Tuple.new(str.to_unsafe, str.size)
 end
 
 private macro format_int(type, base)
@@ -54,7 +62,7 @@ private def internal_gprintf(format : UInt8*, args : VaList, &block)
         format += 1
         str = args.next(Pointer(UInt8))
         if str.address == 0
-          return written if (retval = yield Tuple.new(NULL_STR.to_unsafe, NULL_STR.size)) == 0
+          return written if (retval = yield str_to_tuple(NULL_STR)) == 0
         else
           return written if (retval = yield Tuple.new(str, strlen(str).to_i32)) == 0
         end
@@ -66,12 +74,44 @@ private def internal_gprintf(format : UInt8*, args : VaList, &block)
       when 'o'.ord
         format_int(LibC::Int, 8)
       when 'p'.ord
-        return written if (retval = yield Tuple.new(HEX_STR.to_unsafe, HEX_STR.size)) == 0
+        return written if (retval = yield str_to_tuple(HEX_STR)) == 0
         written += retval
         format_int(LibC::ULong, 16)
       when 'f'.ord
         format += 1
+
         float = args.next(Float64)
+        bits = float.unsafe_as(UInt64)
+        fraction = bits & 0xfffffffffffffu64
+        exponent = (bits >> 52) & 0x7ffu64
+
+        if exponent == 0x7FF
+          # special values
+          if fraction == 0 # inf
+            str = (bits & (1 << 53)) != 0 ? NINF_STR : PINF_STR
+            return written if (retval = yield str_to_tuple(str)) == 0
+          else # nan
+            str = (bits & (1 << 53)) != 0 ? NNAN_STR : PNAN_STR
+            return written if (retval = yield str_to_tuple(str)) == 0
+          end
+          written += retval
+          next
+        else
+          # numeric values
+          decimal = float.to_i64
+          fractional = ((float - decimal) * 100000000).to_i64
+
+          str, size = printf_int(decimal)
+          return written if (retval = yield Tuple.new(str.to_unsafe, size.to_i32)) == 0
+          written += retval
+
+          return written if (retval = yield '.') == 0
+          written += retval
+
+          str, size = printf_int(fractional)
+          return written if (retval = yield Tuple.new(str.to_unsafe, size.to_i32)) == 0
+          written += retval
+        end
       when 'l'.ord
         # TODO
       when '0'.ord
