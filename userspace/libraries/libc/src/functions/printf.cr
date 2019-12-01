@@ -37,22 +37,61 @@ private def str_to_tuple(str : String)
   Tuple.new(str.to_unsafe, str.size)
 end
 
-private macro format_int(type, base)
+private macro format_num(type, base)
   format += 1
   int = args.next({{ type }})
   str, size = printf_int(int, {{ base }})
+  if pad_field > 0 && size < pad_field
+    zeroes = uninitialized UInt8[64]
+    pad_width = pad_field - size
+    abort if pad_width > 64
+    pad_width.times do |w|
+      zeroes[w] = '0'.ord.to_u8
+    end
+    return written if (retval = yield Tuple.new(zeroes.to_unsafe, pad_width.to_i32)) == 0
+    written += retval
+  end
   return written if (retval = yield Tuple.new(str.to_unsafe, size.to_i32)) == 0
   written += retval
 end
 
+private macro format_int(base)
+  case length_field
+  when LengthField::Long
+    format_num(LibC::Long, {{ base }})
+  when LengthField::LongLong
+    format_num(LibC::LongLong, {{base}})
+  else
+    format_num(LibC::Int, {{base}})
+  end
+end
+
+private enum LengthField
+  None
+  Long
+  LongLong
+  LongDouble
+end
+
 private def internal_gprintf(format : UInt8*, args : VaList, &block)
   written = 0
+  field_parsed = false
+  length_field = LengthField::None
+  pad_field = 0
   while format.value != 0
-    if format.value == '%'.ord
-      format += 1
+    if format.value == '%'.ord || field_parsed
+      if field_parsed
+        field_parsed = false
+      else
+        format += 1
+      end
       case format.value
       when 0
         return written
+      when '%'.ord
+        format += 1
+        return written if (retval = yield '%') == 0
+        written += retval
       when 'c'.ord
         format += 1
         ch = args.next(LibC::Int)
@@ -68,15 +107,15 @@ private def internal_gprintf(format : UInt8*, args : VaList, &block)
         end
         written += retval
       when 'd'.ord
-        format_int(LibC::Int, 10)
+        format_int(10)
       when 'x'.ord
-        format_int(LibC::Int, 16)
+        format_int(16)
       when 'o'.ord
-        format_int(LibC::Int, 8)
+        format_int(8)
       when 'p'.ord
         return written if (retval = yield str_to_tuple(HEX_STR)) == 0
         written += retval
-        format_int(LibC::ULong, 16)
+        format_num(LibC::ULong, 16)
       when 'f'.ord
         format += 1
 
@@ -113,11 +152,33 @@ private def internal_gprintf(format : UInt8*, args : VaList, &block)
           written += retval
         end
       when 'l'.ord
-        # TODO
+        format += 1
+        case length_field
+        when LengthField::None
+          length_field = LengthField::Long
+        when LengthField::Long
+          length_field = LengthField::LongLong
+        end
+        field_parsed = true
+        next
       when '0'.ord
-        # TODO
+        format += 1
+        while format.value >= '0'.ord && format.value <= '9'.ord
+          pad_field = pad_field * 10 + (format.value - '0'.ord)
+          format += 1
+        end
+        LibC.fprintf LibC.stderr, "field: %d\n",pad_field
+        if pad_field > 64
+          pad_field = 64
+        end
+        field_parsed = true
+        next
       end
     end
+
+    # reset all fields
+    length_field = LengthField::None
+    pad_field = 0
 
     format_start = format
     amount = 0
