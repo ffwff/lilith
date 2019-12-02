@@ -43,8 +43,16 @@ int dprintf(int fd, const char *format, ...);
 int sprintf(char *str, const char *format, ...);
 int snprintf(char *str, size_t size, const char *format, ...);
 
-int vfprintf(FILE *stream, const char *format, va_list ap);
-int vsnprintf(char *str, size_t size, const char *format, va_list ap);
+#define X(name, fargs, cfargs, cargs) \
+int __libc_ ## name cfargs;         \
+static inline int name fargs {      \
+  return __libc_ ## name cargs;     \
+}
+X(vprintf, (char *format, va_list ap), (char *, va_list *), (format, &ap))
+X(vfprintf, (FILE *f, char *format, va_list ap), (FILE *, char *, va_list *), (f, format, &ap))
+X(vsprintf, (char *str, char *format, va_list ap), (char *, char *, va_list *), (str, format, &ap))
+X(vsnprintf, (char *str, size_t sz, char *format, va_list ap), (char *, size_t, char *, va_list *), (str, sz, format, &ap))
+#undef X
 
 int sscanf(const char *str, const char *format, ...);
 

@@ -1,8 +1,9 @@
 #include <syscalls.h>
 #include <stdarg.h>
 
-int _open(char *device, int flags);
+void *stdin, *stdout, *stderr;
 
+int _open(char *device, int flags);
 int open(char *device, int flags, ...) {
   va_list vl;
   va_start(vl, flags);
