@@ -20,9 +20,15 @@ lib LibC
     tm_yday : LibC::Int
     tm_isdst : LibC::Int
   end
+end
 
-  $__libc_timeval : Timeval
-  $__libc_tm : Tm
+module Time
+  extend self
+
+  @@tm = uninitialized LibC::Tm
+  def tm_p
+    pointerof(@@tm)
+  end
 end
 
 private UNIX_YEAR   = 1970
@@ -151,9 +157,8 @@ fun localtime(time_t : LibC::TimeT*) : LibC::Tm*
   tm.tm_min = minutes
   tm.tm_sec = seconds
 
-  pointerof(LibC.__libc_tm).value = tm
-
-  pointerof(LibC.__libc_tm)
+  Time.tm_p.value = tm
+  Time.tm_p
 end
 
 fun clock : LibC::ClockT
