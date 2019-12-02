@@ -46,5 +46,6 @@ lib Intrinsics
   fun counttrailing128 = "llvm.cttz.i128"(src : Int128, zero_is_undef : Bool) : Int128
 
   fun va_start = "llvm.va_start"(ap : Void*)
+  fun va_copy = "llvm.va_copy"(dest : Void*, src : Void*)
   fun va_end = "llvm.va_end"(ap : Void*)
 end

@@ -42,20 +42,3 @@ fun exit(status : LibC::Int)
   Stdio.flush
   _exit
 end
-
-@[Weak]
-fun __crystal_get_exception(unwind_ex : Void*) : UInt64
-  abort
-  0u64
-end
-
-@[Weak]
-fun __crystal_personality
-  abort
-end
-
-@[Weak]
-fun __crystal_raise(unwind_ex : Void*) : NoReturn
-  abort
-  while true; end
-end
