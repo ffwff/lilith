@@ -24,11 +24,17 @@ struct VaList
   def self.open
     ap = uninitialized LibC::VaList
     Intrinsics.va_start pointerof(ap)
-    begin
-      yield new(ap)
-    ensure
-      Intrinsics.va_end pointerof(ap)
-    end
+    retval = yield new(ap)
+    Intrinsics.va_end pointerof(ap)
+    retval
+  end
+
+  def self.copy(other : LibC::VaList*)
+    ap = uninitialized LibC::VaList
+    Intrinsics.va_copy pointerof(ap), other
+    retval = yield new(ap)
+    Intrinsics.va_end pointerof(ap)
+    retval
   end
   
   @[Primitive(:va_arg)]

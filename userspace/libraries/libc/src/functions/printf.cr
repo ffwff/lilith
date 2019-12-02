@@ -216,3 +216,9 @@ fun cr_printf(format : UInt8*, ...) : LibC::Int
     internal_printf(format, args)
   end
 end
+
+fun cr_vprintf(format : UInt8*, ap : LibC::VaList*): LibC::Int
+  VaList.copy(ap) do |args|
+    internal_printf(format, args)
+  end
+end
