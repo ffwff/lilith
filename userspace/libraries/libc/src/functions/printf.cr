@@ -211,9 +211,78 @@ private def internal_printf(format : UInt8*, args : VaList)
   end
 end
 
+private def internal_fprintf(file : Void*, format : UInt8*, args : VaList)
+  internal_gprintf(format, args) do |value|
+    case value
+    when Char
+      # TODO: multibyte char
+      fputc value.ord, file
+    when Tuple(UInt8*, Int32)
+      str, size = value
+      fnputs str, size.to_usize, file
+    else
+      Stdio.stderr.fputs "unhandled type\n"
+      abort
+    end
+  end
+end
+
+# pass limit=-1 for snprintf return behavior
+private def internal_snprintf(buf : UInt8*, limit : Int, format : UInt8*, args : VaList)
+  written = 0
+  internal_gprintf(format, args) do |value|
+    case value
+    when Char
+      # TODO: multibyte char
+      if limit == -1
+        written += 1
+      elsif limit > 0
+        buf[0] = value.ord.to_u8
+        buf += 1
+        written += 1
+        limit -= 1
+      end
+      1
+    when Tuple(UInt8*, Int32)
+      str, size = value
+      if limit == -1
+        written += size
+      elsif limit > 0
+        strncpy buf, str, size.to_usize
+        buf += size
+        written += size
+        limit -= size
+      end
+      size
+    else
+      Stdio.stderr.fputs "unhandled type\n"
+      abort
+    end
+  end
+  written
+end
+
 fun cr_printf(format : UInt8*, ...) : LibC::Int
   VaList.open do |args|
     internal_printf(format, args)
+  end
+end
+
+fun cr_fprintf(stream : Void*, format : UInt8*, ...) : LibC::Int
+  VaList.open do |args|
+    internal_fprintf(stream, format, args)
+  end
+end
+
+fun cr_snprintf(str : UInt8*, size : LibC::SizeT, format : UInt8*, ...) : LibC::Int
+  VaList.open do |args|
+    internal_snprintf(str, size, format, args)
+  end
+end
+
+fun cr_sprintf(str : UInt8*, format : UInt8*, ...) : LibC::Int
+  VaList.open do |args|
+    internal_snprintf(str, -1, format, args)
   end
 end
 
