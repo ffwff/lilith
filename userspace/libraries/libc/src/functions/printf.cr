@@ -167,7 +167,6 @@ private def internal_gprintf(format : UInt8*, args : VaList, &block)
           pad_field = pad_field * 10 + (format.value - '0'.ord)
           format += 1
         end
-        LibC.fprintf LibC.stderr, "field: %d\n",pad_field
         if pad_field > 64
           pad_field = 64
         end
@@ -248,6 +247,7 @@ private def internal_snprintf(buf : UInt8*, limit : Int, format : UInt8*, args :
       if limit == -1
         written += size
       elsif limit > 0
+        size = Math.min(size, limit)
         strncpy buf, str, size.to_usize
         buf += size
         written += size
@@ -289,5 +289,23 @@ end
 fun cr_vprintf(format : UInt8*, ap : LibC::VaList*): LibC::Int
   VaList.copy(ap) do |args|
     internal_printf(format, args)
+  end
+end
+
+fun cr_vfprintf(stream : Void*, format : UInt8*, ap : LibC::VaList*): LibC::Int
+  VaList.copy(ap) do |args|
+    internal_fprintf(stream, format, args)
+  end
+end
+
+fun cr_vsnprintf(str : UInt8*, size : LibC::SizeT, format : UInt8*, ap : LibC::VaList*): LibC::Int
+  VaList.copy(ap) do |args|
+    internal_snprintf(str, size, format, args)
+  end
+end
+
+fun cr_vsprintf(str : UInt8*, format : UInt8*, ap : LibC::VaList*): LibC::Int
+  VaList.copy(ap) do |args|
+    internal_snprintf(str, -1, format, args)
   end
 end

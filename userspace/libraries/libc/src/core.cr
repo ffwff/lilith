@@ -267,3 +267,14 @@ fun __crystal_once(state : Void*, flag : Bool*, initializer : Void*)
     flag.value = true
   end
 end
+
+module Math
+  extend self
+  macro max(x, y)
+    {{ x }} > {{ y }} ? {{ x }} : {{ y }}
+  end
+  
+  macro min(x, y)
+    {{ x }} < {{ y }} ? {{ x }} : {{ y }}
+  end
+end
