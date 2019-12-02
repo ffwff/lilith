@@ -171,49 +171,72 @@ fun mktime(timep : Void*) : LibC::TimeT
   0.to_ulonglong
 end
 
-private macro format!(fmt, num)
-  i += 1
-  return 0u64
-  # FIXME: snprintf can't be called with multiple arguments
-  # j += snprintf(s + j, max - j, {{ fmt }}, {{ num }})
-  return j if j == max
+private macro nformat(n, pad=0)
+  str, size = printf_int({{ n }})
+  if {{ pad }} > 0 && size < {{ pad }}
+    padsize = Math.min({{ pad }} - size, max)
+    padsize.times do
+      s.value = '0'.ord.to_u8
+      s += 1
+    end
+    max -= padsize
+    written += padsize
+  end
+  size = Math.min(size, max)
+  strncpy(s, str.to_unsafe, size.to_usize)
+  s += size
+  max -= size
+  written += size
+  return written if max == 0
 end
 
 fun strftime(s : UInt8*, max : LibC::SizeT,
              format : UInt8*, tm : LibC::Tm*) : LibC::SizeT
-  i : LibC::SizeT = 0
-  j : LibC::SizeT = 0
-  until format[i] == 0
-    if format[i] == '%'.ord
-      i += 1
-      case format[i].unsafe_chr
-      when 'Y'
-        format!("%d", tm.value.tm_year)
-      when 'm'
-        format!("%d", tm.value.tm_mon)
-      when 'd'
-        format!("%d", tm.value.tm_mday)
-      when 'H'
-        format!("%02d", tm.value.tm_hour)
-      when 'M'
-        format!("%02d", tm.value.tm_min)
-      when 'S'
-        format!("%02d", tm.value.tm_sec)
-      when '%'
-        i += 1
-        return j if j == max
-        s[j] = '%'.ord.to_u8
-        j += 1
+  written : LibC::SizeT = 0
+  until format.value == 0
+    if format.value == '%'.ord
+      format += 1
+      case format.value
+      when 'Y'.ord
+        format += 1
+        nformat(tm.value.tm_year)
+      when 'm'.ord
+        format += 1
+        nformat(tm.value.tm_mon, 2)
+      when 'd'.ord
+        format += 1
+        nformat(tm.value.tm_mday, 2)
+      when 'H'.ord
+        format += 1
+        nformat(tm.value.tm_hour, 2)
+      when 'M'.ord
+        format += 1
+        nformat(tm.value.tm_min, 2)
+      when 'S'.ord
+        format += 1
+        nformat(tm.value.tm_sec, 2)
+      when '%'.ord
+        format += 1
       else
-        return j
+        return written
       end
-    else
-      return j if j == max
-      s[j] = format[i]
-      i += 1
-      j += 1
+    end
+
+    format_start = format
+    amount = 0
+    while format.value != 0
+      break if format.value == '%'.ord
+      amount += 1
+      format += 1
+    end
+    if amount > 0
+      write_amount = Math.min(amount, max)
+      strncpy(s, format_start, write_amount.to_usize)
+      s += write_amount
+      max -= write_amount
+      written += write_amount
+      return written if max == 0
     end
   end
-  s[j] = 0
-  j
+  written
 end

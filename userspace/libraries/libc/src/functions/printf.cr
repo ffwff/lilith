@@ -6,7 +6,7 @@ private NNAN_STR = "-nan"
 private PNAN_STR = "nan"
 private BASE = "0123456789abcdefghijklmnopqrstuvwxyz"
 
-private def printf_int(intg, base = 10)
+def printf_int(intg, base = 10)
   s = uninitialized UInt8[128]
   sign = intg < 0
   n = intg < 0 ? (intg * -1) : intg
@@ -78,7 +78,7 @@ private def internal_gprintf(format : UInt8*, args : VaList, &block)
   field_parsed = false
   length_field = LengthField::None
   pad_field = 0
-  while format.value != 0
+  until format.value == 0
     if format.value == '%'.ord || field_parsed
       if field_parsed
         field_parsed = false
