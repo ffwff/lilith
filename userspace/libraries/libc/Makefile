@@ -7,10 +7,10 @@ CC = $(ARCH)-gcc
 AS = $(ARCH)-as
 
 OBJ = \
+	.build/libc.cr.o \
 	$(patsubst src/functions/arch/shim/%.c, .build/%.o, $(wildcard src/functions/arch/shim/*)) \
 	$(patsubst src/functions/arch/asm/$(CPU)/%.s, .build/asm/%.o, $(wildcard src/functions/arch/asm/$(CPU)/*.s)) \
-	.build/crt0.o .build/crti.o .build/crtn.o \
-	.build/libc.cr.o
+	.build/crt0.o .build/crti.o .build/crtn.o
 MATH_OBJ = \
 	$(patsubst src/functions/arch/asm/$(CPU)/math/%.s, .build/asm/%.o, $(wildcard src/functions/arch/asm/$(CPU)/math/*))
 

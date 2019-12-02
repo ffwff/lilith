@@ -21,10 +21,6 @@ lib LibC
     tm_isdst : LibC::Int
   end
 
-  fun snprintf(str : UInt8*,
-               size : LibC::SizeT,
-               format : UInt8*, ...) : LibC::Int
-
   $__libc_timeval : Timeval
   $__libc_tm : Tm
 end
@@ -177,7 +173,9 @@ end
 
 private macro format!(fmt, num)
   i += 1
-  j += LibC.snprintf(s + j, max - j, {{ fmt }}, {{ num }})
+  return 0u64
+  # FIXME: snprintf can't be called with multiple arguments
+  # j += snprintf(s + j, max - j, {{ fmt }}, {{ num }})
   return j if j == max
 end
 

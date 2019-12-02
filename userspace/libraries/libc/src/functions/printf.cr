@@ -262,49 +262,49 @@ private def internal_snprintf(buf : UInt8*, limit : Int, format : UInt8*, args :
   written
 end
 
-fun cr_printf(format : UInt8*, ...) : LibC::Int
+fun printf(format : UInt8*, ...) : LibC::Int
   VaList.open do |args|
     internal_printf(format, args)
   end
 end
 
-fun cr_fprintf(stream : Void*, format : UInt8*, ...) : LibC::Int
+fun fprintf(stream : Void*, format : UInt8*, ...) : LibC::Int
   VaList.open do |args|
     internal_fprintf(stream, format, args)
   end
 end
 
-fun cr_snprintf(str : UInt8*, size : LibC::SizeT, format : UInt8*, ...) : LibC::Int
+fun snprintf(str : UInt8*, size : LibC::SizeT, format : UInt8*, ...) : LibC::Int
   VaList.open do |args|
     internal_snprintf(str, size, format, args)
   end
 end
 
-fun cr_sprintf(str : UInt8*, format : UInt8*, ...) : LibC::Int
+fun sprintf(str : UInt8*, format : UInt8*, ...) : LibC::Int
   VaList.open do |args|
     internal_snprintf(str, -1, format, args)
   end
 end
 
-fun cr_vprintf(format : UInt8*, ap : LibC::VaList*): LibC::Int
+fun __libc_vprintf(format : UInt8*, ap : LibC::VaList*): LibC::Int
   VaList.copy(ap) do |args|
     internal_printf(format, args)
   end
 end
 
-fun cr_vfprintf(stream : Void*, format : UInt8*, ap : LibC::VaList*): LibC::Int
+fun __libc_vfprintf(stream : Void*, format : UInt8*, ap : LibC::VaList*): LibC::Int
   VaList.copy(ap) do |args|
     internal_fprintf(stream, format, args)
   end
 end
 
-fun cr_vsnprintf(str : UInt8*, size : LibC::SizeT, format : UInt8*, ap : LibC::VaList*): LibC::Int
+fun __libc_vsnprintf(str : UInt8*, size : LibC::SizeT, format : UInt8*, ap : LibC::VaList*): LibC::Int
   VaList.copy(ap) do |args|
     internal_snprintf(str, size, format, args)
   end
 end
 
-fun cr_vsprintf(str : UInt8*, format : UInt8*, ap : LibC::VaList*): LibC::Int
+fun __libc_vsprintf(str : UInt8*, format : UInt8*, ap : LibC::VaList*): LibC::Int
   VaList.copy(ap) do |args|
     internal_snprintf(str, -1, format, args)
   end
