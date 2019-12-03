@@ -66,7 +66,7 @@ private macro format_int(base)
   end
 end
 
-private enum LengthField
+enum LengthField
   None
   Long
   LongLong
@@ -113,6 +113,7 @@ private def internal_gprintf(format : UInt8*, args : VaList, &block)
       when 'o'.ord
         format_int(8)
       when 'p'.ord
+        format += 1
         return written if (retval = yield str_to_tuple(HEX_STR)) == 0
         written += retval
         format_num(LibC::ULong, 16)
