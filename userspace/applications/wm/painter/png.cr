@@ -38,7 +38,7 @@ end
 module Painter
   extend self
 
-  struct Image
+  class Image
     getter width, height, bytes
     def initialize(@width : Int32, @height : Int32, @bytes : Bytes)
     end

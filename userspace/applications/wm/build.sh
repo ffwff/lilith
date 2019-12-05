@@ -4,6 +4,7 @@ build() {
   $script_dir/compile $script_dir/desktop.cr $build_dir/desktop
   $script_dir/compile $script_dir/cterm.cr $build_dir/cterm
   $script_dir/compile $script_dir/cbar.cr $build_dir/cbar
+  LDFLAGS="-I$opt_toolsdir/include -L$opt_toolsdir/lib -lpng -lz -lm -msse2" $script_dir/compile $script_dir/cfm.cr $build_dir/cfm
   LDFLAGS="-I$opt_toolsdir/include -L$opt_toolsdir/lib -lpng -lz -lm -msse2" $script_dir/compile $script_dir/pape.cr $build_dir/pape
 }
 
