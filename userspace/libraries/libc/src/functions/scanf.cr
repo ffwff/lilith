@@ -71,7 +71,59 @@ private def internal_gscanf(format : UInt8*, args : VaList, &block)
         intptr.value = num
       when 'f'.ord
         format += 1
-        # TODO: implement
+
+        dec = 0
+        frac = 0
+        frac_divider = 1
+        sign = 1
+
+        # read first byte
+        case (ch = yield ScanfReq::Getc)
+        when '+'.ord
+        when '-'.ord
+          sign = -1
+        else
+          if isdigit(ch.to_int) == 1
+            dec = (ch - '0'.ord).to_i32
+          else
+            return read_bytes
+          end
+        end
+        read_bytes += 1
+
+        # read some digits
+        while (ch = yield ScanfReq::Getc)
+          if isdigit(ch.to_int) == 1
+            digit = ch - '0'.ord
+            dec = dec * 10 + digit
+          elsif ch == '.'.ord
+            read_bytes += 1
+            # fractional part
+            while (ch = yield ScanfReq::Getc)
+              if isdigit(ch.to_int) == 1
+                digit = ch - '0'.ord
+                frac = frac * 10 + digit
+                frac_divider *= 10
+              else
+                yield ScanfReq::Ungetc
+                break
+              end
+            end
+            break
+          else
+            yield ScanfReq::Ungetc
+            break
+          end
+          read_bytes += 1
+        end
+        
+        if length_field == LengthField::None
+          fptr = args.next(Pointer(Float32))
+          fptr.value = sign.to_f32 * (dec.to_f32 + frac.to_f32 / frac_divider.to_f32)
+        else
+          fptr = args.next(Pointer(Float64))
+          fptr.value = sign.to_f64 * (dec.to_f64 + frac.to_f64 / frac_divider.to_f64)
+        end
       when 'l'.ord
         format += 1
         case length_field
@@ -130,7 +182,7 @@ private def internal_sscanf(str : UInt8*, format : UInt8*, args : VaList)
   end
 end
 
-fun cr_sscanf(str : UInt8*, format : UInt8*, ...) : LibC::Int
+fun sscanf(str : UInt8*, format : UInt8*, ...) : LibC::Int
   VaList.open do |args|
     internal_sscanf(str, format, args)
   end
