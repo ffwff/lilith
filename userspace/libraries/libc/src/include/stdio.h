@@ -43,18 +43,28 @@ int dprintf(int fd, const char *format, ...);
 int sprintf(char *str, const char *format, ...);
 int snprintf(char *str, size_t size, const char *format, ...);
 
-#define X(name, fargs, cfargs, cargs) \
-int __libc_ ## name cfargs;         \
-static inline int name fargs {      \
-  return __libc_ ## name cargs;     \
+extern int __libc_vprintf(char *, void *);
+static inline int vprintf(char *format, va_list ap) {
+  return __libc_vprintf(format, &ap);
 }
-X(vprintf, (char *format, va_list ap), (char *, va_list *), (format, &ap))
-X(vfprintf, (FILE *f, char *format, va_list ap), (FILE *, char *, va_list *), (f, format, &ap))
-X(vsprintf, (char *str, char *format, va_list ap), (char *, char *, va_list *), (str, format, &ap))
-X(vsnprintf, (char *str, size_t sz, char *format, va_list ap), (char *, size_t, char *, va_list *), (str, sz, format, &ap))
-#undef X
+
+extern int __libc_vfprintf(FILE *, char *, void *);
+static inline int vfprintf(FILE *f, char *format, va_list ap) {
+  return __libc_vfprintf(f, format, &ap);
+}
+
+extern int __libc_vsprintf(char *, char *, void *);
+static inline int vsprintf(char *s, char *format, va_list ap) {
+  return __libc_vsprintf(s, format, &ap);
+}
+
+extern int __libc_vsnprintf(char *, size_t, char *, void *);
+static inline int vsnprintf(char *s, size_t sz, char *format, va_list ap) {
+  return __libc_vsnprintf(s, sz, format, &ap);
+}
 
 int sscanf(const char *str, const char *format, ...);
+int cr_sscanf(const char *str, const char *format, ...);
 
 int fputc(int c, FILE *stream);
 int fputs(const char *s, FILE *stream);
