@@ -64,7 +64,6 @@ static inline int vsnprintf(char *s, size_t sz, char *format, va_list ap) {
 }
 
 int sscanf(const char *str, const char *format, ...);
-int cr_sscanf(const char *str, const char *format, ...);
 
 int fputc(int c, FILE *stream);
 int fputs(const char *s, FILE *stream);
