@@ -17,18 +17,20 @@ private def internal_gscanf(format : UInt8*, args : VaList, &block)
       end
       case format.value
       when 0
-        return written
+        return read_bytes
       when '%'.ord
         format += 1
         return read_bytes if '%'.ord != yield ScanfReq::Getc
         read_bytes == 1
       when 'c'.ord
         format += 1
-        ch = args.next(Pointer(UInt8))
-        return read_bytes if '%'.ord != yield ScanfReq::Getc
-        read_bytes == 1
-        return written if (retval = yield ch.unsafe_chr) == 0
-        written += retval
+        chp = args.next(Pointer(UInt8))
+        if (ch = yield ScanfReq::Getc)
+          chp.value = ch.to_u8
+        else
+          return read_bytes
+        end
+        read_bytes += 1
       when 's'.ord
         format += 1
         # TODO: implement me
@@ -44,8 +46,8 @@ private def internal_gscanf(format : UInt8*, args : VaList, &block)
         when '-'.ord
           sign = -1
         else
-          if isdigit(ch)
-            num = ch - '0'.ord
+          if isdigit(ch.to_int) == 1
+            num = (ch - '0'.ord).to_int
           else
             return read_bytes
           end
@@ -54,7 +56,7 @@ private def internal_gscanf(format : UInt8*, args : VaList, &block)
 
         # read some digits
         while (ch = yield ScanfReq::Getc)
-          if isdigit(ch)
+          if isdigit(ch.to_int) == 1
             digit = ch - '0'.ord
             num = num * 10 + digit
           else
@@ -65,7 +67,7 @@ private def internal_gscanf(format : UInt8*, args : VaList, &block)
         end
 
         num *= sign
-        intptr = args.next(LibC::Int*)
+        intptr = args.next(Pointer(LibC::Int))
         intptr.value = num
       when 'f'.ord
         format += 1
@@ -108,22 +110,28 @@ private def internal_gscanf(format : UInt8*, args : VaList, &block)
   read_bytes
 end
 
-private def internal_scanf(str : UInt8*, format : UInt8*, args : VaList)
-  internal_scanf(format, args) do |req|
+private def internal_sscanf(str : UInt8*, format : UInt8*, args : VaList)
+  internal_gscanf(format, args) do |req|
     case req
     when ScanfReq::Getc
       ch = str.value
-      str += 1
-      ch
+      if ch == 0
+        0
+      else
+        str += 1
+        ch
+      end
     when ScanfReq::Ungetc
       str -= 1
+      0
+    else
       0
     end
   end
 end
 
-fun cr_scanf(str : UInt8*, format : UInt8*, ...) : LibC::Int
+fun cr_sscanf(str : UInt8*, format : UInt8*, ...) : LibC::Int
   VaList.open do |args|
-    internal_scanf(str, format, args)
+    internal_sscanf(str, format, args)
   end
 end
