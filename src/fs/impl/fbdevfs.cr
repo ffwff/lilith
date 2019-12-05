@@ -1,28 +1,3 @@
-private lib FbdevFSData
-  @[Packed]
-  struct FbBitBlit
-    target_buffer : TargetBuffer
-    source : UInt32
-    x, y, width, height : UInt32
-    type : FbType
-  end
-
-  enum TargetBuffer : Int32
-    Back  = 1
-    Front = 0
-  end
-
-  enum FbType : Int32
-    Surface      = 0
-    Color        = 1
-    SurfaceAlpha = 2
-  end
-end
-
-private lib Kernel
-  fun kalpha_blend(dst : UInt8*, src : UInt8*, yotsu : USize)
-end
-
 private class FbdevFSNode < VFSNode
   getter fs : VFS
 
