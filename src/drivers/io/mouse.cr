@@ -4,67 +4,6 @@ class Mouse
 
   def initialize
     Idt.register_irq 12, ->callback
-
-    # FIXME: move setup + hw communication code to
-    # separate file
-    wait true
-    X86.outb(0x64, 0xFF)
-    read
-
-    # enable auxillary mouse device
-    wait true
-    X86.outb(0x64, 0xA8)
-
-    # enable interrupts
-    wait true
-    X86.outb(0x64, 0x20)
-    wait false
-    _status = X86.inb(0x60) | 2
-    wait true
-    X86.outb(0x64, 0x60)
-    wait true
-    X86.outb(0x60, _status)
-
-    # use default settings
-    write 0xF6
-    read # ACK
-
-    # enable mouse
-    write 0xF4
-    read # ACK
-
-    # reset ps2 keyboard scancode
-    wait true
-    X86.outb(0x60, 0xF0)
-    wait true
-    X86.outb(0x60, 0x02)
-    wait true
-    read # ACK
-  end
-
-  private def wait(signal?)
-    timeout = 100000
-    if !signal? # data
-      timeout.times do |i|
-        return if X86.inb(0x64) & 1 == 1
-      end
-    else # signal
-      timeout.times do |i|
-        return if X86.inb(0x64) & 2 == 1
-      end
-    end
-  end
-
-  private def write(ch : UInt8)
-    wait true
-    X86.outb(0x64, 0xD4)
-    wait true
-    X86.outb(0x60, ch)
-  end
-
-  private def read
-    wait false
-    X86.inb 0x60
   end
 
   @[Flags]
@@ -81,13 +20,15 @@ class Mouse
 
   @cycle = 0
   @attr_byte = AttributeByte::None
+  @fourth_byte : Int8 = 0.to_i8
   @x = 0
   @y = 0
   @available = false
   getter available
 
   def flush
-    tuple = {@x, @y, @attr_byte}
+    tuple = {@x, @y, @attr_byte, @fourth_byte}
+    @fourth_byte = 0.to_i8
     @attr_byte = AttributeByte::None
     @x = 0
     @y = 0
@@ -112,8 +53,17 @@ class Mouse
       @cycle += 1
     when 2
       @y = X86.inb(0x60)
+      if PS2.mouse_id == 3 # scrollable
+        @cycle += 1
+      else
+        @cycle = 0
+        packet_finished = true
+      end
+    when 3
+      @fourth_byte = X86.inb(0x60).to_i8
       @cycle = 0
       packet_finished = true
+      # TODO
     end
 
     # process it

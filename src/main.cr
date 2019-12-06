@@ -103,6 +103,9 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   RootFS.append(TmpFS.new)
   RootFS.append(SocketFS.new)
 
+  # ps2 controller
+  PS2.init_controller
+
   # file systems
   root_device = Ide.devices[0]
   if root_device.nil?
