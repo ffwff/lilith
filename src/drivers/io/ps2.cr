@@ -20,15 +20,8 @@ module PS2
     X86.outb(0x64, 0xA8)
     read
 
-    # enable irq
-    wait true
-    X86.outb(0x64, 0x20)
-    wait false
-    status = X86.inb(0x60) | 3
-    wait true
-    X86.outb(0x64, 0x60)
-    wait true
-    X86.outb(0x60, status)
+    write 0xF6
+    read
 
     write 0xF2
     read
@@ -58,6 +51,18 @@ module PS2
     X86.outb(0x60, 0x02)
     wait true
     read # ACK
+
+    # enable intrq (must be done last)
+    wait true
+    X86.outb(0x64, 0x20)
+    wait false
+    status = X86.inb(0x60) | 3
+    wait true
+    X86.outb(0x64, 0x60)
+    wait true
+    X86.outb(0x60, status)
+    wait true
+    read
   end
 
   def wait(signal?)

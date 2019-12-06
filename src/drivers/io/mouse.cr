@@ -20,19 +20,26 @@ class Mouse
 
   @cycle = 0
   @attr_byte = AttributeByte::None
-  @fourth_byte : Int8 = 0.to_i8
+  @scroll_delta : Int8 = 0.to_i8
   @x = 0
   @y = 0
   @available = false
   getter available
 
   def flush
-    tuple = {@x, @y, @attr_byte, @fourth_byte}
-    @fourth_byte = 0.to_i8
-    @attr_byte = AttributeByte::None
-    @x = 0
-    @y = 0
-    @available = false
+    tuple = {@x, @y, @attr_byte, @scroll_delta}
+    # add propagation delay for sending scroll info
+    # because the ps2 mouse sends packets too quickly
+    # that the os cant handle
+    if @scroll_delta == 0
+      @scroll_delta = 0.to_i8
+      @attr_byte = AttributeByte::None
+      @x = 0
+      @y = 0
+      @available = false
+    else
+      @scroll_delta = 0.to_i8
+    end
     tuple
   end
 
@@ -60,7 +67,10 @@ class Mouse
         packet_finished = true
       end
     when 3
-      @fourth_byte = X86.inb(0x60).to_i8
+      delta = X86.inb(0x60).to_i8
+      if delta != 0 && @available
+        @scroll_delta = delta
+      end
       @cycle = 0
       packet_finished = true
     end

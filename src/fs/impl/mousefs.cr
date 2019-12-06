@@ -63,13 +63,13 @@ class MouseFSRawNode < VFSNode
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
-    x, y, attr_byte, fourth_byte = fs.mouse.flush
+    x, y, attr_byte, scroll_delta = fs.mouse.flush
 
     packet = uninitialized MouseFSData::MousePacket
     packet.x = x
     packet.y = y
     packet.attributes = MouseFSData::MouseAttributes.new(attr_byte.value.to_u32 & 0x3)
-    packet.scroll_delta = fourth_byte
+    packet.scroll_delta = scroll_delta
     size = Math.min slice.size, sizeof(MouseFSData::MousePacket)
     memcpy(slice.to_unsafe, pointerof(packet).as(UInt8*), size.to_usize)
 
