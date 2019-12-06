@@ -1,9 +1,16 @@
 private lib MouseFSData
+  enum MouseAttributes : UInt32
+    LeftButton   = 1 << 0
+    RightButton  = 1 << 1
+    MiddleButton = 1 << 2
+  end
+
   @[Packed]
   struct MousePacket
     x : UInt32
     y : UInt32
-    attr_byte : UInt32
+    attributes : MouseAttributes
+    scroll_delta : Int8
   end
 end
 
@@ -56,12 +63,13 @@ class MouseFSRawNode < VFSNode
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
-    x, y, attr_byte = fs.mouse.flush
+    x, y, attr_byte, fourth_byte = fs.mouse.flush
 
     packet = uninitialized MouseFSData::MousePacket
     packet.x = x
     packet.y = y
-    packet.attr_byte = attr_byte.value
+    packet.attributes = MouseFSData::MouseAttributes.new(attr_byte.value.to_u32 & 0x3)
+    packet.scroll_delta = fourth_byte
     size = Math.min slice.size, sizeof(MouseFSData::MousePacket)
     memcpy(slice.to_unsafe, pointerof(packet).as(UInt8*), size.to_usize)
 
