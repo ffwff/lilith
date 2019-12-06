@@ -24,7 +24,7 @@ class G::VLayout < G::Layout
       end
 
       # place the widgets
-      stretch_width = (@width - widgets_width) // n_stretch
+      stretch_width = (@parent.not_nil!.width - widgets_width) // n_stretch
       placement_x = 0
       @widgets.each do |w|
         case w

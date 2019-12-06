@@ -34,7 +34,7 @@ Bar.window = window
 lbox = G::LayoutBox.new 0, 0, w, 10
 window.main_widget = lbox
 
-lbox.layout = G::VLayout.new lbox
+lbox.layout = G::VLayout.new
 lbox.add_widget G::Label.new(0, 3, "lilith")
 lbox.add_widget G::Stretch.new
 Bar.time_label = G::Label.new(0, 3, "00/00/0000 00:00:00")
