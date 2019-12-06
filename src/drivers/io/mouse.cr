@@ -63,7 +63,6 @@ class Mouse
       @fourth_byte = X86.inb(0x60).to_i8
       @cycle = 0
       packet_finished = true
-      # TODO
     end
 
     # process it

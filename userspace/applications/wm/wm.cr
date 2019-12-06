@@ -13,11 +13,18 @@ lib LibC
   TIOCGWINSZ = 2
   TIOCGSTATE = 5
 
+  enum MouseAttributes : UInt32
+    LeftButton   = 1 << 0
+    RightButton  = 1 << 1
+    MiddleButton = 1 << 2
+  end
+
   @[Packed]
   struct MousePacket
     x : UInt32
     y : UInt32
-    attr_byte : UInt32
+    attributes : MouseAttributes
+    scroll_delta : Int8
   end
 
   @[Packed]
@@ -273,7 +280,18 @@ module Wm::Server
 
   def respond_mouse
     packet = cursor.respond mouse
-    modifiers = IPC::Data::MouseEventModifiers.new(packet.attr_byte)
+    
+    modifiers = IPC::Data::MouseEventModifiers.new 0
+    if packet.attributes.includes?(LibC::MouseAttributes::LeftButton)
+      modifiers |= IPC::Data::MouseEventModifiers::LeftButton
+    end
+    if packet.attributes.includes?(LibC::MouseAttributes::RightButton)
+      modifiers |= IPC::Data::MouseEventModifiers::RightButton
+    end
+    if packet.attributes.includes?(LibC::MouseAttributes::MiddleButton)
+      modifiers |= IPC::Data::MouseEventModifiers::MiddleButton
+    end
+    
     if (focused = @@focused) && focused.contains_point?(cursor.x, cursor.y)
       focused.socket.unbuffered_write IPC.mouse_event_message(cursor.x, cursor.y, modifiers).to_slice
     end
