@@ -4,7 +4,11 @@ require "./layout/*"
 class G::LayoutBox < G::Widget
 
   @layout : G::Layout? = nil
-  property layout
+  getter layout
+  def layout=(@layout : G::Layout)
+    @layout.not_nil!.parent = self
+    @layout.not_nil!.app = app
+  end
 
   getter bitmap
   def initialize(@x : Int32, @y : Int32,
@@ -18,6 +22,15 @@ class G::LayoutBox < G::Widget
 
   @bgcolor : UInt32 = 0x0
   property bgcolor
+
+  def resize(@width : Int32, @height : Int32)
+    @bitmap = Painter.resize_bitmap @bitmap, @width, @height
+    draw_event
+  end
+
+  def resize_to_content
+    @layout.not_nil!.resize_to_content
+  end
 
   def draw_event
     if layout = @layout
