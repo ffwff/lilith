@@ -1,23 +1,56 @@
 require "./gui/lib"
 
-app = G::Application.new
-window = G::Window.new(0, 0, 400, 300)
-app.main_widget = window
+module FileMgr
+  extend self
 
-decoration = G::WindowDecoration.new(window, "fm")
+  @@dir_image : Painter::Image? = nil
+  class_getter! dir_image
 
-sbox = G::ScrollBox.new 0, 0, window.width, window.height
-decoration.main_widget = sbox
+  @@cwd = ""
+  class_property cwd
+    
+  class EntryFig < G::Figure
+    def self.new(name)
+      new 0, 0, FileMgr.dir_image, name
+    end
 
-lbox = G::LayoutBox.new 0, 0, window.width, window.height
-sbox.main_widget = lbox
+    def mouse_event(ev : G::MouseEvent)
+      if ev.left_clicked?
+        STDERR.print @text, '\n'
+      end
+    end
+  end
 
-dir_image = Painter.load_png("/hd0/share/icons/folder.png").not_nil!
+  def load_images
+    @@dir_image = Painter.load_png("/hd0/share/icons/folder.png").not_nil!
+  end
 
-lbox.layout = G::PLayout.new
-50.times do
-  lbox.add_widget G::Figure.new(0, 0, dir_image, "help")
+  def run
+    @@cwd = Dir.current
+    load_images
+
+    app = G::Application.new
+    window = G::Window.new(0, 0, 400, 300)
+    app.main_widget = window
+
+    decoration = G::WindowDecoration.new(window, "fm")
+
+    sbox = G::ScrollBox.new 0, 0, window.width, window.height
+    decoration.main_widget = sbox
+
+    lbox = G::LayoutBox.new 0, 0, window.width, window.height
+    sbox.main_widget = lbox
+
+    lbox.layout = G::PLayout.new
+    Dir.open(".") do |dir|
+      dir.each_child do |child|
+        lbox.add_widget EntryFig.new(child)
+      end
+    end
+    lbox.resize_to_content
+
+    app.run
+  end
 end
-lbox.resize_to_content
 
-app.run
+FileMgr.run
