@@ -8,6 +8,9 @@ module FileMgr
 
   @@cwd = ""
   class_property cwd
+
+  @@layout : G::Layout? = nil
+  class_getter! layout
     
   class EntryFig < G::Figure
     def self.new(name)
@@ -16,7 +19,9 @@ module FileMgr
 
     def mouse_event(ev : G::MouseEvent)
       if ev.left_clicked?
-        STDERR.print @text, '\n'
+        Dir.cd @text.not_nil!
+        FileMgr.load_dir
+        app.redraw
       end
     end
   end
@@ -26,7 +31,6 @@ module FileMgr
   end
 
   def run
-    @@cwd = Dir.current
     load_images
 
     app = G::Application.new
@@ -41,15 +45,21 @@ module FileMgr
     lbox = G::LayoutBox.new 0, 0, window.width, window.height
     sbox.main_widget = lbox
 
-    lbox.layout = G::PLayout.new
-    Dir.open(".") do |dir|
-      dir.each_child do |child|
-        lbox.add_widget EntryFig.new(child)
-      end
-    end
-    lbox.resize_to_content
+    @@layout = lbox.layout = G::PLayout.new
+    load_dir
 
     app.run
+  end
+
+  def load_dir
+    @@cwd = Dir.current
+    layout.clear
+    Dir.open(".") do |dir|
+      dir.each_child do |child|
+        layout.add_widget EntryFig.new(child)
+      end
+    end
+    layout.resize_to_content    
   end
 end
 
