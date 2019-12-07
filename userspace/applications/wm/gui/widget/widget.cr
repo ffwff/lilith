@@ -12,6 +12,14 @@ struct G::MouseEvent
                  @modifiers : Wm::IPC::Data::MouseEventModifiers,
                  @scroll_delta : Int32)
   end
+
+  def left_clicked?
+    @modifiers.includes? Wm::IPC::Data::MouseEventModifiers::LeftButton
+  end
+
+  def right_clicked?
+    @modifiers.includes? Wm::IPC::Data::MouseEventModifiers::RightButton
+  end
 end
 
 abstract class G::Widget
@@ -34,6 +42,11 @@ abstract class G::Widget
 
   def bitmap : UInt32*
     Pointer(UInt32).null
+  end
+
+  def contains_point?(x : Int, y : Int)
+    @x <= x && x <= (@x + @width) &&
+    @y <= y && y <= (@y + @height)
   end
 
   private macro def_event(name)
