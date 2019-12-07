@@ -31,7 +31,19 @@ class Dir
     end
   end
 
+  def self.open(path, &block)
+    if dir = new path
+      yield dir
+      dir.close
+    end
+  end
+
   def initialize(@fd : Int32)
+  end
+
+  def close
+    LibC.close @fd
+    @fd = -1
   end
 
   def each_child(&block)
