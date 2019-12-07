@@ -65,7 +65,7 @@ class G::Application
             # skip
           when Wm::IPC::Data::MouseEvent
             msg = msg.as Wm::IPC::Data::MouseEvent
-            main_widget.mouse_event G::MouseEvent.new(msg.x, msg.y, msg.modifiers)
+            main_widget.mouse_event G::MouseEvent.new(msg.x, msg.y, msg.modifiers, msg.scroll_delta)
           when Wm::IPC::Data::KeyboardEvent
             msg = msg.as Wm::IPC::Data::KeyboardEvent
             main_widget.key_event G::KeyboardEvent.new(msg.ch.unsafe_chr)
