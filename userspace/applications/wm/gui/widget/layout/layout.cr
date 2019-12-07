@@ -14,4 +14,8 @@ abstract class G::Layout
   def resize_to_content
   end
 
+  def clear
+    @widgets.clear
+  end
+
 end

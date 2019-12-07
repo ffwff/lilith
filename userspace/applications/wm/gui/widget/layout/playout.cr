@@ -15,7 +15,15 @@ class G::PLayout < G::Layout
       @placement_x += widget.width
       @line_height = Math.max(@line_height, widget.height)
     end
+    widget.app = @app
     @widgets.push widget
+  end
+
+  def clear
+    @widgets.clear
+    @placement_x = 0
+    @placement_y = 0
+    @line_height = 0
   end
 
   def resize_to_content
