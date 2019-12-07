@@ -41,9 +41,9 @@ class G::ScrollBox < G::Widget
       @offset_y = Math.min(Math.max(@offset_y, 0), widget.height - @height)
       @app.not_nil!.redraw
     end
-    #if main_widget = @main_widget
-    #  main_widget.mouse_event ev
-    #end
+    if main_widget = @main_widget
+      main_widget.mouse_event ev
+    end
   end
 
 end

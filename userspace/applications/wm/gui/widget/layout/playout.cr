@@ -6,7 +6,6 @@ class G::PLayout < G::Layout
 
   def add_widget(widget : G::Widget)
     parent = @parent.not_nil!
-    # STDERR.print "w: ", parent.width, "\n"
     if (@placement_x + widget.width) >= parent.width
       @placement_x = 0
       @placement_y += @line_height
