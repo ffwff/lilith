@@ -96,29 +96,30 @@ class VFSMessage
     end
   end
 
-  def respond(buf)
+  def respond(buf : Slice(UInt8))
+    pslice = @slice.not_nil!
+    process = @process.not_nil!
     remaining = Math.min(buf.size, slice_size - @offset)
-    # offset of byte to be written in page (0 -> 0x1000)
-    pg_offset = @slice.not_nil!.to_unsafe.address & 0xFFF
-    # virtual page range
-    virt_pg_addr = Paging.t_addr(@slice.not_nil!.to_unsafe.address)
-    virt_pg_end = Paging.aligned(@slice.not_nil!.to_unsafe.address + remaining)
-    while virt_pg_addr < virt_pg_end
-      # physical address of the current page
-      phys_pg_addr = @process.not_nil!.physical_page_for_address(virt_pg_addr)
-      if phys_pg_addr.nil?
+    # virtual addresses
+    page_start_u = pslice.to_unsafe.address + @offset
+    page_start = Paging.t_addr(page_start_u)
+    page_end = Paging.aligned(pslice.to_unsafe.address + pslice.size)
+    p_offset = page_start_u & 0xFFF
+    # loop!
+    b_offset = 0
+    while page_start < page_end && remaining > 0
+      copy_sz = Math.min(0x1000 - p_offset, remaining)
+      if physical_page = process.physical_page_for_address(page_start)
+        memcpy(physical_page + p_offset, buf.to_unsafe + b_offset, copy_sz.to_usize)
+      else
         finish
         return @offset
       end
-      phys_pg_addr = phys_pg_addr.not_nil!
-      while remaining > 0 && pg_offset < 0x1000
-        phys_pg_addr[pg_offset] = buf[@offset]
-        @offset += 1
-        remaining -= 1
-        pg_offset += 1
-      end
-      pg_offset = 0
-      virt_pg_addr += 0x1000
+      remaining -= copy_sz
+      b_offset += copy_sz
+      @offset += copy_sz
+      p_offset = 0
+      page_start += 0x1000
     end
     @offset
   end
