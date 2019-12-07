@@ -193,7 +193,7 @@ private class Fat16Node < VFSNode
     fat_sector
   end
 
-  def read(read_size = 0, offset : UInt32 = 0, allocator : StackAllocator? = nil, &block)
+  def read_buffer(read_size = 0, offset : UInt32 = 0, allocator : StackAllocator? = nil, &block)
     return if directory?
 
     # check arguments
@@ -248,18 +248,16 @@ private class Fat16Node < VFSNode
         remaining_bytes = 0
         break
       end
-      cluster_buffer.each do |byte|
-        if remaining_bytes > 0
-          if offset_bytes > 0
-            offset_bytes -= 1
-          else
-            yield byte
-            offset += 1
-            remaining_bytes -= 1
-          end
-        else
-          break
-        end
+
+      if offset_bytes <= cluster_buffer.size
+        cur_buffer = Slice(UInt8).new(cluster_buffer.to_unsafe + offset_bytes,
+                                       Math.min(cluster_buffer.size - offset_bytes, remaining_bytes.to_i32))
+        yield cur_buffer
+        offset += cur_buffer.size
+        remaining_bytes -= cur_buffer.size
+        offset_bytes = 0
+      else
+        offset_bytes -= cluster_buffer.size
       end
       fat_sector = read_fat_table fat_table, cluster, fat_sector
       last_cluster = cluster
@@ -273,6 +271,14 @@ private class Fat16Node < VFSNode
       fat_table.mfree
     else
       allocator.not_nil!.clear
+    end
+  end
+
+  def read(read_size = 0, offset : UInt32 = 0, allocator : StackAllocator? = nil, &block)
+    read_buffer(read_size, offset, allocator) do |buffer|
+      buffer.each do |byte|
+        yield byte
+      end
     end
   end
 
@@ -461,10 +467,10 @@ class Fat16FS < VFS
         fat16_node = msg.vfs_node.unsafe_as(Fat16Node)
         case msg.type
         when VFSMessage::Type::Read
-          fat16_node.read(msg.slice_size,
-                          msg.file_offset.to_u32,
-                          allocator: @process_allocator) do |ch|
-            msg.respond(ch)
+          fat16_node.read_buffer(msg.slice_size,
+                                 msg.file_offset.to_u32,
+                                 allocator: @process_allocator) do |buffer|
+            msg.respond(buffer)
           end
           msg.unawait
         when VFSMessage::Type::Write
