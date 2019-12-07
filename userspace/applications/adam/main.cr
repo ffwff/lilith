@@ -13,7 +13,7 @@ end
 module Adam
   extend self
 
-  @@cwd = Dir.current
+  @@cwd = ""
   class_property cwd
 end
 
@@ -51,6 +51,7 @@ def interpret_line(line)
   end
 end
 
+Adam.cwd = Dir.current
 while true
   print Adam.cwd, "> "
   if line = getline
