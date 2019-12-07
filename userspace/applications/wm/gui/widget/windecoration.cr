@@ -100,6 +100,9 @@ class G::WindowDecoration < G::Widget
   @last_mouse_x = -1
   @last_mouse_y = -1
   def mouse_event(ev : G::MouseEvent)
+    if main_widget = @main_widget
+      main_widget.mouse_event ev
+    end
     if ev.modifiers.includes?(Wm::IPC::Data::MouseEventModifiers::LeftButton) &&
         (@last_mouse_x != -1 && @last_mouse_y != -1)
       delta_x = ev.x - @last_mouse_x

@@ -6,10 +6,11 @@ struct G::KeyboardEvent
 end
 
 struct G::MouseEvent
-  getter x, y, modifiers
+  getter x, y, modifiers, scroll_delta
 
   def initialize(@x : Int32, @y : Int32,
-                 @modifiers : Wm::IPC::Data::MouseEventModifiers)
+                 @modifiers : Wm::IPC::Data::MouseEventModifiers,
+                 @scroll_delta : Int32)
   end
 end
 

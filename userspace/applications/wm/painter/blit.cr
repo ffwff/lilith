@@ -72,4 +72,58 @@ module Painter
       end
     end
   end
+
+  def blit_img(db : UInt32*, dw : Int, dh : Int,
+               sb : UInt32*, sw : Int, sh : Int,
+               dx : Int, dy : Int,
+               sx : Int, sy : Int,
+               alpha? = false)
+    if sx == 0 && sy == 0 && sw == dw && sh == dh
+      if alpha?
+        Lib.alpha_blend db, sb, dw.to_u32 * dh.to_u32 // 4
+      else
+        LibC.memcpy db, sb, dw.to_u32 * dh.to_u32 * 4
+      end
+      return 
+    end
+
+    sx = Math.max(sx, 0)
+    sy = Math.max(sy, 0)
+
+    if dy + dh > dh
+      if dh < dy # dh - dy < 0
+        return
+      else
+        sh_clamp = dh - dy
+      end
+    else
+      sh_clamp = dh
+    end
+    sh_clamp = Math.min(sh_clamp, sh - sy)
+
+    if dx + dw > dw
+      if dw < dx # dw - dx < 0
+        return
+      else
+        sw_clamp = dw - dx
+      end
+    else
+      sw_clamp = dw
+    end
+    sw_clamp = Math.min(sw_clamp, sw - sx)
+
+    sh_clamp.times do |y|
+      fb_offset = ((dy + y) * dw + sx) * 4
+      src_offset = (sy + y) * sw * 4
+      if alpha?
+        Lib.alpha_blend(db.as(UInt8*) + fb_offset,
+                        sb.as(UInt8*) + src_offset,
+                        sw_clamp // 4)
+      else
+        LibC.memcpy(db.as(UInt8*) + fb_offset,
+                    sb.as(UInt8*) + src_offset,
+                    sw_clamp * 4)
+      end
+    end
+  end
 end

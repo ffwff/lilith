@@ -7,6 +7,8 @@ class G::ScrollBox < G::Widget
     draw_event
   end
 
+  @offset_y = 0
+
   @main_widget : G::Widget? = nil
   getter main_widget
 
@@ -28,8 +30,20 @@ class G::ScrollBox < G::Widget
                         @width, @height,
                         widget.bitmap,
                         widget.width, widget.height,
-                        0, 0
+                        0, 0,
+                        0, @offset_y
     end
+  end
+
+  def mouse_event(ev : G::MouseEvent)
+    if ev.scroll_delta != 0 && (widget = @main_widget)
+      @offset_y += ev.scroll_delta * 10
+      @offset_y = Math.min(Math.max(@offset_y, 0), widget.height - @height)
+      @app.not_nil!.redraw
+    end
+    #if main_widget = @main_widget
+    #  main_widget.mouse_event ev
+    #end
   end
 
 end

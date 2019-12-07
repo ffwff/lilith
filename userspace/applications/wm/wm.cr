@@ -190,7 +190,7 @@ module Wm::Server
   @@ipc : IPCServer? = nil
   class_getter! ipc
 
-  def _init
+  def init
     unless (@@fb = File.new("/fb0", "r"))
       abort "unable to open /fb0"
     end
@@ -293,7 +293,7 @@ module Wm::Server
     end
     
     if (focused = @@focused) && focused.contains_point?(cursor.x, cursor.y)
-      focused.socket.unbuffered_write IPC.mouse_event_message(cursor.x, cursor.y, modifiers).to_slice
+      focused.socket.unbuffered_write IPC.mouse_event_message(cursor.x, cursor.y, modifiers, packet.scroll_delta).to_slice
     end
     if modifiers.includes?(IPC::Data::MouseEventModifiers::LeftButton)
       @@windows.reverse_each do |win|
@@ -405,5 +405,5 @@ module Wm::Server
 
 end
 
-Wm::Server._init
+Wm::Server.init
 Wm::Server.loop

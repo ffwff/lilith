@@ -47,6 +47,7 @@ module Wm::IPC
       header : Header
       x, y : Int32
       modifiers : MouseEventModifiers
+      scroll_delta : Int32
     end
 
     @[Flags]
@@ -179,7 +180,7 @@ module Wm::IPC
   end
 
   # Creates mouse event message
-  def mouse_event_message(x, y, modifiers)
+  def mouse_event_message(x, y, modifiers, scroll_delta)
     msg = uninitialized UInt8[sizeof(Data::MouseEvent)]
     rep = msg.to_unsafe.as(Data::MouseEvent*)
     rep.value.header = create_header(
@@ -188,6 +189,7 @@ module Wm::IPC
     rep.value.x = x
     rep.value.y = y
     rep.value.modifiers = modifiers
+    rep.value.scroll_delta = scroll_delta
     msg
   end
 
