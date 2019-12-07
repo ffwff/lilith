@@ -235,7 +235,9 @@ private class Fat16Node < VFSNode
 
     # read file
     cluster_bufsz = 512 * fs.sectors_per_cluster
-    cluster_buffer = if allocator.nil?
+    cluster_buffer = if (ptr = fs.device.dma_buffer?)
+                      Slice(UInt8).new(ptr, cluster_bufsz)
+                     elsif allocator.nil?
                       Slice(UInt8).mmalloc(cluster_bufsz)
                      else
                       Slice(UInt8).new(allocator.not_nil!.malloc(cluster_bufsz).as(UInt8*), cluster_bufsz)
@@ -243,7 +245,12 @@ private class Fat16Node < VFSNode
     last_cluster = 0
     while remaining_bytes > 0 && cluster < 0xFFF8
       sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
-      unless fs.device.read_sector(cluster_buffer.to_unsafe, sector, fs.sectors_per_cluster)
+      retval = if fs.device.dma_buffer?
+                 fs.device.read_to_dma_buffer sector, fs.sectors_per_cluster
+               else
+                 fs.device.read_sector(cluster_buffer.to_unsafe, sector, fs.sectors_per_cluster)
+               end
+      unless retval
         Serial.print "unable to read from device, returning garbage!"
         remaining_bytes = 0
         break
@@ -266,11 +273,13 @@ private class Fat16Node < VFSNode
     insert_cache offset, last_cluster.to_u32
 
     # clean up within function call
-    if allocator.nil?
-      cluster_buffer.mfree
-      fat_table.mfree
-    else
-      allocator.not_nil!.clear
+    unless fs.device.dma_buffer?
+      if allocator.nil?
+        cluster_buffer.mfree
+        fat_table.mfree
+      else
+        allocator.not_nil!.clear
+      end
     end
   end
 

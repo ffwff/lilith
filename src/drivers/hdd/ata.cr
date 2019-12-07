@@ -415,6 +415,38 @@ class AtaDevice
     true
   end
 
+  def dma_buffer?
+    if @can_dma
+      Ide.dma_buffer
+    end
+  end
+
+  def read_to_dma_buffer(sector : UInt64, nsectors : Int = 1)
+    panic "can't access atapi" if @type == Type::Atapi
+    panic "device doesn't support dma" if !@can_dma
+    # Serial.print "ata read ", sector, '\n'
+
+    retval = false
+    Ide.lock do
+      retries = 0
+      while retries < MAX_RETRIES
+        Ata.interrupted = false
+        Ata.read_dma sector, disk_port, cmd_port, slave, nsectors.to_u8
+        # poll
+        while !Ata.interrupted
+          # FIXME: without this nop the loop doesn't break
+          # sometimes in release mode, might be a compiler
+          # misoptimization
+          asm("nop")
+        end
+        Ata.flush_dma
+        retval = true
+        break
+      end
+    end
+    retval
+  end
+
   MAX_RETRIES = 3
   def read_sector(ptr : UInt8*, sector : UInt64, nsectors : Int = 1)
     panic "can't access atapi" if @type == Type::Atapi
@@ -429,9 +461,7 @@ class AtaDevice
           Ata.read_dma sector, disk_port, cmd_port, slave, nsectors.to_u8
           # poll
           while !Ata.interrupted
-            # FIXME: without this nop the loop doesn't break
-            # sometimes in release mode, might be a compiler
-            # misoptimization
+            # FIXME: see above
             asm("nop")
           end
           memcpy(ptr, Ide.dma_buffer, 512u64 * nsectors)
