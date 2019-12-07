@@ -32,9 +32,10 @@ class G::PLayout < G::Layout
         line_height = 0
       else
         x += widget.width
-        line_height = Math.max(line_height, widget.height)
+        line_height = Math.max line_height, widget.height
       end
     end
+    new_height = Math.max new_height, line_height
     parent.resize new_width, new_height
   end
 
