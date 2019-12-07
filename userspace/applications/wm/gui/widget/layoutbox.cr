@@ -8,6 +8,7 @@ class G::LayoutBox < G::Widget
   def layout=(@layout : G::Layout)
     @layout.not_nil!.parent = self
     @layout.not_nil!.app = app
+    @layout
   end
 
   getter bitmap
@@ -30,6 +31,10 @@ class G::LayoutBox < G::Widget
 
   def resize_to_content
     @layout.not_nil!.resize_to_content
+  end
+
+  def clear
+    @layout.not_nil!.clear
   end
 
   def draw_event
