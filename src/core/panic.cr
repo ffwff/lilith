@@ -9,6 +9,11 @@ end
 def raise(*args)
 end
 
-fun breakpoint
-  asm("nop")
-end
+{% if flag?(:release) %}
+  macro breakpoint
+  end
+{% else %}
+  fun breakpoint
+    asm("nop")
+  end
+{% end %}
