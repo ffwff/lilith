@@ -434,10 +434,7 @@ class AtaDevice
         Ata.read_dma sector, disk_port, cmd_port, slave, nsectors.to_u8
         # poll
         while !Ata.interrupted
-          # FIXME: without this nop the loop doesn't break
-          # sometimes in release mode, might be a compiler
-          # misoptimization
-          asm("nop")
+          asm("pause")
         end
         Ata.flush_dma
         retval = true
@@ -461,8 +458,7 @@ class AtaDevice
           Ata.read_dma sector, disk_port, cmd_port, slave, nsectors.to_u8
           # poll
           while !Ata.interrupted
-            # FIXME: see above
-            asm("nop")
+            asm("pause")
           end
           memcpy(ptr, Ide.dma_buffer, 512u64 * nsectors)
           Ata.flush_dma
