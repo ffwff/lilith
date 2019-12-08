@@ -6,6 +6,6 @@ build() {
 
 install() {
     for i in $script_dir/*.cr; do
-        sudo cp $build_dir/$(basename $i .cr) $install_dir/bin
+        sudo cp $build_dir/$(basename $i .cr) $install_dir
     done
 }

@@ -20,7 +20,7 @@ output_fd.flags = IO::Pipe::Flags::G_Write |
                   IO::Pipe::Flags::G_Read 
 termbox.output_fd = output_fd
 
-Process.new("/hd0/main",
+Process.new("ash",
             input: input_fd,
             output: output_fd,
             error: Process::Redirect::Inherit)
