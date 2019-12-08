@@ -2,43 +2,50 @@ require "./syscall_defs.cr"
 require "./addr_sanitizer.cr"
 require "./argv_builder.cr"
 
-lib SyscallData
-  struct Registers
-    ds : UInt64
-    rbp, rdi, rsi,
-    r15, r14, r13, r12, r11, r10, r9, r8,
-    rdx, rcx, rbx, rax : UInt64
-    rsp : UInt64
-  end
-
-  alias Ino32 = Int32
-
-  @[Packed]
-  struct DirentArgument32
-    # Inode number
-    d_ino : Ino32
-    # Length of this record
-    d_reclen : UInt16
-    # Type of file; not supported by all filesystem types
-    d_type : UInt8
-    # Null-terminated filename
-    d_name : UInt8[256]
-  end
-
-  @[Packed]
-  struct SpawnStartupInfo32
-    stdin : Int32
-    stdout : Int32
-    stderr : Int32
-  end
-end
-
 lib Kernel
-  fun ksyscall_sc_ret_driver(reg : SyscallData::Registers*) : NoReturn
+  fun ksyscall_sc_ret_driver(reg : Syscall::Data::Registers*) : NoReturn
 end
 
 module Syscall
   extend self
+
+  lib Data
+    struct Registers
+      ds : UInt64
+      rbp, rdi, rsi,
+      r15, r14, r13, r12, r11, r10, r9, r8,
+      rdx, rcx, rbx, rax : UInt64
+      rsp : UInt64
+    end
+
+    alias Ino32 = Int32
+
+    @[Packed]
+    struct DirentArgument32
+      # Inode number
+      d_ino : Ino32
+      # Length of this record
+      d_reclen : UInt16
+      # Type of file; not supported by all filesystem types
+      d_type : UInt8
+      # Null-terminated filename
+      d_name : UInt8[256]
+    end
+
+    @[Packed]
+    struct SpawnStartupInfo32
+      stdin : Int32
+      stdout : Int32
+      stderr : Int32
+    end
+
+    @[Flags]
+    enum MmapProt : Int32
+      Read = 1 << 0
+      Write = 1 << 1
+      Execute = 1 << 2
+    end
+  end
 
   def lock
     # NOTE: we disable process switching because
@@ -207,7 +214,7 @@ module Syscall
   end
 
   @[AlwaysInline]
-  def handler(frame : SyscallData::Registers*)
+  def handler(frame : Syscall::Data::Registers*)
     process = Multiprocessing::Scheduler.current_process.not_nil!
     # Serial.print "syscall ", fv.rax, " from ", Multiprocessing::Scheduler.current_process.not_nil!.pid, "\n"
     if process.kernel_process?
@@ -393,7 +400,7 @@ module Syscall
       # directories
     when SC_READDIR
       fd = try(pudata.get_fd(arg(0).to_i32))
-      retval = try(checked_pointer(SyscallData::DirentArgument32, arg(1)))
+      retval = try(checked_pointer(Syscall::Data::DirentArgument32, arg(1)))
       if fd.cur_child_end
         sysret(0)
       elsif fd.cur_child.nil?
@@ -405,9 +412,9 @@ module Syscall
 
       child = fd.cur_child.not_nil!
 
-      dirent = SyscallData::DirentArgument32.new
+      dirent = Syscall::Data::DirentArgument32.new
       dirent.d_ino = 0
-      dirent.d_reclen = sizeof(SyscallData::DirentArgument32)
+      dirent.d_reclen = sizeof(Syscall::Data::DirentArgument32)
       dirent.d_type = 0
       if (name = child.name).nil?
         dirent.d_name[0] = '/'.ord.to_u8
@@ -434,7 +441,7 @@ module Syscall
     when SC_SPAWN
       path = try(checked_slice(arg(0), arg(1)))
       sysret(SYSCALL_ERR) if path.size < 1
-      startup_info = checked_pointer(SyscallData::SpawnStartupInfo32, arg(2))
+      startup_info = checked_pointer(Syscall::Data::SpawnStartupInfo32, arg(2))
       if pudata.is64
         argv = try(checked_pointer(UInt64, arg(3)))
       else
@@ -627,6 +634,16 @@ module Syscall
     when SC_MMAP
       fd = try(pudata.get_fd(arg(0).to_i32))
       size = arg(1).to_u64
+      prot = Syscall::Data::MmapProt.new(arg(2).to_i32)
+
+      mmap_attrs = MemMapNode::Attributes::Read | MemMapNode::Attributes::SharedMem
+      if prot.includes?(Syscall::Data::MmapProt::Write)
+        mmap_attrs |= MemMapNode::Attributes::Write
+      end
+      if prot.includes?(Syscall::Data::MmapProt::Execute)
+        mmap_attrs |= MemMapNode::Attributes::Execute
+      end
+
       if size > fd.node.not_nil!.size
         size = fd.node.not_nil!.size.to_u64
         if (size & 0xfff) != 0
@@ -637,7 +654,7 @@ module Syscall
       if (size & 0xfff) != 0
         sysret(SYSCALL_ERR)
       end
-      mmap_node = pudata.mmap_list.space_for_mmap size, MemMapNode::Attributes::SharedMem
+      mmap_node = pudata.mmap_list.space_for_mmap size, mmap_attrs
       if mmap_node
         if (retval = fd.node.not_nil!.mmap(mmap_node, process)) == VFS_OK
           mmap_node.shm_node = fd.node
@@ -665,7 +682,7 @@ module Syscall
   end
 end
 
-fun ksyscall_handler(frame : SyscallData::Registers*)
+fun ksyscall_handler(frame : Syscall::Data::Registers*)
   Syscall.lock
   Syscall.handler frame
   Syscall.unlock

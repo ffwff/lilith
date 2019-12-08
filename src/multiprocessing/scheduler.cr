@@ -388,7 +388,7 @@ module Multiprocessing::Scheduler
     frame.value = current_process.frame.not_nil!.to_unsafe.value
   end
 
-  def switch_process(frame : SyscallData::Registers*)
+  def switch_process(frame : Syscall::Data::Registers*)
     Syscall.unlock
     current_process = switch_process_save_and_load do |process|
       process.new_frame_from_syscall frame

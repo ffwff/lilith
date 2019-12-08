@@ -228,7 +228,10 @@ private class TmpFSNode < VFSNode
     each_frame do |frame|
       break if i == npages
       phys = frame.address & ~PTR_IDENTITY_MASK
-      Paging.alloc_page_pg(node.addr + i * 0x1000, true, true, 1, phys)
+      Paging.alloc_page_pg(node.addr + i * 0x1000,
+            node.attr.includes?(MemMapNode::Attributes::Write),
+            true, 1, phys,
+            execute: node.attr.includes?(MemMapNode::Attributes::Execute))
       i += 1
     end
     VFS_OK
