@@ -33,12 +33,12 @@ module Paging
 
   # present, us, rw, global
   # PT_MASK_GLOBAL = 0x107
-  # global mask, ps, 1gb
-  PT_MASK_GB_IDENTITY = 0x183
-  # global mask, ps
-  PT_MASK_MB_IDENTITY_DIR = 0x103
-  # global mask, ps, 2mb
-  PT_MASK_MB_IDENTITY_TABLE = 0x183
+  # nx, global, ps, 1gb
+  PT_MASK_GB_IDENTITY = 0x8000000000000183
+  # nx, global, ps
+  PT_MASK_MB_IDENTITY_DIR = 0x8000000000000103
+  # nx, global, ps, 2mb
+  PT_MASK_MB_IDENTITY_TABLE = 0x8000000000000183
   # present, us, rw
   PT_MASK = 0x7
 
@@ -182,7 +182,7 @@ module Paging
     # text segment
     i = text_start.address
     while i < text_end.address
-      alloc_frame_init false, false, i
+      alloc_frame_init false, false, i, execute: true
       i += 0x1000
     end
     # data segment
@@ -242,7 +242,8 @@ module Paging
   # allocate page when pg is enabled
   # returns page address
   def alloc_page_pg(virt_addr_start : UInt64, rw : Bool, user : Bool,
-                    npages : USize = 1, phys_addr_start : UInt64 = 0) : UInt64
+                    npages : USize = 1, phys_addr_start : UInt64 = 0,
+                    execute = false) : UInt64
     # Serial.print "allocate: ", Pointer(Void).new(virt_addr_start), ' ', npages, '\n'
     Idt.disable
 
@@ -293,7 +294,7 @@ module Paging
       else
         phys_addr = FrameAllocator.claim_with_addr
       end
-      page = page_create(rw, user, phys_addr)
+      page = page_create(rw, user, phys_addr, execute)
       pt.value.pages[page_idx] = page
 
       asm("invlpg ($0)" :: "r"(virt_addr) : "memory")
@@ -308,7 +309,8 @@ module Paging
 
   @[NoInline]
   def alloc_page_pg_drv(virt_addr_start : UInt64, rw : Bool, user : Bool,
-                        npages : USize = 1) : UInt64
+                        npages : USize = 1,
+                        execute : Bool = false) : UInt64
     retval = 0u64
     asm("syscall"
             : "={rax}"(retval)
@@ -316,7 +318,8 @@ module Paging
               "{rbx}"(virt_addr_start),
               "{rdx}"(rw),
               "{r8}"(user),
-              "{r9}"(npages)
+              "{r9}"(npages),
+              "{r10}"(execute)
             : "cc", "memory", "{rcx}", "{r11}", "{rdi}", "{rsi}")
     retval
   end
@@ -388,18 +391,23 @@ module Paging
   end
 
   # page creation
-  PG_WRITE_BIT = 0x2u64
-  PG_USER_BIT  = 0x4u64
+  PG_WRITE_BIT = 1u64 << 1u64
+  PG_USER_BIT  = 1u64 << 2u64
+  NX_BIT       = 1u64 << 63u64
 
-  private def page_create(rw : Bool, user : Bool, phys : UInt64) : UInt64
+  private def page_create(rw : Bool, user : Bool, phys : UInt64,
+                          execute : Bool) : UInt64
     page = 0x1u64
+    page |= t_addr(phys)
     if rw
       page |= PG_WRITE_BIT
     end
     if user
       page |= PG_USER_BIT
     end
-    page |= t_addr(phys)
+    unless execute
+      page = page.to_u64 | NX_BIT
+    end
     page
   end
 
@@ -414,7 +422,7 @@ module Paging
   end
 
   # identity map pages at init
-  private def alloc_page_init(rw : Bool, user : Bool, addr : UInt64, virt_addr : UInt64)
+  private def alloc_page_init(rw : Bool, user : Bool, addr : UInt64, virt_addr : UInt64, execute=false)
     if virt_addr == 0
       virt_addr = addr
     end
@@ -440,13 +448,14 @@ module Paging
     end
 
     # page
-    page = page_create(rw, user, addr)
+    page = page_create(rw, user, addr, execute)
     pt.value.pages[page_idx] = page
+    breakpoint
   end
 
-  private def alloc_frame_init(rw : Bool, user : Bool, virt_addr : UInt64)
+  private def alloc_frame_init(rw : Bool, user : Bool, virt_addr : UInt64, execute=false)
     phys_addr = virt_addr - KERNEL_OFFSET
-    alloc_page_init(rw, user, phys_addr, virt_addr)
+    alloc_page_init(rw, user, phys_addr, virt_addr, execute: execute)
   end
 
   # userspace address checking
