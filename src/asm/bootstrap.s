@@ -84,10 +84,12 @@ PAGE_2MB     = 1 << 7
 pml4:
     .long pdpt + (PAGE_PRESENT | PAGE_WRITE) # 0x0
     .long 0
-    .long pdpt + (PAGE_PRESENT | PAGE_WRITE) # 0x80_0000_0000
-    .long 0
-    .skip (256 - 2) * 8
+    .quad 0
+    .quad 0
+    .skip (256 - 3) * 8
     .long pdpt + (PAGE_PRESENT | PAGE_WRITE) # non-canonical identity mapping
+    .long 0
+    .long pdpt + (PAGE_PRESENT | PAGE_WRITE) # 0x80_0000_0000
     .long 0
 pml4_len = . - pml4
     .skip 0x1000 - pml4_len
