@@ -337,7 +337,7 @@ module Multiprocessing
       end
     end
 
-    def new_frame_from_syscall(syscall_frame : SyscallData::Registers*)
+    def new_frame_from_syscall(syscall_frame : Syscall::Data::Registers*)
       frame = Idt::Data::Registers.new
 
       {% for id in [

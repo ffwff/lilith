@@ -68,9 +68,12 @@ private class FbdevFSNode < VFSNode
 
   def mmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
     npages = node.size // 0x1000
+    node.attr &= ~MemMapNode::Attributes::Execute
     FbdevState.lock do |state|
       phys_address = state.buffer.to_unsafe.address & ~PTR_IDENTITY_MASK
-      Paging.alloc_page_pg node.addr, true, true, npages, phys_address
+      Paging.alloc_page_pg node.addr,
+        node.attr.includes?(MemMapNode::Attributes::Write),
+        true, npages, phys_address
     end
     VFS_OK
   end
