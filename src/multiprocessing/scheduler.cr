@@ -283,13 +283,7 @@ module Multiprocessing::Scheduler
   end
 
   @@current_process : Multiprocessing::Process? = nil
-
-  def current_process
-    @@current_process
-  end
-
-  def current_process=(@@current_process)
-  end
+  class_property current_process
 
   def context_switch_to_process(process : Multiprocessing::Process)
     if process.frame.nil?
