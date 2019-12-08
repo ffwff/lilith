@@ -1,4 +1,4 @@
-abstract class G::Timer
+class G::Timer
 
   @last_tick = 0u64
   property last_tick
@@ -9,6 +9,7 @@ abstract class G::Timer
   def initialize(@interval)
   end
 
-  abstract def on_tick
+  def on_tick
+  end
 
 end
