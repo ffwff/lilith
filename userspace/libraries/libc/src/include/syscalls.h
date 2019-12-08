@@ -13,7 +13,8 @@ ssize_t read(int fd, void *str, size_t len);
 int ftruncate(int fd, off_t length);
 int _ioctl(int fd, int request, unsigned long arg);
 int waitfd(int *fds, size_t nfds, useconds_t timeout);
-void *mmap(int fd, size_t size);
+void *mmap(void *addr, size_t len, int prot, int flags,
+           int fd, off_t off);
 void munmap(void *addr);
 int remove(char *device);
 void *sbrk(size_t size);

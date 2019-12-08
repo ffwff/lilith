@@ -1,5 +1,6 @@
 lib LibC
   alias Pid = LibC::Int
+  alias OffT = ULong
 
   alias Int = Int32
   alias UInt = UInt32
