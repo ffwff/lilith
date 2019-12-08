@@ -2,7 +2,7 @@ require "./fastmem.cr"
 require "./frame_allocator.cr"
 
 PTR_IDENTITY_MASK = 0xFFFF_8000_0000_0000u64
-KERNEL_OFFSET     =        0x80_0000_0000u64
+KERNEL_OFFSET     = 0xFFFF_8080_0000_0000u64
 PDPT_SIZE         =        0x80_0000_0000u64
 
 module Paging
@@ -130,7 +130,7 @@ module Paging
     # allocate for the kernel's pdpt
     @@current_pdpt = Pointer(Data::PDPTable).pmalloc_a
     # store it at the kernel offset
-    @@pml4_table.value.pdpt[1] = @@current_pdpt.address | PT_MASK
+    @@pml4_table.value.pdpt[257] = @@current_pdpt.address | PT_MASK
 
     # identity map the physical memory on the higher half
     if Cpuid.has_feature?(Cpuid::FeaturesExtendedEdx::PDPE1GB)
