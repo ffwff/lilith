@@ -273,13 +273,13 @@ private class Fat16Node < VFSNode
     insert_cache offset, last_cluster.to_u32
 
     # clean up within function call
-    unless fs.device.dma_buffer?
-      if allocator.nil?
+    if allocator
+      allocator.not_nil!.clear
+    else
+      unless fs.device.dma_buffer?
         cluster_buffer.mfree
-        fat_table.mfree
-      else
-        allocator.not_nil!.clear
       end
+      fat_table.mfree
     end
   end
 
