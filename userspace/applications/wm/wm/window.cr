@@ -13,7 +13,7 @@ class Wm::Window
 
   def bitmap
     if @bitmap.null?
-      @bitmap = @bitmap_file.map_to_memory.as(UInt32*)
+      @bitmap = @bitmap_file.map_to_memory(prot: LibC::MmapProt::Read | LibC::MmapProt::Write).as(UInt32*)
     end
     @bitmap
   end

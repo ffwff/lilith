@@ -31,7 +31,7 @@ def interpret_line(line)
   if argv[0] == "cd"
     if argv[1]?
       Dir.cd argv[1]
-      Adam.cwd = Dir.current
+      Adam.cwd = Dir.current.not_nil!
     end
   else
     cmd = argv.shift.not_nil!
@@ -51,7 +51,7 @@ def interpret_line(line)
   end
 end
 
-Adam.cwd = Dir.current
+Adam.cwd = Dir.current.not_nil!
 while true
   print Adam.cwd, "> "
   if line = getline
