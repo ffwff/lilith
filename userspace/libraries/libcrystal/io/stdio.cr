@@ -6,6 +6,13 @@ lib LibC
   SEEK_CUR = 1
   SEEK_END = 2
 
+  @[Flags]
+  enum MmapProt : LibC::Int
+    Read = 1 << 0
+    Write = 1 << 1
+    Execute = 1 << 2
+  end
+
   fun close(fd : LibC::Int) : LibC::Int
 end
 
@@ -29,8 +36,12 @@ class IO::FileDescriptor < IO
     LibC.write(@fd, slice.to_unsafe.as(LibC::String), slice.size)
   end
 
-  def map_to_memory(size = (-1).to_usize)
-    LibC.mmap @fd, size
+  def map_to_memory(address : UInt8* = Pointer(UInt8).null,
+                    size : LibC::SizeT = (-1).to_usize,
+                    prot : LibC::MmapProt = LibC::MmapProt::None,
+                    flags : Int = 0,
+                    offset : LibC::OffT = 0)
+    LibC.mmap address, size, prot.value, flags, @fd, offset
   end
 
   def size : Int

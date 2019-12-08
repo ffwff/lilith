@@ -8,6 +8,8 @@ lib LibC
   alias LongLong = Int64
   alias ULongLong = UInt64
 
+  alias OffT = ULong
+
   {% if flag?(:bits32) %}
     alias SizeT = UInt32
     alias SSizeT = Int32

@@ -145,11 +145,12 @@ fun remove(str : UInt8*) : LibC::Int
   lilith_syscall(SC_REMOVE, str, strlen(str)).to_int
 end
 
-fun mmap(fd : LibC::Int, size : LibC::SizeT) : Void*
+fun mmap(addr : Void*, size : LibC::SizeT, prot : LibC::Int,
+         flags : LibC::Int, fd : LibC::Int, offset : LibC::OffT) : Void*
   {% if flag?(:bits32) %}
-    Pointer(Void).new(lilith_syscall(SC_MMAP, fd.to_usize, size.to_usize).to_u64)
+    Pointer(Void).new(lilith_syscall(SC_MMAP, fd.to_usize, size.to_usize, prot.to_usize, flags.to_usize).to_u64)
   {% else %}
-    Pointer(Void).new(lilith_syscall64(SC_MMAP, fd.to_usize, size.to_usize))
+    Pointer(Void).new(lilith_syscall64(SC_MMAP, fd.to_usize, size.to_usize, prot.to_usize, flags.to_usize))
   {% end %}
 end
 
