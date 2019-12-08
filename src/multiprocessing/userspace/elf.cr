@@ -362,7 +362,8 @@ module ElfReader
             # create page and zero-initialize it
             page_start = Paging.alloc_page_pg_drv(section_start,
               data.attrs.includes?(MemMapNode::Attributes::Write),
-              true, npages)
+              true, npages,
+              execute: data.attrs.includes?(MemMapNode::Attributes::Execute))
             zero_page Pointer(UInt8).new(page_start), npages
           end
           # heap should start right after the last segment
