@@ -23,6 +23,13 @@ _bootstrap_start:
     mov %ebx, (multiboot_header)
     # global descriptor table
     lgdt (gdt_table)
+    # set the segment selectors
+    mov $0x10, %ax
+    mov %ax, %es
+    mov %ax, %ss
+    mov %ax, %ds
+    mov %ax, %fs
+    mov %ax, %gs
     # setup fxsr, xmmexcpt, pge, pae
     mov %cr4, %eax
     or $0x6A0, %ax
