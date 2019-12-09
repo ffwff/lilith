@@ -14,19 +14,8 @@ module PIC
     X86.outb 0xA1, 0x0
   end
 
+  # sets the PIC mask
   def enable(irq)
-    if irq >= 8
-      imr = X86.inb 0xA1
-      imr |= 1 << (irq - 8)
-      X86.outb 0xA1, imr
-    else
-      imr = X86.inb 0x21
-      imr |= 1 << irq
-      X86.outb 0x21, imr
-    end
-  end
-
-  def disable(irq)
     if irq >= 8
       imr = X86.inb 0xA1
       imr &= ~(1 << (irq - 8))
@@ -34,6 +23,19 @@ module PIC
     else
       imr = X86.inb 0x21
       imr &= ~(1 << irq)
+      X86.outb 0x21, imr
+    end
+  end
+
+  # clears the PIC mask
+  def disable(irq)
+    if irq >= 8
+      imr = X86.inb 0xA1
+      imr |= 1 << (irq - 8)
+      X86.outb 0xA1, imr
+    else
+      imr = X86.inb 0x21
+      imr |= 1 << irq
       X86.outb 0x21, imr
     end
   end
