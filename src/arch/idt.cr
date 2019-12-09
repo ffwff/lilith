@@ -78,13 +78,19 @@ module Idt
     @@idtr.base = @@idt.to_unsafe.address
 
     # cpu exception handlers
-    {% for i in 0..31 %}
-      init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT, (->Kernel.kcpuex{{ i.id }}).pointer.address, INTERRUPT_GATE
+    {% if flag?(:release) %}
+      {% for i in 0..31 %}
+        init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT,
+          (->Kernel.kcpuex{{ i.id }}).pointer.address,
+          INTERRUPT_GATE
+      {% end %}
     {% end %}
 
     # hw interrupts
     {% for i in 0..15 %}
-      init_idt_entry {{ i + 32 }}, KERNEL_CODE_SEGMENT, (->Kernel.kirq{{ i.id }}).pointer.address, INTERRUPT_GATE
+      init_idt_entry {{ i + 32 }}, KERNEL_CODE_SEGMENT,
+        (->Kernel.kirq{{ i.id }}).pointer.address,
+        INTERRUPT_GATE
     {% end %}
 
     asm("lidt ($0)" :: "r"(pointerof(@@idtr)) : "volatile")
@@ -183,6 +189,12 @@ end
 
 fun kcpuex_handler(frame : Idt::Data::ExceptionRegisters*)
   errcode = frame.value.errcode
+  unless process = Multiprocessing::Scheduler.current_process
+    dump_frame(frame)
+    Serial.print "segfault from pre-startup kernel code?"
+    while true; end
+  end
+  process = process.not_nil!
   case frame.value.int_no
   when EX_PAGEFAULT
     faulting_address = 0u64
@@ -198,7 +210,6 @@ fun kcpuex_handler(frame : Idt::Data::ExceptionRegisters*)
     while true; end
 
     {% if false %}
-      process = Multiprocessing::Scheduler.current_process.not_nil!
       if process.kernel_process?
         panic "segfault from kernel process"
       elsif frame.value.rip > KERNEL_OFFSET
@@ -223,6 +234,7 @@ fun kcpuex_handler(frame : Idt::Data::ExceptionRegisters*)
     {% end %}
   else
     dump_frame(frame)
+    Serial.print "process: ", process.name, '\n'
     Serial.print "unhandled cpu exception: ", frame.value.int_no, ' ', errcode, '\n'
     while true; end
   end
