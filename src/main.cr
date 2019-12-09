@@ -42,11 +42,6 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   # drivers
   Pit.init_device
 
-  # interrupts
-  Console.print "initializing idt...\n"
-  PIC.init_interrupts
-  Idt.init_table
-
   # paging
   Console.print "initializing paging...\n"
   # use the physical address of the kernel end for pmalloc
@@ -72,6 +67,10 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Gdt.flush_tss
   Kernel.ksyscall_setup
 
+  # interrupts
+  Console.print "initializing idt...\n"
+  PIC.init_interrupts
+  Idt.init_table
   Idt.status_mask = false
   Idt.enable
 
@@ -91,6 +90,9 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   # time
   Time.stamp = RTC.unix
 
+  # ps2 controller
+  PS2.init_controller
+
   # initial rootfs
   Multiprocessing.procfs = ProcFS.new
   RootFS.append(Multiprocessing.procfs.not_nil!)
@@ -102,9 +104,6 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   RootFS.append(PipeFS.new)
   RootFS.append(TmpFS.new)
   RootFS.append(SocketFS.new)
-
-  # ps2 controller
-  PS2.init_controller
 
   # file systems
   root_device = Ide.devices[0]
