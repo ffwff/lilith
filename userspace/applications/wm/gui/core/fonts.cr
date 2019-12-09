@@ -1,8 +1,25 @@
 module G::Fonts
   extend self
 
-  WIDTH  = 8
-  HEIGHT = 8
+  private WIDTH  = 8
+  private HEIGHT = 8
+
+  def text_width(str : String)
+    str.size * WIDTH
+  end
+
+  def chars_per_col(col : Int)
+    col // WIDTH
+  end
+
+  def text_height(str : String)
+    HEIGHT
+  end
+
+  def chars_per_row(row : Int)
+    row // HEIGHT
+  end
+
   def blit(db : UInt32*,
            dw : Int, dh : Int,
            sx : Int, sy : Int, ch : Char)
@@ -44,10 +61,6 @@ module G::Fonts
       widget.width, widget.height,
       cx, cy,
       str
-  end
-
-  def text_width(str : String)
-    str.size * WIDTH
   end
 
 end

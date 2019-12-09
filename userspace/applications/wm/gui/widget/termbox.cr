@@ -29,8 +29,8 @@ class G::Termbox < G::Widget
   end
 
   def resize(@width : Int32, @height : Int32)
-    @cwidth = @width // G::Fonts::WIDTH
-    @cheight = @height // G::Fonts::HEIGHT
+    @cwidth = G::Fonts.chars_per_col @width
+    @cheight = G::Fonts.chars_per_row @height
     if @bitmap.null?
       @bitmap = Painter.create_bitmap(@width, @height)
       @cbuffer = Slice(Char).new @cwidth * @cheight
@@ -83,8 +83,8 @@ class G::Termbox < G::Widget
       @cwidth.times do |x|
         G::Fonts.blit(@bitmap,
                       @width, @height,
-                      x * G::Fonts::WIDTH,
-                      y * G::Fonts::HEIGHT,
+                      G::Fonts.chars_per_col(x),
+                      G::Fonts.chars_per_row(y),
                       @cbuffer[y * @cwidth + x])
       end
     end
@@ -105,8 +105,8 @@ class G::Termbox < G::Widget
     end
     @cbuffer[@cy * @cwidth + @cx] = ch
     G::Fonts.blit(self,
-                  @cx * G::Fonts::WIDTH,
-                  @cy * G::Fonts::HEIGHT,
+                  G::Fonts.chars_per_col(@cx),
+                  G::Fonts.chars_per_col(@cy),
                   ch)
     @cx += 1
     if redraw?

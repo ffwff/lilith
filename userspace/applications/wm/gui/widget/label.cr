@@ -4,7 +4,7 @@ class G::Label < G::Widget
   def initialize(@x : Int32, @y : Int32,
                  @text : String)
     @width = G::Fonts.text_width(text)
-    @height = G::Fonts::HEIGHT
+    @height = G::Fonts.text_height(text)
     @bitmap = Painter.create_bitmap(@width, @height)
     redraw
   end

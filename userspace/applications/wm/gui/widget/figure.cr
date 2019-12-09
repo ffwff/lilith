@@ -19,7 +19,7 @@ class G::Figure < G::Widget
 
     if text = @text
       @width = Math.max(@img_width, G::Fonts.text_width(text))
-      @height = @img_height + G::Fonts::HEIGHT
+      @height = @img_height + G::Fonts.text_height(text)
       @bitmap = Painter.create_bitmap(@width, @height)
       redraw
     else
