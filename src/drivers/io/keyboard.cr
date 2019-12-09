@@ -76,14 +76,13 @@ class Keyboard
 
   def initialize
     Idt.register_irq 1, ->callback
-    # setup is done in mouse.cr
   end
 
   @last_e0 = false
   @last_f0 = false
 
   def callback
-    keycode = X86.inb(0x60)
+    keycode = PS2.read
     # Serial.print "kc: ", keycode,'\n'
     case keycode
     when 0x2A # left shift pressed
