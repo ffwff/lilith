@@ -36,7 +36,6 @@ int usleep(useconds_t usec);
 #define sleep(x) usleep((x)*1000000)
 
 pid_t waitpid(pid_t pid, int *status, int options);
-pid_t getpid();
 
 char *getcwd(char *buf, size_t length);
 int chdir(char *buf);
