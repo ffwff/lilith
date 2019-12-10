@@ -99,7 +99,7 @@ module KernelArena
   extend self
 
   # linked list of free pools
-  @@free_pools = uninitialized Pool::Data::PoolHeader*[6]
+  @@free_pools = uninitialized Pool::Data::PoolHeader*[7]
 
   @@start_addr = 0u64
   class_getter start_addr
@@ -113,14 +113,14 @@ module KernelArena
 
   # free pool chaining
   private def pool_size_for_bytes(sz : Int)
-    {% for k, i in [32, 64, 128, 256, 540, 1024] %}
+    {% for k, i in [32, 64, 128, 288, 576, 1016, 2032] %}
       return {{ k }} if sz <= {{ k }}
     {% end %}
     return -1
   end
 
   private def idx_for_pool_size(sz : Int)
-    {% for k, i in [32, 64, 128, 256, 540, 1024] %}
+    {% for k, i in [32, 64, 128, 288, 576, 1016, 2032] %}
       return {{ i }} if sz == {{ k }}
     {% end %}
     return -1
