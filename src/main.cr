@@ -57,7 +57,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   # gc
   Console.print "initializing kernel garbage collector...\n"
   KernelArena.start_addr = Kernel.stack_end.address + 0x1000
-  Gc._init Kernel.data_start.address,
+  Gc.init Kernel.data_start.address,
     Kernel.data_end.address,
     Kernel.stack_start.address,
     Kernel.stack_end.address

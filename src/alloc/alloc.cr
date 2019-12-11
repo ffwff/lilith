@@ -113,14 +113,14 @@ module KernelArena
 
   # free pool chaining
   private def pool_size_for_bytes(sz : Int)
-    {% for k, i in [32, 64, 128, 288, 576, 1016, 2032] %}
+    {% for k, i in [32, 64, 128, 280, 576, 1024, 2040] %}
       return {{ k }} if sz <= {{ k }}
     {% end %}
     return -1
   end
 
   private def idx_for_pool_size(sz : Int)
-    {% for k, i in [32, 64, 128, 288, 576, 1016, 2032] %}
+    {% for k, i in [32, 64, 128, 280, 576, 1024, 2040] %}
       return {{ i }} if sz == {{ k }}
     {% end %}
     return -1
@@ -130,7 +130,7 @@ module KernelArena
   private def new_pool(buffer_size : USize) : Pool
     addr = @@placement_addr
     Paging.alloc_page_pg(@@placement_addr, true, false)
-    @@placement_addr += 0x1000
+    @@placement_addr += Pool::POOL_SIZE
 
     pool_hdr = Pointer(Pool::Data::PoolHeader).new(addr)
     pool_hdr.value.block_buffer_size = buffer_size
