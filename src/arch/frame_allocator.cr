@@ -19,7 +19,7 @@ module FrameAllocator
 
     def _initialize(@base_addr : UInt64, @length : UInt64)
       nframes = (@length // 0x1000).to_i32
-      @frames = BitArray.new nframes
+      @frames = BitArray.pmalloc nframes
     end
 
     def to_s(io)
@@ -110,7 +110,7 @@ module FrameAllocator
     while !region.null?
       new_addr = region.value.frames.to_unsafe.address | PTR_IDENTITY_MASK
       size = region.value.frames.size
-      region.value.frames = BitArray.new(size, Pointer(UInt32).new(new_addr))
+      region.value.frames = BitArray.new(Pointer(UInt32).new(new_addr), size)
       region = region.value.next_region
     end
   end

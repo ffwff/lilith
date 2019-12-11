@@ -10,15 +10,12 @@ struct BitArray
   def initialize(@pointer : UInt32*, @size : Int32)
   end
 
-  def initialize(@size : Int32)
-    @pointer = Pointer(UInt32).pmalloc malloc_size
+  def self.pmalloc(size : Int32)
+    new Pointer(UInt32).pmalloc(malloc_size(size)), size
   end
 
   def self.null
-    new 0, Pointer(UInt32).null
-  end
-
-  def initialize(@size, @pointer)
+    new Pointer(UInt32).null, 0
   end
 
   # methods
@@ -93,8 +90,12 @@ struct BitArray
   end
 
   # size
+  protected def self.malloc_size(size : Int32)
+    size.div_ceil 32
+  end
+
   private def malloc_size : Int32
-    @size.div_ceil 32
+    BitArray.malloc_size @size
   end
 
   # position
