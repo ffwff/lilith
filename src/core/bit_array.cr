@@ -1,10 +1,13 @@
-struct PBitArray
+struct BitArray
   @size = 0
   getter size
   @pointer = Pointer(UInt32).null
 
   def to_unsafe
     @pointer
+  end
+
+  def initialize(@pointer : UInt32*, @size : Int32)
   end
 
   def initialize(@size : Int32)
