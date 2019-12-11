@@ -37,6 +37,7 @@ _start_main:
     # call the main function
     mov %rax, %rdi
     mov %rbx, %rsi
+    add $8, %rsp
     movabs $kmain, %rcx
     call *%rcx
 
