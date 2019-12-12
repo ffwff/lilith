@@ -19,6 +19,6 @@ module Gc
   end
 
   def unsafe_malloc(size : UInt64, atomic = false)
-    KernelArena.malloc(size)
+    Arena.malloc(size)
   end
 end
