@@ -13,7 +13,6 @@ struct Int
     end
   end
 
-  # unsafe math
   def //(other)
     self.unsafe_div other
   end
@@ -30,7 +29,6 @@ struct Int
     self.unsafe_shr other
   end
 
-  # math
   def ~
     self ^ -1
   end
@@ -130,6 +128,54 @@ struct Int
 
   def to_isize
     self.to_i64
+  end
+end
+
+struct Int8
+  def popcount
+    Intrinsics.popcount8 self
+  end
+end
+
+struct UInt8
+  def popcount
+    Intrinsics.popcount8 self
+  end
+end
+
+struct Int16
+  def popcount
+    Intrinsics.popcount16 self
+  end
+end
+
+struct UInt16
+  def popcount
+    Intrinsics.popcount16 self
+  end
+end
+
+struct Int32
+  def popcount
+    Intrinsics.popcount32 self
+  end
+end
+
+struct UInt32
+  def popcount
+    Intrinsics.popcount32 self
+  end
+end
+
+struct Int64
+  def popcount
+    Intrinsics.popcount64 self
+  end
+end
+
+struct UInt64
+  def popcount
+    Intrinsics.popcount64 self
   end
 end
 

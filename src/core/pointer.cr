@@ -36,7 +36,6 @@ struct Pointer(T)
     new 0u64
   end
 
-  # pre-pg malloc
   def self.pmalloc(size : Int)
     ptr = new Pmalloc.alloc(size.to_usize * sizeof(T))
     memset ptr.as(UInt8*), 0u64, size.to_usize * sizeof(T)
@@ -55,24 +54,18 @@ struct Pointer(T)
     ptr
   end
 
-  # pg malloc
-  # def self.malloc(size = 1)
-    # Gc.unsafe_malloc(size.to_usize * sizeof(T), true).as(T*)
-  # end
-
   def self.malloc_atomic(size = 1)
     Gc.unsafe_malloc(size.to_usize * sizeof(T), true).as(T*)
   end
 
   def self.mmalloc(size = 1)
-    KernelArena.malloc(size.to_usize * sizeof(T)).as(T*)
+    Arena.malloc(size.to_usize * sizeof(T)).as(T*)
   end
 
   def mfree
-    KernelArena.free(self.as(Void*))
+    Arena.free(self.as(Void*))
   end
 
-  # methods
   def to_s(io)
     io.print "[0x"
     self.address.to_s io, 16
@@ -83,7 +76,6 @@ struct Pointer(T)
     self.address == 0
   end
 
-  # operators
   def [](offset : Int)
     (self + offset.to_i64).value
   end
@@ -106,5 +98,9 @@ struct Pointer(T)
 
   def !=(other)
     self.address != other.address
+  end
+
+  def <=>(other : self)
+    address <=> other.address
   end
 end
