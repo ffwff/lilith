@@ -138,6 +138,10 @@ module Arena
     end
   end
 
+  def contains_ptr?(ptr)
+    @@start_addr <= ptr.address && ptr.address < @@placement_addr
+  end
+
   def pool_for_bytes(bytes : Int)
     idx = 0
     SIZES.each do |size|
@@ -200,12 +204,24 @@ module Arena
     Pool.new(hdr).mark_block ptr
   end
 
+  def marked?(ptr : Void*)
+    hdr = Pointer(Data::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
+    pool = Pool.new(hdr)
+  end
+
   def sweep
+    @@pools.size.times do |i|
+      @@pools[i] = Pointer(Data::PoolHeader).null
+    end
     addr = @@start_addr
     while addr < @@placement_addr.to_u64
       hdr = Pointer(Data::PoolHeader).new(addr)
       pool = Pool.new(hdr)
       pool.sweep
+      if pool.nfree > 0
+        hdr.value.next_pool = @@pools[pool.idx]
+        @@pools[pool.idx] = hdr
+      end
       addr += 0x1000
     end
   end
