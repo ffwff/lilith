@@ -37,52 +37,49 @@ struct BitArray
     end
   end
 
+  def clear
+    memset @pointer.as(UInt8*), 0.to_usize, (malloc_size*4).to_usize
+  end
+
   def first_unset
-    i = 0
-    while i < malloc_size
+    malloc_size.times do |i|
       if @pointer[i] != (~0).to_u32
-        return i * 32 + @pointer[i].ffz
+        k = i * 32 + @pointer[i].find_first_zero
+        return -1 if k > @size
+        return k
       end
-      i += 1
     end
     -1
   end
 
   def first_unset_from(idx : Int32)
-    i = idx
-    while i < malloc_size
+    malloc_size.times do |i|
       if @pointer[i] != (~0).to_u32
-        return {i, i * 32 + @pointer[i].find_first_zero}
+        k = {i, i * 32 + @pointer[i].find_first_zero}
+        return {-1, -1} if k[1] > @size
+        return k
       end
-      i += 1
     end
     {-1, -1}
   end
 
-  # TODO: find a better algorithm
-  def first_unset_bits(n : Int)
-    panic "unsupported" if n > 8
-    max_words = 1
-    i = 0
-    while i < malloc_size
-      first_idx = i * 32 + @pointer[i].ffz
-      next_idx = begin
-        j = i
-        while j < malloc_size
-          if @pointer[i] == 0
-            return 1
-          end
-          j += 1
-        end
-      end
-      i += 1
+  def popcount
+    count = 0
+    malloc_size.times do |i|
+      count += @pointer[i].popcount
     end
-    -1
+    count
+  end
+
+  def mask(other : self)
+    malloc_size.times do |i|
+      @pointer[i] = @pointer[i] & other.to_unsafe[i]
+    end
   end
 
   # to_s
   def to_s(io)
-    io.print "PBitArray ["
+    io.print "BitArray ["
     size.times do |i|
       io.print (self[i] ? '1' : '0')
     end
@@ -90,7 +87,7 @@ struct BitArray
   end
 
   # size
-  protected def self.malloc_size(size : Int32)
+  def self.malloc_size(size : Int32)
     size.div_ceil 32
   end
 

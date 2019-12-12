@@ -35,15 +35,11 @@ struct Slice(T)
     @buffer = Pointer(T).null
   end
 
-  # FIXME: this must not be inlined or
-  # memory corruption occurs (maybe related to gc)
-  @[NoInline]
   def [](idx : Int)
     panic "Slice: out of range" if idx >= @size || idx < 0
     @buffer[idx]
   end
 
-  @[NoInline]
   def []=(idx : Int, value : T)
     panic "Slice: out of range" if idx >= @size || idx < 0
     @buffer[idx] = value
