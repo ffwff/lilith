@@ -149,7 +149,6 @@ module Arena
 
   def new_pool(idx : Int)
     addr = @@placement_addr
-    Serial.print idx, ": ", Pointer(Void).new(addr), '\n'
     Paging.alloc_page_pg addr, true, false
     @@placement_addr += Pool::SIZE
 
