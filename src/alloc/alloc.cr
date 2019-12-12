@@ -4,213 +4,226 @@
 
 require "../arch/paging.cr"
 
-private struct Pool
-
-  lib Data
-    struct PoolHeader
-      next_pool : PoolHeader*
-      first_free_block : PoolBlockHeader*
-      block_buffer_size : USize
-      magic_number : USize
-    end
-
-    struct PoolBlockHeader
-      next_free_block : PoolBlockHeader*
-    end
-  end
-
-  MAGIC_HEADER      = 0xC0FEC0FE
-  POOL_SIZE         = 0x1000
-  HEADER_SIZE       = sizeof(Data::PoolHeader)
-  BLOCK_HEADER_SIZE = sizeof(Data::PoolBlockHeader)
-
-  def initialize(@header : Data::PoolHeader*)
-    if @header.value.magic_number != MAGIC_HEADER
-      panic "magic pool number is overwritten!"
-    end
-  end
-
-  getter header
-
-  # size of an object stored in each block
-  def block_buffer_size
-    @header.value.block_buffer_size
-  end
-
-  # full size of a block
-  def block_size
-    block_buffer_size + sizeof(Data::PoolBlockHeader)
-  end
-
-  # how many blocks can this pool store
-  def capacity
-    (POOL_SIZE - HEADER_SIZE) / block_size
-  end
-
-  # first free block in linked list
-  def first_free_block
-    @header.value.first_free_block
-  end
-
-  # methods
-  def init_blocks
-    # NOTE: first_free_block must be set before doing this
-    i = first_free_block.address
-    end_addr = @header.address + POOL_SIZE - block_size * 2
-    # fill next_free_block field of all except last one
-    while i < end_addr
-      ptr = Pointer(Data::PoolBlockHeader).new i
-      ptr.value.next_free_block = Pointer(Data::PoolBlockHeader).new(i + block_size)
-      i += block_size
-    end
-    # fill last one with zero
-    ptr = Pointer(Data::PoolBlockHeader).new i
-    ptr.value.next_free_block = Pointer(Data::PoolBlockHeader).null
-  end
-
-  def to_s(io)
-    io.print "Pool ", @header, " {\n"
-    io.print " header_size: ", HEADER_SIZE, "\n"
-    io.print " block_buffer_size: ", block_buffer_size, "\n"
-    io.print " capacity: ", capacity, "\n"
-    io.print " first_free_block: ", first_free_block, "\n"
-    io.print "}\n"
-  end
-
-  # obtain a free block and pop it from the pool
-  # returns a pointer to the buffer
-  def get_free_block : Void*
-    block = first_free_block
-    # Serial.print "allocate block of size ", block_buffer_size, '\n'
-    @header.value.first_free_block = block.value.next_free_block
-    block.as(Void*) + BLOCK_HEADER_SIZE
-  end
-
-  # release a free block
-  def release_block(addr : Void*)
-    # Serial.print "free block of size ", block_buffer_size, '\n'
-    block = Pointer(Data::PoolBlockHeader).new(addr.address - BLOCK_HEADER_SIZE)
-    block.value.next_free_block = @header.value.first_free_block
-    @header.value.first_free_block = block
-  end
-end
-
-module KernelArena
+module Arena
   extend self
 
-  # linked list of free pools
-  @@free_pools = uninitialized Pool::Data::PoolHeader*[7]
+  lib Data
+    MAGIC = 0xC0FEC0FE
+    struct PoolHeader
+      magic : USize
+      next_pool : PoolHeader*
+      idx : USize
+      nfree : USize
+    end
+  end
 
+  # a bitmapped memory pool
+  # [ hdr ][ alloc_bitmap ][ mark_bitmap ]( x * sz )
+  struct Pool
+    SIZE = 0x1000
+
+    @idx = 0
+    @block_size = 0
+    @blocks = 0
+    getter header, idx, block_size, blocks
+
+    def initialize(@header : Data::PoolHeader*)
+      @idx = @header.value.idx.to_i32
+      @block_size = Arena::SIZES[@idx]
+      @blocks = Arena::ITEMS[@idx]
+    end
+
+    def validate_header
+      if @header.value.magic != Data::MAGIC
+        panic "magic pool number is overwritten!"
+      end
+    end
+
+    def initialize(@header : Data::PoolHeader*, @idx : Int32)
+      @block_size = Arena::SIZES[@idx]
+      @blocks = Arena::ITEMS[@idx]
+    end
+
+    def nfree
+      @header.value.nfree
+    end
+
+    def init_header
+      @header.value.magic = Data::MAGIC
+      @header.value.next_pool = Pointer(Data::PoolHeader).null
+      @header.value.idx = @idx
+      @header.value.nfree = @blocks
+      alloc_bitmap.clear
+      mark_bitmap.clear
+    end
+
+    def alloc_bitmap
+      BitArray
+        .new((@header.as(Void*) + sizeof(Data::PoolHeader)).as(UInt32*),
+          blocks)
+    end
+
+    def mark_bitmap
+      BitArray
+        .new((@header.as(Void*) +
+            sizeof(Data::PoolHeader) +
+            BitArray.malloc_size(@blocks)*4).as(UInt32*),
+          blocks)
+    end
+
+    def block(idx : Int)
+      (@header.as(Void*) +
+        sizeof(Data::PoolHeader) +
+        BitArray.malloc_size(@blocks)*4*2 +
+        idx * @block_size)
+    end
+
+    def idx_for_block(block : Void*)
+      (block.address - @header.address - BitArray.malloc_size(@blocks)*4*2 - sizeof(Data::PoolHeader)) // @block_size
+    end
+
+    def get_free_block : Void*
+      if (idx = alloc_bitmap.first_unset) != -1
+        @header.value.nfree = nfree - 1
+        alloc_bitmap[idx] = true
+        block(idx)
+      else
+        Pointer(Void).null
+      end
+    end
+
+    def release_block(block : Void*)
+      idx = idx_for_block(block)
+      panic "double free" if !alloc_bitmap[idx]
+      alloc_bitmap[idx] = false
+      @header.value.nfree = nfree + 1
+    end
+
+    def mark_block(block : Void*)
+      idx = idx_for_block(block)
+      mark_bitmap[idx] = true
+    end
+
+    def sweep
+      alloc_bitmap.mask mark_bitmap
+      mark_bitmap.clear
+      @header.value.nfree = alloc_bitmap.popcount
+    end
+
+    def to_s(io)
+      io.print "Pool ", @header, " {\n"
+      io.print "  size: ", @block_size, "\n"
+      io.print "  nfree: ", nfree, "/", @blocks, "\n"
+      io.print "  alloc: ", alloc_bitmap, "\n"
+      io.print "  mark: ", mark_bitmap, "\n"
+      io.print "}\n"
+    end
+  end
+
+  # sizes of a pool
+  SIZES = StaticArray[32, 64, 128, 256, 512, 1024]
+  # maximum number of blocks a given pool can store
+  ITEMS = StaticArray[126, 63, 31, 15, 7, 3]
+  # placement address of first pool
   @@start_addr = 0u64
-  class_getter start_addr
-
+  # placement address of new pool
   @@placement_addr = 0u64
-  class_getter placement_addr
+  # available pool list
+  @@pools = uninitialized Data::PoolHeader*[7]
 
-  def start_addr=(@@start_addr)
-    @@placement_addr = @@start_addr
+  def init(@@placement_addr)
+    @@start_addr = @@placement_addr
+    @@pools.size.times do |i|
+      @@pools[i] = Pointer(Data::PoolHeader).null
+    end
   end
 
-  # free pool chaining
-  private def pool_size_for_bytes(sz : Int)
-    {% for k, i in [32, 64, 128, 280, 576, 1024, 2040] %}
-      return {{ k }} if sz <= {{ k }}
-    {% end %}
-    return -1
+  def pool_for_bytes(bytes : Int)
+    idx = 0
+    SIZES.each do |size|
+      return idx if bytes <= size
+      idx += 1
+    end
+    -1
   end
 
-  private def idx_for_pool_size(sz : Int)
-    {% for k, i in [32, 64, 128, 280, 576, 1024, 2040] %}
-      return {{ i }} if sz == {{ k }}
-    {% end %}
-    return -1
-  end
-
-  # pool
-  private def new_pool(buffer_size : USize) : Pool
+  def new_pool(idx : Int)
     addr = @@placement_addr
-    Paging.alloc_page_pg(@@placement_addr, true, false)
-    @@placement_addr += Pool::POOL_SIZE
+    Serial.print idx, ": ", Pointer(Void).new(addr), '\n'
+    Paging.alloc_page_pg addr, true, false
+    @@placement_addr += Pool::SIZE
 
-    pool_hdr = Pointer(Pool::Data::PoolHeader).new(addr)
-    pool_hdr.value.block_buffer_size = buffer_size
-    pool_hdr.value.next_pool = Pointer(Pool::Data::PoolHeader).null
-    pool_hdr.value.first_free_block = Pointer(Pool::Data::PoolBlockHeader).new(addr + Pool::HEADER_SIZE)
-    pool_hdr.value.magic_number = Pool::MAGIC_HEADER
-    pool = Pool.new pool_hdr
-    pool.init_blocks
+    hdr = Pointer(Data::PoolHeader).new(addr)
+    @@pools[idx] = hdr
+
+    pool = Pool.new hdr, idx
+    pool.init_header 
     pool
   end
 
-  # manual functions
-  def malloc(sz : USize) : Void*
-    Multiprocessing::DriverThread.assert_unlocked
-
-    pool_size = pool_size_for_bytes sz
-    panic "unable to alloc" if pool_size == -1
-
-    pool_size = pool_size.to_usize
-    idx = idx_for_pool_size pool_size
-    if @@free_pools[idx].null?
-      # create a new pool if there isn't any freed
-      pool = new_pool(pool_size)
-      chain_pool pool
+  def malloc(bytes : Int, marked = false) : Void*
+    idx = pool_for_bytes bytes
+    if @@pools[idx].null?
+      pool = new_pool idx
+      # Serial.print "NEW: ", pool
       pool.get_free_block
     else
-      # reuse existing pool
-      pool = Pool.new @@free_pools[idx]
-      if pool.first_free_block.null?
-        # pop if pool is full
-        # break circular chains in the tail node of linked list
-        cur_pool = pool.header.value.next_pool
-        while !cur_pool.null?
-          next_pool = cur_pool.value.next_pool
-          if cur_pool.value.first_free_block.null?
-            cur_pool.value.next_pool = Pointer(Pool::Data::PoolHeader).null
-          else
-            break
-          end
-          cur_pool = next_pool
-        end
-        # have we found a free pool?
-        if cur_pool.null?
-          # nope, new pool
-          pool = new_pool(pool_size)
-          chain_pool pool
-          return pool.get_free_block
-        else
-          return Pool.new(cur_pool).get_free_block
-        end
+      pool = Pool.new @@pools[idx]
+      # Serial.print "OLD: ", pool
+      pool.validate_header
+      block = pool.get_free_block
+      if marked
+        pool.mark_block block
       end
-      pool.get_free_block
+      # if we can't allocate a new block in the pool, unchain it
+      if pool.nfree == 0
+        @@pools[idx] = pool.header.value.next_pool
+        pool.header.value.next_pool = Pointer(Data::PoolHeader).null
+      end
+      block
     end
   end
 
-  # TODO reuse empty free pools to different size
-  # FIXME: release optimizations causes weird behavior when free is called from Gc; NoInline fixes it for some reason
-  @[NoInline]
   def free(ptr : Void*)
-    pool_hdr = Pointer(Pool::Data::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
-    pool = Pool.new pool_hdr
+    hdr = Pointer(Data::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
+    pool = Pool.new(hdr)
+    rechain = pool.nfree == 0
     pool.release_block ptr
-    chain_pool pool
-  end
-
-  private def chain_pool(pool)
-    idx = idx_for_pool_size pool.block_buffer_size
-    if pool.header.value.next_pool.null?
-      pool.header.value.next_pool = @@free_pools[idx]
-      @@free_pools[idx] = pool.header
+    # rechain it if it isn't chained and we can allocate one more block
+    if rechain
+      hdr.value.next_pool = @@pools[pool.idx]
+      @@pools[pool.idx] = hdr
     end
   end
 
-  # utils
-  def to_s(io)
-    io.print
+  def mark(ptr : Void*)
+    hdr = Pointer(Data::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
+    Pool.new(hdr).mark_block ptr
+  end
+
+  def sweep
+    addr = @@start_addr
+    while addr < @@placement_addr.to_u64
+      hdr = Pointer(Data::PoolHeader).new(addr)
+      pool = Pool.new(hdr)
+      pool.sweep
+      addr += 0x1000
+    end
+  end
+
+  def dump
+    addr = @@start_addr
+    while addr < @@placement_addr.to_u64
+      hdr = Pointer(Data::PoolHeader).new(addr)
+      pool = Pool.new(hdr)
+      Serial.print pool
+      addr += 0x1000
+    end
   end
 
   def block_size_for_ptr(ptr)
-    pool_hdr = Pointer(Pool::Data::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
-    pool_hdr.value.block_buffer_size
+    hdr = Pointer(Data::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
+    Pool.new(hdr).block_size
   end
+
 end
