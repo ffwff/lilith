@@ -112,13 +112,16 @@ module Arena
 
     def block_marked?(block : Void*)
       idx = idx_for_block(block)
+      unless 0 <= idx && idx < mark_bitmap.size
+        return true
+      end
       mark_bitmap[idx]
     end
 
     def sweep
       alloc_bitmap.mask mark_bitmap
       mark_bitmap.clear
-      @header.value.nfree = alloc_bitmap.popcount
+      @header.value.nfree = @blocks - alloc_bitmap.popcount
     end
 
     def to_s(io)
@@ -244,7 +247,7 @@ module Arena
       Pool.new(hdr).mark_block ptr
     elsif magic == Data::MAGIC_MMAP
       hdr = Pointer(Data::MmapHeader).new(addr)
-      hdr.marked = true
+      hdr.value.marked = 1
     end
   end
 
@@ -256,7 +259,7 @@ module Arena
       Pool.new(hdr).block_marked? ptr
     elsif magic == Data::MAGIC_MMAP
       hdr = Pointer(Data::MmapHeader).new(addr)
-      hdr.marked ? true : false
+      hdr.value.marked ? true : false
     end
   end
 
