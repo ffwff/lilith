@@ -45,8 +45,9 @@ module Gc
 
   # pushes a node to the current gray stack
   private def push_gray(ptr : Void*)
-    return if Arena.marked? ptr
+    return if Arena.marked?(ptr)
     Arena.mark ptr
+    return if Arena.atomic?(ptr)
     if @@use_front_grays
       @@front_grays[@@front_grays_idx] = ptr
       @@front_grays_idx += 1
@@ -58,8 +59,9 @@ module Gc
 
   # pushes a node to the opposite gray stack
   private def push_opposite_gray(ptr : Void*)
-    return if Arena.marked? ptr
+    return if Arena.marked?(ptr)
     Arena.mark ptr
+    return if Arena.atomic?(ptr)
     if @@use_front_grays
       @@back_grays[@@back_grays_idx] = ptr
       @@back_grays_idx += 1
@@ -118,6 +120,16 @@ module Gc
       global_ptr += 1
     end
   end
+  
+  private def scan_registers
+    {% for register in ["rbx", "r12", "r13", "r14", "r15"] %}
+      ptr = Pointer(Void).null
+      asm("" : {{ "={#{register.id}}" }}(ptr))
+      if Arena.contains_ptr? ptr
+        push_gray ptr
+      end
+    {% end %}
+  end
 
   private def scan_stack
     sp = 0u64
@@ -140,21 +152,33 @@ module Gc
   private def scan_object(ptr : Void*)
     # TODO: atomic ptrs and arrays
     id = ptr.as(UInt32*).value
-    offsets = LibCrystal.type_offsets id
-    pos = 0
-    size = LibCrystal.type_size id
-    while pos < size
-      if (offsets & 1) != 0
-        ivar = Pointer(Void*).new(ptr.address + pos).value
+    if id == GC_ARRAY_HEADER_TYPE
+      buffer = ptr.address + sizeof(USize) * 2
+      size = ptr.as(USize*)[1]
+      size.times do |i|
+        ivar = Pointer(Void*).new(buffer + i.to_u64 * sizeof(Void*)).value
         if Arena.contains_ptr? ivar
           push_opposite_gray ivar
         end
       end
-      offsets >>= 1
-      pos += sizeof(Void*)
+    else
+      offsets = LibCrystal.type_offsets id
+      pos = 0
+      size = LibCrystal.type_size id
+      if size == 0
+        Serial.print "unknown type: ", id, "!"
+      end
+      while pos < size
+        if (offsets & 1) != 0
+          ivar = Pointer(Void*).new(ptr.address + pos).value
+          if Arena.contains_ptr? ivar
+            push_opposite_gray ivar
+          end
+        end
+        offsets >>= 1
+        pos += sizeof(Void*)
+      end
     end
-    # size = LibCrystal.type_size
-    # TODO
   end
 
   def cycle
@@ -162,6 +186,7 @@ module Gc
     when State::ScanRoot
       Serial.print "scan root!\n"
       scan_globals
+      scan_registers
       scan_stack
       @@state = State::ScanGray
       false
@@ -189,10 +214,14 @@ module Gc
 
   def unsafe_malloc(size : UInt64, atomic = false)
     if enabled
-      cycle
-      dump Serial
+      full_cycle
+      # Arena.dump
     end
-    ptr = Arena.malloc(size)
+    #if enabled
+    #  cycle
+    #  dump Serial
+    #end
+    ptr = Arena.malloc(size, atomic)
     push_gray ptr
     ptr
   end

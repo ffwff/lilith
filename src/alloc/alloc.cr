@@ -9,6 +9,7 @@ module Arena
 
   lib Data
     MAGIC = 0xC0FEC0FE
+    MAGIC_ATOMIC = 0xCAFECAFE
     struct PoolHeader
       magic : USize
       next_pool : PoolHeader*
@@ -40,7 +41,8 @@ module Arena
     end
 
     def validate_header
-      if @header.value.magic != Data::MAGIC
+      if @header.value.magic != Data::MAGIC &&
+         @header.value.magic != Data::MAGIC_ATOMIC
         panic "magic pool number is overwritten!"
       end
     end
@@ -54,8 +56,8 @@ module Arena
       @header.value.nfree
     end
 
-    def init_header
-      @header.value.magic = Data::MAGIC
+    def init_header(atomic=false)
+      @header.value.magic = atomic ? Data::MAGIC_ATOMIC : Data::MAGIC
       @header.value.next_pool = Pointer(Data::PoolHeader).null
       @header.value.idx = @idx
       @header.value.nfree = @blocks
@@ -146,6 +148,8 @@ module Arena
   @@placement_addr = 0u64
   # available pool list
   @@pools = uninitialized Data::PoolHeader*[7]
+  # available pool list (atomic)
+  @@atomic_pools = uninitialized Data::PoolHeader*[7]
 
   def init(@@placement_addr)
     @@start_addr = @@placement_addr
@@ -167,20 +171,24 @@ module Arena
     -1
   end
 
-  private def new_pool(idx : Int)
+  private def new_pool(idx : Int, atomic)
     addr = @@placement_addr
     Paging.alloc_page_pg addr, true, false
     @@placement_addr += Pool::SIZE
 
     hdr = Pointer(Data::PoolHeader).new(addr)
-    @@pools[idx] = hdr
+    if atomic
+      @@atomic_pools[idx] = hdr
+    else
+      @@pools[idx] = hdr
+    end
 
     pool = Pool.new hdr, idx
-    pool.init_header 
+    pool.init_header atomic
     pool
   end
 
-  private def new_mmap(bytes : Int, marked)
+  private def new_mmap(bytes : Int)
     pool_size = sizeof(Data::MmapHeader) + bytes
     panic "pool size must be <= 0x1000" if pool_size > 0x1000
 
@@ -190,31 +198,29 @@ module Arena
 
     hdr = Pointer(Data::MmapHeader).new(addr)
     hdr.value.magic = Data::MAGIC_MMAP
-    hdr.value.marked = marked.to_unsafe
+    hdr.value.marked = 0
 
     (hdr + 1).as(Void*)
   end
 
-  def malloc(bytes : Int, marked = false) : Void*
+  def malloc(bytes : Int, atomic=false) : Void*
     if bytes > MAX_POOL_SIZE
-      return new_mmap(bytes, marked)
+      return new_mmap bytes
     end
     idx = pool_for_bytes bytes
-    if @@pools[idx].null?
-      pool = new_pool idx
+    pools = atomic ? @@atomic_pools : @@pools
+    if pools[idx].null?
+      pool = new_pool idx, atomic
       # Serial.print "NEW: ", pool
       pool.get_free_block
     else
-      pool = Pool.new @@pools[idx]
+      pool = Pool.new pools[idx]
       # Serial.print "OLD: ", pool
       pool.validate_header
       block = pool.get_free_block
-      if marked
-        pool.mark_block block
-      end
       # if we can't allocate a new block in the pool, unchain it
       if pool.nfree == 0
-        @@pools[idx] = pool.header.value.next_pool
+        pools[idx] = pool.header.value.next_pool
         pool.header.value.next_pool = Pointer(Data::PoolHeader).null
       end
       block
@@ -224,7 +230,7 @@ module Arena
   def free(ptr : Void*)
     addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
     magic = Pointer(USize).new(addr).value
-    if magic == Data::MAGIC
+    if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
       hdr = Pointer(Data::PoolHeader).new(addr)
       pool = Pool.new(hdr)
       rechain = pool.nfree == 0
@@ -234,33 +240,45 @@ module Arena
         hdr.value.next_pool = @@pools[pool.idx]
         @@pools[pool.idx] = hdr
       end
-    else magic == Data::MAGIC_MMAP
+    elsif magic == Data::MAGIC_MMAP
       # TODO
+    else
+      panic "free: unknown magic"
     end
   end
 
   def mark(ptr : Void*)
     addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
     magic = Pointer(USize).new(addr).value
-    if magic == Data::MAGIC
+    if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
       hdr = Pointer(Data::PoolHeader).new(addr)
       Pool.new(hdr).mark_block ptr
     elsif magic == Data::MAGIC_MMAP
       hdr = Pointer(Data::MmapHeader).new(addr)
       hdr.value.marked = 1
+    else
+      panic "free: unknown magic"
     end
   end
 
   def marked?(ptr : Void*)
     addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
     magic = Pointer(USize).new(addr).value
-    if magic == Data::MAGIC
+    if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
       hdr = Pointer(Data::PoolHeader).new(addr)
       Pool.new(hdr).block_marked? ptr
     elsif magic == Data::MAGIC_MMAP
       hdr = Pointer(Data::MmapHeader).new(addr)
       hdr.value.marked ? true : false
+    else
+      panic "free: unknown magic"
     end
+  end
+
+  def atomic?(ptr : Void*)
+    addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
+    magic = Pointer(USize).new(addr).value
+    magic == Data::MAGIC_ATOMIC
   end
 
   def sweep
@@ -270,7 +288,7 @@ module Arena
     addr = @@start_addr
     while addr < @@placement_addr.to_u64
       magic = Pointer(USize).new(addr).value
-      if magic == Data::MAGIC
+      if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
         hdr = Pointer(Data::PoolHeader).new(addr)
         pool = Pool.new(hdr)
         pool.sweep
@@ -290,7 +308,7 @@ module Arena
     addr = @@start_addr
     while addr < @@placement_addr.to_u64
       magic = Pointer(USize).new(addr).value
-      if magic == Data::MAGIC
+      if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
         hdr = Pointer(Data::PoolHeader).new(addr)
         pool = Pool.new(hdr)
         Serial.print pool
