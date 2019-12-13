@@ -15,6 +15,12 @@ module Arena
       idx : USize
       nfree : USize
     end
+
+    MAGIC_MMAP = 0xBEEFBEEF
+    struct MmapHeader
+      magic : USize
+      marked : USize
+    end
   end
 
   # a bitmapped memory pool
@@ -104,6 +110,11 @@ module Arena
       mark_bitmap[idx] = true
     end
 
+    def block_marked?(block : Void*)
+      idx = idx_for_block(block)
+      mark_bitmap[idx]
+    end
+
     def sweep
       alloc_bitmap.mask mark_bitmap
       mark_bitmap.clear
@@ -122,6 +133,8 @@ module Arena
 
   # sizes of a pool
   SIZES = StaticArray[32, 64, 128, 256, 512, 1024]
+  # maximum pool size
+  MAX_POOL_SIZE = 1024
   # maximum number of blocks a given pool can store
   ITEMS = StaticArray[126, 63, 31, 15, 7, 3]
   # placement address of first pool
@@ -142,7 +155,7 @@ module Arena
     @@start_addr <= ptr.address && ptr.address < @@placement_addr
   end
 
-  def pool_for_bytes(bytes : Int)
+  private def pool_for_bytes(bytes : Int)
     idx = 0
     SIZES.each do |size|
       return idx if bytes <= size
@@ -151,7 +164,7 @@ module Arena
     -1
   end
 
-  def new_pool(idx : Int)
+  private def new_pool(idx : Int)
     addr = @@placement_addr
     Paging.alloc_page_pg addr, true, false
     @@placement_addr += Pool::SIZE
@@ -164,7 +177,25 @@ module Arena
     pool
   end
 
+  private def new_mmap(bytes : Int, marked)
+    pool_size = sizeof(Data::MmapHeader) + bytes
+    panic "pool size must be <= 0x1000" if pool_size > 0x1000
+
+    addr = @@placement_addr
+    Paging.alloc_page_pg addr, true, false
+    @@placement_addr += 0x1000
+
+    hdr = Pointer(Data::MmapHeader).new(addr)
+    hdr.value.magic = Data::MAGIC_MMAP
+    hdr.value.marked = marked.to_unsafe
+
+    (hdr + 1).as(Void*)
+  end
+
   def malloc(bytes : Int, marked = false) : Void*
+    if bytes > MAX_POOL_SIZE
+      return new_mmap(bytes, marked)
+    end
     idx = pool_for_bytes bytes
     if @@pools[idx].null?
       pool = new_pool idx
@@ -188,25 +219,45 @@ module Arena
   end
 
   def free(ptr : Void*)
-    hdr = Pointer(Data::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
-    pool = Pool.new(hdr)
-    rechain = pool.nfree == 0
-    pool.release_block ptr
-    # rechain it if it isn't chained and we can allocate one more block
-    if rechain
-      hdr.value.next_pool = @@pools[pool.idx]
-      @@pools[pool.idx] = hdr
+    addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
+    magic = Pointer(USize).new(addr).value
+    if magic == Data::MAGIC
+      hdr = Pointer(Data::PoolHeader).new(addr)
+      pool = Pool.new(hdr)
+      rechain = pool.nfree == 0
+      pool.release_block ptr
+      # rechain it if it isn't chained and we can allocate one more block
+      if rechain
+        hdr.value.next_pool = @@pools[pool.idx]
+        @@pools[pool.idx] = hdr
+      end
+    else magic == Data::MAGIC_MMAP
+      # TODO
     end
   end
 
   def mark(ptr : Void*)
-    hdr = Pointer(Data::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
-    Pool.new(hdr).mark_block ptr
+    addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
+    magic = Pointer(USize).new(addr).value
+    if magic == Data::MAGIC
+      hdr = Pointer(Data::PoolHeader).new(addr)
+      Pool.new(hdr).mark_block ptr
+    elsif magic == Data::MAGIC_MMAP
+      hdr = Pointer(Data::MmapHeader).new(addr)
+      hdr.marked = true
+    end
   end
 
   def marked?(ptr : Void*)
-    hdr = Pointer(Data::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
-    pool = Pool.new(hdr)
+    addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
+    magic = Pointer(USize).new(addr).value
+    if magic == Data::MAGIC
+      hdr = Pointer(Data::PoolHeader).new(addr)
+      Pool.new(hdr).block_marked? ptr
+    elsif magic == Data::MAGIC_MMAP
+      hdr = Pointer(Data::MmapHeader).new(addr)
+      hdr.marked ? true : false
+    end
   end
 
   def sweep
@@ -215,12 +266,18 @@ module Arena
     end
     addr = @@start_addr
     while addr < @@placement_addr.to_u64
-      hdr = Pointer(Data::PoolHeader).new(addr)
-      pool = Pool.new(hdr)
-      pool.sweep
-      if pool.nfree > 0
-        hdr.value.next_pool = @@pools[pool.idx]
-        @@pools[pool.idx] = hdr
+      magic = Pointer(USize).new(addr).value
+      if magic == Data::MAGIC
+        hdr = Pointer(Data::PoolHeader).new(addr)
+        pool = Pool.new(hdr)
+        pool.sweep
+        if pool.nfree > 0
+          hdr.value.next_pool = @@pools[pool.idx]
+          @@pools[pool.idx] = hdr
+        end
+      elsif magic == Data::MAGIC_MMAP
+        hdr = Pointer(Data::MmapHeader).new(addr)
+        # TODO
       end
       addr += 0x1000
     end
@@ -229,9 +286,13 @@ module Arena
   def dump
     addr = @@start_addr
     while addr < @@placement_addr.to_u64
-      hdr = Pointer(Data::PoolHeader).new(addr)
-      pool = Pool.new(hdr)
-      Serial.print pool
+      magic = Pointer(USize).new(addr).value
+      if magic == Data::MAGIC
+        hdr = Pointer(Data::PoolHeader).new(addr)
+        pool = Pool.new(hdr)
+        Serial.print pool
+      elsif magic == Data::MAGIC_MMAP
+      end
       addr += 0x1000
     end
   end
