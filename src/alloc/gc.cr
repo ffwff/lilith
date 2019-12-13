@@ -34,16 +34,6 @@ module Gc
   @@back_grays_idx = 0
   @@use_front_grays = true
 
-  # whether the opposite gray stack is full enough for 1 more allocation
-  # (we need that for a newly allocated object)
-  private def opposite_gray_full?
-    if @@use_front_grays
-      @@back_grays_idx == GRAY_SIZE - 2
-    else
-      @@front_grays_idx == GRAY_SIZE - 2
-    end
-  end
-
   # whether the current gray stack is empty
   private def gray_empty?
     if @@use_front_grays
@@ -80,16 +70,16 @@ module Gc
   end
 
   # pops a node from the current gray stack
-  private def pop_gray(n : Int = 1)
+  private def pop_gray
     if @@use_front_grays
       return nil if @@front_grays_idx == 0
       ptr = @@front_grays[@@front_grays_idx - 1]
-      @@front_grays_idx -= n
+      @@front_grays_idx -= 1
       ptr
     else
       return nil if @@back_grays_idx == 0
       ptr = @@back_grays[@@back_grays_idx - 1]
-      @@back_grays_idx -= n
+      @@back_grays_idx -= 1
       ptr
     end
   end
@@ -120,7 +110,7 @@ module Gc
 
   private def scan_globals
     global_ptr = LibCrystal.__crystal_gc_globals
-    while (ptr = global_ptr.value) && !opposite_gray_full?
+    while (ptr = global_ptr.value)
       root_ptr = ptr.value
       if Arena.contains_ptr? root_ptr
         push_gray root_ptr
@@ -132,7 +122,7 @@ module Gc
   private def scan_stack
     sp = 0u64
     asm("" : "={rsp}"(sp))
-    while sp < @@stack_end.address && !opposite_gray_full?
+    while sp < @@stack_end.address
       root_ptr = Pointer(Void*).new(sp).value
       if Arena.contains_ptr? root_ptr
         push_gray root_ptr
@@ -149,7 +139,6 @@ module Gc
 
   private def scan_object(ptr : Void*)
     # TODO: atomic ptrs and arrays
-    pushed = 0
     id = ptr.as(UInt32*).value
     offsets = LibCrystal.type_offsets id
     pos = 0
