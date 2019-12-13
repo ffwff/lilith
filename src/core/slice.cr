@@ -12,27 +12,16 @@ struct Slice(T)
     @buffer.null?
   end
 
-  def self.malloc(sz)
-    new Pointer(T).malloc(sz), sz
+  def self.malloc(sz : Int)
+    new Pointer(T).malloc(sz.to_u64), sz
   end
 
-  def self.malloc_atomic(sz)
-    new Pointer(T).malloc_atomic(sz), sz
+  def self.malloc_atomic(sz : Int)
+    new Pointer(T).malloc_atomic(sz.to_u64), sz
   end
 
   def self.mmalloc_a(sz, allocator)
     new allocator.malloc(sz * sizeof(T)).as(T*), sz
-  end
-
-  # manual malloc: this should only be used when the slice is
-  # to be cleaned up before the function returns
-  def self.mmalloc(sz)
-    new Pointer(T).mmalloc(sz), sz
-  end
-
-  def mfree
-    @buffer.mfree
-    @buffer = Pointer(T).null
   end
 
   def [](idx : Int)

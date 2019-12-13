@@ -211,7 +211,7 @@ private class Fat16Node < VFSNode
                   sz = fs.fat_sector_size
                   Slice(UInt16).new(allocator.not_nil!.malloc(sz * sizeof(UInt16)).as(UInt16*), sz)
                 else
-                  Slice(UInt16).mmalloc(fs.fat_sector_size)
+                  Slice(UInt16).malloc(fs.fat_sector_size)
                 end
     fat_sector = read_fat_table fat_table, starting_cluster
 
@@ -238,7 +238,7 @@ private class Fat16Node < VFSNode
     cluster_buffer = if (ptr = fs.device.dma_buffer?)
                       Slice(UInt8).new(ptr, cluster_bufsz)
                      elsif allocator.nil?
-                      Slice(UInt8).mmalloc(cluster_bufsz)
+                      Slice(UInt8).malloc(cluster_bufsz)
                      else
                       Slice(UInt8).new(allocator.not_nil!.malloc(cluster_bufsz).as(UInt8*), cluster_bufsz)
                      end
@@ -275,11 +275,6 @@ private class Fat16Node < VFSNode
     # clean up within function call
     if allocator
       allocator.not_nil!.clear
-    else
-      unless fs.device.dma_buffer?
-        cluster_buffer.mfree
-      end
-      fat_table.mfree
     end
   end
 
@@ -293,13 +288,13 @@ private class Fat16Node < VFSNode
 
   #
   private def populate_directory
-    fat_table = Slice(UInt16).mmalloc fs.fat_sector_size
+    fat_table = Slice(UInt16).malloc fs.fat_sector_size
     fat_sector = read_fat_table fat_table, starting_cluster
 
     cluster = starting_cluster
     end_directory = false
 
-    entries = Slice(Fat16Structs::Fat16Entry).mmalloc 16
+    entries = Slice(Fat16Structs::Fat16Entry).malloc 16
 
     while cluster < 0xFFF8
       sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
@@ -316,9 +311,6 @@ private class Fat16Node < VFSNode
       fat_sector = read_fat_table fat_table, cluster, fat_sector
       cluster = fat_table[ent_for cluster]
     end
-
-    entries.mfree
-    fat_table.mfree
   end
 
   def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
@@ -412,7 +404,7 @@ class Fat16FS < VFS
 
     panic "device must be ATA" if @device.type != AtaDevice::Type::Ata
 
-    bs = Pointer(Fat16Structs::Fat16BootSector).mmalloc
+    bs = Pointer(Fat16Structs::Fat16BootSector).malloc_atomic
 
     device.read_sector(bs.as(UInt8*), partition.first_sector.to_u64)
     idx = 0
@@ -432,7 +424,7 @@ class Fat16FS < VFS
 
     # load root directory
     @root = Fat16Node.new self, nil, true
-    entries = Slice(Fat16Structs::Fat16Entry).mmalloc 16
+    entries = Slice(Fat16Structs::Fat16Entry).malloc 16
 
     bs.value.root_dir_entries.times do |i|
       break if sector + i > @data_sector
@@ -444,10 +436,6 @@ class Fat16FS < VFS
         root.load_entry entry
       end
     end
-
-    # cleanup
-    entries.mfree
-    bs.mfree
 
     # setup process-local variables
     @process_allocator =

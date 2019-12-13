@@ -363,7 +363,7 @@ class AtaDevice
     @name = builder.to_s
 
     # read device identifier
-    device = Pointer(Ata::Data::AtaIdentify).mmalloc
+    device = Pointer(Ata::Data::AtaIdentify).malloc_atomic
 
     case @type
     when Type::Ata
@@ -374,7 +374,6 @@ class AtaDevice
       # Serial.print "status: ", status, '\n'
       if status == 0
         # cleanup
-        device.mfree
         return false
       end
     when Type::Atapi
@@ -385,7 +384,6 @@ class AtaDevice
       # Serial.print "status: ", status, '\n'
       if status == 0
         # cleanup
-        device.mfree
         return false
       end
     end
@@ -410,8 +408,6 @@ class AtaDevice
       end
     {% end %}
 
-    # cleanup
-    device.mfree
     true
   end
 

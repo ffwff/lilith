@@ -58,14 +58,6 @@ struct Pointer(T)
     Gc.unsafe_malloc(size.to_usize * sizeof(T), true).as(T*)
   end
 
-  def self.mmalloc(size = 1)
-    Arena.malloc(size.to_usize * sizeof(T)).as(T*)
-  end
-
-  def mfree
-    Arena.free(self.as(Void*))
-  end
-
   def to_s(io)
     io.print "[0x"
     self.address.to_s io, 16
