@@ -468,7 +468,6 @@ module Multiprocessing
 
     # deinitialize
     def remove(remove_proc? = true)
-      Serial.print "remove ", @pid, '\n'
       Multiprocessing.n_process -= 1
       @prev_process.not_nil!.next_process = @next_process
       if @next_process.nil?
