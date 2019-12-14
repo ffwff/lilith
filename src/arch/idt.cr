@@ -78,7 +78,7 @@ module Idt
     @@idtr.base = @@idt.to_unsafe.address
 
     # cpu exception handlers
-    {% if flag?(:release) %}
+    {% if flag?(:release) && !flag?(:no_cpuex) %}
       {% for i in 0..31 %}
         init_idt_entry {{ i }}, KERNEL_CODE_SEGMENT,
           (->Kernel.kcpuex{{ i.id }}).pointer.address,
@@ -131,13 +131,16 @@ module Idt
     end
   end
 
-  def lock(&block)
+  def disable(reenable=false, &block)
     if @@status_mask
       return yield
     end
+    disable
     @@status_mask = true
-    yield
+    retval = yield
     @@status_mask = false
+    enable if reenable
+    retval
   end
 
   @@switch_processes = false
@@ -150,7 +153,7 @@ fun kirq_handler(frame : Idt::Data::Registers*)
   if Idt.irq_handlers[frame.value.int_no].pointer.null?
     Serial.print "no handler for ", frame.value.int_no, "\n"
   else
-    Idt.lock do
+    Idt.disable do
       Idt.irq_handlers[frame.value.int_no].call
     end
   end
@@ -218,7 +221,7 @@ fun kcpuex_handler(frame : Idt::Data::ExceptionRegisters*)
         if faulting_address < Multiprocessing::USER_STACK_TOP &&
            faulting_address > Multiprocessing::USER_STACK_BOTTOM_MAX
           # stack page fault
-          Idt.lock do
+          Idt.disable do
             stack_address = Paging.t_addr(faulting_address)
             process.udata.not_nil!.mmap_list.add(stack_address, 0x1000,
               MemMapNode::Attributes::Read | MemMapNode::Attributes::Write | MemMapNode::Attributes::Stack)
