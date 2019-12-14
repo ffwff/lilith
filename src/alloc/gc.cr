@@ -33,18 +33,16 @@ module Gc
 
   GRAY_SIZE = 256
   @@front_grays = uninitialized Void*[GRAY_SIZE]
-  @@front_grays_idx = 0
   @@back_grays = uninitialized Void*[GRAY_SIZE]
-  @@back_grays_idx = 0
-  @@use_front_grays = true
+
+  @@curr_grays = Pointer(Void*).null
+  @@opp_grays = Pointer(Void*).null
+  @@curr_grays_idx = 0
+  @@opp_grays_idx = 0
 
   # whether the current gray stack is empty
   private def gray_empty?
-    if @@use_front_grays
-      @@front_grays_idx == 0
-    else
-      @@back_grays_idx == 0
-    end
+    @@curr_grays_idx == 0
   end
 
   # pushes a node to the current gray stack
@@ -52,13 +50,9 @@ module Gc
     return if Arena.marked?(ptr)
     Arena.mark ptr
     return if Arena.atomic?(ptr)
-    if @@use_front_grays
-      @@front_grays[@@front_grays_idx] = ptr
-      @@front_grays_idx += 1
-    else
-      @@back_grays[@@back_grays_idx] = ptr
-      @@back_grays_idx += 1
-    end
+    panic "unable to push gray" if @@curr_grays_idx == GRAY_SIZE
+    @@curr_grays[@@curr_grays_idx] = ptr
+    @@curr_grays_idx += 1
   end
 
   # pushes a node to the opposite gray stack
@@ -66,38 +60,24 @@ module Gc
     return if Arena.marked?(ptr)
     Arena.mark ptr
     return if Arena.atomic?(ptr)
-    if @@use_front_grays
-      @@back_grays[@@back_grays_idx] = ptr
-      @@back_grays_idx += 1
-    else
-      @@front_grays[@@front_grays_idx] = ptr
-      @@front_grays_idx += 1
-    end
+    panic "unable to push gray" if @@opp_grays_idx == GRAY_SIZE
+    @@opp_grays[@@opp_grays_idx] = ptr
+    @@opp_grays_idx += 1
   end
 
   # pops a node from the current gray stack
   private def pop_gray
-    if @@use_front_grays
-      return nil if @@front_grays_idx == 0
-      ptr = @@front_grays[@@front_grays_idx - 1]
-      @@front_grays_idx -= 1
-      ptr
-    else
-      return nil if @@back_grays_idx == 0
-      ptr = @@back_grays[@@back_grays_idx - 1]
-      @@back_grays_idx -= 1
-      ptr
-    end
+    return nil if @@curr_grays_idx == 0
+    ptr = @@curr_grays[@@curr_grays_idx - 1]
+    @@curr_grays_idx -= 1
+    ptr
   end
 
   # swap gray stacks
   private def swap_grays
-    @@use_front_grays = !@@use_front_grays
-    if @@use_front_grays
-      @@back_grays_idx = 0
-    else
-      @@front_grays_idx = 0
-    end
+    @@curr_grays, @@opp_grays = @@opp_grays, @@curr_grays
+    @@curr_grays_idx = @@opp_grays_idx
+    @@opp_grays_idx = 0
   end
 
   private enum State
@@ -111,6 +91,8 @@ module Gc
   @@stack_end = Pointer(Void).null
 
   def init(@@stack_start : Void*, @@stack_end : Void*)
+    @@curr_grays = @@front_grays.to_unsafe
+    @@opp_grays = @@back_grays.to_unsafe
     @@enabled = true
   end
 
@@ -230,22 +212,13 @@ module Gc
 
   def dump(io)
     io.print "Gc {\n"
-    if @@use_front_grays
-      io.print "  [front_grays] (",  @@front_grays_idx, "): "
-    else
-      io.print "  front_grays (",  @@front_grays_idx, "): "
+    io.print "  curr_grays (", @@curr_grays_idx, "): "
+    @@curr_grays_idx.times do |i|
+      io.print @@curr_grays[i]
     end
-    @@front_grays_idx.times do |i|
-      io.print @@front_grays[i]
-    end
-    io.print "\n"
-    if !@@use_front_grays
-      io.print "  [back_grays] (",  @@back_grays_idx, "): "
-    else
-      io.print "  back_grays (",  @@back_grays_idx, "): "
-    end
-    @@back_grays_idx.times do |i|
-      io.print @@back_grays[i]
+    io.print "\n  opp_grays (", @@opp_grays_idx, "): "
+    @@opp_grays_idx.times do |i|
+      io.print @@opp_grays[i]
     end
     io.print "\n}\n"
   end
