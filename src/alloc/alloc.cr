@@ -8,8 +8,8 @@ module Arena
   extend self
 
   lib Data
-    MAGIC = 0xC0FEC0FE
-    MAGIC_ATOMIC = 0xCAFECAFE
+    MAGIC = 0x47727530
+    MAGIC_ATOMIC = 0x47727531
     struct PoolHeader
       magic : USize
       next_pool : PoolHeader*
@@ -17,10 +17,16 @@ module Arena
       nfree : USize
     end
 
-    MAGIC_MMAP = 0xBEEFBEEF
+    MAGIC_MMAP = 0x47727532
     struct MmapHeader
       magic : USize
       marked : USize
+    end
+
+    MAGIC_EMPTY = 0
+    struct EmptyHeader
+      magic : USize
+      next_page : EmptyHeader*
     end
   end
 
@@ -43,6 +49,7 @@ module Arena
     def validate_header
       if @header.value.magic != Data::MAGIC &&
          @header.value.magic != Data::MAGIC_ATOMIC
+        Serial.print @header, '\n'
         panic "magic pool number is overwritten!"
       end
     end
@@ -160,6 +167,8 @@ module Arena
   @@pools = uninitialized Data::PoolHeader*[7]
   # available pool list (atomic)
   @@atomic_pools = uninitialized Data::PoolHeader*[7]
+  # empty, reusable pages
+  @@empty_pages = Pointer(Data::EmptyHeader).null
 
   def init(@@placement_addr)
     @@start_addr = @@placement_addr
@@ -182,9 +191,14 @@ module Arena
   end
 
   private def new_pool(idx : Int, atomic)
-    addr = @@placement_addr
-    Paging.alloc_page_pg addr, true, false
-    @@placement_addr += Pool::SIZE
+    if page = @@empty_pages
+      addr = page.address
+      @@empty_pages = page.value.next_page
+    else
+      addr = @@placement_addr
+      Paging.alloc_page_pg addr, true, false
+      @@placement_addr += Pool::SIZE
+    end
 
     hdr = Pointer(Data::PoolHeader).new(addr)
     if atomic
@@ -260,9 +274,9 @@ module Arena
       Pool.new(hdr).block_marked? ptr
     elsif magic == Data::MAGIC_MMAP
       hdr = Pointer(Data::MmapHeader).new(addr)
-      hdr.value.marked ? true : false
+      hdr.value.marked == 1 ? true : false
     else
-      panic "marked?: unknown magic"
+      true
     end
   end
 
@@ -276,6 +290,9 @@ module Arena
     @@pools.size.times do |i|
       @@pools[i] = Pointer(Data::PoolHeader).null
     end
+    @@atomic_pools.size.times do |i|
+      @@atomic_pools[i] = Pointer(Data::PoolHeader).null
+    end
     addr = @@start_addr
     while addr < @@placement_addr.to_u64
       magic = Pointer(USize).new(addr).value
@@ -284,7 +301,12 @@ module Arena
         hdr = Pointer(Data::PoolHeader).new(addr)
         pool = Pool.new(hdr)
         pool.sweep
-        if pool.nfree > 0
+        if pool.nfree == pool.blocks
+          hdr = Pointer(Data::EmptyHeader).new(addr)
+          hdr.value.magic = 0
+          hdr.value.next_page = @@empty_pages
+          @@empty_pages = hdr
+        elsif pool.nfree > 0
           hdr.value.next_pool = pools[pool.idx]
           pools[pool.idx] = hdr
         end
