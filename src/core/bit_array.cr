@@ -77,6 +77,12 @@ struct BitArray
     end
   end
 
+  def each(&block)
+    @size.times do |i|
+      yield self[i]
+    end
+  end
+
   # to_s
   def to_s(io)
     io.print "BitArray ["
