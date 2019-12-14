@@ -17,6 +17,10 @@ KERNEL_SRC=build $(wildcard src/*.cr src/*/*.cr)
 
 DRIVE_IMG = disk.img
 
+ifeq ($(NO_CPUEX),1)
+	CRFLAGS += -Dno_cpuex
+endif
+
 ifeq ($(RELEASE),1)
 	CRFLAGS += --release
 else
