@@ -121,13 +121,23 @@ module Arena
     end
 
     def sweep
+      {% if false %}
+        idx = 0
+        mark_bitmap.each do |bit|
+          if !bit && alloc_bitmap[idx]
+            ptr = block(idx)
+            Serial.print "free: ", ptr, '\n'
+          end
+          idx += 1
+        end
+      {% end %}
       alloc_bitmap.mask mark_bitmap
       mark_bitmap.clear
       @header.value.nfree = @blocks - alloc_bitmap.popcount
     end
 
     def to_s(io)
-      io.print "Pool ", @header, " {\n"
+      io.print "Pool ", @header.value.magic == Data::MAGIC_ATOMIC ? "(atomic) " : "", @header, " {\n"
       io.print "  size: ", @block_size, "\n"
       io.print "  nfree: ", nfree, "/", @blocks, "\n"
       io.print "  alloc: ", alloc_bitmap, "\n"
@@ -231,14 +241,15 @@ module Arena
     addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
     magic = Pointer(USize).new(addr).value
     if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
+      pools = (magic == Data::MAGIC ? @@pools : @@atomic_pools)
       hdr = Pointer(Data::PoolHeader).new(addr)
       pool = Pool.new(hdr)
       rechain = pool.nfree == 0
       pool.release_block ptr
       # rechain it if it isn't chained and we can allocate one more block
       if rechain
-        hdr.value.next_pool = @@pools[pool.idx]
-        @@pools[pool.idx] = hdr
+        hdr.value.next_pool = pools[pool.idx]
+        pools[pool.idx] = hdr
       end
     elsif magic == Data::MAGIC_MMAP
       # TODO
@@ -248,6 +259,7 @@ module Arena
   end
 
   def mark(ptr : Void*)
+    # Serial.print "mark: ", ptr, '\n'
     addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
     magic = Pointer(USize).new(addr).value
     if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
@@ -289,12 +301,13 @@ module Arena
     while addr < @@placement_addr.to_u64
       magic = Pointer(USize).new(addr).value
       if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
+        pools = (magic == Data::MAGIC ? @@pools : @@atomic_pools)
         hdr = Pointer(Data::PoolHeader).new(addr)
         pool = Pool.new(hdr)
         pool.sweep
         if pool.nfree > 0
-          hdr.value.next_pool = @@pools[pool.idx]
-          @@pools[pool.idx] = hdr
+          hdr.value.next_pool = pools[pool.idx]
+          pools[pool.idx] = hdr
         end
       elsif magic == Data::MAGIC_MMAP
         hdr = Pointer(Data::MmapHeader).new(addr)
