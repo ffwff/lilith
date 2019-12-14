@@ -450,7 +450,6 @@ module Paging
     # page
     page = page_create(rw, user, addr, execute)
     pt.value.pages[page_idx] = page
-    breakpoint
   end
 
   private def alloc_frame_init(rw : Bool, user : Bool, virt_addr : UInt64, execute=false)
