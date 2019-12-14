@@ -5,11 +5,15 @@ lib LibCrystal
 end
 
 fun __crystal_malloc64(size : UInt64) : Void*
-  Gc.unsafe_malloc size
+  Idt.disable(true) do
+    Gc.unsafe_malloc size
+  end
 end
 
 fun __crystal_malloc_atomic64(size : UInt64) : Void*
-  Gc.unsafe_malloc size, true
+  Idt.disable(true) do
+    Gc.unsafe_malloc size, true
+  end
 end
 
 module Gc
@@ -139,7 +143,7 @@ module Gc
       if Arena.contains_ptr? root_ptr
         push_gray root_ptr
       end
-      sp += 8
+      sp += sizeof(Void*)
     end
   end
 
@@ -155,8 +159,11 @@ module Gc
     if id == GC_ARRAY_HEADER_TYPE
       buffer = ptr.address + sizeof(USize) * 2
       size = ptr.as(USize*)[1]
+      # Serial.print "buffer: ", ptr, '\n'
       size.times do |i|
-        ivar = Pointer(Void*).new(buffer + i.to_u64 * sizeof(Void*)).value
+        ivarp = Pointer(Void*).new(buffer + i.to_u64 * sizeof(Void*))
+        ivar = ivarp.value
+        # Serial.print "ivar: ", ivarp, ": ", ivar,'\n'
         if Arena.contains_ptr? ivar
           push_opposite_gray ivar
         end
@@ -165,9 +172,6 @@ module Gc
       offsets = LibCrystal.type_offsets id
       pos = 0
       size = LibCrystal.type_size id
-      if size == 0
-        Serial.print "unknown type: ", id, "!"
-      end
       while pos < size
         if (offsets & 1) != 0
           ivar = Pointer(Void*).new(ptr.address + pos).value
@@ -184,14 +188,12 @@ module Gc
   def cycle
     case @@state
     when State::ScanRoot
-      Serial.print "scan root!\n"
       scan_globals
       scan_registers
       scan_stack
       @@state = State::ScanGray
       false
     when State::ScanGray
-      Serial.print "scan!\n"
       scan_gray_nodes
       swap_grays
       if gray_empty?
@@ -199,7 +201,6 @@ module Gc
       end
       false
     when State::Sweep
-      Serial.print "sweep!\n"
       Arena.sweep
       @@state = State::ScanRoot
       true
@@ -213,14 +214,15 @@ module Gc
   end
 
   def unsafe_malloc(size : UInt64, atomic = false)
-    if enabled
-      full_cycle
-      # Arena.dump
-    end
-    #if enabled
-    #  cycle
-    #  dump Serial
-    #end
+    {% if flag?(:debug_gc) %}
+      if enabled
+        full_cycle
+      end
+    {% else %}
+      if enabled
+        cycle
+      end
+    {% end %}
     ptr = Arena.malloc(size, atomic)
     push_gray ptr
     ptr
