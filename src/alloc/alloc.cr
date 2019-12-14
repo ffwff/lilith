@@ -237,27 +237,6 @@ module Arena
     end
   end
 
-  def free(ptr : Void*)
-    addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
-    magic = Pointer(USize).new(addr).value
-    if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
-      pools = (magic == Data::MAGIC ? @@pools : @@atomic_pools)
-      hdr = Pointer(Data::PoolHeader).new(addr)
-      pool = Pool.new(hdr)
-      rechain = pool.nfree == 0
-      pool.release_block ptr
-      # rechain it if it isn't chained and we can allocate one more block
-      if rechain
-        hdr.value.next_pool = pools[pool.idx]
-        pools[pool.idx] = hdr
-      end
-    elsif magic == Data::MAGIC_MMAP
-      # TODO
-    else
-      panic "free: unknown magic"
-    end
-  end
-
   def mark(ptr : Void*)
     # Serial.print "mark: ", ptr, '\n'
     addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
@@ -269,7 +248,7 @@ module Arena
       hdr = Pointer(Data::MmapHeader).new(addr)
       hdr.value.marked = 1
     else
-      panic "free: unknown magic"
+      panic "mark: unknown magic"
     end
   end
 
@@ -283,7 +262,7 @@ module Arena
       hdr = Pointer(Data::MmapHeader).new(addr)
       hdr.value.marked ? true : false
     else
-      panic "free: unknown magic"
+      panic "marked?: unknown magic"
     end
   end
 

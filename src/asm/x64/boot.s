@@ -1,4 +1,4 @@
-STACK_SIZE = 16384
+STACK_SIZE = 32768
 
 # -- text
 
