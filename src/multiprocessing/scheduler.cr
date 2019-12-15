@@ -363,6 +363,8 @@ module Multiprocessing::Scheduler
 
     if next_process.nil?
       if remove
+        # breakpoint
+        # Serial.print Pointer(Void).new(current_process.phys_pg_struct), '\n'
         Paging.free_process_pdpt(current_process.phys_pg_struct)
       end
       halt_processor

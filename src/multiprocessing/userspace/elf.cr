@@ -357,7 +357,7 @@ module ElfReader
           mmap_append_idx += 1
 
           if data.attrs.includes?(MemMapNode::Attributes::Read)
-            section_start = Paging.t_addr(data.vaddr.to_u64)
+            section_start = Paging.aligned_floor(data.vaddr.to_u64)
             section_end = Paging.aligned(data.vaddr.to_u64 + data.memsz.to_u64)
             npages = (section_end - section_start) >> 12
             # create page and zero-initialize it

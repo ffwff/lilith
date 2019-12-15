@@ -180,6 +180,7 @@ module Allocator
   @@start_addr = 0u64
   # placement address of new pool
   @@placement_addr = 0u64
+  class_getter placement_addr
   # available pool list
   @@pools = uninitialized Data::PoolHeader*[7]
   # available pool list (atomic)

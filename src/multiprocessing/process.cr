@@ -412,7 +412,7 @@ module Multiprocessing
         # memory map
         result.mmap_list.each do |mmap_node|
           next if mmap_node.memsz == 0u64
-          region_start = Paging.t_addr(mmap_node.vaddr)
+          region_start = Paging.aligned_floor(mmap_node.vaddr)
           region_end = Paging.aligned(mmap_node.vaddr + mmap_node.memsz)
           region_size = region_end - region_start
           udata.mmap_list.add(region_start, region_size, mmap_node.attrs)
@@ -427,7 +427,7 @@ module Multiprocessing
         stack_addr = process.initial_sp - stack_size
         stack = Paging.alloc_page_pg(stack_addr, true, true, 4)
         zero_page Pointer(UInt8).new(stack), 4
-        udata.mmap_list.add(stack_addr, stack_size,
+        udata.mmap_list.add(stack_addr & 0xFFFF_FFFF_FFFF_F000, stack_size + 0x1000,
           MemMapNode::Attributes::Read | MemMapNode::Attributes::Write | MemMapNode::Attributes::Stack)
 
         # argv
@@ -459,7 +459,7 @@ module Multiprocessing
     # spawn kernel process with optional argument
     def self.spawn_kernel(name : String, function, arg : Void*? = nil, stack_pages = 1, &block)
       Multiprocessing::Process.new(name) do |process|
-        stack_start = Paging.t_addr(process.initial_sp) - (stack_pages - 1) * 0x1000
+        stack_start = Paging.aligned_floor(process.initial_sp) - (stack_pages - 1) * 0x1000
         stack = Paging.alloc_page_pg(stack_start, true, false, npages: stack_pages.to_u64)
         process.initial_ip = function.pointer.address
 

@@ -658,6 +658,7 @@ rdx, rcx, rbx, rax : UInt64
         Paging.alloc_page_pg addr,
             mmap_attrs.includes?(MemMapNode::Attributes::Write),
             true, size // 0x1000
+        pudata.mmap_list.add(addr, size, mmap_attrs)
         sysret(SYSCALL_SUCCESS)
       else
         mmap_attrs |= MemMapNode::Attributes::SharedMem
