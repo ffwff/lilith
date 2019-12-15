@@ -19,6 +19,9 @@ lib LibC
                      direntp : Dirent*) : LibC::Int
   fun getcwd(path : LibC::UString, length : LibC::SizeT) : LibC::UString
   fun chdir(path : LibC::UString) : LibC::Int
+
+  # TODO: move me
+  fun free(ptr : Void*)
 end
 
 class Dir

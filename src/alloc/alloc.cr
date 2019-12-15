@@ -128,9 +128,9 @@ module Allocator
       @header.value.nfree = nfree + 1
     end
 
-    def mark_block(block : Void*)
+    def mark_block(block : Void*, val : Bool)
       idx = idx_for_block(block)
-      mark_bitmap[idx] = true
+      mark_bitmap[idx] = val
     end
 
     def block_marked?(block : Void*)
@@ -283,16 +283,16 @@ module Allocator
     end
   end
 
-  def mark(ptr : Void*)
+  def mark(ptr : Void*, val = true)
     # Serial.print "mark: ", ptr, '\n'
     addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
     magic = Pointer(USize).new(addr).value
     if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
       hdr = Pointer(Data::PoolHeader).new(addr)
-      Pool.new(hdr).mark_block ptr
+      Pool.new(hdr).mark_block ptr, val
     elsif magic == Data::MAGIC_MMAP
       hdr = Pointer(Data::MmapHeader).new(addr)
-      hdr.value.marked = 1
+      hdr.value.marked = val ? 1 : 0
     else
       panic "mark: unknown magic"
     end

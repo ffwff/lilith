@@ -24,6 +24,10 @@ end
   fun __crystal_malloc_atomic64(size : UInt64) : Void*
     Gc.unsafe_malloc size, true
   end
+
+  fun __crystal_realloc64(ptr : Void*, size : UInt64) : Void*
+    Gc.realloc ptr, size
+  end
 {% end %}
 
 module Gc
@@ -227,6 +231,35 @@ module Gc
     ptr
   end
 
+  def realloc(ptr : Void*, size : UInt64) : Void*
+    oldsize = Allocator.block_size_for_ptr(ptr)
+    return ptr if oldsize >= size
+
+    newptr = Allocator.malloc(size, Allocator.atomic?(ptr))
+    memcpy newptr, ptr, oldsize
+    push_gray newptr
+
+    if Allocator.marked?(ptr) && @@state != State::ScanRoot
+      idx = -1
+      @@curr_grays_idx.times do |i|
+        if @@curr_grays[i] == ptr
+          idx = i
+          break
+        end
+      end
+      if idx >= 0
+        if idx != @@curr_grays_idx
+          memmove @@curr_grays + idx,
+                  @@curr_grays + idx + 1,
+                  sizeof(Void*) * (@@curr_grays_idx - idx - 1)
+        end
+        @@curr_grays_idx -= 1
+      end
+    end
+
+    newptr
+  end
+
   def dump(io)
     io.print "Gc {\n"
     io.print "  curr_grays ("
@@ -246,6 +279,14 @@ module Gc
     private def panic(str)
       LibC.fprintf LibC.stderr, "allocator: %s\n", str
       abort
+    end
+
+    private def memcpy(dest, src, size)
+      LibC.memcpy dest, src, size
+    end
+
+    private def memmove(dest, src, size)
+      LibC.memmove dest, src, size
     end
   {% end %}
 end
