@@ -136,7 +136,7 @@ module Gc
   end
 
   private def scan_object(ptr : Void*)
-    # TODO: atomic ptrs and arrays
+    # Serial.print ptr, '\n'
     id = ptr.as(UInt32*).value
     if id == GC_ARRAY_HEADER_TYPE
       buffer = ptr.address + sizeof(USize) * 2
@@ -151,6 +151,11 @@ module Gc
         end
       end
     else
+      if id == 0
+        # Serial.print "zero: ", ptr, '\n'
+        push_opposite_gray ptr
+        return
+      end
       offsets = LibCrystal.type_offsets id
       pos = 0
       size = LibCrystal.type_size id
@@ -207,18 +212,22 @@ module Gc
     {% end %}
     ptr = Arena.malloc(size, atomic)
     push_gray ptr
+    # zero out the first word/qword where type_id is stored
+    ptr.as(USize*).value = 0
     ptr
   end
 
   def dump(io)
     io.print "Gc {\n"
-    io.print "  curr_grays (", @@curr_grays_idx, "): "
+    io.print "  curr_grays ("
+    io.print @@curr_grays_idx, "): "
     @@curr_grays_idx.times do |i|
-      io.print @@curr_grays[i]
+      io.print @@curr_grays[i], ". "
     end
-    io.print "\n  opp_grays (", @@opp_grays_idx, "): "
+    io.print "\n  opp_grays ("
+    io.print @@opp_grays_idx, "): "
     @@opp_grays_idx.times do |i|
-      io.print @@opp_grays[i]
+      io.print @@opp_grays[i], ". "
     end
     io.print "\n}\n"
   end

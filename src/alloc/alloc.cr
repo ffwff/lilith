@@ -86,15 +86,24 @@ module Arena
           blocks)
     end
 
+    def alignment_padding
+      @block_size >= MIN_SIZE_TO_ALIGN ? 8 : 0
+    end
+
     def block(idx : Int)
       (@header.as(Void*) +
         sizeof(Data::PoolHeader) +
         BitArray.malloc_size(@blocks)*4*2 +
+        alignment_padding +
         idx * @block_size)
     end
 
+    def aligned?(block : Void*)
+      (block.address - @header.address - alignment_padding - BitArray.malloc_size(@blocks)*4*2 - sizeof(Data::PoolHeader)) % @block_size == 0
+    end
+
     def idx_for_block(block : Void*)
-      (block.address - @header.address - BitArray.malloc_size(@blocks)*4*2 - sizeof(Data::PoolHeader)) // @block_size
+      (block.address - @header.address - alignment_padding - BitArray.malloc_size(@blocks)*4*2 - sizeof(Data::PoolHeader)) // @block_size
     end
 
     def get_free_block : Void*
@@ -134,6 +143,7 @@ module Arena
           if !bit && alloc_bitmap[idx]
             ptr = block(idx)
             Serial.print "free: ", ptr, '\n'
+            breakpoint if ptr.address == 0xffff80800015f3a8u64
           end
           idx += 1
         end
@@ -152,6 +162,9 @@ module Arena
       io.print "}\n"
     end
   end
+
+  # all blocks must be 16-bytes aligned
+  MIN_SIZE_TO_ALIGN = 128
 
   # sizes of a pool
   SIZES = StaticArray[32, 64, 128, 256, 512, 1024]
@@ -177,8 +190,21 @@ module Arena
     end
   end
 
+  def aligned?(ptr : Void*)
+    addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
+    magic = Pointer(USize).new(addr).value
+    if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
+      hdr = Pointer(Data::PoolHeader).new(addr)
+      Pool.new(hdr).aligned? ptr
+    elsif magic == Data::MAGIC_MMAP
+      panic "TODO"
+    else
+      false
+    end
+  end
+
   def contains_ptr?(ptr)
-    @@start_addr <= ptr.address && ptr.address < @@placement_addr
+    @@start_addr <= ptr.address && ptr.address < @@placement_addr && aligned?(ptr)
   end
 
   private def pool_for_bytes(bytes : Int)
@@ -232,7 +258,8 @@ module Arena
       return new_mmap bytes
     end
     idx = pool_for_bytes bytes
-    pools = atomic ? @@atomic_pools : @@pools
+    # NOTE: atomic_pools/pools is passed on the stack
+    pools = atomic ? @@atomic_pools.to_unsafe : @@pools.to_unsafe
     if pools[idx].null?
       pool = new_pool idx, atomic
       # Serial.print "NEW: ", pool
@@ -242,8 +269,8 @@ module Arena
       # Serial.print "OLD: ", pool
       pool.validate_header
       block = pool.get_free_block
-      # if we can't allocate a new block in the pool, unchain it
       if pool.nfree == 0
+        # if we can't allocate a new block in the pool, unchain it
         pools[idx] = pool.header.value.next_pool
         pool.header.value.next_pool = Pointer(Data::PoolHeader).null
       end
@@ -297,7 +324,8 @@ module Arena
     while addr < @@placement_addr.to_u64
       magic = Pointer(USize).new(addr).value
       if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
-        pools = (magic == Data::MAGIC ? @@pools : @@atomic_pools)
+        # NOTE: atomic_pools/pools is passed on the stack
+        pools = (magic == Data::MAGIC ? @@pools.to_unsafe : @@atomic_pools.to_unsafe)
         hdr = Pointer(Data::PoolHeader).new(addr)
         pool = Pool.new(hdr)
         pool.sweep
