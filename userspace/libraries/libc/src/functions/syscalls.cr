@@ -5,60 +5,73 @@ require "../syscall_defs.cr"
 @[AlwaysInline]
 private def lilith_syscall(eax : UInt32, ebx : UInt32,
                              edx = 0u32, edi = 0u32, esi = 0u32) : Int32
+  shadow = uninitialized UInt32[2]
+  shadowptr = shadow.to_unsafe
+  asm("mov %esp, 4($0)" :: "r"(shadowptr) : "volatile", "memory", "{esp}")
   ret = 0
   l0 = l1 = 0
-  asm("push $$1f
+  asm("movd $$1f, (%esp)
        mov %esp, %ecx
        sysenter
-       1: add $$4, %esp"
-          : "={eax}"(ret), "={edi}"(l0), "={esi}"(l1)
-          : "{eax}"(eax), "{ebx}"(ebx), "{edx}"(edx), "{edi}"(edi), "{esi}"(esi)
-          : "cc", "ecx", "memory", "volatile")
+      1: mov 4(%esp), %esp"
+      : "={eax}"(ret), "={edi}"(l0), "={esi}"(l1)
+      : "{esp}"(shadowptr), "{eax}"(eax), "{ebx}"(ebx), "{edx}"(edx), "{edi}"(edi), "{esi}"(esi)
+      : "cc", "memory", "volatile", "ecx", "esp")
   ret
 end
 
 @[AlwaysInline]
 private def lilith_syscall64(eax : UInt32, ebx : UInt32,
                                edx = 0u32, edi = 0u32, esi = 0u32) : UInt64
+  shadow = uninitialized UInt32[2]
+  shadowptr = shadow.to_unsafe
+  asm("mov %esp, 4($0)" :: "r"(shadowptr) : "volatile", "memory", "{esp}")
   ret_lo, ret_hi = 0u64, 0u64
   l0 = l1 = 0
-  asm("push $$1f
+  asm("movd $$1f, (%esp)
        mov %esp, %ecx
        sysenter
-       1: add $$4, %esp"
-          : "={eax}"(ret_lo), "={ebx}"(ret_hi), "={edi}"(l0), "={esi}"(l1)
-          : "{eax}"(eax), "{ebx}"(ebx), "{edx}"(edx), "{edi}"(edi), "{esi}"(esi)
-          : "cc", "ecx", "memory", "volatile")
+      1: mov 4(%esp), %esp"
+      : "={eax}"(ret_lo), "={ebx}"(ret_hi), "={edi}"(l0), "={esi}"(l1)
+      : "{esp}"(shadowptr), "{eax}"(eax), "{ebx}"(ebx), "{edx}"(edx), "{edi}"(edi), "{esi}"(esi)
+      : "cc", "memory", "volatile", "ecx", "esp")
+  ret
   (ret_hi << 32) | ret_lo
 end
 {% elsif flag?(:x86_64) %}
 @[AlwaysInline]
 private def lilith_syscall(rax : UInt32, rbx : UInt64,
                              rdx = 0u64, rdi = 0u64, rsi = 0u64) : Int32
+  shadow = uninitialized UInt64[2]
+  shadowptr = shadow.to_unsafe
+  asm("mov %rsp, 8($0)" :: "r"(shadowptr) : "volatile", "memory", "{rsp}")
   ret = 0
   l0 = l1 = 0
-  asm("push $$1f
+  asm("movq $$1f, (%rsp)
        mov %rsp, %rcx
        syscall
-       1: add $$8, %rsp"
-          : "={rax}"(ret), "={rdi}"(l0), "={rsi}"(l1)
-          : "{rax}"(rax), "{rbx}"(rbx), "{rdx}"(rdx), "{rdi}"(rdi), "{rsi}"(rsi)
-          : "cc", "ecx", "memory", "volatile")
+      1: mov 8(%rsp), %rsp"
+      : "={rax}"(ret), "={rdi}"(l0), "={rsi}"(l1)
+      : "{rsp}"(shadowptr), "{rax}"(rax), "{rbx}"(rbx), "{rdx}"(rdx), "{rdi}"(rdi), "{rsi}"(rsi)
+      : "cc", "memory", "volatile", "rcx", "rsp", "r11", "r12")
   ret
 end
 
 @[AlwaysInline]
 private def lilith_syscall64(rax : UInt32, rbx : UInt64,
                                rdx = 0u64, rdi = 0u64, rsi = 0u64) : UInt64
+  shadow = uninitialized UInt64[2]
+  shadowptr = shadow.to_unsafe
+  asm("mov %rsp, 8($0)" :: "r"(shadowptr) : "volatile", "memory", "{rsp}")
   ret = 0u64
   l0 = l1 = 0
-  asm("push $$1f
+  asm("movq $$1f, (%rsp)
        mov %rsp, %rcx
        syscall
-       1: add $$8, %rsp"
-          : "={rax}"(ret), "={rdi}"(l0), "={rsi}"(l1)
-          : "{rax}"(rax), "{rbx}"(rbx), "{rdx}"(rdx), "{rdi}"(rdi), "{rsi}"(rsi)
-          : "cc", "{rcx}", "{r11}", "memory", "volatile")
+      1: mov 8(%rsp), %rsp"
+      : "={rax}"(ret), "={rdi}"(l0), "={rsi}"(l1)
+      : "{rsp}"(shadowptr), "{rax}"(rax), "{rbx}"(rbx), "{rdx}"(rdx), "{rdi}"(rdi), "{rsi}"(rsi)
+      : "cc", "memory", "volatile", "rcx", "rsp", "r11", "r12")
   ret
 end
 {% end %}
