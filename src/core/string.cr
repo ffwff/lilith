@@ -25,7 +25,7 @@ class String
     end
 
     private def capacity_for_ptr(ptr)
-      (Arena.block_size_for_ptr(ptr) - HEADER_SIZE).to_i32
+      (Allocator.block_size_for_ptr(ptr) - HEADER_SIZE).to_i32
     end
 
     def buffer

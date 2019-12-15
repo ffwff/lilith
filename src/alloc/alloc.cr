@@ -2,7 +2,9 @@
 # this is an implementation of a simple pool memory allocator
 # each pool is 4096 bytes, and are chained together
 
-require "../arch/paging.cr"
+{% if flag?(:kernel) %}
+  require "../arch/paging.cr"
+{% end %}
 
 module Allocator
   extend self
@@ -45,21 +47,21 @@ module Allocator
 
     def initialize(@header : Data::PoolHeader*)
       @idx = @header.value.idx.to_i32
-      @block_size = Arena::SIZES[@idx]
-      @blocks = Arena::ITEMS[@idx]
+      @block_size = Allocator::SIZES[@idx]
+      @blocks = Allocator::ITEMS[@idx]
     end
 
     def validate_header
       if @header.value.magic != Data::MAGIC &&
          @header.value.magic != Data::MAGIC_ATOMIC
-        Serial.print @header, '\n'
-        panic "magic pool number is overwritten!"
+        # Serial.print @header, '\n'
+        Allocator.panic "magic pool number is overwritten!"
       end
     end
 
     def initialize(@header : Data::PoolHeader*, @idx : Int32)
-      @block_size = Arena::SIZES[@idx]
-      @blocks = Arena::ITEMS[@idx]
+      @block_size = Allocator::SIZES[@idx]
+      @blocks = Allocator::ITEMS[@idx]
     end
 
     def nfree
@@ -189,6 +191,7 @@ module Allocator
     @@start_addr = @@placement_addr
     @@pools.size.times do |i|
       @@pools[i] = Pointer(Data::PoolHeader).null
+      @@atomic_pools[i] = Pointer(Data::PoolHeader).null
     end
   end
 
@@ -224,7 +227,7 @@ module Allocator
       @@empty_pages = page.value.next_page
     else
       addr = @@placement_addr
-      Paging.alloc_page_pg addr, true, false
+      alloc_page addr
       @@placement_addr += Pool::SIZE
     end
 
@@ -245,7 +248,7 @@ module Allocator
     panic "pool size must be <= 0x1000" if pool_size > 0x1000
 
     addr = @@placement_addr
-    Paging.alloc_page_pg addr, true, false
+    alloc_page addr
     @@placement_addr += 0x1000
 
     hdr = Pointer(Data::MmapHeader).new(addr)
@@ -366,4 +369,23 @@ module Allocator
     hdr = Pointer(Data::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
     Pool.new(hdr).block_size
   end
+
+  {% if flag?(:kernel) %}
+    private def alloc_page(addr)
+      Paging.alloc_page_pg addr, true, false
+    end
+
+    protected def panic(str)
+      ::panic str
+    end
+  {% else %}
+    private def alloc_page(addr)
+      LibC.mmap Pointer(Void).new(addr), 0x1000, (LibC::MmapProt::Read | LibC::MmapProt::Write).value, 0, -1, 0
+    end
+
+    protected def panic(str)
+      LibC.fprintf LibC.stderr, "allocator: %s\n", str
+      abort
+    end
+  {% end %}
 end

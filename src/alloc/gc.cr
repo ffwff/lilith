@@ -4,17 +4,27 @@ lib LibCrystal
   fun type_size = "__crystal_malloc_type_size"(type_id : UInt32) : UInt32
 end
 
-fun __crystal_malloc64(size : UInt64) : Void*
-  Idt.disable(true) do
+{% if flag?(:kernel) %}
+  fun __crystal_malloc64(size : UInt64) : Void*
+    Idt.disable(true) do
+      Gc.unsafe_malloc size
+    end
+  end
+
+  fun __crystal_malloc_atomic64(size : UInt64) : Void*
+    Idt.disable(true) do
+      Gc.unsafe_malloc size, true
+    end
+  end
+{% else %}
+  fun __crystal_malloc64(size : UInt64) : Void*
     Gc.unsafe_malloc size
   end
-end
 
-fun __crystal_malloc_atomic64(size : UInt64) : Void*
-  Idt.disable(true) do
+  fun __crystal_malloc_atomic64(size : UInt64) : Void*
     Gc.unsafe_malloc size, true
   end
-end
+{% end %}
 
 module Gc
   extend self
@@ -231,4 +241,11 @@ module Gc
     end
     io.print "\n}\n"
   end
+
+  {% unless flag?(:kernel) %}
+    private def panic(str)
+      LibC.fprintf LibC.stderr, "allocator: %s\n", str
+      abort
+    end
+  {% end %}
 end

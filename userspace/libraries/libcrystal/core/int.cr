@@ -53,6 +53,10 @@ struct Int
     self
   end
 
+  def div_ceil(other : Int)
+    (self + (other - 1)) // other
+  end
+
   # bit manips
   def find_first_zero : Int
     Intrinsics.counttrailing32(~self.to_i32, true)
@@ -236,6 +240,10 @@ struct UInt32
 
   def self.new(value)
     value.to_u32
+  end
+
+  def popcount
+    Intrinsics.popcount32 self
   end
 end
 
