@@ -21,6 +21,10 @@ ifeq ($(NO_CPUEX),1)
 	CRFLAGS += -Dno_cpuex
 endif
 
+ifeq ($(DEBUG_GC),1)
+	CRFLAGS += -Ddebug_gc
+endif
+
 ifeq ($(RELEASE),1)
 	CRFLAGS += --release
 else
@@ -34,7 +38,7 @@ QEMUFLAGS += \
 	-m 512M \
 	-serial stdio \
 	-no-shutdown -no-reboot \
-	-vga std -rtc base=localtime
+	-vga std
 
 ifeq ($(KVM),1)
 	QEMUFLAGS += -enable-kvm
