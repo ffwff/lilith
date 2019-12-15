@@ -323,7 +323,7 @@ module Paging
               "{r8}"(user),
               "{r9}"(npages),
               "{r10}"(execute)
-            : "cc", "memory", "{rcx}", "{r11}", "{rdi}", "{rsi}")
+            : "cc", "memory", "volatile", "rcx", "r11", "r12", "rdi", "rsi")
     retval
   end
 
