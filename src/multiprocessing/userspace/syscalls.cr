@@ -632,11 +632,10 @@ rdx, rcx, rbx, rax : UInt64
       end
       fv.rax = mmap_heap.addr
     when SC_MMAP
-      fd = try(pudata.get_fd(arg(0).to_i32))
-      size = arg(1).to_u64
-      prot = Syscall::Data::MmapProt.new(arg(2).to_i32)
+      fdi = arg(0).to_i32
 
-      mmap_attrs = MemMapNode::Attributes::Read | MemMapNode::Attributes::SharedMem
+      prot = Syscall::Data::MmapProt.new(arg(1).to_i32)
+      mmap_attrs = MemMapNode::Attributes::Read
       if prot.includes?(Syscall::Data::MmapProt::Write)
         mmap_attrs |= MemMapNode::Attributes::Write
       end
@@ -644,27 +643,40 @@ rdx, rcx, rbx, rax : UInt64
         mmap_attrs |= MemMapNode::Attributes::Execute
       end
 
-      if size > fd.node.not_nil!.size
-        size = fd.node.not_nil!.size.to_u64
-        if (size & 0xfff) != 0
-          size = (size & 0xFFFF_F000) + 0x1000
-        end
-      end
-      # must be page aligned
-      if (size & 0xfff) != 0
-        sysret(SYSCALL_ERR)
-      end
-      mmap_node = pudata.mmap_list.space_for_mmap size, mmap_attrs
-      if mmap_node
-        if (retval = fd.node.not_nil!.mmap(mmap_node, process)) == VFS_OK
-          mmap_node.shm_node = fd.node
-          sysret(mmap_node.addr)
-        else
-          pudata.mmap_list.remove mmap_node
-          sysret(0)
-        end
+      extended = if pudata.is64
+        try(checked_slice(UInt64, arg(3), 2))
       else
-        sysret(SYSCALL_ERR)
+        try(checked_slice(UInt32, arg(3), 2))
+      end
+      Serial.print extended, '\n'
+      addr = extended[0].to_u64
+      size = extended[1].to_u64
+
+      if fdi == -1
+        # Paging.alloc_page_pg 
+        Serial.print Pointer(Void).new(addr), ' ', mmap_attrs, " size:",size, '\n'
+        panic "TODO"
+      else
+        mmap_attrs |= MemMapNode::Attributes::SharedMem
+        fd = try(pudata.get_fd(fdi))
+        if size > fd.node.not_nil!.size
+          size = fd.node.not_nil!.size.to_u64
+          if (size & 0xfff) != 0
+            size = (size & 0xFFFF_F000) + 0x1000
+          end
+        end
+        mmap_node = pudata.mmap_list.space_for_mmap size, mmap_attrs
+        if mmap_node
+          if (retval = fd.node.not_nil!.mmap(mmap_node, process)) == VFS_OK
+            mmap_node.shm_node = fd.node
+            sysret(mmap_node.addr)
+          else
+            pudata.mmap_list.remove mmap_node
+            sysret(0)
+          end
+        else
+          sysret(SYSCALL_ERR)
+        end
       end
     when SC_MUNMAP
       # TODO: support size argument
