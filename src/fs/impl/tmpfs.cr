@@ -83,11 +83,11 @@ private class TmpFSNode < VFSNode
   
   private def append_frame
     if @first_page.null?
-      pframe = FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK
+      pframe = FrameAllocator.claim_with_addr | Paging::IDENTITY_MASK
       @first_page = @last_page = Pointer(TmpFSData::TmpFSPage).new pframe
       zero_page @first_page.as(UInt8*)
     elsif @last_page.value.allocated_frames == TmpFSData::MAX_FRAMES
-      frame = FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK
+      frame = FrameAllocator.claim_with_addr | Paging::IDENTITY_MASK
       page = Pointer(TmpFSData::TmpFSPage).new frame
       zero_page page.as(UInt8*)
       page.value.prev_page = @last_page
@@ -95,7 +95,7 @@ private class TmpFSNode < VFSNode
       @last_page = page
     end
 
-    frame = FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK
+    frame = FrameAllocator.claim_with_addr | Paging::IDENTITY_MASK
     memset Pointer(UInt8).new(frame), 0, 0x1000
     len = @last_page.value.allocated_frames
     @last_page.value.frames[len] = Pointer(UInt8).new frame
@@ -106,12 +106,12 @@ private class TmpFSNode < VFSNode
     nlen = @last_page.value.allocated_frames - 1
     @last_page.value.allocated_frames = nlen
     frame = @last_page.value.frames[nlen]
-    FrameAllocator.declaim_addr(frame.address & ~PTR_IDENTITY_MASK)
+    FrameAllocator.declaim_addr(frame.address & ~Paging::IDENTITY_MASK)
     @last_page.value.frames[nlen] = Pointer(UInt8).null
 
     if @last_page.value.allocated_frames == 0
       prev = @last_page.value.prev_page
-      FrameAllocator.declaim_addr(@last_page.address & ~PTR_IDENTITY_MASK)
+      FrameAllocator.declaim_addr(@last_page.address & ~Paging::IDENTITY_MASK)
       @last_page = prev
     end
   end
@@ -139,10 +139,10 @@ private class TmpFSNode < VFSNode
     while !page.null?
       page.value.allocated_frames.times do |i|
         frame = page.value.frames[i]
-        FrameAllocator.declaim_addr(frame.address & ~PTR_IDENTITY_MASK)
+        FrameAllocator.declaim_addr(frame.address & ~Paging::IDENTITY_MASK)
       end
       next_page = page.value.next_page
-      FrameAllocator.declaim_addr(page.address & ~PTR_IDENTITY_MASK)
+      FrameAllocator.declaim_addr(page.address & ~Paging::IDENTITY_MASK)
       page = next_page
     end
 
@@ -227,7 +227,7 @@ private class TmpFSNode < VFSNode
     i = 0
     each_frame do |frame|
       break if i == npages
-      phys = frame.address & ~PTR_IDENTITY_MASK
+      phys = frame.address & ~Paging::IDENTITY_MASK
       Paging.alloc_page_pg(node.addr + i * 0x1000,
             node.attr.includes?(MemMapNode::Attributes::Write),
             true, 1, phys,

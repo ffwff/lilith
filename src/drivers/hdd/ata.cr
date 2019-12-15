@@ -525,7 +525,7 @@ module Ide
   @@dma_buffer = Pointer(UInt8).null
   class_getter dma_buffer
   private def dma_buffer_phys
-    @@dma_buffer.address & ~PTR_IDENTITY_MASK
+    @@dma_buffer.address & ~Paging::IDENTITY_MASK
   end
 
   @@bus = 0u32
@@ -537,7 +537,7 @@ module Ide
     PCI.enable_bus_mastering @@bus, @@device, @@func
     @@bus_master = (PCI.read_field(@@bus, @@device, @@func, PCI::PCI_BAR4, 4) & 0xFFFC).to_u16
 
-    @@dma_buffer = Pointer(UInt8).new(FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK)
+    @@dma_buffer = Pointer(UInt8).new(FrameAllocator.claim_with_addr | Paging::IDENTITY_MASK)
     zero_page @@dma_buffer
     @@prdt.address = dma_buffer_phys
     @@prdt.end_of_table = 0x8000

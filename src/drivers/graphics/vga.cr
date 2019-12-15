@@ -212,7 +212,7 @@ private module VgaStatePrivate
     @@cy = VGA_HEIGHT - 1
   end
 
-  @@buffer = Pointer(UInt16).new(0xb8000u64 | PTR_IDENTITY_MASK)
+  @@buffer = Pointer(UInt16).new(0xb8000u64 | Paging::IDENTITY_MASK)
 
   def buffer
     @@buffer

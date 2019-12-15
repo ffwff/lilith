@@ -513,7 +513,7 @@ module Multiprocessing
       return false if @phys_pg_struct == 0
 
       virt_addr = virt_ptr.address
-      return false if virt_addr > PDPT_SIZE
+      return false if virt_addr > Paging::PDPT_SIZE
 
       offset = virt_addr & 0xFFF
       _, dir_idx, table_idx, page_idx = Paging.page_layer_indexes(virt_addr)
@@ -536,7 +536,7 @@ module Multiprocessing
     # get physical page where the address belongs to
     def physical_page_for_address(virt_addr : UInt64)
       return if @phys_pg_struct == 0
-      return if virt_addr > PDPT_SIZE
+      return if virt_addr > Paging::PDPT_SIZE
 
       _, dir_idx, table_idx, page_idx = Paging.page_layer_indexes(virt_addr)
 

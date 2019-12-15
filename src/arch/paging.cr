@@ -1,10 +1,6 @@
 require "./fastmem.cr"
 require "./frame_allocator.cr"
 
-PTR_IDENTITY_MASK = 0xFFFF_8000_0000_0000u64
-KERNEL_OFFSET     = 0xFFFF_8080_0000_0000u64
-PDPT_SIZE         =        0x80_0000_0000u64
-
 module Paging
   extend self
 
@@ -27,6 +23,11 @@ module Paging
       pdpt : UInt64[512]
     end
   end
+
+  IDENTITY_MASK     = 0xFFFF_8000_0000_0000u64
+  KERNEL_OFFSET     = 0xFFFF_8080_0000_0000u64
+  MAXIMUM_USER_PTR  =        0x7F_FFFF_FFFFu64
+  PDPT_SIZE         =        0x80_0000_0000u64
 
   KERNEL_PDPT_POINTER = 0xFFFF_8800_0000_0000u64
   KERNEL_PDPT_IDX     = page_layer_indexes(KERNEL_PDPT_POINTER)[0]
@@ -52,21 +53,21 @@ module Paging
 
   # linear address of the page directory pointer table
   def current_pdpt
-    new_addr = @@current_pdpt.address & ~PTR_IDENTITY_MASK
+    new_addr = @@current_pdpt.address & ~Paging::IDENTITY_MASK
     Pointer(Data::PDPTable).new(new_addr)
   end
 
   # lower-half page directory pointer table for kernel processes
   def real_pdpt
-    pml4_addr = @@pml4_table.address | PTR_IDENTITY_MASK
+    pml4_addr = @@pml4_table.address | Paging::IDENTITY_MASK
     pml4_table = Pointer(Data::PML4Table).new pml4_addr
-    new_addr = pml4_table.value.pdpt[0] & ~PTR_IDENTITY_MASK
+    new_addr = pml4_table.value.pdpt[0] & ~Paging::IDENTITY_MASK
     Pointer(Data::PDPTable).new(new_addr)
   end
 
   # linear address of the page directory pointer table
   def current_kernel_pdpt
-    new_addr = @@current_kernel_pdpt.address & ~PTR_IDENTITY_MASK
+    new_addr = @@current_kernel_pdpt.address & ~Paging::IDENTITY_MASK
     Pointer(Data::PDPTable).new(new_addr)
   end
 
@@ -75,17 +76,17 @@ module Paging
   def current_pdpt=(x)
     if x.null?
       @@current_pdpt = Pointer(Data::PDPTable).null
-      pml4_addr = @@pml4_table.address | PTR_IDENTITY_MASK
+      pml4_addr = @@pml4_table.address | Paging::IDENTITY_MASK
       pml4_table = Pointer(Data::PML4Table).new pml4_addr
       pml4_table.value.pdpt[0] = 0u64
       return
     end
 
-    new_addr = x.address | PTR_IDENTITY_MASK
+    new_addr = x.address | Paging::IDENTITY_MASK
     @@current_pdpt = Pointer(Data::PDPTable).new new_addr
 
     # update pml4 table
-    pml4_addr = @@pml4_table.address | PTR_IDENTITY_MASK
+    pml4_addr = @@pml4_table.address | Paging::IDENTITY_MASK
     pml4_table = Pointer(Data::PML4Table).new pml4_addr
     pml4_table.value.pdpt[0] = x.address | PT_MASK
   end
@@ -93,11 +94,11 @@ module Paging
   # map kernel page directory pointer table
   @[NoInline]
   def current_kernel_pdpt=(x)
-    new_addr = x.address | PTR_IDENTITY_MASK
+    new_addr = x.address | Paging::IDENTITY_MASK
     @@current_kernel_pdpt = Pointer(Data::PDPTable).new new_addr
 
     # update pml4 table
-    pml4_addr = @@pml4_table.address | PTR_IDENTITY_MASK
+    pml4_addr = @@pml4_table.address | Paging::IDENTITY_MASK
     pml4_table = Pointer(Data::PML4Table).new pml4_addr
     pml4_table.value.pdpt[KERNEL_PDPT_IDX] = x.address | PT_MASK
   end
@@ -165,17 +166,17 @@ module Paging
     # claim initial memory
     i = text_start.address
     while i <= text_end.address
-      FrameAllocator.initial_claim(i - KERNEL_OFFSET)
+      FrameAllocator.initial_claim(i - Paging::KERNEL_OFFSET)
       i += 0x1000
     end
     i = data_start.address
     while i <= data_end.address
-      FrameAllocator.initial_claim(i - KERNEL_OFFSET)
+      FrameAllocator.initial_claim(i - Paging::KERNEL_OFFSET)
       i += 0x1000
     end
     i = stack_start.address
     while i <= stack_end.address
-      FrameAllocator.initial_claim(i - KERNEL_OFFSET)
+      FrameAllocator.initial_claim(i - Paging::KERNEL_OFFSET)
       i += 0x1000
     end
 
@@ -208,7 +209,7 @@ module Paging
     # update memory regions' inner pointers to identity mapped ones
     FrameAllocator.update_inner_pointers
     FrameAllocator.is_paging_setup = true
-    new_addr = @@current_pdpt.address | PTR_IDENTITY_MASK
+    new_addr = @@current_pdpt.address | Paging::IDENTITY_MASK
     @@current_pdpt = Pointer(Data::PDPTable).new new_addr
 
     # enable paging
@@ -254,6 +255,8 @@ module Paging
 
     # claim
     while virt_addr < virt_addr_end
+      panic "allocating user page inside non-user area!" if user && virt_addr > Paging::MAXIMUM_USER_PTR
+
       # allocate page frame
       pdpt_idx, dir_idx, table_idx, page_idx = page_layer_indexes(virt_addr)
 
@@ -418,7 +421,7 @@ module Paging
 
   # mapped table address
   def mt_addr(addr : UInt64)
-    Paging.t_addr(addr) | PTR_IDENTITY_MASK
+    Paging.t_addr(addr) | Paging::IDENTITY_MASK
   end
 
   # identity map pages at init
@@ -453,7 +456,7 @@ module Paging
   end
 
   private def alloc_frame_init(rw : Bool, user : Bool, virt_addr : UInt64, execute=false)
-    phys_addr = virt_addr - KERNEL_OFFSET
+    phys_addr = virt_addr - Paging::KERNEL_OFFSET
     alloc_page_init(rw, user, phys_addr, virt_addr, execute: execute)
   end
 
