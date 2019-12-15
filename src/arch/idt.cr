@@ -34,9 +34,9 @@ module Idt
     struct Registers
       # Pushed by pushad:
       ds,
-      rbp, rdi, rsi,
-      r15, r14, r13, r12, r11, r10, r9, r8,
-      rdx, rcx, rbx, rax : UInt64
+rbp, rdi, rsi,
+r15, r14, r13, r12, r11, r10, r9, r8,
+rdx, rcx, rbx, rax : UInt64
       # Interrupt number
       int_no : UInt64
       # Pushed by the processor automatically.
@@ -46,9 +46,9 @@ module Idt
     struct ExceptionRegisters
       # Pushed by pushad:
       ds,
-      rbp, rdi, rsi,
-      r15, r14, r13, r12, r11, r10, r9, r8,
-      rdx, rcx, rbx, rax : UInt64
+rbp, rdi, rsi,
+r15, r14, r13, r12, r11, r10, r9, r8,
+rdx, rcx, rbx, rax : UInt64
       # Interrupt number
       int_no, errcode : UInt64
       # Pushed by the processor automatically.
@@ -131,7 +131,7 @@ module Idt
     end
   end
 
-  def disable(reenable=false, &block)
+  def disable(reenable = false, &block)
     if @@status_mask
       return yield
     end

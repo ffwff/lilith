@@ -13,8 +13,8 @@ module Syscall
     struct Registers
       ds : UInt64
       rbp, rdi, rsi,
-      r15, r14, r13, r12, r11, r10, r9, r8,
-      rdx, rcx, rbx, rax : UInt64
+r15, r14, r13, r12, r11, r10, r9, r8,
+rdx, rcx, rbx, rax : UInt64
       rsp : UInt64
     end
 
@@ -41,8 +41,8 @@ module Syscall
 
     @[Flags]
     enum MmapProt : Int32
-      Read = 1 << 0
-      Write = 1 << 1
+      Read    = 1 << 0
+      Write   = 1 << 1
       Execute = 1 << 2
     end
   end

@@ -286,6 +286,7 @@ module Ata
   # irq handler
   @@interrupted = false
   class_property interrupted
+
   def irq_handler(bus)
     # Serial.print "irq", Idt.switch_processes, "!\n"
     status = X86.inb(bus + REG_STATUS)
@@ -392,7 +393,7 @@ class AtaDevice
     256.times do |i|
       buf[i] = X86.inw disk_port
     end
-    
+
     if (device.value.capabilities[0] & (1 << 8)) != 0
       @can_dma = true
     end
@@ -441,6 +442,7 @@ class AtaDevice
   end
 
   MAX_RETRIES = 3
+
   def read_sector(ptr : UInt8*, sector : UInt64, nsectors : Int = 1)
     panic "can't access atapi" if @type == Type::Atapi
     # Serial.print "ata read ", sector, '\n'
@@ -470,9 +472,9 @@ class AtaDevice
           l0 = l1 = 0
           nwords = 256 * nsectors
           asm("rep insw"
-             : "={Di}"(l0), "={cx}"(l1)
-             : "{Di}"(ptr), "{cx}"(nwords), "{dx}"(disk_port)
-             : "volatile", "memory")
+                  : "={Di}"(l0), "={cx}"(l1)
+                  : "{Di}"(ptr), "{cx}"(nwords), "{dx}"(disk_port)
+                  : "volatile", "memory")
         end
         retval = true
         break
@@ -515,15 +517,18 @@ module Ide
   class_getter! devices
 
   @@prdt = uninitialized Data::PhysicalRegionDescriptor
+
   def prdt_ptr
     pointerof(@@prdt)
   end
+
   def prdt_ptr_phys
     Paging.virt_to_phys_address(prdt_ptr.as(Void*))
   end
 
   @@dma_buffer = Pointer(UInt8).null
   class_getter dma_buffer
+
   private def dma_buffer_phys
     @@dma_buffer.address & ~Paging::IDENTITY_MASK
   end
@@ -574,6 +579,7 @@ module Ide
 
   # lock
   @@lock = Spinlock.new
+
   def lock(&block)
     @@lock.with do
       yield

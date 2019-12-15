@@ -28,7 +28,7 @@ class MouseFSNode < VFSNode
       node = node.next_node
     end
   end
-  
+
   def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
     each_child do |node|
       if node.name == path

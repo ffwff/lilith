@@ -49,5 +49,4 @@ module PIC
     # send to master
     X86.outb 0x20, 0x20
   end
-
 end

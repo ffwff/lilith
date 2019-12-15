@@ -108,7 +108,7 @@ class String
   end
 
   def self.new(bytes : Slice(UInt8))
-    (new(bytes.size) {|buffer|
+    (new(bytes.size) { |buffer|
       memcpy(buffer, bytes.to_unsafe, bytes.size.to_usize)
       {bytes.size, String.calculate_length(bytes.to_unsafe)}
     }).not_nil!
@@ -169,7 +169,7 @@ class String
   end
 
   def clone
-    (String.new(bytesize) {|buffer|
+    (String.new(bytesize) { |buffer|
       memcpy(buffer, to_unsafe, bytesize.to_usize)
       {bytesize, size}
     }).not_nil!
@@ -244,5 +244,4 @@ class String
       io.putc char
     end
   end
-
 end

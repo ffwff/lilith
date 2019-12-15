@@ -123,7 +123,7 @@ module ElfReader
 
   ELFCLASS32 = 1
   ELFCLASS64 = 2
-  
+
   ELF_EIDENT_SZ = 16
 
   private enum ParserState
@@ -145,6 +145,7 @@ module ElfReader
 
   struct ElfHeader
     getter is64, e_phnum, e_shnum, e_entry
+
     def initialize(@is64 : Bool,
                    @e_phnum : UInt16,
                    @e_shnum : UInt16,
@@ -164,6 +165,7 @@ module ElfReader
 
   struct Result
     getter is64, initial_ip, heap_start, mmap_list
+
     def initialize(@is64 : Bool,
                    @initial_ip : USize,
                    @heap_start : USize,
@@ -239,9 +241,9 @@ module ElfReader
             return ParserError::InvalidProgramHdrSz
           end
           yield ElfHeader.new(false,
-                              header.value.e_phnum,
-                              header.value.e_shnum,
-                              header.value.e_entry.to_usize)
+            header.value.e_phnum,
+            header.value.e_shnum,
+            header.value.e_entry.to_usize)
 
           if header.value.e_phoff == total_bytes + 1
             buffer = Slice(UInt8).mmalloc_a sizeof(ElfStructs::Elf32ProgramHeader), allocator
@@ -264,9 +266,9 @@ module ElfReader
             return ParserError::InvalidProgramHdrSz
           end
           yield ElfHeader.new(true,
-                              header.value.e_phnum,
-                              header.value.e_shnum,
-                              header.value.e_entry.to_usize)
+            header.value.e_phnum,
+            header.value.e_shnum,
+            header.value.e_entry.to_usize)
 
           if header.value.e_phoff == total_bytes + 1
             buffer = Slice(UInt8).mmalloc_a sizeof(ElfStructs::Elf64ProgramHeader), allocator
@@ -282,10 +284,10 @@ module ElfReader
         if idx_h == sizeof(ElfStructs::Elf32ProgramHeader)
           pheader = buffer.to_unsafe.as(ElfStructs::Elf32ProgramHeader*)
           yield MemMapHeader.new(pheader.value.p_offset.to_u64,
-                                 pheader.value.p_filesz.to_u64,
-                                 pheader.value.p_vaddr.to_u64,
-                                 pheader.value.p_memsz.to_u64,
-                                 p_flags_to_mmap_attrs(pheader.value.p_flags))
+            pheader.value.p_filesz.to_u64,
+            pheader.value.p_vaddr.to_u64,
+            pheader.value.p_memsz.to_u64,
+            p_flags_to_mmap_attrs(pheader.value.p_flags))
           n_pheader += 1
           idx_h = 0
         end
@@ -299,10 +301,10 @@ module ElfReader
         if idx_h == sizeof(ElfStructs::Elf64ProgramHeader)
           pheader = buffer.to_unsafe.as(ElfStructs::Elf64ProgramHeader*)
           yield MemMapHeader.new(pheader.value.p_offset.to_u64,
-                                 pheader.value.p_filesz.to_u64,
-                                 pheader.value.p_vaddr.to_u64,
-                                 pheader.value.p_memsz.to_u64,
-                                 p_flags_to_mmap_attrs(pheader.value.p_flags))
+            pheader.value.p_filesz.to_u64,
+            pheader.value.p_vaddr.to_u64,
+            pheader.value.p_memsz.to_u64,
+            p_flags_to_mmap_attrs(pheader.value.p_flags))
           n_pheader += 1
           idx_h = 0
         end
@@ -327,7 +329,6 @@ module ElfReader
     end
     nil
   end
-
 
   # load process code from kernel thread
   def load_from_kernel_thread(node, allocator : StackAllocator)

@@ -17,13 +17,13 @@ private class PipeFSRoot < VFSNode
              options : Int32 = 0) : VFSNode?
     if (options & VFS_CREATE_ANON) != 0
       return PipeFSNode.new(String.new(name),
-                            process.not_nil!.pid,
-                            self, fs,
-                            anonymous: true)
+        process.not_nil!.pid,
+        self, fs,
+        anonymous: true)
     end
     node = PipeFSNode.new(String.new(name),
-                          process.not_nil!.pid,
-                          self, fs)
+      process.not_nil!.pid,
+      self, fs)
     node.next_node = @first_child
     unless @first_child.nil?
       @first_child.not_nil!.prev_node = node

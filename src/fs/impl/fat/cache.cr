@@ -1,8 +1,8 @@
 module FatCache
-
   struct CacheNode
     getter foffset, cluster, used
     protected setter used
+
     def initialize(@foffset : UInt32, @cluster : UInt32, @used : Int32)
     end
   end
@@ -47,5 +47,4 @@ module FatCache
       i += 1
     end
   end
-
 end

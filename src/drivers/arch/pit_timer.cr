@@ -1,9 +1,9 @@
 module Pit
   extend self
 
-  private PIT_CONST =   1193180
-  FREQUENCY         =      1000 # Hz
-  USECS_PER_TICK    = 1_000_000 // FREQUENCY
+  private PIT_CONST      = 1193180
+  FREQUENCY      =    1000 # Hz
+  USECS_PER_TICK = 1_000_000 // FREQUENCY
 
   def init_device
     Idt.register_irq 0, ->callback

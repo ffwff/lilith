@@ -5,7 +5,7 @@ class ProcFSNode < VFSNode
   def initialize(@fs : ProcFS)
     add_child(ProcFSProcessNode.new(self, @fs))
   end
-  
+
   def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
     node = @first_child
     while !node.nil?
@@ -94,7 +94,7 @@ class ProcFSProcessNode < VFSNode
     @parent.remove_child self
     VFS_OK
   end
-  
+
   def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
     node = @first_child
     while !node.nil?
