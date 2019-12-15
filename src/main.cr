@@ -56,7 +56,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   # gc
   Console.print "initializing kernel garbage collector...\n"
-  Arena.init(Kernel.stack_end.address + 0x1000)
+  Allocator.init(Kernel.stack_end.address + 0x1000)
   Gc.init Kernel.stack_start, Kernel.stack_end
 
   # processes
