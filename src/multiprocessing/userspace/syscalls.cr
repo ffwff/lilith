@@ -226,7 +226,7 @@ module Syscall
           fv.r9,
           execute: fv.r10 != 0
         )
-        if virt_addr <= PDPT_SIZE && process.phys_user_pg_struct == 0u64
+        if virt_addr <= Paging::PDPT_SIZE && process.phys_user_pg_struct == 0u64
           process.phys_user_pg_struct = Paging.real_pdpt.address
         end
       when SC_PROCESS_CREATE_DRV

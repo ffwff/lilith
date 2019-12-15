@@ -97,7 +97,7 @@ module FrameAllocator
     region = @@first_region
     while !region.null?
       if @@is_paging_setup
-        new_addr = region.address | PTR_IDENTITY_MASK
+        new_addr = region.address | Paging::IDENTITY_MASK
         region = Pointer(Region).new new_addr
       end
       yield region.value
@@ -108,7 +108,7 @@ module FrameAllocator
   def update_inner_pointers
     region = @@first_region
     while !region.null?
-      new_addr = region.value.frames.to_unsafe.address | PTR_IDENTITY_MASK
+      new_addr = region.value.frames.to_unsafe.address | Paging::IDENTITY_MASK
       size = region.value.frames.size
       region.value.frames = BitArray.new(Pointer(UInt32).new(new_addr), size)
       region = region.value.next_region

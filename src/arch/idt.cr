@@ -215,7 +215,7 @@ fun kcpuex_handler(frame : Idt::Data::ExceptionRegisters*)
     {% if false %}
       if process.kernel_process?
         panic "segfault from kernel process"
-      elsif frame.value.rip > KERNEL_OFFSET
+      elsif frame.value.rip > Paging::KERNEL_OFFSET
         panic "segfault from kernel"
       else
         if faulting_address < Multiprocessing::USER_STACK_TOP &&

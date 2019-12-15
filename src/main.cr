@@ -45,7 +45,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   # paging
   Console.print "initializing paging...\n"
   # use the physical address of the kernel end for pmalloc
-  Pmalloc.start = Paging.aligned(Kernel.kernel_end.address - KERNEL_OFFSET)
+  Pmalloc.start = Paging.aligned(Kernel.kernel_end.address - Paging::KERNEL_OFFSET)
   Pmalloc.addr = Pmalloc.start
   Paging.init_table(Kernel.text_start, Kernel.text_end,
     Kernel.data_start, Kernel.data_end,

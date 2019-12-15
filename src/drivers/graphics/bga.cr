@@ -25,7 +25,7 @@ module BGA
     width, height = set_resolution(1280, 720)
     size = width * height * 4
     phys = Pointer(UInt32).new(PCI.read_field(bus, device, func, PCI::PCI_BAR0, 4).to_u64)
-    virt = Pointer(UInt32).new(phys.address | PTR_IDENTITY_MASK)
+    virt = Pointer(UInt32).new(phys.address | Paging::IDENTITY_MASK)
     Paging.alloc_page_pg(virt.address, true, false, size.div_ceil(0x1000).to_usize, phys.address)
     FbdevState.lock do |state|
       state.init_device(width, height, virt)

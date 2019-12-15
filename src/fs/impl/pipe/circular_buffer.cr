@@ -7,12 +7,12 @@ class CircularBuffer
 
   def init_buffer
     if @buffer.null?
-      @buffer = Pointer(UInt8).new(FrameAllocator.claim_with_addr | PTR_IDENTITY_MASK)
+      @buffer = Pointer(UInt8).new(FrameAllocator.claim_with_addr | Paging::IDENTITY_MASK)
     end
   end
 
   def deinit_buffer
-    FrameAllocator.declaim_addr(@buffer.address & ~PTR_IDENTITY_MASK)
+    FrameAllocator.declaim_addr(@buffer.address & ~Paging::IDENTITY_MASK)
   end
 
   def size
