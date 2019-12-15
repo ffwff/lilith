@@ -270,15 +270,15 @@ module Multiprocessing::Scheduler
 
   private def get_next_process
     next_process = if (process = @@io_queue.next_process)
-      if process == @@current_process
-        # try to prevent resource starvation by getting another in the queue
-        @@cpu_queue.next_process
-      else
-        process
-      end
-    else
-      @@cpu_queue.next_process(@@current_process)
-    end
+                     if process == @@current_process
+                       # try to prevent resource starvation by getting another in the queue
+                       @@cpu_queue.next_process
+                     else
+                       process
+                     end
+                   else
+                     @@cpu_queue.next_process(@@current_process)
+                   end
     next_process
   end
 

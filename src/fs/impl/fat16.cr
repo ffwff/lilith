@@ -236,11 +236,11 @@ private class Fat16Node < VFSNode
     # read file
     cluster_bufsz = 512 * fs.sectors_per_cluster
     cluster_buffer = if (ptr = fs.device.dma_buffer?)
-                      Slice(UInt8).new(ptr, cluster_bufsz)
+                       Slice(UInt8).new(ptr, cluster_bufsz)
                      elsif allocator.nil?
-                      Slice(UInt8).malloc(cluster_bufsz)
+                       Slice(UInt8).malloc(cluster_bufsz)
                      else
-                      Slice(UInt8).new(allocator.not_nil!.malloc(cluster_bufsz).as(UInt8*), cluster_bufsz)
+                       Slice(UInt8).new(allocator.not_nil!.malloc(cluster_bufsz).as(UInt8*), cluster_bufsz)
                      end
     last_cluster = 0
     while remaining_bytes > 0 && cluster < 0xFFF8
@@ -258,7 +258,7 @@ private class Fat16Node < VFSNode
 
       if offset_bytes <= cluster_buffer.size
         cur_buffer = Slice(UInt8).new(cluster_buffer.to_unsafe + offset_bytes,
-                                       Math.min(cluster_buffer.size - offset_bytes, remaining_bytes.to_i32))
+          Math.min(cluster_buffer.size - offset_bytes, remaining_bytes.to_i32))
         yield cur_buffer
         offset += cur_buffer.size
         remaining_bytes -= cur_buffer.size
@@ -465,8 +465,8 @@ class Fat16FS < VFS
         case msg.type
         when VFSMessage::Type::Read
           fat16_node.read_buffer(msg.slice_size,
-                                 msg.file_offset.to_u32,
-                                 allocator: @process_allocator) do |buffer|
+            msg.file_offset.to_u32,
+            allocator: @process_allocator) do |buffer|
             msg.respond(buffer)
           end
           msg.unawait

@@ -72,7 +72,6 @@ private class SocketFSNode < VFSNode
       SocketFSConnectionNode.new(self, @fs)
     end
   end
-
 end
 
 private class SocketFSListenNode < VFSNode
@@ -101,8 +100,8 @@ private class SocketFSListenNode < VFSNode
       conn.state = SocketFSConnectionNode::State::Connected
       conn.flush_queue
       fd = process.not_nil!.udata.install_fd(conn,
-                                             FileDescriptor::Attributes::Read |
-                                             FileDescriptor::Attributes::Write)
+        FileDescriptor::Attributes::Read |
+        FileDescriptor::Attributes::Write)
       slice.to_unsafe.as(Int32*).value = fd
       slice.size
     else
@@ -222,4 +221,3 @@ class SocketFS < VFS
     @root = SocketFSRoot.new self
   end
 end
-

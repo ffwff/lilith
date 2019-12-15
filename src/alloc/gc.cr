@@ -106,7 +106,7 @@ module Gc
       global_ptr += 1
     end
   end
-  
+
   private def scan_registers
     {% for register in ["rbx", "r12", "r13", "r14", "r15"] %}
       ptr = Pointer(Void).null

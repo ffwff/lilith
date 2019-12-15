@@ -24,10 +24,10 @@ module Paging
     end
   end
 
-  IDENTITY_MASK     = 0xFFFF_8000_0000_0000u64
-  KERNEL_OFFSET     = 0xFFFF_8080_0000_0000u64
-  MAXIMUM_USER_PTR  =        0x7F_FFFF_FFFFu64
-  PDPT_SIZE         =        0x80_0000_0000u64
+  IDENTITY_MASK    = 0xFFFF_8000_0000_0000u64
+  KERNEL_OFFSET    = 0xFFFF_8080_0000_0000u64
+  MAXIMUM_USER_PTR =        0x7F_FFFF_FFFFu64
+  PDPT_SIZE        =        0x80_0000_0000u64
 
   KERNEL_PDPT_POINTER = 0xFFFF_8800_0000_0000u64
   KERNEL_PDPT_IDX     = page_layer_indexes(KERNEL_PDPT_POINTER)[0]
@@ -425,7 +425,7 @@ module Paging
   end
 
   # identity map pages at init
-  private def alloc_page_init(rw : Bool, user : Bool, addr : UInt64, virt_addr : UInt64, execute=false)
+  private def alloc_page_init(rw : Bool, user : Bool, addr : UInt64, virt_addr : UInt64, execute = false)
     if virt_addr == 0
       virt_addr = addr
     end
@@ -455,7 +455,7 @@ module Paging
     pt.value.pages[page_idx] = page
   end
 
-  private def alloc_frame_init(rw : Bool, user : Bool, virt_addr : UInt64, execute=false)
+  private def alloc_frame_init(rw : Bool, user : Bool, virt_addr : UInt64, execute = false)
     phys_addr = virt_addr - Paging::KERNEL_OFFSET
     alloc_page_init(rw, user, phys_addr, virt_addr, execute: execute)
   end

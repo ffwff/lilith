@@ -1,5 +1,4 @@
 class CircularBuffer
-
   CAPACITY = 0x1000
   @buffer = Pointer(UInt8).null
   @read_pos = 0
@@ -52,5 +51,4 @@ class CircularBuffer
     end
     slice.size
   end
-
 end

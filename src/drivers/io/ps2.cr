@@ -60,7 +60,7 @@ module PS2
   end
 
   def wait_for_input
-    #(must be set before attempting to read data from IO port 0x60) 
+    # (must be set before attempting to read data from IO port 0x60)
     while true
       return if X86.inb(STATUS_PORT) & 1 != 0
     end
@@ -101,5 +101,4 @@ module PS2
     wait_for_input
     X86.inb BUFFER_PORT
   end
-
 end

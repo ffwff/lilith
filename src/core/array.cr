@@ -20,7 +20,7 @@ class Array(T)
   end
 
   private def capacity_for_ptr(ptr)
-     ((Arena.block_size_for_ptr(ptr) - GC_ARRAY_HEADER_SIZE) // sizeof(T)).to_i32
+    ((Arena.block_size_for_ptr(ptr) - GC_ARRAY_HEADER_SIZE) // sizeof(T)).to_i32
   end
 
   private def new_buffer(new_capacity)

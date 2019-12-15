@@ -8,8 +8,9 @@ module Arena
   extend self
 
   lib Data
-    MAGIC = 0x47727530
+    MAGIC        = 0x47727530
     MAGIC_ATOMIC = 0x47727531
+
     struct PoolHeader
       magic : USize
       next_pool : PoolHeader*
@@ -18,12 +19,14 @@ module Arena
     end
 
     MAGIC_MMAP = 0x47727532
+
     struct MmapHeader
       magic : USize
       marked : USize
     end
 
     MAGIC_EMPTY = 0
+
     struct EmptyHeader
       magic : USize
       next_page : EmptyHeader*
@@ -63,7 +66,7 @@ module Arena
       @header.value.nfree
     end
 
-    def init_header(atomic=false)
+    def init_header(atomic = false)
       @header.value.magic = atomic ? Data::MAGIC_ATOMIC : Data::MAGIC
       @header.value.next_pool = Pointer(Data::PoolHeader).null
       @header.value.idx = @idx
@@ -81,8 +84,8 @@ module Arena
     def mark_bitmap
       BitArray
         .new((@header.as(Void*) +
-            sizeof(Data::PoolHeader) +
-            BitArray.malloc_size(@blocks)*4).as(UInt32*),
+              sizeof(Data::PoolHeader) +
+              BitArray.malloc_size(@blocks)*4).as(UInt32*),
           blocks)
     end
 
@@ -163,7 +166,7 @@ module Arena
   end
 
   MIN_SIZE_TO_ALIGN = 128
-  MIN_POW2 = 5
+  MIN_POW2          =   5
 
   # sizes of a pool
   SIZES = StaticArray[32, 64, 128, 256, 512, 1024]
@@ -252,7 +255,7 @@ module Arena
     (hdr + 1).as(Void*)
   end
 
-  def malloc(bytes : Int, atomic=false) : Void*
+  def malloc(bytes : Int, atomic = false) : Void*
     if bytes > MAX_POOL_SIZE
       return new_mmap bytes
     end
@@ -363,5 +366,4 @@ module Arena
     hdr = Pointer(Data::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
     Pool.new(hdr).block_size
   end
-
 end
