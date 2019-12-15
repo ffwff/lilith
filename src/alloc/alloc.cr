@@ -99,11 +99,11 @@ module Arena
     end
 
     def aligned?(block : Void*)
-      (block.address - @header.address - alignment_padding - BitArray.malloc_size(@blocks)*4*2 - sizeof(Data::PoolHeader)) % @block_size == 0
+      (block.address - @header.address - alignment_padding - BitArray.malloc_size(@blocks)*4*2 - sizeof(Data::PoolHeader)) & (@block_size - 1) == 0
     end
 
     def idx_for_block(block : Void*)
-      (block.address - @header.address - alignment_padding - BitArray.malloc_size(@blocks)*4*2 - sizeof(Data::PoolHeader)) // @block_size
+      (block.address - @header.address - alignment_padding - BitArray.malloc_size(@blocks)*4*2 - sizeof(Data::PoolHeader)) >> (@idx + MIN_POW2)
     end
 
     def get_free_block : Void*
@@ -143,7 +143,6 @@ module Arena
           if !bit && alloc_bitmap[idx]
             ptr = block(idx)
             Serial.print "free: ", ptr, '\n'
-            breakpoint if ptr.address == 0xffff80800015f3a8u64
           end
           idx += 1
         end
@@ -163,8 +162,8 @@ module Arena
     end
   end
 
-  # all blocks must be 16-bytes aligned
   MIN_SIZE_TO_ALIGN = 128
+  MIN_POW2 = 5
 
   # sizes of a pool
   SIZES = StaticArray[32, 64, 128, 256, 512, 1024]
