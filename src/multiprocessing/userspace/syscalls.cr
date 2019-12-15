@@ -648,14 +648,17 @@ rdx, rcx, rbx, rax : UInt64
       else
         try(checked_slice(UInt32, arg(3), 2))
       end
-      Serial.print extended, '\n'
       addr = extended[0].to_u64
       size = extended[1].to_u64
+      if (size & 0xfff) != 0
+        sysret(SYSCALL_ERR)
+      end
 
       if fdi == -1
-        # Paging.alloc_page_pg 
-        Serial.print Pointer(Void).new(addr), ' ', mmap_attrs, " size:",size, '\n'
-        panic "TODO"
+        Paging.alloc_page_pg addr,
+            mmap_attrs.includes?(MemMapNode::Attributes::Write),
+            true, size // 0x1000
+        sysret(SYSCALL_SUCCESS)
       else
         mmap_attrs |= MemMapNode::Attributes::SharedMem
         fd = try(pudata.get_fd(fdi))
