@@ -47,9 +47,9 @@ module Gc
 
   # pushes a node to the current gray stack
   private def push_gray(ptr : Void*)
-    return if Arena.marked?(ptr)
-    Arena.mark ptr
-    return if Arena.atomic?(ptr)
+    return if Allocator.marked?(ptr)
+    Allocator.mark ptr
+    return if Allocator.atomic?(ptr)
     panic "unable to push gray" if @@curr_grays_idx == GRAY_SIZE
     @@curr_grays[@@curr_grays_idx] = ptr
     @@curr_grays_idx += 1
@@ -57,9 +57,9 @@ module Gc
 
   # pushes a node to the opposite gray stack
   private def push_opposite_gray(ptr : Void*)
-    return if Arena.marked?(ptr)
-    Arena.mark ptr
-    return if Arena.atomic?(ptr)
+    return if Allocator.marked?(ptr)
+    Allocator.mark ptr
+    return if Allocator.atomic?(ptr)
     panic "unable to push gray" if @@opp_grays_idx == GRAY_SIZE
     @@opp_grays[@@opp_grays_idx] = ptr
     @@opp_grays_idx += 1
@@ -100,7 +100,7 @@ module Gc
     global_ptr = LibCrystal.__crystal_gc_globals
     while (ptr = global_ptr.value)
       root_ptr = ptr.value
-      if Arena.contains_ptr? root_ptr
+      if Allocator.contains_ptr? root_ptr
         push_gray root_ptr
       end
       global_ptr += 1
@@ -111,7 +111,7 @@ module Gc
     {% for register in ["rbx", "r12", "r13", "r14", "r15"] %}
       ptr = Pointer(Void).null
       asm("" : {{ "={#{register.id}}" }}(ptr))
-      if Arena.contains_ptr? ptr
+      if Allocator.contains_ptr? ptr
         push_gray ptr
       end
     {% end %}
@@ -122,7 +122,7 @@ module Gc
     asm("" : "={rsp}"(sp))
     while sp < @@stack_end.address
       root_ptr = Pointer(Void*).new(sp).value
-      if Arena.contains_ptr? root_ptr
+      if Allocator.contains_ptr? root_ptr
         push_gray root_ptr
       end
       sp += sizeof(Void*)
@@ -146,7 +146,7 @@ module Gc
         ivarp = Pointer(Void*).new(buffer + i.to_u64 * sizeof(Void*))
         ivar = ivarp.value
         # Serial.print "ivar: ", ivarp, ": ", ivar,'\n'
-        if Arena.contains_ptr? ivar
+        if Allocator.contains_ptr? ivar
           push_opposite_gray ivar
         end
       end
@@ -162,7 +162,7 @@ module Gc
       while pos < size
         if (offsets & 1) != 0
           ivar = Pointer(Void*).new(ptr.address + pos).value
-          if Arena.contains_ptr? ivar
+          if Allocator.contains_ptr? ivar
             push_opposite_gray ivar
           end
         end
@@ -188,7 +188,7 @@ module Gc
       end
       false
     when State::Sweep
-      Arena.sweep
+      Allocator.sweep
       @@state = State::ScanRoot
       true
     end
@@ -210,7 +210,7 @@ module Gc
         cycle
       end
     {% end %}
-    ptr = Arena.malloc(size, atomic)
+    ptr = Allocator.malloc(size, atomic)
     push_gray ptr
     # zero out the first word/qword where type_id is stored
     ptr.as(USize*).value = 0
