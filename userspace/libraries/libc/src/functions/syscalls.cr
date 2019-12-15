@@ -58,7 +58,7 @@ private def lilith_syscall64(rax : UInt32, rbx : UInt64,
        1: add $$8, %rsp"
           : "={rax}"(ret), "={rdi}"(l0), "={rsi}"(l1)
           : "{rax}"(rax), "{rbx}"(rbx), "{rdx}"(rdx), "{rdi}"(rdi), "{rsi}"(rsi)
-          : "cc", "ecx", "memory", "volatile")
+          : "cc", "{rcx}", "{r11}", "memory", "volatile")
   ret
 end
 {% end %}
@@ -148,9 +148,15 @@ end
 fun mmap(addr : Void*, size : LibC::SizeT, prot : LibC::Int,
          flags : LibC::Int, fd : LibC::Int, offset : LibC::OffT) : Void*
   {% if flag?(:bits32) %}
-    Pointer(Void).new(lilith_syscall(SC_MMAP, fd.to_usize, size.to_usize, prot.to_usize, flags.to_usize).to_u64)
+    ext = uninitialized UInt32[2]
+    ext[0] = addr.address.to_u32
+    ext[1] = size
+    Pointer(Void).new(lilith_syscall(SC_MMAP, fd.to_usize, prot.to_usize, flags.to_usize, ext.to_unsafe.address).to_u32)
   {% else %}
-    Pointer(Void).new(lilith_syscall64(SC_MMAP, fd.to_usize, size.to_usize, prot.to_usize, flags.to_usize))
+    ext = uninitialized UInt64[2]
+    ext[0] = addr.address
+    ext[1] = size
+    Pointer(Void).new(lilith_syscall64(SC_MMAP, fd.to_usize, prot.to_usize, flags.to_usize, ext.to_unsafe.address))
   {% end %}
 end
 
