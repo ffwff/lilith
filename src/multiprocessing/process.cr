@@ -452,7 +452,7 @@ module Multiprocessing
               : "{rax}"(SC_PROCESS_CREATE_DRV),
                 "{rbx}"(pointerof(result)),
                 "{rdx}"(udata)
-              : "cc", "volatile", "memory", "{rcx}", "{r11}", "{rdi}", "{rsi}")
+              : "cc", "memory", "volatile", "rcx", "r11", "r12", "rdi", "rsi")
       retval
     end
 

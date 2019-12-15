@@ -65,13 +65,9 @@ ksyscall_stub:
 ksyscall_stub_sc:
     # syscall doesn't set the rsp pointer for us (why amd?)
     # push rsp
-    push %rax
-    movabs $stack_top, %rax
-    mov %rsp, -8(%rax)
-    add $8, -8(%rax)
-    pop %rax
-    # rsp = stack_top
-    movabs $stack_top - 8, %rsp # reserve space for %userrsp
+    movabs $stack_top, %r12
+    mov %rsp, -8(%r12)
+    lea -8(%r12), %rsp # reserve space for %userrsp
     # push registers
     pusha64
     movabs $fxsave_region, %rax
