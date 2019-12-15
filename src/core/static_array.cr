@@ -35,4 +35,8 @@ struct StaticArray(T, N)
       yield self[{{i}}]
     {% end %}
   end
+
+  def to_s(io)
+    io.print "StaticArray(", to_unsafe, " ", N, ")"
+  end
 end
