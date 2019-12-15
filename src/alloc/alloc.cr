@@ -4,7 +4,7 @@
 
 require "../arch/paging.cr"
 
-module Arena
+module Allocator
   extend self
 
   lib Data
