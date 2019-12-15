@@ -217,7 +217,7 @@ module Paging
   end
 
   def aligned(x : UInt64) : UInt64
-    t_addr(x) + 0x1000
+    aligned_floor(x) + 0x1000
   end
 
   def page_layer_indexes(addr : UInt64)
@@ -248,7 +248,7 @@ module Paging
     # Serial.print "allocate: ", Pointer(Void).new(virt_addr_start), ' ', npages, '\n'
     Idt.disable
 
-    virt_addr = t_addr(virt_addr_start)
+    virt_addr = aligned_floor(virt_addr_start)
     virt_addr_end = virt_addr_start + npages * 0x1000
 
     pml4_table = Pointer(Data::PML4Table).new(mt_addr @@pml4_table.address)
@@ -361,35 +361,36 @@ module Paging
 
   def free_process_pdpt(pdtpa : UInt64, free_pdpta? : Bool = true)
     pdpt = Pointer(Data::PDPTable).new(mt_addr pdtpa)
+    # Serial.print "pdpt: ", pdpt, '\n'
     # free directories
     512.times do |i|
-      pd_addr = pdpt.value.dirs[i]
+      pd_addr = t_addr(pdpt.value.dirs[i])
       # free tables
       if pd_addr != 0
         pd = Pointer(Data::PageDirectory).new(mt_addr pd_addr)
-        # Serial.print pd, '\n'
+        # Serial.print "pd: ", pd, '\n'
         512.times do |j|
           pt_addr = t_addr(pd.value.tables[j])
           if pt_addr != 0
             pt = Pointer(Data::PageTable).new(mt_addr pt_addr)
-            # Serial.print pt, '\n'
+            # Serial.print "pt: ", Pointer(Void).new(pt_addr), '\n'
             512.times do |k|
               page_phys = t_addr(pt.value.pages[k])
               if page_phys != 0
-                # Serial.print page_phys, '\n'
-                FrameAllocator.declaim_addr(page_phys)
+                # Serial.print "page: ", Pointer(Void).new(page_phys), '\n'
+                FrameAllocator.declaim_addr page_phys
               end
             end
-            FrameAllocator.declaim_addr(pt_addr)
+            FrameAllocator.declaim_addr pt_addr
           end
         end
-        FrameAllocator.declaim_addr(pd_addr)
+        FrameAllocator.declaim_addr pd_addr
       end
     end
 
     # free itself
     if free_pdpta?
-      FrameAllocator.declaim_addr(pdtpa.to_u64)
+      FrameAllocator.declaim_addr aligned_floor(pdtpa)
     end
   end
 
@@ -401,7 +402,7 @@ module Paging
   private def page_create(rw : Bool, user : Bool, phys : UInt64,
                           execute : Bool) : UInt64
     page = 0x1u64
-    page |= t_addr(phys)
+    page |= aligned_floor(phys)
     if rw
       page |= PG_WRITE_BIT
     end
@@ -415,13 +416,18 @@ module Paging
   end
 
   # table address
-  def t_addr(addr : UInt64)
+  def aligned_floor(addr : UInt64)
     addr & 0xFFFF_FFFF_FFFF_F000u64
+  end
+
+  # table address
+  private def t_addr(addr : UInt64)
+    addr & 0xFFFF_FFFF_F000u64
   end
 
   # mapped table address
   def mt_addr(addr : UInt64)
-    Paging.t_addr(addr) | Paging::IDENTITY_MASK
+    (addr & 0xFFFF_FFFF_F000u64) | Paging::IDENTITY_MASK
   end
 
   # identity map pages at init
@@ -438,7 +444,7 @@ module Paging
       paddr = pd.address | PT_MASK
       @@current_pdpt.value.dirs[dir_idx] = paddr
     else
-      pd = Pointer(Data::PageDirectory).new(t_addr @@current_pdpt.value.dirs[dir_idx])
+      pd = Pointer(Data::PageDirectory).new(aligned_floor @@current_pdpt.value.dirs[dir_idx])
     end
 
     # table
@@ -447,7 +453,7 @@ module Paging
       paddr = pt.address | PT_MASK
       pd.value.tables[table_idx] = paddr
     else
-      pt = Pointer(Data::PageTable).new(t_addr pd.value.tables[table_idx])
+      pt = Pointer(Data::PageTable).new(aligned_floor pd.value.tables[table_idx])
     end
 
     # page
@@ -497,6 +503,6 @@ module Paging
     return 0u64 if pd.value.tables[table_idx] == 0u64
     pt = Pointer(Data::PageTable).new(mt_addr pd.value.tables[table_idx])
 
-    t_addr(pt.value.pages[page_idx]) + offset
+    aligned_floor(pt.value.pages[page_idx]) + offset
   end
 end

@@ -72,7 +72,7 @@ class VFSMessage
     # offset of byte to be written in page (0 -> 0x1000)
     pg_offset = @slice.not_nil!.to_unsafe.address & 0xFFF
     # virtual page range
-    virt_pg_addr = Paging.t_addr(@slice.not_nil!.to_unsafe.address)
+    virt_pg_addr = Paging.aligned_floor(@slice.not_nil!.to_unsafe.address)
     virt_pg_end = Paging.aligned(@slice.not_nil!.to_unsafe.address + remaining)
     # Serial.print "paddr:" , Pointer(Void).new(virt_pg_addr), " ", Pointer(Void).new(virt_pg_end), '\n'
     while virt_pg_addr < virt_pg_end
@@ -102,7 +102,7 @@ class VFSMessage
     remaining = Math.min(buf.size, slice_size - @offset)
     # virtual addresses
     page_start_u = pslice.to_unsafe.address + @offset
-    page_start = Paging.t_addr(page_start_u)
+    page_start = Paging.aligned_floor(page_start_u)
     page_end = Paging.aligned(pslice.to_unsafe.address + pslice.size)
     p_offset = page_start_u & 0xFFF
     # loop!

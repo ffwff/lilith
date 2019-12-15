@@ -57,7 +57,7 @@ module FrameAllocator
     end
 
     def declaim_addr(addr : UInt64)
-      unless addr > @base_addr && addr < (@base_addr + @length)
+      unless @base_addr <= addr  && addr < (@base_addr + @length)
         return false
       end
       idx = index_for_address(addr)
@@ -71,15 +71,10 @@ module FrameAllocator
   @@last_region = Pointer(Region).null
 
   @@is_paging_setup = false
-
-  def is_paging_setup=(@@is_paging_setup)
-  end
+  class_property is_paging_setup
 
   @@used_blocks = 0u64
-
-  def used_blocks
-    @@used_blocks
-  end
+  class_getter used_blocks
 
   def add_region(base_addr : UInt64, length : UInt64)
     region = Pointer(Region).pmalloc
@@ -123,7 +118,7 @@ module FrameAllocator
 
   def claim
     each_region do |region|
-      if !(frame = region.claim).nil?
+      if frame = region.claim
         @@used_blocks += 1
         return frame
       end
@@ -144,7 +139,7 @@ module FrameAllocator
 
   def claim_with_addr
     each_region do |region|
-      if !(frame = region.claim_with_addr).nil?
+      if frame = region.claim_with_addr
         @@used_blocks += 1
         return frame
       end
