@@ -9,13 +9,16 @@ module Multiprocessing
   extend self
 
   # must be page aligned
-  USER_STACK_TOP        = 0xFFFF_F000u64
-  USER_STACK_SIZE       =   0x80_0000u64 # 8 mb
-  USER_STACK_BOTTOM_MAX = USER_STACK_TOP - USER_STACK_SIZE
-  USER_STACK_BOTTOM     = 0x8000_0000u64
+  USER_STACK_SIZE         =   0x80_0000u64 # 8 mb
+  USER_STACK_TOP          = 0xFFFF_F000u64
+  USER_STACK_TOP64        = 0x7F_FFFF_F000u64
+  USER_STACK_BOTTOM_MAX   = USER_STACK_TOP - USER_STACK_SIZE
+  USER_STACK_BOTTOM_MAX64 = USER_STACK_TOP64 - USER_STACK_SIZE
 
-  USER_STACK_INITIAL = 0xFFFF_FFFFu64
-  USER_MMAP_INITIAL  = USER_STACK_BOTTOM_MAX
+  USER_STACK_INITIAL   = 0xFFFF_FFFFu64
+  USER_STACK_INITIAL64 = 0x7F_FFFF_FFFFu64
+  USER_MMAP_INITIAL    = USER_STACK_BOTTOM_MAX
+  USER_MMAP_INITIAL64  = USER_STACK_BOTTOM_MAX64
 
   KERNEL_STACK_INITIAL = Paging::KERNEL_PDPT_POINTER + 0x7F_FFFF_FFFFu64
   KERNEL_HEAP_INITIAL  = Paging::KERNEL_PDPT_POINTER + 0x0u64
@@ -224,6 +227,8 @@ module Multiprocessing
 
       if kernel_process?
         @initial_sp = KERNEL_STACK_INITIAL
+      elsif @udata.not_nil!.is64
+        @initial_sp = USER_STACK_INITIAL64
       else
         @initial_sp = USER_STACK_INITIAL
       end
@@ -418,9 +423,11 @@ module Multiprocessing
           MemMapNode::Attributes::Read | MemMapNode::Attributes::Write).not_nil!
 
         # stack
-        stack = Paging.alloc_page_pg(Multiprocessing::USER_STACK_INITIAL - 0x1000 * 4, true, true, 4)
+        stack_size = 0x1000u64 * 4
+        stack_addr = process.initial_sp - stack_size
+        stack = Paging.alloc_page_pg(stack_addr, true, true, 4)
         zero_page Pointer(UInt8).new(stack), 4
-        udata.mmap_list.add(Multiprocessing::USER_STACK_INITIAL - 0x1000 * 4, 0x1000u64 * 4,
+        udata.mmap_list.add(stack_addr, stack_size,
           MemMapNode::Attributes::Read | MemMapNode::Attributes::Write | MemMapNode::Attributes::Stack)
 
         # argv
