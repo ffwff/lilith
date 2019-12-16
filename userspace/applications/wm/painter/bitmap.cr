@@ -1,16 +1,29 @@
 module Painter
   extend self
 
-  # FIXME: would be better to have an actual Bitmap class
-  def create_bitmap(width : Int, height : Int) : UInt32*
-    size = width.to_u64 * height.to_u64 * sizeof(UInt32)
-    ptr = Gc.unsafe_malloc(size, true).as(UInt32*)
-    LibC.memset ptr, 0, size
-    ptr
-  end
+  class Bitmap
+    @to_unsafe = Pointer(UInt32).null
+    getter width, height, to_unsafe
 
-  def resize_bitmap(orig : UInt32*, width : Int, height : Int)
-    orig.realloc(width.to_u64 * height.to_u64)
+    def initialize(@width : Int32, @height : Int32)
+      @to_unsafe = LibC.calloc(1, malloc_size).as(UInt32*)
+    end
+
+    def initialize(@width : Int32, @height : Int32, @to_unsafe : UInt32*)
+    end
+
+    def resize(@width : Int32, @height : Int32)
+      @to_unsafe = LibC.realloc(@to_unsafe, malloc_size)
+    end
+
+    def free
+      LibC.free @to_unsafe
+      @to_unsafe = Pointer(UInt32).null
+    end
+    
+    private def malloc_size
+      @width.to_u64 * @height.to_u64 * sizeof(UInt32)
+    end
   end
 
 end

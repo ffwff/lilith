@@ -36,55 +36,59 @@ end
 
 CURSOR_FILE = "/hd0/share/cursors/cursor.png"
 
+@[NoInline]
+fun breakpoint
+  asm("nop")
+end
+
 module Wm::Server
   extend self
 
   abstract class Window
     @x : Int32 = 0
     @y : Int32 = 0
-    @width : Int32 = 0
-    @height : Int32 = 0
     @z_index : Int32 = 0
-    property x, y, width, height, z_index
+    property x, y, z_index
 
-    abstract def render(buffer, width, height)
+    @bitmap : Painter::Bitmap? = nil
+    getter! bitmap
+    setter bitmap
+
+    abstract def render(bitmap : Painter::Bitmap)
 
     def <=>(other)
       @z_index <=> other.z_index
     end
     
     def contains_point?(x : Int, y : Int)
-      @x <= x && x <= (@x + @width) &&
-      @y <= y && y <= (@y + @height)
+      bitmap = @bitmap.not_nil!
+      @x <= x && x <= (@x + bitmap.width) &&
+      @y <= y && y <= (@y + bitmap.height)
     end
   end
 
   class Background < Window
-    def initialize(width, height, @color : UInt32)
-      @width = width.to_i32
-      @height = height.to_i32
+    def initialize(@color : UInt32)
       @z_index = -1
     end
 
-    def render(buffer, width, height)
-      Painter.blit_u32(buffer, @color, @width.to_usize * @height.to_usize)
+    def render(buffer : Painter::Bitmap)
+      Painter.blit_u32(buffer.to_unsafe, @color, Server.framebuffer.width.to_usize * Server.framebuffer.height.to_usize)
+    end
+    
+    def contains_point?(x : Int, y : Int)
+      true
     end
   end
 
   class Cursor < Window
-    @bytes : Bytes? = nil
     def initialize
-      image = Painter.load_png(CURSOR_FILE).not_nil!
-      @width = image.width
-      @height = image.height
+      @bitmap = Painter.load_png(CURSOR_FILE).not_nil!
       @z_index = Int32::MAX
-      @bytes = image.bytes
     end
 
-    def render(buffer, bwidth, bheight)
-      Painter.blit_img(buffer, bwidth, bheight,
-                       @bytes.not_nil!.to_unsafe.as(UInt32*),
-                       @width, @height, @x, @y, true)
+    def render(buffer : Painter::Bitmap)
+      Painter.blit_img buffer, bitmap.not_nil!, @x, @y, true
     end
 
     def respond(file)
@@ -94,14 +98,14 @@ module Wm::Server
       if packet.x != 0
         delta_x = packet.x * speed
         @x = @x + delta_x
-        @x = @x.clamp(0, Server.screen_width)
+        @x = @x.clamp(0, Server.framebuffer.width)
       else
         delta_x = 0
       end
       if packet.y != 0
         delta_y = -packet.y * speed
         @y = @y + delta_y
-        @y = @y.clamp(0, Server.screen_height)
+        @y = @y.clamp(0, Server.framebuffer.height)
       else
         delta_y = 0
       end
@@ -125,22 +129,22 @@ module Wm::Server
 
     getter socket, wid, bitmap
 
-    def initialize(@socket, @x, @y, @width, @height)
+    def initialize(@socket, @x, @y, width, height)
       @wid = Server.next_wid
       @bitmap_file = File.new("/tmp/wm-bm:" + @wid.to_s, "rw").not_nil!
-      @bitmap_file.truncate @width * @height * 4
-      @bitmap = @bitmap_file.map_to_memory(prot: LibC::MmapProt::Read).as(UInt32*)
+      @bitmap_file.truncate width * height * 4
+      @bitmap = Painter::Bitmap.new(width, height, @bitmap_file.map_to_memory(prot: LibC::MmapProt::Read).as(UInt32*))
     end
 
-    def render(buffer, bwidth, bheight)
-      Painter.blit_img(buffer, bwidth, bheight,
-                       @bitmap,
-                       @width, @height, @x, @y)
+    def render(buffer : Painter::Bitmap)
+      Painter.blit_img buffer, bitmap.not_nil!, @x, @y
     end
   end
 
-  @@framebuffer = Pointer(UInt32).null
-  @@backbuffer = Pointer(UInt32).null
+  @@framebuffer : Painter::Bitmap? = nil
+  protected class_getter! framebuffer
+  @@backbuffer : Painter::Bitmap? = nil
+  protected class_getter! backbuffer
 
   @@windows = Array(Window).new 4
   @@focused : Window?
@@ -156,15 +160,6 @@ module Wm::Server
     i
   end
   @@focused : Program?
-
-  # display size information
-  @@ws = uninitialized LibC::Winsize
-  def screen_width
-    @@ws.ws_col.to_i32
-  end
-  def screen_height
-    @@ws.ws_row.to_i32
-  end
 
   # io selector
   @@selector : IO::Select? = nil
@@ -196,9 +191,13 @@ module Wm::Server
     end
     @@selector = IO::Select.new
     @@clients = Array(Program::Socket).new
-    LibC._ioctl fb.fd, LibC::TIOCGWINSZ, pointerof(@@ws).address
-    @@framebuffer = fb.map_to_memory(prot: LibC::MmapProt::Read | LibC::MmapProt::Write).as(UInt32*)
-    @@backbuffer = Painter.create_bitmap(screen_width, screen_height)
+
+    ws = uninitialized LibC::Winsize
+    LibC._ioctl(fb.fd, LibC::TIOCGWINSZ, pointerof(ws).address)
+
+    @@framebuffer = Painter::Bitmap.new ws.ws_col.to_i32, ws.ws_row.to_i32,
+      fb.map_to_memory(prot: LibC::MmapProt::Read | LibC::MmapProt::Write).as(UInt32*)
+    @@backbuffer = Painter::Bitmap.new framebuffer.width, framebuffer.height
 
     @@focused = nil
 
@@ -212,9 +211,7 @@ module Wm::Server
     end
 
     # wallpaper
-    @@windows.push Background.new(@@ws.ws_col,
-                                  @@ws.ws_row,
-                                  0x000066cc)
+    @@windows.push Background.new(0x000066cc)
 
     # keyboard
     if (@@kbd = File.new("/kbd/raw", "r"))
@@ -233,10 +230,10 @@ module Wm::Server
     @@windows.push cursor
 
     # default startup application
-    Process.new "desktop",
-      input: Process::Redirect::Inherit,
-      output: Process::Redirect::Inherit,
-      error: Process::Redirect::Inherit
+    #Process.new "desktop",
+    #  input: Process::Redirect::Inherit,
+    #  output: Process::Redirect::Inherit,
+    #  error: Process::Redirect::Inherit
   end
 
 
@@ -257,13 +254,10 @@ module Wm::Server
         respond_ipc_socket socket
       end
       @@windows.each do |window|
-        window.render @@backbuffer,
-                      @@ws.ws_col,
-                      @@ws.ws_row
+        window.render backbuffer
       end
-      LibC.memcpy @@framebuffer,
-                  @@backbuffer,
-                  (screen_width * screen_height * 4)
+      LibC.memcpy framebuffer.to_unsafe, backbuffer.to_unsafe,
+        (framebuffer.width.to_usize * framebuffer.height.to_usize * 4)
     end
   end
 
@@ -382,8 +376,8 @@ module Wm::Server
       when IPC::Data::MOVE_REQ_ID
         if (msg = FixedMessageReader(IPC::Data::MoveRequest).read(header, socket))
           if program = socket.program
-            program.x = msg.x.clamp(0, screen_width)
-            program.y = msg.y.clamp(0, screen_height)
+            program.x = msg.x.clamp(0, framebuffer.width)
+            program.y = msg.y.clamp(0, framebuffer.height)
             socket.unbuffered_write IPC.response_message(1).to_slice
           end
         end
@@ -393,8 +387,8 @@ module Wm::Server
           when IPC::Data::QueryType::ScreenDim
             msg = IPC::DynamicWriter(8).write do |buffer|
               data = buffer.to_unsafe.as(Int32*)
-              data[0] = screen_width
-              data[1] = screen_height
+              data[0] = framebuffer.width
+              data[1] = framebuffer.height
             end
             socket.unbuffered_write msg.to_slice
           end
