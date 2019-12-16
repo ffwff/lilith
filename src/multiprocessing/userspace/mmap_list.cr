@@ -124,7 +124,7 @@ class MemMapList
     end
   end
 
-  def space_for_mmap(size : UInt64, attr)
+  def space_for_mmap(process : Multiprocessing::Process, size : UInt64, attr : MemMapNode::Attributes)
     # look backwards from the stack
     reverse_each do |node|
       return if node.prev_node.nil?
@@ -136,8 +136,10 @@ class MemMapList
 
       start_addr = prev_node.end_addr
       end_addr = node.addr
-      if end_addr > Multiprocessing::USER_STACK_BOTTOM_MAX
-        end_addr = Multiprocessing::USER_STACK_BOTTOM_MAX - 0x1000
+      if process.udata.is64 && end_addr > Multiprocessing::USER_MMAP_INITIAL64
+        end_addr = Multiprocessing::USER_MMAP_INITIAL64
+      elsif !process.udata.is64 && end_addr > Multiprocessing::USER_MMAP_INITIAL
+        end_addr = Multiprocessing::USER_MMAP_INITIAL
       end
       mmap_size = end_addr - start_addr
 
