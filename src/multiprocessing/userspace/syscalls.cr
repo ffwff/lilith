@@ -650,16 +650,16 @@ rdx, rcx, rbx, rax : UInt64
       end
       addr = extended[0].to_u64
       size = extended[1].to_u64
-      if (size & 0xfff) != 0
-        sysret(SYSCALL_ERR)
-      end
 
       if fdi == -1
+        if (size & 0xfff) != 0
+          sysret(0)
+        end
         Paging.alloc_page_pg addr,
             mmap_attrs.includes?(MemMapNode::Attributes::Write),
             true, size // 0x1000
         pudata.mmap_list.add(addr, size, mmap_attrs)
-        sysret(SYSCALL_SUCCESS)
+        sysret(addr)
       else
         mmap_attrs |= MemMapNode::Attributes::SharedMem
         fd = try(pudata.get_fd(fdi))
@@ -669,7 +669,7 @@ rdx, rcx, rbx, rax : UInt64
             size = (size & 0xFFFF_F000) + 0x1000
           end
         end
-        mmap_node = pudata.mmap_list.space_for_mmap size, mmap_attrs
+        mmap_node = pudata.mmap_list.space_for_mmap process, size, mmap_attrs
         if mmap_node
           if (retval = fd.node.not_nil!.mmap(mmap_node, process)) == VFS_OK
             mmap_node.shm_node = fd.node
@@ -679,7 +679,7 @@ rdx, rcx, rbx, rax : UInt64
             sysret(0)
           end
         else
-          sysret(SYSCALL_ERR)
+          sysret(0)
         end
       end
     when SC_MUNMAP
