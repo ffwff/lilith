@@ -20,11 +20,23 @@ struct Slice(T)
     new Pointer(T).null, 0
   end
 
+  def self.mmalloc(size : Int)
+    new LibC.malloc(size.to_u64 * sizeof(T)).as(T*), size.to_i32
+  end
+
   def realloc(size : Int)
     if @size == 0
       Slice(T).new size
     else
       Slice(T).new Gc.realloc(@buffer.as(Void*), size.to_u64 * sizeof(T)).as(T*), size.to_i32
+    end
+  end
+
+  def mrealloc(size : Int)
+    if @size == 0
+      Slice(T).mmalloc size
+    else
+      Slice(T).new LibC.realloc(@buffer.as(Void*), size.to_u64 * sizeof(T)).as(T*), size.to_i32
     end
   end
 
