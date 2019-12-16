@@ -14,7 +14,7 @@ private class ConsoleFSNode < VFSNode
     VFS_WAIT
   end
 
-  def ioctl(request : Int32, data : UInt32,
+  def ioctl(request : Int32, data : UInt64,
             process : Multiprocessing::Process? = nil) : Int32
     case request
     when SC_IOCTL_TIOCGWINSZ

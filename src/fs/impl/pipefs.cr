@@ -179,14 +179,14 @@ private class PipeFSNode < VFSNode
     size > 0
   end
 
-  def ioctl(request : Int32, data : UInt32,
+  def ioctl(request : Int32, data : UInt64,
             process : Multiprocessing::Process? = nil) : Int32
     return -1 unless process.not_nil!.pid == @m_pid
     return -1 if @flags.includes?(Flags::Removed)
     case request
     when SC_IOCTL_PIPE_CONF_FLAGS
       # 24-bits for options! (last 8-bits are reserved for node state)
-      data = data & 0xffffff
+      data = data.to_u32 & 0xffffff
       @flags = Flags.new(data)
       0
     when SC_IOCTL_PIPE_CONF_PID

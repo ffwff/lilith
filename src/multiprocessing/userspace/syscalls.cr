@@ -362,7 +362,7 @@ rdx, rcx, rbx, rax : UInt64
       end
     when SC_IOCTL
       fd = try(pudata.get_fd(arg(0).to_i32))
-      sysret(fd.node.not_nil!.ioctl(arg(1).to_i32, arg(2).to_u32, process))
+      sysret(fd.node.not_nil!.ioctl(arg(1).to_i32, arg(2), process))
     when SC_WAITFD
       fds = try(checked_slice(Int32, arg(0), arg(1).to_i32))
       timeout = arg(2).to_u32

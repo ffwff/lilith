@@ -65,7 +65,7 @@ abstract class VFSNode
     VFS_ERR
   end
 
-  def ioctl(request : Int32, data : UInt32,
+  def ioctl(request : Int32, data : UInt64,
             process : Multiprocessing::Process? = nil) : Int32
     VFS_ERR
   end
