@@ -13,7 +13,7 @@ module Painter
     end
 
     def resize(@width : Int32, @height : Int32)
-      @to_unsafe = LibC.realloc(@to_unsafe, malloc_size)
+      @to_unsafe = LibC.realloc(@to_unsafe, malloc_size).as(UInt32*)
     end
 
     def free

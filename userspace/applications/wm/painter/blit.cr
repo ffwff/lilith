@@ -27,11 +27,15 @@ module Painter
       blit_u32(db + fb_offset, color.to_u32, sw.to_usize)
     end
   end
-
-  def blit_rect(dest : Bitmap, src : Bitmap, sx : Int, sy : Int, color : Int)
+  
+  def blit_rect(dest : Bitmap, sx : Int, sy : Int, color : Int)
     blit_rect dest.to_unsafe, dest.width, dest.height,
-              src.to_unsafe, src.width, src.height,
-              sx, sy, color
+              dest.width, dest.height, sx, sy, color
+  end
+
+  def blit_rect(dest : Bitmap, sw : Int, sh : Int, sx : Int, sy : Int, color : Int)
+    blit_rect dest.to_unsafe, dest.width, dest.height,
+              sw, sh, sx, sy, color
   end
 
   def blit_img(db : UInt32*, dw : Int, dh : Int,
