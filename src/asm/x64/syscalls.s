@@ -46,14 +46,14 @@ ksyscall_stub:
     push $0 # rsp
     pusha64
     movabs $fxsave_region, %rax
-    fxsave (%rax)
+    fxsave64 (%rax)
     # call the handler
     cld
     mov %rsp, %rdi
     call ksyscall_handler
     # return
     movabs $fxsave_region, %rax
-    fxrstor (%rax)
+    fxrstor64 (%rax)
     popa64
     mov %rcx, %rsp
     mov (%rsp), %ecx
@@ -71,21 +71,21 @@ ksyscall_stub_sc:
     # push registers
     pusha64
     movabs $fxsave_region, %rax
-    fxsave (%rax)
+    fxsave64 (%rax)
     # call the handler
     cld
     mov %rsp, %rdi
     call ksyscall_handler
     # return!
     movabs $fxsave_region, %rax
-    fxrstor (%rax)
+    fxrstor64 (%rax)
     popa64
     pop %rsp
     sysretq
 
 ksyscall_sc_ret_driver:
     movabs $fxsave_region, %rax
-    fxrstor (%rax)
+    fxrstor64 (%rax)
     mov %rdi, %rsp
     add $8, %rsp
     popa64_no_ds
@@ -102,7 +102,7 @@ ksyscall_sc_ret_driver:
 ksyscall_switch:
     mov %rdi, %rsp
     movabs $fxsave_region, %rax
-    fxrstor (%rax)
+    fxrstor64 (%rax)
     popa64
     add $8, %rsp # skip int_no
     iretq

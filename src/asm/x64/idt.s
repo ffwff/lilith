@@ -83,14 +83,14 @@ kirq\number:
 kirq_stub:
     pusha64
     movabs $fxsave_region, %rax
-    fxsave (%rax)
+    fxsave64 (%rax)
     # call the handler
     cld
     mov %rsp, %rdi
     call kirq_handler
     # return
     movabs $fxsave_region, %rax
-    fxrstor (%rax)
+    fxrstor64 (%rax)
     popa64
     add $8, %rsp # skip int_no
     iretq

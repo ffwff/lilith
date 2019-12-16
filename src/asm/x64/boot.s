@@ -45,9 +45,9 @@ _start_main:
 .global ksetup_fxsave_region_base
 ksetup_fxsave_region_base:
     movabs $fxsave_region_base, %rax
-    fxrstor (%rax) # load with zeroes
+    fxrstor64 (%rax) # load with zeroes
     fninit
-    fxsave (%rax)
+    fxsave64 (%rax)
     ret
 
 # -- data
