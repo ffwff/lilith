@@ -33,6 +33,7 @@ module TermiosData
 end
 
 lib IoctlData
+  @[Packed]
   struct Winsize
     ws_row : UInt16
     ws_col : UInt16
