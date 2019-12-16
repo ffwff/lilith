@@ -216,10 +216,6 @@ module Paging
     flush
   end
 
-  def aligned(x : UInt64) : UInt64
-    aligned_floor(x) + 0x1000
-  end
-
   def page_layer_indexes(addr : UInt64)
     pdpt_idx = (addr >> 39) & (0x200 - 1)
     dir_idx = (addr >> 30) & (0x200 - 1)
@@ -390,15 +386,15 @@ module Paging
 
     # free itself
     if free_pdpta?
-      FrameAllocator.declaim_addr aligned_floor(pdtpa)
+      FrameAllocator.declaim_addr pdtpa
     end
   end
 
-  # page creation
   PG_WRITE_BIT = 1u64 << 1u64
   PG_USER_BIT  = 1u64 << 2u64
   NX_BIT       = 1u64 << 63u64
 
+  # page creation
   private def page_create(rw : Bool, user : Bool, phys : UInt64,
                           execute : Bool) : UInt64
     page = 0x1u64
@@ -415,7 +411,12 @@ module Paging
     page
   end
 
-  # table address
+  # page aligned address
+  def aligned(x : UInt64) : UInt64
+    aligned_floor(x) + 0x1000
+  end
+
+  # floored page aligned address
   def aligned_floor(addr : UInt64)
     addr & 0xFFFF_FFFF_FFFF_F000u64
   end
