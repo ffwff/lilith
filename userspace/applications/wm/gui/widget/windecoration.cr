@@ -11,11 +11,11 @@ class G::WindowDecoration < G::Widget
     main_widget.app = @app
   end
 
-  getter bitmap, title
+  getter title
   def initialize(@x : Int32, @y : Int32,
-                 @width : Int32, @height : Int32,
+                 width : Int32, height : Int32,
                  @title : String? = nil)
-    @bitmap = Painter.create_bitmap(width, height)
+    @bitmap = Painter::Bitmap.new(width, height)
   end
 
   def self.new(window : G::Window, title : String? = nil)
@@ -27,9 +27,9 @@ class G::WindowDecoration < G::Widget
   def calculate_main_dimensions
     x = 3
     y = 15
-    width = @width - 6
-    height = @height - y - 3
-    {x, y, width, height}
+    w = width - 6
+    h = height - y - 3
+    {x, y, w, h}
   end
 
   FOCUSED_BORDER = 0xffffff
@@ -41,36 +41,15 @@ class G::WindowDecoration < G::Widget
   end
 
   def draw_event
-    Painter.blit_rect @bitmap,
-                      @width, @height,
-                      @width, @height,
-                      0, 0, 0x3a434b
-    Painter.blit_rect @bitmap,
-                      @width, @height,
-                      @width, 1,
-                      0, 0, border_color
-    Painter.blit_rect @bitmap,
-                      @width, @height,
-                      @width, 1,
-                      0, @height - 1, border_color
-    Painter.blit_rect @bitmap,
-                      @width, @height,
-                      1, @height,
-                      0, 0, border_color
-    Painter.blit_rect @bitmap,
-                      @width, @height,
-                      1, @height,
-                      @width - 1, 0, border_color
+    Painter.blit_rect bitmap!, 0, 0, 0x3a434b
     if (title = @title)
-      tx, ty = (@width - G::Fonts.text_width(title)) // 2, 3
+      tx, ty = (width - G::Fonts.text_width(title)) // 2, 3
       G::Fonts.blit self, tx, ty, title
     end
     if (main_widget = @main_widget)
       main_widget.draw_event
-      Painter.blit_img @bitmap,
-                       @width, @height,
-                       main_widget.bitmap,
-                       main_widget.width, main_widget.height,
+      Painter.blit_img bitmap!,
+                       main_widget.bitmap!,
                        main_widget.x, main_widget.y
     end
   end

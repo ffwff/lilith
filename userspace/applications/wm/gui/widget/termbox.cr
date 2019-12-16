@@ -20,24 +20,21 @@ class G::Termbox < G::Widget
     @app.not_nil!.watch_io @output_fd.not_nil!
   end
 
-  @bitmap = Pointer(UInt32).null
-  getter bitmap
   def initialize(@x : Int32, @y : Int32,
                  width : Int32, height : Int32)
-    resize width, height
     @line = Array(UInt8).new 128
+    @bitmap = Painter::Bitmap.new width, height
+    @cwidth = G::Fonts.chars_per_col width
+    @cheight = G::Fonts.chars_per_row height
+    @cbuffer = Slice(Char).mmalloc @cwidth * @cheight
+    redraw_all
   end
 
-  def resize(@width : Int32, @height : Int32)
-    @cwidth = G::Fonts.chars_per_col @width
-    @cheight = G::Fonts.chars_per_row @height
-    if @bitmap.null?
-      @bitmap = Painter.create_bitmap(@width, @height)
-      @cbuffer = Slice(Char).new @cwidth * @cheight
-    else
-      @bitmap = @bitmap.realloc @width * @height
-      @cbuffer = @cbuffer.realloc @cwidth * @cheight
-    end
+  def resize(width : Int32, height : Int32)
+    bitmap!.resize width, height
+    @cwidth = G::Fonts.chars_per_col width
+    @cheight = G::Fonts.chars_per_row height
+    @cbuffer = @cbuffer.mrealloc @cwidth * @cheight
     redraw_all
   end
 
@@ -75,14 +72,10 @@ class G::Termbox < G::Widget
   end
 
   def redraw_all
-    Painter.blit_rect @bitmap,
-                      @width, @height,
-                      @width, @height,
-                      0, 0, 0x00000000
+    Painter.blit_rect bitmap!, 0, 0, 0x00000000
     @cheight.times do |y|
       @cwidth.times do |x|
-        G::Fonts.blit(@bitmap,
-                      @width, @height,
+        G::Fonts.blit(bitmap!,
                       G::Fonts.chars_per_col(x),
                       G::Fonts.chars_per_row(y),
                       @cbuffer[y * @cwidth + x])

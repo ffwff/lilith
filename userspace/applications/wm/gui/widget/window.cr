@@ -10,18 +10,16 @@ class G::Window < G::Widget
     @main_widget.not_nil!.app = @app
   end
 
+  getter width, height
   def initialize(@x : Int32, @y : Int32,
                  @width : Int32, @height : Int32,
                  @flags = Wm::IPC::Data::WindowFlags::None)
   end
 
-  def bitmap
-    @wm_window.not_nil!.bitmap
-  end
-
   def setup_event
     if @wm_window.nil?
       @wm_window = app.client.create_window(@x, @y, @width, @height, @flags).not_nil!
+      @bitmap = Painter::Bitmap.new(@width, @height, @wm_window.not_nil!.bitmap)
     end
   end
 
@@ -52,10 +50,9 @@ class G::Window < G::Widget
   def draw_event
     if main_widget = @main_widget
       main_widget.draw_event
-      unless main_widget.bitmap.null?
-        Painter.blit_img bitmap, @width, @height,
-                         main_widget.bitmap,
-                         main_widget.width, main_widget.height,
+      if bitmap = @bitmap
+        Painter.blit_img bitmap,
+                         main_widget.bitmap!,
                          0, 0
       end
     end
