@@ -49,16 +49,30 @@ module G::Fonts
 
   def blit(widget : G::Widget,
            cx : Int, cy : Int, ch : Char)
-    blit widget.bitmap,
-      widget.width, widget.height,
+    blit widget.bitmap!,
       cx, cy,
       ch
   end
 
   def blit(widget : G::Widget,
            cx : Int, cy : Int, str : String)
-    blit widget.bitmap,
-      widget.width, widget.height,
+    blit widget.bitmap!,
+      cx, cy,
+      str
+  end
+
+  def blit(bitmap : Painter::Bitmap,
+           cx : Int, cy : Int, ch : Char)
+    blit bitmap.to_unsafe,
+      bitmap.width, bitmap.height,
+      cx, cy,
+      ch
+  end
+
+  def blit(bitmap : Painter::Bitmap,
+           cx : Int, cy : Int, str : String)
+    blit bitmap.to_unsafe,
+      bitmap.width, bitmap.height,
       cx, cy,
       str
   end

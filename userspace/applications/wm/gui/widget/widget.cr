@@ -30,23 +30,46 @@ abstract class G::Widget
 
   @x = 0
   @y = 0
-  @width = 0
-  @height = 0
-
   getter x : Int32, y : Int32
-  getter width : Int32, height : Int32
+
+  @bitmap : Painter::Bitmap? = nil
+  getter bitmap
+  
+  def bitmap!
+    @bitmap.not_nil!
+  end
+
+  def width
+    if bitmap = @bitmap
+      bitmap.width
+    else
+      0
+    end
+  end
+
+  def height
+    if bitmap = @bitmap
+      bitmap.height
+    else
+      0
+    end
+  end
+
   def move(@x : Int32, @y : Int32)
   end
-  def resize(@width : Int32, @height : Int32)
-  end
-
-  def bitmap : UInt32*
-    Pointer(UInt32).null
+  def resize(width : Int32, height : Int32)
+    if bitmap = @bitmap
+      bitmap.resize width, height
+    end
   end
 
   def contains_point?(x : Int, y : Int)
-    @x <= x && x <= (@x + @width) &&
-    @y <= y && y <= (@y + @height)
+    if bitmap = @bitmap
+      @x <= x && x <= (@x + bitmap.width) &&
+      @y <= y && y <= (@y + bitmap.height)
+    else
+      false
+    end
   end
 
   private macro def_event(name)
