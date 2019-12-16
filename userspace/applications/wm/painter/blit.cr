@@ -28,6 +28,12 @@ module Painter
     end
   end
 
+  def blit_rect(dest : Bitmap, src : Bitmap, sx : Int, sy : Int, color : Int)
+    blit_rect dest.to_unsafe, dest.width, dest.height,
+              src.to_unsafe, src.width, src.height,
+              sx, sy, color
+  end
+
   def blit_img(db : UInt32*, dw : Int, dh : Int,
                sb : UInt32*, sw : Int, sh : Int,
                sx : Int, sy : Int,
@@ -71,6 +77,12 @@ module Painter
                     sw_clamp * 4)
       end
     end
+  end
+
+  def blit_img(dest : Bitmap, src : Bitmap, sx : Int, sy : Int, alpha? = false)
+    blit_img  dest.to_unsafe, dest.width, dest.height,
+              src.to_unsafe, src.width, src.height,
+              sx, sy, alpha?
   end
 
   def blit_img(db : UInt32*, dw : Int, dh : Int,
@@ -125,5 +137,11 @@ module Painter
                     sw_clamp * 4)
       end
     end
+  end
+
+  def blit_img(dest : Bitmap, src : Bitmap, dx : Int, dy : Int, sx : Int, sy : Int, alpha? = false)
+    blit_img  dest.to_unsafe, dest.width, dest.height,
+              src.to_unsafe, src.width, src.height,
+              dx, dy, sx, sy, alpha?
   end
 end

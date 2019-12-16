@@ -38,12 +38,6 @@ end
 module Painter
   extend self
 
-  class Image
-    getter width, height, bytes
-    def initialize(@width : Int32, @height : Int32, @bytes : Bytes)
-    end
-  end
-
   private def internal_load_png(filename, &block)
     if (fp = LibC.fopen(filename, "r")).null?
       return nil
@@ -101,14 +95,13 @@ module Painter
     end
   end
 
-  def load_png(filename : String) : Image?
+  def load_png(filename : String) : Bitmap?
     img = nil
     internal_load_png(filename) do |width, height, png_ptr|
-      bytes = Bytes.new(width * height * 4)
+      img = Bitmap.new(width.to_i32, height.to_i32)
       height.times do |y|
-        LibPNG.png_read_row png_ptr, bytes.to_unsafe + (y * width * 4), Pointer(UInt8).null
+        LibPNG.png_read_row png_ptr, img.to_unsafe.as(UInt8*) + (y * width * 4), Pointer(UInt8).null
       end
-      img = Image.new width.to_i32, height.to_i32, bytes
     end
     img
   end
