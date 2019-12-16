@@ -16,7 +16,7 @@ lib LibC
   fun mmap(addr : Void*, size : LibC::SizeT, prot : LibC::Int,
            flags : LibC::Int, fd : LibC::Int, offset : LibC::OffT) : Void*
   fun lseek(fd : LibC::Int, offset : Int32, whence : LibC::Int) : Int32
-  fun _ioctl(fd : LibC::Int, request : LibC::Int, data : UInt32) : LibC::Int
+  fun _ioctl(fd : LibC::Int, request : LibC::Int, data : UInt64) : LibC::Int
   fun ftruncate(fd : LibC::Int, size : LibC::Int) : LibC::Int
 end
 

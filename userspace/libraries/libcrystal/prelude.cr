@@ -6,13 +6,7 @@ require "./io/io.cr"
 require "./io/*"
 require "./time/*"
 require "./gc/*"
-
-lib LibC
-  $_data : Void*
-  $_data_end : Void*
-  $_bss : Void*
-  $_bss_end : Void*
-end
+require "./c/*"
 
 lib LibCrystalMain
   fun __crystal_main(argc : Int32, argv : UInt8**)
