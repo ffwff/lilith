@@ -24,6 +24,10 @@ module Painter
     private def malloc_size
       @width.to_u64 * @height.to_u64 * sizeof(UInt32)
     end
+
+    def to_bytes
+      Bytes.new(@to_unsafe.as(UInt8*), malloc_size)
+    end
   end
 
 end
