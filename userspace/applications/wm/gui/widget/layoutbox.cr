@@ -11,10 +11,9 @@ class G::LayoutBox < G::Widget
     @layout
   end
 
-  getter bitmap
   def initialize(@x : Int32, @y : Int32,
                  @width : Int32, @height : Int32)
-    @bitmap = Painter.create_bitmap(width, height)
+    @bitmap = Painter::Bitmap.new(width, height)
   end
 
   def add_widget(widget : G::Widget)
@@ -25,7 +24,7 @@ class G::LayoutBox < G::Widget
   property bgcolor
 
   def resize(@width : Int32, @height : Int32)
-    @bitmap = Painter.resize_bitmap @bitmap, @width, @height
+    bitmap!.resize @width, @height
     draw_event
   end
 
@@ -39,16 +38,13 @@ class G::LayoutBox < G::Widget
 
   def draw_event
     if layout = @layout
-      Painter.blit_rect @bitmap,
-                        @width, @height,
-                        @width, @height,
+      Painter.blit_rect bitmap!,
                         0, 0, @bgcolor
       layout.widgets.each do |widget|
         widget.draw_event
-        unless widget.bitmap.null?
-          Painter.blit_img @bitmap, @width, @height,
-                           widget.bitmap,
-                           widget.width, widget.height,
+        if wbitmap = widget.bitmap
+          Painter.blit_img bitmap!,
+                           wbitmap,
                            widget.x, widget.y
         end
       end

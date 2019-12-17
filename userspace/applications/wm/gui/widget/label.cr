@@ -1,11 +1,11 @@
 class G::Label < G::Widget
 
-  getter text, bitmap
+  getter text
   def initialize(@x : Int32, @y : Int32,
                  @text : String)
-    @width = G::Fonts.text_width(text)
-    @height = G::Fonts.text_height(text)
-    @bitmap = Painter.create_bitmap(@width, @height)
+    width = G::Fonts.text_width(text)
+    height = G::Fonts.text_height(text)
+    @bitmap = Painter::Bitmap.new(width, height)
     redraw
   end
 
@@ -13,9 +13,7 @@ class G::Label < G::Widget
   property bgcolor
 
   def redraw
-    Painter.blit_rect @bitmap,
-                      @width, @height,
-                      @width, @height,
+    Painter.blit_rect bitmap!,
                       0, 0, @bgcolor
     G::Fonts.blit self, 0, 0, @text
   end
