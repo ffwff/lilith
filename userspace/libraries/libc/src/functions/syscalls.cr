@@ -1,77 +1,35 @@
 require "../syscall_defs.cr"
 
-# sysenter implementations
-{% if flag?(:i686) %}
-@[AlwaysInline]
-private def lilith_syscall(eax : UInt32, ebx : UInt32,
-                             edx = 0u32, edi = 0u32, esi = 0u32) : Int32
-  shadow = uninitialized UInt32[2]
-  shadowptr = shadow.to_unsafe
-  asm("mov %esp, 4($0)" :: "r"(shadowptr) : "volatile", "memory", "{esp}")
-  ret = 0
-  l0 = l1 = 0
-  asm("movd $$1f, (%esp)
-       mov %esp, %ecx
-       sysenter
-      1: mov 4(%esp), %esp"
-      : "={eax}"(ret), "={edi}"(l0), "={esi}"(l1)
-      : "{esp}"(shadowptr), "{eax}"(eax), "{ebx}"(ebx), "{edx}"(edx), "{edi}"(edi), "{esi}"(esi)
-      : "cc", "memory", "volatile", "ecx", "esp")
-  ret
-end
-
-@[AlwaysInline]
-private def lilith_syscall64(eax : UInt32, ebx : UInt32,
-                               edx = 0u32, edi = 0u32, esi = 0u32) : UInt64
-  shadow = uninitialized UInt32[2]
-  shadowptr = shadow.to_unsafe
-  asm("mov %esp, 4($0)" :: "r"(shadowptr) : "volatile", "memory", "{esp}")
-  ret_lo, ret_hi = 0u64, 0u64
-  l0 = l1 = 0
-  asm("movd $$1f, (%esp)
-       mov %esp, %ecx
-       sysenter
-      1: mov 4(%esp), %esp"
-      : "={eax}"(ret_lo), "={ebx}"(ret_hi), "={edi}"(l0), "={esi}"(l1)
-      : "{esp}"(shadowptr), "{eax}"(eax), "{ebx}"(ebx), "{edx}"(edx), "{edi}"(edi), "{esi}"(esi)
-      : "cc", "memory", "volatile", "ecx", "esp")
-  ret
-  (ret_hi << 32) | ret_lo
-end
-{% elsif flag?(:x86_64) %}
+{% if flag?(:x86_64) %}
 @[AlwaysInline]
 private def lilith_syscall(rax : UInt32, rbx : UInt64,
-                             rdx = 0u64, rdi = 0u64, rsi = 0u64) : Int32
-  shadow = uninitialized UInt64[2]
-  shadowptr = shadow.to_unsafe
-  asm("mov %rsp, 8($0)" :: "r"(shadowptr) : "volatile", "memory", "{rsp}")
+                           rdx = 0u64, rdi = 0u64, rsi = 0u64,
+                           r8 = 0u64) : Int32
   ret = 0
-  l0 = l1 = 0
-  asm("movq $$1f, (%rsp)
+  l = 0
+  asm("push $$1f
        mov %rsp, %rcx
        syscall
-      1: mov 8(%rsp), %rsp"
-      : "={rax}"(ret), "={rdi}"(l0), "={rsi}"(l1)
-      : "{rsp}"(shadowptr), "{rax}"(rax), "{rbx}"(rbx), "{rdx}"(rdx), "{rdi}"(rdi), "{rsi}"(rsi)
-      : "cc", "memory", "volatile", "rcx", "rsp", "r11", "r12")
+       1: add $$8, %rsp"
+          : "={rax}"(ret), "={rdi}"(l), "={rsi}"(l), "={r11}"(l), "={r12}"(l)
+          : "{rax}"(rax), "{rbx}"(rbx), "{rdx}"(rdx), "{rdi}"(rdi), "{rsi}"(rsi), "{r8}"(r8)
+          : "cc", "memory", "volatile", "rcx", "r11", "r12")
   ret
 end
 
 @[AlwaysInline]
 private def lilith_syscall64(rax : UInt32, rbx : UInt64,
-                               rdx = 0u64, rdi = 0u64, rsi = 0u64) : UInt64
-  shadow = uninitialized UInt64[2]
-  shadowptr = shadow.to_unsafe
-  asm("mov %rsp, 8($0)" :: "r"(shadowptr) : "volatile", "memory", "{rsp}")
+                             rdx = 0u64, rdi = 0u64, rsi = 0u64,
+                             r8 = 0u64) : UInt64
   ret = 0u64
-  l0 = l1 = 0
-  asm("movq $$1f, (%rsp)
+  l = 0
+  asm("push $$1f
        mov %rsp, %rcx
        syscall
-      1: mov 8(%rsp), %rsp"
-      : "={rax}"(ret), "={rdi}"(l0), "={rsi}"(l1)
-      : "{rsp}"(shadowptr), "{rax}"(rax), "{rbx}"(rbx), "{rdx}"(rdx), "{rdi}"(rdi), "{rsi}"(rsi)
-      : "cc", "memory", "volatile", "rcx", "rsp", "r11", "r12")
+       1: add $$8, %rsp"
+          : "={rax}"(ret), "={rdi}"(l), "={rsi}"(l), "={r11}"(l), "={r12}"(l)
+          : "{rax}"(rax), "{rbx}"(rbx), "{rdx}"(rdx), "{rdi}"(rdi), "{rsi}"(rsi), "{r8}"(r8)
+          : "cc", "memory", "volatile", "rcx", "r11", "r12")
   ret
 end
 {% end %}
@@ -161,15 +119,9 @@ end
 fun mmap(addr : Void*, size : LibC::SizeT, prot : LibC::Int,
          flags : LibC::Int, fd : LibC::Int, offset : LibC::OffT) : Void*
   {% if flag?(:bits32) %}
-    ext = uninitialized UInt32[2]
-    ext[0] = addr.address.to_u32
-    ext[1] = size
-    Pointer(Void).new(lilith_syscall(SC_MMAP, fd.to_usize, prot.to_usize, flags.to_usize, ext.to_unsafe.address).to_u32)
+    Pointer(Void).new(lilith_syscall(SC_MMAP, fd.to_usize, prot.to_usize, flags.to_usize, addr.address.to_u32, size.to_u32).to_u32)
   {% else %}
-    ext = uninitialized UInt64[2]
-    ext[0] = addr.address
-    ext[1] = size
-    Pointer(Void).new(lilith_syscall64(SC_MMAP, fd.to_usize, prot.to_usize, flags.to_usize, ext.to_unsafe.address))
+    Pointer(Void).new(lilith_syscall64(SC_MMAP, fd.to_usize, prot.to_usize, flags.to_usize, addr.address.to_u64, size.to_u64))
   {% end %}
 end
 

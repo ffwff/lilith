@@ -202,7 +202,7 @@ rdx, rcx, rbx, rax : UInt64
   private macro arg(num)
     {%
       arg_registers = [
-        "rbx", "rdx", "rdi", "rsi",
+        "rbx", "rdx", "rdi", "rsi", "r8",
       ]
     %}
     fv.{{ arg_registers[num].id }}
@@ -643,13 +643,8 @@ rdx, rcx, rbx, rax : UInt64
         mmap_attrs |= MemMapNode::Attributes::Execute
       end
 
-      extended = if pudata.is64
-        try(checked_slice(UInt64, arg(3), 2))
-      else
-        try(checked_slice(UInt32, arg(3), 2))
-      end
-      addr = extended[0].to_u64
-      size = extended[1].to_u64
+      addr = arg(3)
+      size = arg(4)
 
       if fdi == -1
         if (size & 0xfff) != 0
