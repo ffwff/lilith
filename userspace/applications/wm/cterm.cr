@@ -3,7 +3,6 @@ require "./gui/lib"
 app = G::Application.new
 window = G::Window.new(0, 0, 400, 300)
 app.main_widget = window
-
 decoration = G::WindowDecoration.new(window, "terminal")
 
 termbox = G::Termbox.new 0, 0, 0, 0
@@ -24,5 +23,4 @@ Process.new("ash",
             input: input_fd,
             output: output_fd,
             error: Process::Redirect::Inherit)
-
 app.run

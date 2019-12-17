@@ -75,9 +75,9 @@ class G::Termbox < G::Widget
     Painter.blit_rect bitmap!, 0, 0, 0x00000000
     @cheight.times do |y|
       @cwidth.times do |x|
-        G::Fonts.blit(bitmap!,
-                      G::Fonts.chars_per_col(x),
-                      G::Fonts.chars_per_row(y),
+        G::Fonts.blit(self,
+                      x * G::Fonts.char_width,
+                      y * G::Fonts.char_height,
                       @cbuffer[y * @cwidth + x])
       end
     end
@@ -98,9 +98,10 @@ class G::Termbox < G::Widget
     end
     @cbuffer[@cy * @cwidth + @cx] = ch
     G::Fonts.blit(self,
-                  G::Fonts.chars_per_col(@cx),
-                  G::Fonts.chars_per_col(@cy),
+                  @cx * G::Fonts.char_width,
+                  @cy * G::Fonts.char_height,
                   ch)
+    # STDERR.print @cx, '\n'
     @cx += 1
     if redraw?
       @app.not_nil!.redraw
