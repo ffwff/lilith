@@ -3,7 +3,7 @@ require "./gui/lib"
 module FileMgr
   extend self
 
-  @@dir_image : Painter::Image? = nil
+  @@dir_image : Painter::Bitmap? = nil
   class_getter! dir_image
 
   @@cwd = ""
