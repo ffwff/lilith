@@ -3,7 +3,7 @@ class G::ScrollBox < G::Widget
   getter text, bitmap
   def initialize(@x : Int32, @y : Int32,
                  @width : Int32, @height : Int32)
-    @bitmap = Painter.create_bitmap(@width, @height)
+    @bitmap = Painter::Bitmap.new(@width, @height)
     draw_event
   end
 
@@ -21,15 +21,13 @@ class G::ScrollBox < G::Widget
   property bgcolor
 
   def resize(@width : Int32, @height : Int32)
-    @bitmap = Painter.resize_bitmap(@bitmap, @width, @height)
+    bitmap!.resize @width, @height
   end
 
   def draw_event
     if widget = @main_widget
-      Painter.blit_img  @bitmap,
-                        @width, @height,
-                        widget.bitmap,
-                        widget.width, widget.height,
+      Painter.blit_img  bitmap!,
+                        widget.bitmap!,
                         0, 0,
                         0, @offset_y
     end
