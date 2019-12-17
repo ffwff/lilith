@@ -20,6 +20,14 @@ module G::Fonts
     row // HEIGHT
   end
 
+  def char_width
+    WIDTH
+  end
+
+  def char_height
+    HEIGHT
+  end
+
   def blit(db : UInt32*,
            dw : Int, dh : Int,
            sx : Int, sy : Int, ch : Char)
@@ -55,9 +63,9 @@ module G::Fonts
   end
 
   def blit(widget : G::Widget,
-           cx : Int, cy : Int, str : String)
+           sx : Int, sy : Int, str : String)
     blit widget.bitmap!,
-      cx, cy,
+      sx, sy,
       str
   end
 
@@ -70,10 +78,10 @@ module G::Fonts
   end
 
   def blit(bitmap : Painter::Bitmap,
-           cx : Int, cy : Int, str : String)
+           sx : Int, sy : Int, str : String)
     blit bitmap.to_unsafe,
       bitmap.width, bitmap.height,
-      cx, cy,
+      sx, sy,
       str
   end
 
