@@ -26,7 +26,7 @@ module Painter
     end
 
     def to_bytes
-      Bytes.new(@to_unsafe.as(UInt8*), malloc_size)
+      Bytes.new(@to_unsafe.as(UInt8*), malloc_size.to_i32)
     end
   end
 
