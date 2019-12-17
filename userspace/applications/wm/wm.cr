@@ -230,7 +230,7 @@ module Wm::Server
     @@windows.push cursor
 
     # default startup application
-    Process.new "cterm",
+    Process.new "desktop",
       input: Process::Redirect::Inherit,
       output: Process::Redirect::Inherit,
       error: Process::Redirect::Inherit
