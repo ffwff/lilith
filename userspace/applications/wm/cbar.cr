@@ -1,6 +1,5 @@
 require "./gui/lib"
 
-
 module Bar
   extend self
 
@@ -27,7 +26,7 @@ end
 
 app = G::Application.new
 w, h = app.client.screen_resolution.not_nil!
-window = G::Window.new(0, 0, w, 16)
+window = G::Window.new(0, 0, w, 16, Wm::IPC::Data::WindowFlags::Alpha)
 app.main_widget = window
 Bar.window = window
 

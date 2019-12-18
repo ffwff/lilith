@@ -127,9 +127,9 @@ module Wm::Server
     @wid : Int32
     @bitmap_file : File
 
-    getter socket, wid, bitmap
+    getter socket, wid, bitmap, alpha
 
-    def initialize(@socket, @x, @y, width, height)
+    def initialize(@socket, @x, @y, width, height, @alpha : Bool)
       @wid = Server.next_wid
       @bitmap_file = File.new("/tmp/wm-bm:" + @wid.to_s, "rw").not_nil!
       @bitmap_file.truncate width * height * 4
@@ -137,7 +137,7 @@ module Wm::Server
     end
 
     def render(buffer : Painter::Bitmap)
-      Painter.blit_img buffer, bitmap.not_nil!, @x, @y
+      Painter.blit_img buffer, bitmap.not_nil!, @x, @y, @alpha
     end
   end
 
@@ -360,7 +360,9 @@ module Wm::Server
           if focused = @@focused
             focused.socket.unbuffered_write IPC.refocus_event_message(focused.wid, 0).to_slice
           end
-          socket.program = program = Program.new(socket, msg.x, msg.y, msg.width, msg.height)
+          socket.program = program = Program.new(socket, msg.x, msg.y, 
+                                                 msg.width, msg.height,
+                                                 msg.flags.includes?(IPC::Data::WindowFlags::Alpha))
           @@focused = program
           if msg.flags.includes?(IPC::Data::WindowFlags::Background)
             program.z_index = -1

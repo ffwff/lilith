@@ -24,6 +24,7 @@ module Wm::IPC
     @[Flags]
     enum WindowFlags : Int32
       Background = 1 << 0
+      Alpha = 1 << 1
     end
 
     RESPONSE_ID = 2
