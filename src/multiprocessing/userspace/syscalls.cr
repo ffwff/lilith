@@ -193,7 +193,19 @@ rdx, rcx, rbx, rax : UInt64
         x.not_nil!
       else
         sysret(SYSCALL_ERR)
-        return
+      end
+    end
+  end
+
+  # try and check if expr is nil
+  # if it is nil, set syscall return to error
+  # if it's not nil, return expr.not_nil!
+  private macro try(expr, err)
+    begin
+      if !(x = {{ expr }}).nil?
+        x.not_nil!
+      else
+        sysret({{ err }})
       end
     end
   end
@@ -217,6 +229,8 @@ rdx, rcx, rbx, rax : UInt64
   def handler(frame : Syscall::Data::Registers*)
     process = Multiprocessing::Scheduler.current_process.not_nil!
     # Serial.print "syscall ", fv.rax, " from ", Multiprocessing::Scheduler.current_process.not_nil!.pid, "\n"
+
+    # syscall handlers for kernel processes
     if process.kernel_process?
       case fv.rax
       when SC_MMAP_DRV
@@ -243,27 +257,21 @@ rdx, rcx, rbx, rax : UInt64
       unlock
       return Kernel.ksyscall_sc_ret_driver(frame)
     end
+
+    # syscall handlers for userspace processes
     pudata = process.udata
     case fv.rax
     when SC_OPEN
-      path = try(checked_slice(arg(0), arg(1)))
-      vfs_node = parse_path_into_vfs path, pudata.cwd_node, process: process
-      if vfs_node.nil?
-        sysret(SYSCALL_ERR)
-      else
-        sysret(pudata.install_fd(vfs_node.not_nil!,
-          FileDescriptor::Attributes.new(arg(2).to_i32)))
-      end
+      path = try(checked_slice(arg(0), arg(1)), EFAULT)
+      vfs_node = try(parse_path_into_vfs(path, pudata.cwd_node, process: process), ENOENT)
+      sysret(pudata.install_fd(vfs_node.not_nil!,
+        FileDescriptor::Attributes.new(arg(2).to_i32)))
     when SC_CREATE
-      path = try(checked_slice(arg(0), arg(1)))
+      path = try(checked_slice(arg(0), arg(1)), EFAULT)
       options = arg(2).to_i32
-      vfs_node = parse_path_into_vfs path, pudata.cwd_node, true, process, create_options: options
-      if vfs_node.nil?
-        sysret(SYSCALL_ERR)
-      else
-        sysret(pudata.install_fd(vfs_node.not_nil!,
-          FileDescriptor::Attributes.new(options)))
-      end
+      vfs_node = try(parse_path_into_vfs(path, pudata.cwd_node, true, process, create_options: options), ENOENT)
+      sysret(pudata.install_fd(vfs_node.not_nil!,
+        FileDescriptor::Attributes.new(options)))
     when SC_CLOSE
       if pudata.close_fd(arg(0).to_i32)
         sysret(SYSCALL_SUCCESS)
@@ -272,20 +280,16 @@ rdx, rcx, rbx, rax : UInt64
       end
     when SC_REMOVE
       path = try(checked_slice(arg(0), arg(1)))
-      vfs_node = parse_path_into_vfs path, pudata.cwd_node
-      if vfs_node.nil?
-        sysret(SYSCALL_ERR)
-      else
-        sysret(vfs_node.remove)
-      end
+      vfs_node = try(parse_path_into_vfs(path, pudata.cwd_node), ENOENT)
+      sysret(vfs_node.remove)
     when SC_READ
-      fd = try(pudata.get_fd(arg(0).to_i32))
+      fd = try(pudata.get_fd(arg(0).to_i32), EBADFD)
       if arg(2) == 0u64
         sysret(0)
       elsif !fd.attrs.includes?(FileDescriptor::Attributes::Read)
-        sysret(SYSCALL_ERR)
+        sysret(EBADFD)
       end
-      str = try(checked_slice(arg(1), arg(2)))
+      str = try(checked_slice(arg(1), arg(2)), EFAULT)
       result = fd.not_nil!.node.not_nil!.read(str, fd.offset, process)
       case result
       when VFS_WAIT_QUEUE
@@ -315,7 +319,7 @@ rdx, rcx, rbx, rax : UInt64
       elsif !fd.attrs.includes?(FileDescriptor::Attributes::Write)
         sysret(SYSCALL_ERR)
       end
-      str = try(checked_slice(arg(1), arg(2)))
+      str = try(checked_slice(arg(1), arg(2)), EINVAL)
       result = fd.not_nil!.node.not_nil!.write(str, fd.offset, process)
       case result
       when VFS_WAIT_QUEUE
@@ -339,10 +343,10 @@ rdx, rcx, rbx, rax : UInt64
         sysret(result)
       end
     when SC_TRUNCATE
-      fd = try(pudata.get_fd(arg(0).to_i32))
+      fd = try(pudata.get_fd(arg(0).to_i32), EBADFD)
       fv.rax = fd.node.not_nil!.truncate(arg(1).to_i32)
     when SC_SEEK
-      fd = try(pudata.get_fd(arg(0).to_i32))
+      fd = try(pudata.get_fd(arg(0).to_i32), EBADFD)
       offset = arg(1).to_i32
       whence = arg(2).to_i32
 
@@ -357,13 +361,13 @@ rdx, rcx, rbx, rax : UInt64
         fd.offset = (fd.node.not_nil!.size.to_i32 + offset).to_u32
         sysret(fd.offset)
       else
-        sysret(SYSCALL_ERR)
+        sysret(EINVAL)
       end
     when SC_IOCTL
-      fd = try(pudata.get_fd(arg(0).to_i32))
+      fd = try(pudata.get_fd(arg(0).to_i32), EBADFD)
       sysret(fd.node.not_nil!.ioctl(arg(1).to_i32, arg(2), process))
     when SC_WAITFD
-      fds = try(checked_slice(Int32, arg(0), arg(1).to_i32))
+      fds = try(checked_slice(Int32, arg(0), arg(1).to_i32), EINVAL)
       timeout = arg(2).to_u32
 
       if fds.size == 0
@@ -397,13 +401,13 @@ rdx, rcx, rbx, rax : UInt64
       pudata.wait_usecs timeout
       Multiprocessing::Scheduler.switch_process(frame)
     when SC_READDIR
-      fd = try(pudata.get_fd(arg(0).to_i32))
-      retval = try(checked_pointer(Syscall::Data::DirentArgument32, arg(1)))
+      fd = try(pudata.get_fd(arg(0).to_i32), EBADFD)
+      retval = try(checked_pointer(Syscall::Data::DirentArgument32, arg(1)), EFAULT)
       if fd.cur_child_end
         sysret(0)
       elsif fd.cur_child.nil?
         if (child = fd.node.not_nil!.first_child).nil?
-          sysret(SYSCALL_ERR)
+          sysret(ENOENT)
         end
         fd.cur_child = child
       end
@@ -437,12 +441,12 @@ rdx, rcx, rbx, rax : UInt64
       sysret(process.pid)
     when SC_SPAWN
       path = try(checked_slice(arg(0), arg(1)))
-      sysret(SYSCALL_ERR) if path.size < 1
+      sysret(EINVAL) if path.size < 1
       startup_info = checked_pointer(Syscall::Data::SpawnStartupInfo32, arg(2))
       if pudata.is64
-        argv = try(checked_pointer(UInt64, arg(3)))
+        argv = try(checked_pointer(UInt64, arg(3)), EFAULT)
       else
-        argv = try(checked_pointer(UInt32, arg(3)))
+        argv = try(checked_pointer(UInt32, arg(3)), EFAULT)
       end
 
       # search in path env
@@ -458,7 +462,7 @@ rdx, rcx, rbx, rax : UInt64
       end
 
       if vfs_node.nil?
-        sysret(SYSCALL_ERR)
+        sysret(ENOENT)
       else
         # argv
         pargv = Array(String).new 0
@@ -467,7 +471,8 @@ rdx, rcx, rbx, rax : UInt64
           if argv[i] == 0
             break
           end
-          arg = NullTerminatedSlice.new(try(checked_pointer(UInt8, argv[i])))
+          # FIXME: check for size of NullTerminatedSlice
+          arg = NullTerminatedSlice.new(try(checked_pointer(UInt8, argv[i]), EFAULT))
           pargv.push String.new(arg)
           i += 1
         end
@@ -523,7 +528,7 @@ rdx, rcx, rbx, rax : UInt64
       if pid <= 0
         # wait for any child process
         Serial.print "waitpid: pid <= 0 unimplemented"
-        sysret(SYSCALL_ERR)
+        sysret(EINVAL)
       else # pid > 0
         cprocess = nil
         Multiprocessing.each do |proc|
@@ -533,7 +538,7 @@ rdx, rcx, rbx, rax : UInt64
           end
         end
         if cprocess.nil?
-          sysret(SYSCALL_ERR)
+          sysret(EINVAL)
         else
           fv.rax = pid
           process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitProcess
@@ -570,8 +575,8 @@ rdx, rcx, rbx, rax : UInt64
         sysret(pudata.cwd.size)
       end
       str = try(checked_slice(arg(0), arg(1)))
-      if str.size > PATH_MAX
-        sysret(SYSCALL_ERR)
+      if str.size > SC_PATH_MAX
+        sysret(EINVAL)
       end
       idx = 0
       pudata.cwd.each_byte do |ch|
@@ -584,7 +589,7 @@ rdx, rcx, rbx, rax : UInt64
     when SC_CHDIR
       path = try(checked_slice(arg(0), arg(1)))
       if (t = append_paths path, pudata.cwd, pudata.cwd_node).nil?
-        sysret(SYSCALL_ERR)
+        sysret(ENOENT)
       else
         cwd, vfs_node = t.not_nil!
         if !vfs_node.nil?
@@ -592,21 +597,21 @@ rdx, rcx, rbx, rax : UInt64
           pudata.cwd_node = vfs_node.not_nil!
           sysret(SYSCALL_SUCCESS)
         else
-          sysret(SYSCALL_ERR)
+          sysret(EINVAL)
         end
       end
     when SC_SBRK
       incr = arg(0).to_i64
       # must be page aligned
       if (incr & 0xfff != 0) || pudata.mmap_heap.nil?
-        sysret(SYSCALL_ERR)
+        sysret(EINVAL)
       end
       mmap_heap = pudata.mmap_heap.not_nil!
       if incr > 0
         if !mmap_heap.next_node.nil?
           if mmap_heap.end_addr + incr >= mmap_heap.next_node.not_nil!.addr
             # out of virtual memory
-            sysret(SYSCALL_ERR)
+            sysret(EINVAL)
           end
         end
         npages = (incr >> 12) + 1
@@ -616,7 +621,7 @@ rdx, rcx, rbx, rax : UInt64
         if !mmap_heap.next_node.nil?
           if mmap_heap.end_addr + 0x1000 >= mmap_heap.next_node.not_nil!.addr
             # out of virtual memory
-            sysret(SYSCALL_ERR)
+            sysret(EINVAL)
           end
         end
         Paging.alloc_page_pg(mmap_heap.addr, true, true)
@@ -683,7 +688,7 @@ rdx, rcx, rbx, rax : UInt64
         end
       end
     else
-      sysret(SYSCALL_ERR)
+      sysret(EINVAL)
     end
   end
 end

@@ -485,7 +485,7 @@ class Fat16FS < VFS::FS
           else
             Serial.print "unable to execute: ", retval, "\n"
             if msg.process
-              msg.unawait(-1)
+              msg.unawait(ENOEXEC)
             end
           end
           @process_allocator.not_nil!.clear
