@@ -1,7 +1,7 @@
 require "../syscall_defs.cr"
 
 {% if flag?(:x86_64) %}
-@[AlwaysInline]
+@[NoInline]
 private def lilith_syscall(rax : UInt32, rbx : UInt64,
                            rdx = 0u64, rdi = 0u64, rsi = 0u64,
                            r8 = 0u64) : Int32
@@ -17,7 +17,7 @@ private def lilith_syscall(rax : UInt32, rbx : UInt64,
   ret
 end
 
-@[AlwaysInline]
+@[NoInline]
 private def lilith_syscall64(rax : UInt32, rbx : UInt64,
                              rdx = 0u64, rdi = 0u64, rsi = 0u64,
                              r8 = 0u64) : UInt64
@@ -173,10 +173,10 @@ fun getcwd(str : UInt8*, len : LibC::SizeT) : UInt8*
   if str.null?
     len = lilith_syscall(SC_GETCWD, 0.to_usize, 0.to_usize).to_int + 1
     retval = Pointer(UInt8).malloc len.to_usize
-    lilith_syscall(SC_GETCWD, retval, len.to_usize).to_int
+    lilith_syscall(SC_GETCWD, retval, len.to_usize)
     retval
   else
-    lilith_syscall(SC_GETCWD, str, len).to_int
+    lilith_syscall(SC_GETCWD, str, len)
     str
   end  
 end
