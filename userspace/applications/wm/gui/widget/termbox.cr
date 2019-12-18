@@ -20,6 +20,9 @@ class G::Termbox < G::Widget
     @app.not_nil!.watch_io @output_fd.not_nil!
   end
 
+  @color = 0x0u32
+  property color
+
   def initialize(@x : Int32, @y : Int32,
                  width : Int32, height : Int32)
     @line = Array(UInt8).new 128
@@ -72,7 +75,7 @@ class G::Termbox < G::Widget
   end
 
   def redraw_all
-    Painter.blit_rect bitmap!, 0, 0, 0x00000000
+    Painter.blit_rect bitmap!, 0, 0, @color
     @cheight.times do |y|
       @cwidth.times do |x|
         G::Fonts.blit(self,

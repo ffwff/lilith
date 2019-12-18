@@ -10,7 +10,7 @@ class G::Window < G::Widget
     @main_widget.not_nil!.app = @app
   end
 
-  getter width, height
+  getter width, height, flags
   def initialize(@x : Int32, @y : Int32,
                  @width : Int32, @height : Int32,
                  @flags = Wm::IPC::Data::WindowFlags::None)

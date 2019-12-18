@@ -27,18 +27,19 @@ class G::WindowDecoration < G::Widget
   getter title
   def initialize(@x : Int32, @y : Int32,
                  width : Int32, height : Int32,
-                 @title : String? = nil)
+                 @title : String? = nil,
+                 @alpha = false)
     @bitmap = Painter::Bitmap.new(width, height)
     if G::Sprites.dec_top.nil?
-      G::Sprites.dec_top = Painter.load_png G::Sprites::DEC_TOP
+      G::Sprites.dec_top = Painter.load_png G::Sprites::DEC_TOP, @alpha
     end
     if G::Sprites.dec_side.nil?
-      G::Sprites.dec_side = Painter.load_png G::Sprites::DEC_SIDE
+      G::Sprites.dec_side = Painter.load_png G::Sprites::DEC_SIDE, @alpha
     end
   end
 
   def self.new(window : G::Window, title : String? = nil)
-    decoration = new 0, 0, window.width, window.height, title
+    decoration = new 0, 0, window.width, window.height, title, window.flags.includes?(Wm::IPC::Data::WindowFlags::Alpha)
     window.main_widget = decoration
     decoration
   end
@@ -56,11 +57,13 @@ class G::WindowDecoration < G::Widget
 
   BORDER = 0x121517
   BG = 0x1d1f21
+  BORDER_A = 0xff000000 | BORDER
+  BG_A = 0xff000000 | BG
 
   @focused = true
 
   def draw_event
-    Painter.blit_rect bitmap!, 0, 0, BG
+    Painter.blit_rect bitmap!, 0, 0, @alpha ? BG_A : BG
 
     # window decoration frame
     Painter.blit_img bitmap!,
@@ -76,10 +79,10 @@ class G::WindowDecoration < G::Widget
     end
     Painter.blit_rect bitmap!,
                       1, height-2,
-                      0, 1, BORDER
+                      0, 1, @alpha ? BORDER_A : BORDER
     Painter.blit_rect bitmap!,
                       1, height-2,
-                      width-1, 1, BORDER
+                      width-1, 1, @alpha ? BORDER_A : BORDER
 
     # title
     if (title = @title)

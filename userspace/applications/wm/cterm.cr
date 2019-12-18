@@ -1,11 +1,12 @@
 require "./gui/lib"
 
 app = G::Application.new
-window = G::Window.new(0, 0, 400, 300)
+window = G::Window.new(0, 0, 400, 300, Wm::IPC::Data::WindowFlags::Alpha)
 app.main_widget = window
 decoration = G::WindowDecoration.new(window, "terminal")
 
 termbox = G::Termbox.new 0, 0, 0, 0
+termbox.color = 0xcc000000u32
 decoration.main_widget = termbox
 
 input_fd = IO::Pipe.new("termbox:stdin", "rwa").not_nil!
