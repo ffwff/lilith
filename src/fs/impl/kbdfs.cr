@@ -1,4 +1,4 @@
-lib KbdFSData
+private lib KbdFSData
   @[Packed]
   struct Packet
     ch : Int32
@@ -6,14 +6,14 @@ lib KbdFSData
   end
 end
 
-class KbdFSNode < VFSNode
-  getter fs : VFS, raw_node, first_child
+class KbdFSNode < VFS::Node
+  getter fs : VFS::FS, raw_node, first_child
 
   def initialize(@fs : KbdFS)
     @raw_node = @first_child = KbdFSRawNode.new(fs)
   end
 
-  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
+  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
     node = @first_child
     while !node.nil?
       if node.not_nil!.name == path
@@ -63,8 +63,8 @@ class KbdFSNode < VFSNode
   end
 end
 
-class KbdFSRawNode < VFSNode
-  getter fs : VFS
+class KbdFSRawNode < VFS::Node
+  getter fs : VFS::FS
 
   def initialize(@fs : KbdFS)
   end
@@ -96,14 +96,14 @@ class KbdFSRawNode < VFSNode
   end
 end
 
-class KbdFS < VFS
-  getter! root : VFSNode
-  getter queue : VFSQueue?
+class KbdFS < VFS::FS
+  getter! root : VFS::Node
+  getter queue : VFS::Queue?
 
   def initialize(@kbd : Keyboard)
     @root = KbdFSNode.new self
     @kbd.kbdfs = self
-    @queue = VFSQueue.new
+    @queue = VFS::Queue.new
   end
 
   def name : String
@@ -163,7 +163,7 @@ class KbdFS < VFS
 
     @queue.not_nil!.keep_if do |msg|
       case msg.buffering
-      when VFSNode::Buffering::Unbuffered
+      when VFS::Node::Buffering::Unbuffered
         msg.respond n
         msg.unawait
         false
@@ -173,7 +173,7 @@ class KbdFS < VFS
           true
         else
           msg.respond n
-          if (msg.buffering == VFSNode::Buffering::LineBuffered && ch == '\n') ||
+          if (msg.buffering == VFS::Node::Buffering::LineBuffered && ch == '\n') ||
              msg.finished?
             msg.unawait
             false

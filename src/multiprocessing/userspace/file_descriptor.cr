@@ -1,15 +1,15 @@
 class FileDescriptor
-  @node : VFSNode? = nil
+  @node : VFS::Node? = nil
   getter node
 
   @offset = 0u32
   property offset
 
-  @buffering = VFSNode::Buffering::LineBuffered
+  @buffering = VFS::Node::Buffering::LineBuffered
   property buffering
 
   # used for readdir syscall
-  @cur_child : VFSNode? = nil
+  @cur_child : VFS::Node? = nil
   property cur_child
   @cur_child_end = false
   property cur_child_end

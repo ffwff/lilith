@@ -104,7 +104,7 @@ private def name_from_entry(entry)
   builder.to_s
 end
 
-private class Fat16Node < VFSNode
+private class Fat16Node < VFS::Node
   include FatCache
 
   @parent : Fat16Node? = nil
@@ -140,7 +140,7 @@ private class Fat16Node < VFSNode
     @directory
   end
 
-  getter fs : VFS
+  getter fs : VFS::FS
 
   def initialize(@fs : Fat16FS, @name = nil, @directory = false,
                  @next_node = nil, @first_child = nil,
@@ -313,7 +313,7 @@ private class Fat16Node < VFSNode
     end
   end
 
-  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
+  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
     return unless directory?
     each_child do |node|
       if node.name == path
@@ -377,7 +377,7 @@ private class Fat16Node < VFSNode
   end
 end
 
-class Fat16FS < VFS
+class Fat16FS < VFS::FS
   FS_TYPE = "FAT16   "
 
   @fat_sector = 0u32
@@ -392,7 +392,7 @@ class Fat16FS < VFS
   getter sectors_per_cluster
 
   # impl
-  getter! root : VFSNode
+  getter! root : VFS::Node
   getter device
 
   def name : String
@@ -448,14 +448,14 @@ class Fat16FS < VFS
       Paging.alloc_page_pg(Multiprocessing::KERNEL_HEAP_INITIAL, true, false, 2)
     end
 
-    @queue = VFSQueue.new(@process)
+    @queue = VFS::Queue.new(@process)
   end
 
   # queue
   getter queue
 
   # process
-  @process_msg : VFSMessage? = nil
+  @process_msg : VFS::Message? = nil
 
   protected def process
     while true
@@ -463,17 +463,17 @@ class Fat16FS < VFS
       unless (msg = @process_msg).nil?
         fat16_node = msg.vfs_node.unsafe_as(Fat16Node)
         case msg.type
-        when VFSMessage::Type::Read
+        when VFS::Message::Type::Read
           fat16_node.read_buffer(msg.slice_size,
             msg.file_offset.to_u32,
             allocator: @process_allocator) do |buffer|
             msg.respond(buffer)
           end
           msg.unawait
-        when VFSMessage::Type::Write
+        when VFS::Message::Type::Write
           # TODO
           msg.unawait
-        when VFSMessage::Type::Spawn
+        when VFS::Message::Type::Spawn
           udata = msg.udata.not_nil!
           case (retval = ElfReader.load_from_kernel_thread(fat16_node, @process_allocator.not_nil!))
           when ElfReader::Result

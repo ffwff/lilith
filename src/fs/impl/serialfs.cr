@@ -1,5 +1,5 @@
-private class SerialFSNode < VFSNode
-  getter fs : VFS
+private class SerialFSNode < VFS::Node
+  getter fs : VFS::FS
 
   def initialize(@fs : SerialFS)
   end
@@ -18,8 +18,8 @@ private class SerialFSNode < VFSNode
   end
 end
 
-class SerialFS < VFS
-  getter! root : VFSNode
+class SerialFS < VFS::FS
+  getter! root : VFS::Node
 
   def name : String
     "serial"

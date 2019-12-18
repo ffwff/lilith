@@ -1,12 +1,12 @@
-class ProcFSNode < VFSNode
+class ProcFSNode < VFS::Node
   @first_child : ProcFSProcessNode? = nil
-  getter fs : VFS, raw_node, first_child
+  getter fs : VFS::FS, raw_node, first_child
 
   def initialize(@fs : ProcFS)
     add_child(ProcFSProcessNode.new(self, @fs))
   end
 
-  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
+  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
     node = @first_child
     while !node.nil?
       if node.not_nil!.name == path
@@ -58,13 +58,13 @@ end
 # process nodes
 
 # /proc/[pid]
-class ProcFSProcessNode < VFSNode
+class ProcFSProcessNode < VFS::Node
   @name : String? = nil
   getter! name : String
-  getter fs : VFS
+  getter fs : VFS::FS
   property prev_node, next_node
 
-  @first_child : VFSNode? = nil
+  @first_child : VFS::Node? = nil
   getter first_child
 
   def process
@@ -95,7 +95,7 @@ class ProcFSProcessNode < VFSNode
     VFS_OK
   end
 
-  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
+  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
     node = @first_child
     while !node.nil?
       if node.not_nil!.name == path
@@ -105,7 +105,7 @@ class ProcFSProcessNode < VFSNode
     end
   end
 
-  private def add_child(child : VFSNode)
+  private def add_child(child : VFS::Node)
     if @first_child.nil?
       # first node
       child.next_node = nil
@@ -120,14 +120,14 @@ class ProcFSProcessNode < VFSNode
 end
 
 # /proc/[pid]/status
-private class ProcFSProcessStatusNode < VFSNode
-  getter fs : VFS
+private class ProcFSProcessStatusNode < VFS::Node
+  getter fs : VFS::FS
 
   def name
     "status"
   end
 
-  @next_node : VFSNode? = nil
+  @next_node : VFS::Node? = nil
   property next_node
 
   def initialize(@parent : ProcFSProcessNode, @fs : ProcFS)
@@ -150,14 +150,14 @@ private class ProcFSProcessStatusNode < VFSNode
 end
 
 # /proc/[pid]/mmap
-private class ProcFSProcessMmapNode < VFSNode
-  getter fs : VFS
+private class ProcFSProcessMmapNode < VFS::Node
+  getter fs : VFS::FS
 
   def name
     "mmap"
   end
 
-  @next_node : VFSNode? = nil
+  @next_node : VFS::Node? = nil
   property next_node
 
   def initialize(@parent : ProcFSProcessNode, @fs : ProcFS)
@@ -180,14 +180,14 @@ end
 # kernel nodes
 
 # /proc/meminfo
-private class ProcFSMemInfoNode < VFSNode
-  getter fs : VFS
+private class ProcFSMemInfoNode < VFS::Node
+  getter fs : VFS::FS
 
   def name
     "meminfo"
   end
 
-  @next_node : VFSNode? = nil
+  @next_node : VFS::Node? = nil
   property next_node
 
   def initialize(@parent : ProcFSProcessNode, @fs : ProcFS)
@@ -209,8 +209,8 @@ private class ProcFSMemInfoNode < VFSNode
   end
 end
 
-class ProcFS < VFS
-  getter! root : VFSNode
+class ProcFS < VFS::FS
+  getter! root : VFS::Node
 
   def name : String
     "proc"

@@ -139,14 +139,14 @@ module Multiprocessing
       getter environ
 
       def initialize(@argv : Array(String),
-                     @cwd : String, @cwd_node : VFSNode,
+                     @cwd : String, @cwd_node : VFS::Node,
                      @environ = Array(EnvVar).new(0))
         @fds = Array(FileDescriptor?).new 4
         @mmap_list = MemMapList.new
       end
 
       # add a file descriptor and return it
-      def install_fd(node : VFSNode, attrs) : Int32
+      def install_fd(node : VFS::Node, attrs) : Int32
         i = 0
         while i < @fds.size
           if @fds[i].nil?

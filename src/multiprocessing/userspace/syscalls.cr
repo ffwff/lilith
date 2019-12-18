@@ -94,7 +94,7 @@ rdx, rcx, rbx, rax : UInt64
                                   create = false,
                                   process : Multiprocessing::Process? = nil,
                                   create_options = 0)
-    vfs_node : VFSNode? = nil
+    vfs_node : VFS::Node? = nil
     return nil if path.size < 1
     if path[0] != '/'.ord
       vfs_node = cw_node
@@ -245,7 +245,6 @@ rdx, rcx, rbx, rax : UInt64
     end
     pudata = process.udata
     case fv.rax
-    # files
     when SC_OPEN
       path = try(checked_slice(arg(0), arg(1)))
       vfs_node = parse_path_into_vfs path, pudata.cwd_node, process: process
@@ -292,14 +291,14 @@ rdx, rcx, rbx, rax : UInt64
       when VFS_WAIT_QUEUE
         vfs_node = fd.node.not_nil!
         vfs_node.queue.not_nil!
-          .enqueue(VFSMessage.new(VFSMessage::Type::Read,
+          .enqueue(VFS::Message.new(VFS::Message::Type::Read,
           str, process, fd, vfs_node))
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
         Multiprocessing::Scheduler.switch_process(frame)
       when VFS_WAIT
         vfs_node = fd.node.not_nil!
         vfs_node.fs.queue.not_nil!
-          .enqueue(VFSMessage.new(VFSMessage::Type::Read,
+          .enqueue(VFS::Message.new(VFS::Message::Type::Read,
           str, process, fd, vfs_node))
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
         Multiprocessing::Scheduler.switch_process(frame)
@@ -322,14 +321,14 @@ rdx, rcx, rbx, rax : UInt64
       when VFS_WAIT_QUEUE
         vfs_node = fd.not_nil!.node.not_nil!
         vfs_node.queue.not_nil!
-          .enqueue(VFSMessage.new(VFSMessage::Type::Write,
+          .enqueue(VFS::Message.new(VFS::Message::Type::Write,
           str, process, fd, vfs_node))
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
         Multiprocessing::Scheduler.switch_process(frame)
       when VFS_WAIT
         vfs_node = fd.not_nil!.node.not_nil!
         vfs_node.fs.queue.not_nil!
-          .enqueue(VFSMessage.new(VFSMessage::Type::Write,
+          .enqueue(VFS::Message.new(VFS::Message::Type::Write,
           str, process, fd, vfs_node))
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
         Multiprocessing::Scheduler.switch_process(frame)
@@ -397,7 +396,6 @@ rdx, rcx, rbx, rax : UInt64
       pudata.wait_object = waitfds
       pudata.wait_usecs timeout
       Multiprocessing::Scheduler.switch_process(frame)
-      # directories
     when SC_READDIR
       fd = try(pudata.get_fd(arg(0).to_i32))
       retval = try(checked_pointer(Syscall::Data::DirentArgument32, arg(1)))
@@ -435,7 +433,6 @@ rdx, rcx, rbx, rax : UInt64
         fd.cur_child_end = true
       end
       sysret(SYSCALL_SUCCESS)
-      # process management
     when SC_GETPID
       sysret(process.pid)
     when SC_SPAWN
@@ -514,7 +511,7 @@ rdx, rcx, rbx, rax : UInt64
         case retval
         when VFS_WAIT
           vfs_node.fs.queue.not_nil!
-            .enqueue(VFSMessage.new(udata, vfs_node, process))
+            .enqueue(VFS::Message.new(udata, vfs_node, process))
           process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
           Multiprocessing::Scheduler.switch_process(frame)
         else
@@ -568,7 +565,6 @@ rdx, rcx, rbx, rax : UInt64
       # TODO
     when SC_EXIT
       Multiprocessing::Scheduler.switch_process_and_terminate
-      # working directory
     when SC_GETCWD
       if arg(0) == 0
         sysret(pudata.cwd.size)
@@ -599,7 +595,6 @@ rdx, rcx, rbx, rax : UInt64
           sysret(SYSCALL_ERR)
         end
       end
-      # memory management
     when SC_SBRK
       incr = arg(0).to_i64
       # must be page aligned

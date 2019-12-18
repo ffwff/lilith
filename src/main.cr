@@ -109,7 +109,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   end
   root_device = root_device.not_nil!
 
-  main_bin : VFSNode? = nil
+  main_bin : VFS::Node? = nil
   if (mbr = MBR.read(root_device))
     Console.print "found MBR header...\n"
     fs = Fat16FS.new root_device, mbr.to_unsafe.value.partitions[0]
@@ -153,7 +153,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
       panic "unable to load main!"
     when VFS_WAIT
       fs.not_nil!.queue.not_nil!
-        .enqueue(VFSMessage.new(udata, main_bin))
+        .enqueue(VFS::Message.new(udata, main_bin))
     end
 
     # switch to pid 1
