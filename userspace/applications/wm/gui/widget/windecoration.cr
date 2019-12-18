@@ -1,3 +1,16 @@
+module G::Sprites
+  extend self
+
+  DEC_TOP = "/hd0/share/wm/dec_top.png"
+  @@dec_top : Painter::Bitmap? = nil
+  class_property dec_top
+
+  DEC_SIDE = "/hd0/share/wm/dec_side.png"
+  @@dec_side : Painter::Bitmap? = nil
+  class_property dec_side
+
+end
+
 class G::WindowDecoration < G::Widget
 
   @main_widget : G::Widget? = nil
@@ -16,6 +29,12 @@ class G::WindowDecoration < G::Widget
                  width : Int32, height : Int32,
                  @title : String? = nil)
     @bitmap = Painter::Bitmap.new(width, height)
+    if G::Sprites.dec_top.nil?
+      G::Sprites.dec_top = Painter.load_png G::Sprites::DEC_TOP
+    end
+    if G::Sprites.dec_side.nil?
+      G::Sprites.dec_side = Painter.load_png G::Sprites::DEC_SIDE
+    end
   end
 
   def self.new(window : G::Window, title : String? = nil)
@@ -24,28 +43,51 @@ class G::WindowDecoration < G::Widget
     decoration
   end
 
+  TITLE_HEIGHT = 20
+  TITLE_PADDING_TOP = 7
+  TITLE_PADDING_SIDE = 3
   def calculate_main_dimensions
-    x = 3
-    y = 15
-    w = width - 6
+    x = TITLE_PADDING_SIDE
+    y = TITLE_HEIGHT
+    w = width - TITLE_PADDING_SIDE * 2
     h = height - y - 3
     {x, y, w, h}
   end
 
-  FOCUSED_BORDER = 0xffffff
-  UNFOCUSED_BORDER = 0x999999
+  BORDER = 0x121517
+  BG = 0x1d1f21
 
   @focused = true
-  def border_color
-    @focused ? FOCUSED_BORDER : UNFOCUSED_BORDER
-  end
 
   def draw_event
-    Painter.blit_rect bitmap!, 0, 0, 0x3a434b
+    Painter.blit_rect bitmap!, 0, 0, BG
+
+    # window decoration frame
+    Painter.blit_img bitmap!,
+                     G::Sprites.dec_side.not_nil!,
+                     0, 0
+    Painter.blit_img bitmap!,
+                     G::Sprites.dec_side.not_nil!,
+                     width - 1, 0
+    (width - 2).times do |i|
+      Painter.blit_img bitmap!,
+                       G::Sprites.dec_top.not_nil!,
+                       i + 1, 0
+    end
+    Painter.blit_rect bitmap!,
+                      1, height-2,
+                      0, 1, BORDER
+    Painter.blit_rect bitmap!,
+                      1, height-2,
+                      width-1, 1, BORDER
+
+    # title
     if (title = @title)
-      tx, ty = (width - G::Fonts.text_width(title)) // 2, 3
+      tx, ty = (width - G::Fonts.text_width(title)) // 2, TITLE_PADDING_TOP
       G::Fonts.blit self, tx, ty, title
     end
+
+    # widget
     if (main_widget = @main_widget)
       main_widget.draw_event
       Painter.blit_img bitmap!,
