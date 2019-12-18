@@ -1,5 +1,4 @@
 require "./userspace/*"
-require "./driver_thread.cr"
 
 private lib Kernel
   fun ksyscall_switch(frame : Idt::Data::Registers*) : NoReturn
@@ -302,7 +301,6 @@ module Multiprocessing
       Multiprocessing::Scheduler.current_process = self
       panic "page dir is nil" if @phys_pg_struct == 0
       if kernel_process?
-        DriverThread.lock
         Paging.current_kernel_pdpt = Pointer(Paging::Data::PDPTable).new(@phys_pg_struct)
         Paging.flush
       else
