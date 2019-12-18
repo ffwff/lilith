@@ -1,5 +1,5 @@
-private class ConsoleFSNode < VFSNode
-  getter fs : VFS
+private class ConsoleFSNode < VFS::Node
+  getter fs : VFS::FS
 
   def initialize(@fs : ConsoleFS)
   end
@@ -36,8 +36,8 @@ private class ConsoleFSNode < VFSNode
   end
 end
 
-class ConsoleFS < VFS
-  getter! root : VFSNode
+class ConsoleFS < VFS::FS
+  getter! root : VFS::Node
 
   def name : String
     "con"
@@ -53,7 +53,7 @@ class ConsoleFS < VFS
         self.as(Void*),
         stack_pages: 4) do |process|
     end
-    @queue = VFSQueue.new(@process)
+    @queue = VFS::Queue.new(@process)
     @process_msg = nil
   end
 
@@ -61,14 +61,14 @@ class ConsoleFS < VFS
   getter queue
 
   # process
-  @process_msg : VFSMessage? = nil
+  @process_msg : VFS::Message? = nil
 
   protected def process
     while true
       @process_msg = @queue.not_nil!.dequeue
       unless (msg = @process_msg).nil?
         case msg.type
-        when VFSMessage::Type::Write
+        when VFS::Message::Type::Write
           msg.read do |ch|
             Console.print ch.unsafe_chr
           end

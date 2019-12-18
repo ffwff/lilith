@@ -11,19 +11,19 @@ private lib TmpFSData
 
 end
 
-private class TmpFSRoot < VFSNode
-  getter fs : VFS
+private class TmpFSRoot < VFS::Node
+  getter fs : VFS::FS
   
   def initialize(@fs : TmpFS)
   end
 
-  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
+  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
     each_child do |node|
       return node if node.name == path
     end
   end
 
-  def create(name : Slice, process : Multiprocessing::Process? = nil, options : Int32 = 0) : VFSNode?
+  def create(name : Slice, process : Multiprocessing::Process? = nil, options : Int32 = 0) : VFS::Node?
     each_child do |node|
       return if node.name == name
     end
@@ -60,8 +60,8 @@ private class TmpFSRoot < VFSNode
   end
 end
 
-private class TmpFSNode < VFSNode
-  getter! name : String, fs : VFS
+private class TmpFSNode < VFS::Node
+  getter! name : String, fs : VFS::FS
   getter size
 
   @next_node : TmpFSNode? = nil
@@ -246,8 +246,8 @@ private class TmpFSNode < VFSNode
   end
 end
 
-class TmpFS < VFS
-  getter! root : VFSNode
+class TmpFS < VFS::FS
+  getter! root : VFS::Node
 
   def name : String
     "tmp"

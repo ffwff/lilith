@@ -24,7 +24,7 @@ class MemMapNode
 
   property addr, attr, size
 
-  @shm_node : VFSNode? = nil
+  @shm_node : VFS::Node? = nil
   property shm_node
 
   def initialize(@addr : UInt64, @size : UInt64, @attr : Attributes = Attributes::None)

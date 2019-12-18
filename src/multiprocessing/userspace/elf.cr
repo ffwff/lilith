@@ -187,7 +187,7 @@ module ElfReader
     attrs
   end
 
-  def read(node : VFSNode, allocator : StackAllocator, &block)
+  def read(node : VFS::Node, allocator : StackAllocator, &block)
     state = ParserState::Start
     buffer = Slice(UInt8).null
 

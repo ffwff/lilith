@@ -14,8 +14,8 @@ private lib MouseFSData
   end
 end
 
-class MouseFSNode < VFSNode
-  getter fs : VFS, first_child
+class MouseFSNode < VFS::Node
+  getter fs : VFS::FS, first_child
 
   def initialize(@fs : MouseFS)
     @first_child = MouseFSRawNode.new(fs)
@@ -29,7 +29,7 @@ class MouseFSNode < VFSNode
     end
   end
 
-  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
+  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
     each_child do |node|
       if node.name == path
         return node
@@ -51,8 +51,8 @@ class MouseFSNode < VFSNode
   end
 end
 
-class MouseFSRawNode < VFSNode
-  getter fs : VFS
+class MouseFSRawNode < VFS::Node
+  getter fs : VFS::FS
 
   def initialize(@fs : MouseFS)
   end
@@ -81,8 +81,8 @@ class MouseFSRawNode < VFSNode
   end
 end
 
-class MouseFS < VFS
-  getter! root : VFSNode
+class MouseFS < VFS::FS
+  getter! root : VFS::Node
   getter mouse
 
   def name : String

@@ -1,18 +1,18 @@
 require "./pipe/circular_buffer.cr"
 
-private class SocketFSRoot < VFSNode
-  getter fs : VFS
+private class SocketFSRoot < VFS::Node
+  getter fs : VFS::FS
 
   def initialize(@fs : SocketFS)
   end
 
-  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
+  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
     each_child do |node|
       return node if node.name == path
     end
   end
 
-  def create(name : Slice, process : Multiprocessing::Process? = nil, options : Int32 = 0) : VFSNode?
+  def create(name : Slice, process : Multiprocessing::Process? = nil, options : Int32 = 0) : VFS::Node?
     node = SocketFSNode.new(String.new(name), self, fs)
     node.next_node = @first_child
     unless @first_child.nil?
@@ -46,9 +46,9 @@ private class SocketFSRoot < VFSNode
   end
 end
 
-private class SocketFSNode < VFSNode
+private class SocketFSNode < VFS::Node
   getter! name : String, listen_node
-  getter fs : VFS
+  getter fs : VFS::FS
 
   def first_child
     @listen_node
@@ -74,13 +74,13 @@ private class SocketFSNode < VFSNode
   end
 end
 
-private class SocketFSListenNode < VFSNode
-  getter fs : VFS, queue : VFSQueue
+private class SocketFSListenNode < VFS::Node
+  getter fs : VFS::FS, queue : VFS::Queue
   property listener_pid
 
   def initialize(@parent : SocketFSNode, @fs : SocketFS)
     @listener_pid = -1
-    @queue = VFSQueue.new
+    @queue = VFS::Queue.new
   end
 
   def name
@@ -88,7 +88,7 @@ private class SocketFSListenNode < VFSNode
   end
 
   def try_connect(conn)
-    @queue.enqueue VFSMessage.new(nil, conn, nil)
+    @queue.enqueue VFS::Message.new(nil, conn, nil)
   end
 
   def read(slice : Slice, offset : UInt32,
@@ -114,8 +114,8 @@ private class SocketFSListenNode < VFSNode
   end
 end
 
-class SocketFSConnectionNode < VFSNode
-  getter fs : VFS, queue : VFSQueue
+class SocketFSConnectionNode < VFS::Node
+  getter fs : VFS::FS, queue : VFS::Queue
   property connected
 
   enum State
@@ -127,7 +127,7 @@ class SocketFSConnectionNode < VFSNode
   property state
 
   def initialize(@parent : SocketFSNode, @fs : SocketFS)
-    @queue = VFSQueue.new
+    @queue = VFS::Queue.new
     @m_buffer = CircularBuffer.new
     @s_buffer = CircularBuffer.new
     @open_count = 1
@@ -182,7 +182,7 @@ class SocketFSConnectionNode < VFSNode
   def flush_queue
     @queue.keep_if do |msg|
       case msg.type
-      when VFSMessage::Type::Write
+      when VFS::Message::Type::Write
         @s_buffer.init_buffer
         msg.read do |ch|
           @s_buffer.write ch
@@ -210,8 +210,8 @@ class SocketFSConnectionNode < VFSNode
   end
 end
 
-class SocketFS < VFS
-  getter! root : VFSNode
+class SocketFS < VFS::FS
+  getter! root : VFS::Node
 
   def name : String
     "sockets"

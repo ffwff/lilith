@@ -1,12 +1,12 @@
 require "./pipe/circular_buffer.cr"
 
-private class PipeFSRoot < VFSNode
-  getter fs : VFS
+private class PipeFSRoot < VFS::Node
+  getter fs : VFS::FS
 
   def initialize(@fs : PipeFS)
   end
 
-  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFSNode?
+  def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
     each_child do |node|
       return node if node.name == path
     end
@@ -14,7 +14,7 @@ private class PipeFSRoot < VFSNode
 
   def create(name : Slice,
              process : Multiprocessing::Process? = nil,
-             options : Int32 = 0) : VFSNode?
+             options : Int32 = 0) : VFS::Node?
     if (options & VFS_CREATE_ANON) != 0
       return PipeFSNode.new(String.new(name),
         process.not_nil!.pid,
@@ -56,9 +56,9 @@ private class PipeFSRoot < VFSNode
   end
 end
 
-private class PipeFSNode < VFSNode
+private class PipeFSNode < VFS::Node
   getter! name : String
-  getter fs : VFS
+  getter fs : VFS::FS
 
   @next_node : PipeFSNode? = nil
   property next_node
@@ -120,7 +120,7 @@ private class PipeFSNode < VFSNode
     VFS_OK
   end
 
-  @queue : VFSQueue? = nil
+  @queue : VFS::Queue? = nil
   getter! queue
 
   def read(slice : Slice, offset : UInt32,
@@ -140,7 +140,7 @@ private class PipeFSNode < VFSNode
 
     if @flags.includes?(Flags::WaitRead) && size == 0
       if @queue.nil?
-        @queue = VFSQueue.new
+        @queue = VFS::Queue.new
       end
       return VFS_WAIT_QUEUE
     end
@@ -197,8 +197,8 @@ private class PipeFSNode < VFSNode
   end
 end
 
-class PipeFS < VFS
-  getter! root : VFSNode
+class PipeFS < VFS::FS
+  getter! root : VFS::Node
 
   def name : String
     "pipes"

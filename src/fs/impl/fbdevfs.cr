@@ -1,5 +1,5 @@
-private class FbdevFSNode < VFSNode
-  getter fs : VFS
+private class FbdevFSNode < VFS::Node
+  getter fs : VFS::FS
 
   def initialize(@fs : FbdevFS)
   end
@@ -86,8 +86,8 @@ private class FbdevFSNode < VFSNode
   end
 end
 
-class FbdevFS < VFS
-  getter! root : VFSNode
+class FbdevFS < VFS::FS
+  getter! root : VFS::Node
 
   def name : String
     "fb0"

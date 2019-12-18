@@ -210,6 +210,7 @@ fun kcpuex_handler(frame : Idt::Data::ExceptionRegisters*)
     id = (errcode & 0x10) != 0
 
     Serial.print Pointer(Void).new(faulting_address), user, " ", Pointer(Void).new(frame.value.rip), "\n"
+    Serial.print "from ", process.name, '\n'
     while true; end
 
     {% if false %}
