@@ -1,7 +1,5 @@
 require "./async.cr"
 
-PATH_MAX = 4096
-
 module VFS
   extend self
 
