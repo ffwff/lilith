@@ -3,15 +3,16 @@ module VFS
 
   class Message
     @next_msg = Atomic(Message?).new(nil)
+    property next_msg
 
     def slice_size
       @slice.not_nil!.size
     end
-    property next_msg
-    getter process
 
     @offset = 0
     getter offset
+
+    getter process
     getter vfs_node
     getter udata
     getter type
