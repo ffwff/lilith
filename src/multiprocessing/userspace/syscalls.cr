@@ -90,9 +90,10 @@ rdx, rcx, rbx, rax : UInt64
 
   # parses a path and returns the corresponding vfs node
   private def parse_path_into_vfs(path : Slice(UInt8),
+                                  process : Multiprocessing::Process,
+                                  frame : Data::Registers*,
                                   cw_node = nil,
                                   create = false,
-                                  process : Multiprocessing::Process? = nil,
                                   create_options = 0)
     vfs_node : VFS::Node? = nil
     return nil if path.size < 1
@@ -115,6 +116,17 @@ rdx, rcx, rbx, rax : UInt64
       elsif segment == ".."
         vfs_node = vfs_node.parent
       else
+        if !vfs_node.dir_populated
+          case vfs_node.populate_directory
+          when VFS_OK
+            # ignored
+          when VFS_WAIT
+            vfs_node.fs.queue.not_nil!
+              .enqueue(VFS::Message.new(vfs_node, process))
+            process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
+            Multiprocessing::Scheduler.switch_process(frame)
+          end
+        end
         cur_node = vfs_node.open(segment, process)
         if cur_node.nil? && create
           cur_node = vfs_node.create(segment, process, create_options)
@@ -263,13 +275,13 @@ rdx, rcx, rbx, rax : UInt64
     case fv.rax
     when SC_OPEN
       path = try(checked_slice(arg(0), arg(1)), EFAULT)
-      vfs_node = try(parse_path_into_vfs(path, pudata.cwd_node, process: process), ENOENT)
+      vfs_node = try(parse_path_into_vfs(path, process, frame, pudata.cwd_node), ENOENT)
       sysret(pudata.install_fd(vfs_node.not_nil!,
         FileDescriptor::Attributes.new(arg(2).to_i32)))
     when SC_CREATE
       path = try(checked_slice(arg(0), arg(1)), EFAULT)
       options = arg(2).to_i32
-      vfs_node = try(parse_path_into_vfs(path, pudata.cwd_node, true, process, create_options: options), ENOENT)
+      vfs_node = try(parse_path_into_vfs(path, process, frame, pudata.cwd_node, true, create_options: options), ENOENT)
       sysret(pudata.install_fd(vfs_node.not_nil!,
         FileDescriptor::Attributes.new(options)))
     when SC_CLOSE
@@ -280,7 +292,7 @@ rdx, rcx, rbx, rax : UInt64
       end
     when SC_REMOVE
       path = try(checked_slice(arg(0), arg(1)))
-      vfs_node = try(parse_path_into_vfs(path, pudata.cwd_node), ENOENT)
+      vfs_node = try(parse_path_into_vfs(path, process, frame, pudata.cwd_node), ENOENT)
       sysret(vfs_node.remove)
     when SC_READ
       fd = try(pudata.get_fd(arg(0).to_i32), EBADFD)
@@ -452,13 +464,13 @@ rdx, rcx, rbx, rax : UInt64
       # search in path env
       vfs_node = unless (path_env = pudata.getenv("PATH")).nil?
         # TODO: parse multiple paths
-        unless (dir = parse_path_into_vfs(path_env.byte_slice)).nil?
-          parse_path_into_vfs path, dir
+        unless (dir = parse_path_into_vfs(path_env.byte_slice, process, frame)).nil?
+          parse_path_into_vfs path, process, frame, dir
         end
       end
       # search binary in cwd
       if vfs_node.nil?
-        vfs_node = parse_path_into_vfs path, pudata.cwd_node
+        vfs_node = parse_path_into_vfs path, process, frame, pudata.cwd_node
       end
 
       if vfs_node.nil?

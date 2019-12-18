@@ -21,6 +21,7 @@ module VFS
       Read
       Write
       Spawn
+      PopulateDirectory
     end
 
     def initialize(@type : Type,
@@ -34,6 +35,11 @@ module VFS
                    @vfs_node : Node,
                    @process : Multiprocessing::Process? = nil,
                    @type = Message::Type::Spawn)
+    end
+
+    def initialize(@vfs_node : Node,
+                   @process : Multiprocessing::Process? = nil,
+                   @type = Message::Type::PopulateDirectory)
     end
 
     def buffering
@@ -132,9 +138,14 @@ module VFS
       end
     end
 
-    def unawait
-      return if @process.not_nil!.sched_data.status == Multiprocessing::Scheduler::ProcessData::Status::Normal
+    def unawait_no_return
+      return false if @process.not_nil!.sched_data.status == Multiprocessing::Scheduler::ProcessData::Status::Normal
       @process.not_nil!.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::Normal
+      true
+    end
+
+    def unawait
+      return if !unawait_no_return
       if @fd
         @fd.not_nil!.offset += @offset
       end
@@ -142,9 +153,16 @@ module VFS
     end
 
     def unawait(retval)
-      return if @process.not_nil!.sched_data.status == Multiprocessing::Scheduler::ProcessData::Status::Normal
-      @process.not_nil!.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::Normal
+      return if !unawait_no_return
       @process.not_nil!.frame.not_nil!.to_unsafe.value.rax = retval
+    end
+
+    # wakes up the process and have it redo the syscall
+    def unawait_rewind
+      return if !unawait_no_return
+      # 2 = sizeof(syscall/sysenter instruction)
+      rip = @process.not_nil!.frame.not_nil!.to_unsafe.value.rip
+      @process.not_nil!.frame.not_nil!.to_unsafe.value.rip = rip - 2
     end
   end
 
