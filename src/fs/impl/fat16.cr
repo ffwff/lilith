@@ -134,11 +134,12 @@ private class Fat16Node < VFS::Node
   getter starting_cluster
 
   @directory = false
-  @dir_populated = false
-
   def directory?
     @directory
   end
+
+  @dir_populated = false
+  getter dir_populated
 
   getter fs : VFS::FS
 
@@ -150,8 +151,7 @@ private class Fat16Node < VFS::Node
   # children
   def each_child(&block)
     if @directory && !@dir_populated
-      @dir_populated = true
-      populate_directory
+      return
     end
     node = first_child
     while !node.nil?
@@ -287,8 +287,13 @@ private class Fat16Node < VFS::Node
   end
 
   #
-  private def populate_directory
-    fat_table = Slice(UInt16).malloc fs.fat_sector_size
+  def fat_populate_directory(allocator : StackAllocator? = nil)
+    @dir_populated = true
+    fat_table = if allocator
+                  Slice(UInt16).mmalloc_a fs.fat_sector_size, allocator.not_nil!
+                else
+                  Slice(UInt16).malloc fs.fat_sector_size
+                end
     fat_sector = read_fat_table fat_table, starting_cluster
 
     cluster = starting_cluster
@@ -310,6 +315,20 @@ private class Fat16Node < VFS::Node
       break if end_directory
       fat_sector = read_fat_table fat_table, cluster, fat_sector
       cluster = fat_table[ent_for cluster]
+    end
+
+    # clean up within function call
+    if allocator
+      allocator.not_nil!.clear
+    end
+  end
+
+  def populate_directory : Int32
+    if Ide.locked?
+      VFS_WAIT
+    else
+      fat_populate_directory
+      VFS_OK
     end
   end
 
@@ -461,6 +480,7 @@ class Fat16FS < VFS::FS
     while true
       @process_msg = @queue.not_nil!.dequeue
       unless (msg = @process_msg).nil?
+        # FIXME: maybe don't use unsafe_as!
         fat16_node = msg.vfs_node.unsafe_as(Fat16Node)
         case msg.type
         when VFS::Message::Type::Read
@@ -489,6 +509,12 @@ class Fat16FS < VFS::FS
             end
           end
           @process_allocator.not_nil!.clear
+        when VFS::Message::Type::PopulateDirectory
+          Idt.switch_processes = false
+          # FIXME: don't disable interrupts once we can scan driver thread stacks
+          fat16_node.fat_populate_directory(allocator: @process_allocator)
+          msg.unawait_rewind
+          Idt.switch_processes = true
         end
       else
         Multiprocessing.sleep_drv

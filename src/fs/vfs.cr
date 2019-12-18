@@ -17,7 +17,7 @@ module VFS
     def name : String?
     end
 
-    abstract def fs : VFS
+    abstract def fs : VFS::FS
 
     def parent : Node?
     end
@@ -26,6 +26,14 @@ module VFS
     end
 
     def first_child : Node?
+    end
+
+    def populate_directory : Int32
+      VFS_OK
+    end
+
+    def dir_populated : Bool
+      true
     end
 
     # used for internal file execution

@@ -578,7 +578,12 @@ module Ide
   end
 
   # lock
+  # FIXME: have separate locks for each ATA device
   @@lock = Spinlock.new
+
+  def locked?
+    @@lock.locked?
+  end
 
   def lock(&block)
     @@lock.with do
