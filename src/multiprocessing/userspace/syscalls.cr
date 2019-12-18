@@ -53,17 +53,11 @@ rdx, rcx, rbx, rax : UInt64
     # while the current syscall is still being processed
     Idt.switch_processes = false
     Idt.enable
-    if Multiprocessing::Scheduler.current_process.not_nil!.kernel_process?
-      Multiprocessing::DriverThread.unlock
-    end
   end
 
   def unlock
     Idt.switch_processes = true
     Idt.disable
-    if Multiprocessing::Scheduler.current_process.not_nil!.kernel_process?
-      Multiprocessing::DriverThread.lock
-    end
   end
 
   # splits a path into segments separated by /

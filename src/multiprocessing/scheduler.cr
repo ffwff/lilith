@@ -307,11 +307,6 @@ module Multiprocessing::Scheduler
     unless process.fxsave_region.null?
       memcpy Multiprocessing.fxsave_region, process.fxsave_region, FXSAVE_SIZE
     end
-
-    # lock kernel subsytems for driver threads
-    if process.kernel_process?
-      DriverThread.lock
-    end
   end
 
   private def halt_processor
