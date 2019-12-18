@@ -21,7 +21,7 @@ struct Slice(T)
   end
 
   def self.mmalloc(size : Int)
-    new LibC.malloc(size.to_u64 * sizeof(T)).as(T*), size.to_i32
+    new LibC.calloc(1, size.to_u64 * sizeof(T)).as(T*), size.to_i32
   end
 
   def realloc(size : Int)
