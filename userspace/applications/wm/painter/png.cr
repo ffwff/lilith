@@ -38,7 +38,7 @@ end
 module Painter
   extend self
 
-  private def internal_load_png(filename, &block)
+  private def internal_load_png(filename, alpha = false, &block)
     if (fp = LibC.fopen(filename, "r")).null?
       return nil
     end
@@ -68,7 +68,7 @@ module Painter
     if color_type == PNG_COLOR_TYPE_RGB ||
        color_type == PNG_COLOR_TYPE_GRAY ||
        color_type == PNG_COLOR_TYPE_PALETTE
-      LibPNG.png_set_filler(png_ptr, 0x0, PNG_FILLER_AFTER)
+      LibPNG.png_set_filler(png_ptr, alpha ? 0xFF : 0x0, PNG_FILLER_AFTER)
     end
 
     if color_type == PNG_COLOR_TYPE_GRAY ||
@@ -95,9 +95,9 @@ module Painter
     end
   end
 
-  def load_png(filename : String) : Bitmap?
+  def load_png(filename : String, alpha : Bool = false) : Bitmap?
     img = nil
-    internal_load_png(filename) do |width, height, png_ptr|
+    internal_load_png(filename, alpha) do |width, height, png_ptr|
       img = Bitmap.new(width.to_i32, height.to_i32)
       height.times do |y|
         LibPNG.png_read_row png_ptr, img.to_unsafe.as(UInt8*) + (y * width * 4), Pointer(UInt8).null
