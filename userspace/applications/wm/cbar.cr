@@ -7,6 +7,10 @@ module Bar
   class_getter! time_label
   class_setter time_label
 
+  @@app: G::Application? = nil
+  class_getter! app
+  class_setter app
+
   @@window: G::Window? = nil
   class_getter! window
   class_setter window
@@ -19,12 +23,13 @@ module Bar
     def on_tick
       time = Time.local
       Bar.time_label.text = time.to_s("%d/%m/%Y %H:%M:%S").not_nil!
-      Bar.window.draw_event
+      Bar.app.send_redraw_message
     end
   end
 end
 
 app = G::Application.new
+Bar.app = app
 w, h = app.client.screen_resolution.not_nil!
 window = G::Window.new(0, 0, w, 16, Wm::IPC::Data::WindowFlags::Alpha)
 app.main_widget = window

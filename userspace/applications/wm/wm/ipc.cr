@@ -85,6 +85,13 @@ module Wm::IPC
     end
 
     DYN_RESPONSE_ID = 8
+
+    REDRAW_REQ_ID = 9
+    @[Packed]
+    struct RedrawRequest
+      header : Header
+      x, y, width, height : Int32
+    end
   end
 
   struct DynamicResponse
@@ -226,6 +233,20 @@ module Wm::IPC
       payload_size(Data::Query),
       Data::QUERY_ID)
     rep.value.type = type
+    msg
+  end
+
+  # Creates redraw request message
+  def redraw_request_message(x, y, width, height)
+    msg = uninitialized UInt8[sizeof(Data::RedrawRequest)]
+    rep = msg.to_unsafe.as(Data::RedrawRequest*)
+    rep.value.header = create_header(
+      payload_size(Data::RedrawRequest),
+      Data::REDRAW_REQ_ID)
+    rep.value.x = x
+    rep.value.y = y
+    rep.value.width = width
+    rep.value.height = height
     msg
   end
 

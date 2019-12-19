@@ -38,6 +38,13 @@ class G::Application
   def redraw
     if (main_widget = @main_widget)
       main_widget.draw_event
+      send_redraw_message
+    end
+  end
+
+  def send_redraw_message
+    if (main_widget = @main_widget)
+      @client << Wm::IPC.redraw_request_message(@x, @y, main_widget.width, main_widget.height)
     end
   end
 
