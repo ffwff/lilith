@@ -64,7 +64,7 @@ module Painter
                alpha? = false)
     if sx == 0 && sy == 0 && sw == dw && sh == dh
       if alpha?
-        Lib.alpha_blend db, sb, dw.to_u32 * dh.to_u32 // 4
+        Lib.alpha_blend db, sb, dw.to_u32 * dh.to_u32 * 4
       else
         LibC.memcpy db, sb, dw.to_u32 * dh.to_u32 * 4
       end
@@ -88,13 +88,14 @@ module Painter
     else
       sw_clamp = sw
     end
+
     sh_clamp.times do |y|
       fb_offset = ((sy + y) * dw + sx) * 4
       src_offset = y * sw * 4
       if alpha?
         Lib.alpha_blend(db.as(UInt8*) + fb_offset,
                         sb.as(UInt8*) + src_offset,
-                        sw_clamp // 4)
+                        sw_clamp * 4)
       else
         LibC.memcpy(db.as(UInt8*) + fb_offset,
                     sb.as(UInt8*) + src_offset,
@@ -116,7 +117,7 @@ module Painter
                alpha? = false)
     if sx == 0 && sy == 0 && sw == dw && sh == dh
       if alpha?
-        Lib.alpha_blend db, sb, dw.to_u32 * dh.to_u32 // 4
+        Lib.alpha_blend db, sb, dw.to_u32 * dh.to_u32 * 4
       else
         LibC.memcpy db, sb, dw.to_u32 * dh.to_u32 * 4
       end
@@ -143,7 +144,7 @@ module Painter
       if alpha?
         Lib.alpha_blend(db.as(UInt8*) + fb_offset,
                         sb.as(UInt8*) + src_offset,
-                        sw_clamp // 4)
+                        sw_clamp * 4)
       else
         LibC.memcpy(db.as(UInt8*) + fb_offset,
                     sb.as(UInt8*) + src_offset,
@@ -164,15 +165,14 @@ module Painter
                        cx : Int, cy : Int,
                        dx : Int, dy : Int,
                        alpha? = false)
-    ch_clamp = Math.min(dh - dy - cy, ch)
-    cw_clamp = Math.min(dw - dx - cx, cw)
+    ch_clamp = Math.min(dh - dy, ch)
+    cw_clamp = Math.min(dw - dx, cw)
 
-
-    STDERR.print  dx, ' ', dy, " / ",
-                  dw, ' ', dh,  " / ",
-                  cw_clamp, ' ', ch_clamp, " / ",
-                  cx, ' ', cy, " / ",
-                  db, ' ', sb, '\n'
+    #STDERR.print  dx, ' ', dy, " / ",
+    #              dw, ' ', dh,  " / ",
+    #              cw_clamp, ' ', ch_clamp, " / ",
+    #              cx, ' ', cy, " / ",
+    #              db, ' ', sb, '\n'
 
     return if cw_clamp < 0 || ch_clamp < 0
 
@@ -182,7 +182,7 @@ module Painter
       if alpha?
         Lib.alpha_blend(db.as(UInt8*) + fb_offset,
                         sb.as(UInt8*) + src_offset,
-                        cw_clamp // 4)
+                        cw_clamp * 4)
       else
         LibC.memcpy(db.as(UInt8*) + fb_offset,
                     sb.as(UInt8*) + src_offset,
