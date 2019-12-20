@@ -39,7 +39,7 @@ class Array(T)
       @buffer[0] = GC_ARRAY_HEADER_TYPE
       @buffer[1] = 0u32
     else
-      @buffer = @buffer.realloc(malloc_size(capacity) // sizeof(T))
+      @buffer = Gc.realloc(@buffer.as(Void*), malloc_size(capacity)).as(USize*)
     end
   end
 
