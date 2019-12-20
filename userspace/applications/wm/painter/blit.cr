@@ -168,12 +168,6 @@ module Painter
     ch_clamp = Math.min(dh - dy, ch)
     cw_clamp = Math.min(dw - dx, cw)
 
-    #STDERR.print  dx, ' ', dy, " / ",
-    #              dw, ' ', dh,  " / ",
-    #              cw_clamp, ' ', ch_clamp, " / ",
-    #              cx, ' ', cy, " / ",
-    #              db, ' ', sb, '\n'
-
     return if cw_clamp < 0 || ch_clamp < 0
 
     ch_clamp.times do |y|
