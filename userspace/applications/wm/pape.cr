@@ -14,5 +14,6 @@ app.main_widget = window
 window.setup_event
 
 Painter.load_png ARGV[0], window.bitmap!.to_bytes
+app.send_redraw_message
 
 app.run
