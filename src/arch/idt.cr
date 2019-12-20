@@ -117,17 +117,24 @@ rdx, rcx, rbx, rax : UInt64
 
   # status
   @@status_mask = false
-  class_property status_mask
+  class_getter status_mask
 
+  {% if flag?(:record_cli) %}
+    @@disabled_at = 0x0u64
+    class_getter disabled_at
+  {% end %}
+
+  @[NoInline]
   def enable
     if !@@status_mask
-      asm("sti")
+      asm("sti" ::: "volatile")
     end
   end
 
+  @[NoInline]
   def disable
     if !@@status_mask
-      asm("cli")
+      asm("cli" ::: "volatile")
     end
   end
 
@@ -137,7 +144,12 @@ rdx, rcx, rbx, rax : UInt64
     end
     disable
     @@status_mask = true
+
+    {% if flag?(:record_cli) %}
+      asm("lea (%rip), $0" : "=r"(@@disabled_at) :: "volatile")
+    {% end %}
     retval = yield
+
     @@status_mask = false
     enable if reenable
     retval
@@ -243,3 +255,9 @@ fun kcpuex_handler(frame : Idt::Data::ExceptionRegisters*)
     while true; end
   end
 end
+
+{% if flag?(:record_cli) %}
+fun __record_cli : UInt64
+  Idt.disabled_at
+end
+{% end %}

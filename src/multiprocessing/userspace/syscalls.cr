@@ -47,15 +47,20 @@ rdx, rcx, rbx, rax : UInt64
     end
   end
 
+  @@locked = false
+  class_getter locked
+
   def lock
     # NOTE: we disable process switching because
     # other processes might do another syscall
     # while the current syscall is still being processed
+    @@locked = true
     Idt.switch_processes = false
     Idt.enable
   end
 
   def unlock
+    @@locked = false
     Idt.switch_processes = true
     Idt.disable
   end

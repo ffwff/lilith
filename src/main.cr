@@ -68,7 +68,6 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Console.print "initializing idt...\n"
   PIC.init_interrupts
   Idt.init_table
-  Idt.status_mask = false
   Idt.enable
 
   # hardware
