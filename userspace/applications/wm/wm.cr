@@ -58,10 +58,10 @@ module Wm::Server
       @bitmap
     end
 
-    @drawn : Bool = false
-    property drawn
-
     abstract def render(bitmap : Painter::Bitmap)
+
+    # render a portion of the window, clipped by a dirty rect
+    # the dirty rect must intersect the window, and must be absolutely positioned
     abstract def render_cropped(bitmap : Painter::Bitmap, rect : Wm::Server::DirtyRect)
 
     def <=>(other)
@@ -85,7 +85,7 @@ module Wm::Server
     end
 
     def render_cropped(buffer : Painter::Bitmap, rect : Wm::Server::DirtyRect)
-      # Painter.blit_rect buffer, (rect.width * 0.9).to_i32, (rect.height * 0.9).to_i32, rect.x, rect.y, @color
+      Painter.blit_rect buffer, rect.width, rect.height, rect.x, rect.y, @color
     end
     
     def contains_point?(x : Int, y : Int)
@@ -100,13 +100,19 @@ module Wm::Server
     end
 
     def render(buffer : Painter::Bitmap)
-      return if drawn
       Painter.blit_img buffer, bitmap.not_nil!, @x, @y, true
     end
     
     def render_cropped(buffer : Painter::Bitmap, rect : Wm::Server::DirtyRect)
-      return if drawn
-      Painter.blit_img buffer, bitmap.not_nil!, @x, @y, true
+      {% if false %}
+      Painter.blit_img_cropped buffer, bitmap.not_nil!,
+                               rect.width, rect.height,
+                               rect.x - @x, rect.y - @y,
+                               @x, @y,
+                               rect.x, rect.y, true
+      {% else %}
+       Painter.blit_img buffer, bitmap.not_nil!, @x, @y, true
+      {% end %}
     end
 
     def respond(file)
@@ -129,9 +135,9 @@ module Wm::Server
         dy = Math.min(@y, old_y)
         dw = Math.max(@x, old_x) + bitmap.width - dx
         dh = Math.max(@y, old_y) + bitmap.height - dy
-        # Wm::Server.make_dirty dx, dy, dw, dh
+        Wm::Server.make_dirty dx, dy, dw, dh
         # Wm::Server.make_dirty old_x, old_y, bitmap.width, bitmap.height
-        Wm::Server.make_dirty @x, @y, bitmap.width, bitmap.height
+        # Wm::Server.make_dirty @x, @y, bitmap.width, bitmap.height
       end
       packet
     end
@@ -165,11 +171,10 @@ module Wm::Server
     end
     
     def render_cropped(buffer : Painter::Bitmap, rect : Wm::Server::DirtyRect)
+      relx, rely, relw, relh = rect.translate_relative @x, @y, bitmap.not_nil!.width, bitmap.not_nil!.height
       Painter.blit_img_cropped buffer, bitmap.not_nil!,
-                               rect.width, rect.height,
-                               rect.x - @x, rect.y - @y,
-                               @x, @y,
-                               rect.x, rect.y, @alpha
+                               relw, relh, relx, rely,
+                               @x + relx, @y + rely, @alpha
     end
   end
 
@@ -224,18 +229,28 @@ module Wm::Server
 
     def window_in_rect?(win : Window)
       return false if win.bitmap?.nil?
-      @x < win.x && (win.x + win.bitmap.not_nil!.width) < (@x + @width) &&
-      @y < win.y && (win.y + win.bitmap.not_nil!.height) < (@y + @height)
+      @x <= win.x && (win.x + win.bitmap.not_nil!.width) <= (@x + @width) &&
+      @y <= win.y && (win.y + win.bitmap.not_nil!.height) <= (@y + @height)
     end
 
-    def rect_in_window?(win : Window)
-      return true if win.bitmap?.nil?
-      win.x <= @x && (@x + @width) <= (win.x + win.bitmap.not_nil!.width) &&
-      win.y <= @y && (@y + @height) <= (win.y + win.bitmap.not_nil!.height)
+    def intersects_window?(win : Window)
+      return false if win.bitmap?.nil?
+      bitmap = win.bitmap.not_nil!
+      intersects_x = !(@x + @width <= win.x || win.x + bitmap.width <= @x)
+      intersects_y = !(@y + @height <= win.y || win.y + bitmap.height <= @y)
+      intersects_x && intersects_y
+    end
+
+    def translate_relative(dx : Int, dy : Int, dw : Int, dh : Int)
+      # rect.x < @x ? (rect.x + rect.width) - @x : rect.x - @x,
+      relx = (@x - dx).clamp(0, dw)
+      rely = (@y - dy).clamp(0, dh)
+      relw = ((@x + @width) - dx).clamp(0, dw) - relx
+      relh = ((@y + @height) - dy).clamp(0, dh) - rely
+      {relx, rely, relw, relh}
     end
   end
   # dirty rects
-  MAX_DIRTY_RECTS = 256
   @@dirty_rects : Array(DirtyRect)? = nil
   class_getter! dirty_rects
   @@largest_dirty_width = 0
@@ -248,9 +263,6 @@ module Wm::Server
     @@largest_dirty_height = Math.max(@@largest_dirty_height, height)
     if @@largest_dirty_width == framebuffer.width &&
        @@largest_dirty_height == framebuffer.height
-      @@redraw_all = true
-      return
-    elsif dirty_rects.size == MAX_DIRTY_RECTS
       @@redraw_all = true
       return
     end
@@ -304,12 +316,11 @@ module Wm::Server
     @@windows.push cursor
 
     # default startup application
-    Process.new "desktop",
+    Process.new "cterm",
       input: Process::Redirect::Inherit,
       output: Process::Redirect::Inherit,
       error: Process::Redirect::Inherit
   end
-
 
   def loop
     while true
@@ -327,9 +338,6 @@ module Wm::Server
       clients.each do |socket|
         respond_ipc_socket socket
       end
-      @@windows.each do |window|
-        window.drawn = false
-      end
       if @@redraw_all
         @@windows.each do |window|
           window.render backbuffer
@@ -342,22 +350,21 @@ module Wm::Server
         @@redraw_all = false
       elsif dirty_rects.size > 0
         dirty_rects.each do |rect|
+          Painter.blit_rect Wm::Server.framebuffer, rect.width, rect.height, rect.x, rect.y, 0xff0000
           @@windows.each do |window|
-            if rect.rect_in_window?(window)
-              window.render_cropped backbuffer, rect
-              window.drawn = true
-            elsif rect.window_in_rect?(window)
+            if rect.window_in_rect?(window)
               window.render backbuffer
-              window.drawn = true
+            elsif rect.intersects_window?(window)
+              window.render_cropped backbuffer, rect
             end
           end
         end
+        usleep 1000
         LibC.memcpy framebuffer.to_unsafe, backbuffer.to_unsafe,
           (framebuffer.width.to_usize * framebuffer.height.to_usize * 4)
         dirty_rects.clear
         @@largest_dirty_width = 0
         @@largest_dirty_height = 0
-        @@redraw_all = true
       end
     end
   end
@@ -473,6 +480,7 @@ module Wm::Server
           end
           @@windows.push program
           @@windows.sort!
+          make_dirty msg.x, msg.y, msg.width, msg.height 
 
           socket.unbuffered_write IPC.response_message(program.wid).to_slice
         end
@@ -483,12 +491,11 @@ module Wm::Server
             program.x = msg.x.clamp(0, framebuffer.width)
             program.y = msg.y.clamp(0, framebuffer.height)
             if bitmap = program.bitmap
-              @@redraw_all = true
-              # dx = Math.min(old_x, program.x)
-              # dy = Math.min(old_y, program.y)
-              # dw = Math.max(old_x, program.x) + bitmap.width - dx
-              # dh = Math.max(old_y, program.y) + bitmap.height - dy
-              # make_dirty dx, dy, (dw * 1.1).to_i32, (dh * 1.1).to_i32
+              dx = Math.min(old_x, program.x)
+              dy = Math.min(old_y, program.y)
+              dw = Math.max(old_x, program.x) + bitmap.width - dx
+              dh = Math.max(old_y, program.y) + bitmap.height - dy
+              make_dirty dx, dy, dw, dh
               # dw = max(old_x+bwidth,program.x+bwidth)-dx
             end
             socket.unbuffered_write IPC.response_message(1).to_slice
@@ -508,9 +515,18 @@ module Wm::Server
         end
       when IPC::Data::REDRAW_REQ_ID
         if (msg = FixedMessageReader(IPC::Data::RedrawRequest).read(header, socket))
-          STDERR.print "ok!\n"
-          make_dirty msg.x, msg.y, msg.width, msg.height
-          socket.unbuffered_write IPC.response_message(1).to_slice
+          STDERR.print "redraw: ", msg.x, ' ', msg.y, ' ', msg.width, ' ', msg.height, '\n'
+          if msg.x == -1 && msg.y == -1 && msg.width == -1 && msg.height == -1
+            if program = socket.program
+              make_dirty program.x, program.y, program.bitmap.not_nil!.width, program.bitmap.not_nil!.height
+              socket.unbuffered_write IPC.response_message(1).to_slice
+            else
+              socket.unbuffered_write IPC.response_message(0).to_slice
+            end
+          else
+            make_dirty msg.x, msg.y, msg.width, msg.height
+            socket.unbuffered_write IPC.response_message(1).to_slice
+          end
         end
       end
     end
