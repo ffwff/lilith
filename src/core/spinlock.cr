@@ -23,7 +23,8 @@ struct Spinlock
 
   def with(&block)
     lock
-    yield
+    retval = yield
     unlock
+    retval
   end
 end
