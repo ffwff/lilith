@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdint.h>
 #include <x86intrin.h>
 
 static inline __m128i clip_u8(__m128i dst) {
@@ -60,8 +61,20 @@ static __m128i alpha_blend_array(__m128i dst, __m128i src) {
 
 void alpha_blend(unsigned char *dst, const unsigned char *src, size_t size) {
   __m128i *dst128 = (__m128i *)dst;
-  __m128i *src128 = (__m128i *)src;
-  for (size_t i = 0; i < size; i++) {
-    _mm_storeu_si128(dst128 + i, alpha_blend_array(_mm_loadu_si128(dst128 + i), _mm_loadu_si128(src128 + i)));
+  const __m128i *src128 = (const __m128i *)src;
+  size_t quads = size / 16;
+  for (size_t i = 0; i < quads; i++) {
+    _mm_storeu_si128(dst128 + i,
+        alpha_blend_array(_mm_loadu_si128(dst128 + i), _mm_loadu_si128(src128 + i)));
+  }
+  unsigned char *rdd = (unsigned char *)(&dst128[quads]);
+  const unsigned char *rds = (unsigned char *)(&src128[quads]);
+  size_t rem = size % 16;
+  for (size_t i = 0; i < rem; i += 4) {
+      unsigned char db = rdd[i + 0], dg = rdd[i + 1], dr = rdd[i + 2];
+      unsigned char sb = rds[i + 0], sg = rds[i + 1], sr = rds[i + 2], sa = rds[i + 3];
+      rdd[i + 0] = (((uint16_t)sb * sa) >> 8) + (((uint16_t)db * (0xff - sa)) >> 8) + 1;
+      rdd[i + 1] = (((uint16_t)sg * sa) >> 8) + (((uint16_t)dg * (0xff - sa)) >> 8) + 1;
+      rdd[i + 2] = (((uint16_t)sr * sa) >> 8) + (((uint16_t)dr * (0xff - sa)) >> 8) + 1;
   }
 }
