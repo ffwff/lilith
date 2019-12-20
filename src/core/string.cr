@@ -70,6 +70,14 @@ class String
       end
     end
 
+    def <<(other : Char)
+      if other.ord <= 0xFF
+        write_byte other.ord.to_u8
+      else
+        panic "TODO: support utf-8 for builder"
+      end
+    end
+
     def to_s : String
       panic "Can only invoke 'to_s' once on String::Builder" if @finished
       @finished = true
