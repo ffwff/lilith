@@ -359,7 +359,6 @@ module Wm::Server
             end
           end
         end
-        usleep 1000
         LibC.memcpy framebuffer.to_unsafe, backbuffer.to_unsafe,
           (framebuffer.width.to_usize * framebuffer.height.to_usize * 4)
         dirty_rects.clear

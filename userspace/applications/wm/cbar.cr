@@ -23,7 +23,7 @@ module Bar
     def on_tick
       time = Time.local
       Bar.time_label.text = time.to_s("%d/%m/%Y %H:%M:%S").not_nil!
-      Bar.app.send_redraw_message
+      Bar.app.redraw
     end
   end
 end
