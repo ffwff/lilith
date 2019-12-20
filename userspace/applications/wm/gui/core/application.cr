@@ -44,7 +44,7 @@ class G::Application
 
   def send_redraw_message
     if (main_widget = @main_widget)
-      @client << Wm::IPC.redraw_request_message(@x, @y, main_widget.width, main_widget.height)
+      @client << Wm::IPC.redraw_request_message(-1, -1, -1, -1)
     end
   end
 

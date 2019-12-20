@@ -123,25 +123,17 @@ module Painter
       return 
     end
 
-    if dy + dh > dh
-      if dh < dy # dh - dy < 0
-        return
-      else
-        sh_clamp = dh - dy
-      end
+    if dh < dy # dh - dy < 0
+      return
     else
-      sh_clamp = dh
+      sh_clamp = dh - dy
     end
     sh_clamp = Math.min(sh_clamp, sh - sy)
 
-    if dx + dw > dw
-      if dw < dx # dw - dx < 0
-        return
-      else
-        sw_clamp = dw - dx
-      end
+    if dw < dx # dw - dx < 0
+      return
     else
-      sw_clamp = dw
+      sw_clamp = dw - dx
     end
     sw_clamp = Math.min(sw_clamp, sw - sx)
 
@@ -171,44 +163,30 @@ module Painter
                        cw : Int, ch : Int,
                        cx : Int, cy : Int,
                        dx : Int, dy : Int,
-                       sx : Int, sy : Int,
                        alpha? = false)
-    if dy + dh > dh
-      if dh < dy # dh - dy < 0
-        return
-      else
-        sh_clamp = dh - dy
-      end
-    else
-      sh_clamp = dh
-    end
-    sh_clamp = Math.min(Math.min(sh_clamp, sh - cy), ch)
+    ch_clamp = Math.min(dh - dy - cy, ch)
+    cw_clamp = Math.min(dw - dx - cx, cw)
 
-    if dx + dw > dw
-      if dw < dx # dw - dx < 0
-        return
-      else
-        sw_clamp = dw - dx
-      end
-    else
-      sw_clamp = dw
-    end
-    sw_clamp = Math.min(Math.min(sw_clamp, sw - cx), cw)
-    # sw_clamp = Math.min(sw_clamp, cw)
 
-    # STDERR.print sx, ' ', sy, ' ', cx, ' ', cy, ' ', sw_clamp, ' ', sh_clamp, ' ', sw, ' ', sh, '\n'
+    STDERR.print  dx, ' ', dy, " / ",
+                  dw, ' ', dh,  " / ",
+                  cw_clamp, ' ', ch_clamp, " / ",
+                  cx, ' ', cy, " / ",
+                  db, ' ', sb, '\n'
 
-    sh_clamp.times do |y|
-      fb_offset = ((sy + y) * dw + sx) * 4
+    return if cw_clamp < 0 || ch_clamp < 0
+
+    ch_clamp.times do |y|
+      fb_offset = ((dy + y) * dw) * 4 + dx * 4
       src_offset = (cy + y) * sw * 4 + cx * 4
       if alpha?
         Lib.alpha_blend(db.as(UInt8*) + fb_offset,
                         sb.as(UInt8*) + src_offset,
-                        sw_clamp // 4)
+                        cw_clamp // 4)
       else
         LibC.memcpy(db.as(UInt8*) + fb_offset,
                     sb.as(UInt8*) + src_offset,
-                    sw_clamp * 4)
+                    cw_clamp * 4)
       end
     end
   end
@@ -216,10 +194,9 @@ module Painter
   def blit_img_cropped(dest : Bitmap, src : Bitmap,
                        cw : Int, ch : Int,
                        cx : Int, cy : Int,
-                       dx : Int, dy : Int,
-                       sx : Int, sy : Int, alpha? = false)
+                       dx : Int, dy : Int, alpha? = false)
     blit_img_cropped dest.to_unsafe, dest.width, dest.height,
                      src.to_unsafe, src.width, src.height,
-                     cw, ch, cx, cy, dx, dy, sx, sy, alpha?
+                     cw, ch, cx, cy, dx, dy, alpha?
   end
 end
