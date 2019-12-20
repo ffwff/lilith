@@ -2,7 +2,7 @@ require "./fat/cache.cr"
 
 private lib Fat16Structs
   @[Packed]
-  struct Fat16BootSector
+  struct BootSector
     jmp : UInt8[3]
     oem : UInt8[8]
     sector_size : UInt16
@@ -29,7 +29,7 @@ private lib Fat16Structs
   end
 
   @[Packed]
-  struct Fat16Entry
+  struct Entry
     name : UInt8[8]
     ext : UInt8[3]
     attributes : UInt8
@@ -39,23 +39,35 @@ private lib Fat16Structs
     starting_cluster : UInt16
     file_size : UInt32
   end
+
+  @[Packed]
+  struct LFNEntry
+    seq_number : UInt8
+    name_1 : UInt16[5]
+    attributes : UInt8
+    type : UInt8
+    checksum : UInt8
+    name_2 : UInt16[6]
+    starting_cluster : UInt16
+    name_3 : UInt16[2]
+  end
 end
 
 # entry attributes
-private def entry_exists?(entry : Fat16Structs::Fat16Entry)
+private def entry_exists?(entry : Fat16Structs::Entry)
   # 0x0 : null entry, 0xE5 : deleted
   entry.name[0] != 0x0 && entry.name[0] != 0xE5
 end
 
-private def entry_volume_label?(entry : Fat16Structs::Fat16Entry)
+private def entry_volume_label?(entry : Fat16Structs::Entry)
   (entry.attributes & 0x08) == 0x08
 end
 
-private def entry_file?(entry : Fat16Structs::Fat16Entry)
+private def entry_file?(entry : Fat16Structs::Entry)
   (entry.attributes & 0x18) == 0
 end
 
-private def entry_dir?(entry : Fat16Structs::Fat16Entry)
+private def entry_dir?(entry : Fat16Structs::Entry)
   (entry.attributes & 0x18) == 0x10
 end
 
@@ -299,7 +311,7 @@ private class Fat16Node < VFS::Node
     cluster = starting_cluster
     end_directory = false
 
-    entries = Slice(Fat16Structs::Fat16Entry).malloc 16
+    entries = Slice(Fat16Structs::Entry).malloc 16
 
     while cluster < 0xFFF8
       sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
@@ -364,32 +376,83 @@ private class Fat16Node < VFS::Node
     VFS_ERR
   end
 
+  @lfn_segments : Array(String)? = nil
+  private getter! lfn_segments
+  @lfn_length = 0
+
+  private def lfn_finish
+    builder = String::Builder.new @lfn_length
+    lfn_segments.reverse_each do |segment|
+      builder << segment
+    end
+    @lfn_segments = nil
+    @lfn_length = 0
+    builder.back 1
+    builder.to_s
+  end
+
   # entry loading
   def load_entry(entry)
+    if entry.attributes == 0xF
+      if @lfn_segments.nil?
+        @lfn_segments = Array(String).new
+        @lfn_length = 0
+      end
+      lfn_entry = entry.unsafe_as(Fat16Structs::LFNEntry)
+      return if lfn_entry.seq_number == 0xE5
+      builder = String::Builder.new 13
+      ended = false
+      lfn_entry.name_1.each do |word|
+        if word == 0xFFFF
+          ended = true
+          break
+        end
+        builder << word.unsafe_chr
+      end
+      lfn_entry.name_2.each do |word|
+        if word == 0xFFFF || ended
+          ended = true
+          break
+        end
+        builder << word.unsafe_chr
+      end
+      lfn_entry.name_3.each do |word|
+        if word == 0xFFFF || ended
+          ended = true
+          break
+        end
+        builder << word.unsafe_chr
+      end
+      str = builder.to_s
+      @lfn_length += str.size
+      lfn_segments.push str
+      return
+    elsif @lfn_length > 0
+      lfn_name = lfn_finish
+    end
     return if !entry_exists? entry
     return if entry_volume_label? entry
     unless 0x20 <= entry.name[0] && entry.name[0] <= 0x7e
-      # FIXME: the driver sometimes reads garbage entries
       return
     end
     if entry_file? entry
-      load_file_entry entry
+      load_file_entry entry, lfn_name
     elsif entry_dir? entry
-      load_dir_entry entry
+      load_dir_entry entry, lfn_name
     end
   end
 
-  private def load_file_entry(entry)
-    node = Fat16Node.new(fs, name_from_entry(entry),
+  private def load_file_entry(entry, lfn_name=nil)
+    node = Fat16Node.new(fs, lfn_name || name_from_entry(entry),
       starting_cluster: entry.starting_cluster.to_u32,
       size: entry.file_size)
     add_child node
   end
 
-  private def load_dir_entry(entry)
+  private def load_dir_entry(entry, lfn_name=nil)
     name = name_from_entry(entry)
     return if name == "." || name == ".."
-    node = Fat16Node.new(fs, name, true,
+    node = Fat16Node.new(fs, lfn_name || name, true,
       starting_cluster: entry.starting_cluster.to_u32,
       size: entry.file_size)
     add_child node
@@ -423,7 +486,7 @@ class Fat16FS < VFS::FS
 
     panic "device must be ATA" if @device.type != AtaDevice::Type::Ata
 
-    bs = Pointer(Fat16Structs::Fat16BootSector).malloc_atomic
+    bs = Pointer(Fat16Structs::BootSector).malloc_atomic
 
     device.read_sector(bs.as(UInt8*), partition.first_sector.to_u64)
     idx = 0
@@ -443,7 +506,7 @@ class Fat16FS < VFS::FS
 
     # load root directory
     @root = Fat16Node.new self, nil, true
-    entries = Slice(Fat16Structs::Fat16Entry).malloc 16
+    entries = Slice(Fat16Structs::Entry).malloc 16
 
     bs.value.root_dir_entries.times do |i|
       break if sector + i > @data_sector
