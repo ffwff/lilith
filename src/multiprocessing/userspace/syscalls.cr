@@ -627,6 +627,7 @@ rdx, rcx, rbx, rax : UInt64
         end
         npages = (incr >> 12) + 1
         Paging.alloc_page_pg(mmap_heap.end_addr, true, true, npages: npages.to_u64)
+        pudata.memory_used += incr // 1024
         mmap_heap.size += incr
       elsif incr == 0 && mmap_heap.size == 0u64
         if !mmap_heap.next_node.nil?
@@ -636,6 +637,7 @@ rdx, rcx, rbx, rax : UInt64
           end
         end
         Paging.alloc_page_pg(mmap_heap.addr, true, true)
+        pudata.memory_used += (0x1000 // 1024)
         mmap_heap.size += 0x1000
       elsif incr < 0
         # TODO
@@ -664,6 +666,7 @@ rdx, rcx, rbx, rax : UInt64
         Paging.alloc_page_pg addr,
             mmap_attrs.includes?(MemMapNode::Attributes::Write),
             true, size // 0x1000
+        pudata.memory_used += size // 1024
         pudata.mmap_list.add(addr, size, mmap_attrs)
         sysret(addr)
       else

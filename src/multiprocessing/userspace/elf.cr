@@ -164,12 +164,13 @@ module ElfReader
   end
 
   struct Result
-    getter is64, initial_ip, heap_start, mmap_list
+    getter is64, initial_ip, heap_start, mmap_list, memory_used
 
     def initialize(@is64 : Bool,
                    @initial_ip : USize,
                    @heap_start : USize,
-                   @mmap_list : Slice(MemMapHeader))
+                   @mmap_list : Slice(MemMapHeader),
+                   @memory_used : USize)
     end
   end
 
@@ -342,6 +343,7 @@ module ElfReader
 
     ret_initial_ip = 0u64
     ret_heap_start = 0u64
+    memory_used = 0u64
 
     result = ElfReader.read(node, allocator) do |data|
       case data
@@ -359,7 +361,8 @@ module ElfReader
           if data.attrs.includes?(MemMapNode::Attributes::Read)
             section_start = Paging.aligned_floor(data.vaddr.to_u64)
             section_end = Paging.aligned(data.vaddr.to_u64 + data.memsz.to_u64)
-            npages = (section_end - section_start) >> 12
+            npages = (section_end - section_start) // 0x1000
+            memory_used += (section_end - section_start) // 1024
             # create page and zero-initialize it
             page_start = Paging.alloc_page_pg_drv(section_start,
               data.attrs.includes?(MemMapNode::Attributes::Write),
@@ -388,7 +391,7 @@ module ElfReader
       # pad heap offset
       ret_heap_start += 0x2000
       # allocate the stack
-      Result.new(is64, ret_initial_ip, ret_heap_start, mmap_list)
+      Result.new(is64, ret_initial_ip, ret_heap_start, mmap_list, memory_used)
     else
       Paging.free_process_pdpt Paging.current_pdpt.address, false
       result
