@@ -92,6 +92,8 @@ module Wm::IPC
       header : Header
       x, y, width, height : Int32
     end
+
+    WINDOW_CLOSE_ID = 10
   end
 
   struct DynamicResponse
@@ -146,6 +148,14 @@ module Wm::IPC
     msg = uninitialized UInt8[sizeof(Data::Header)]
     msg.to_unsafe.as(Data::Header*)
       .value = create_header 0, Data::TEST_MESSAGE_ID
+    msg
+  end
+
+  # Creates a window close message
+  def window_close_message
+    msg = uninitialized UInt8[sizeof(Data::Header)]
+    msg.to_unsafe.as(Data::Header*)
+      .value = create_header 0, Data::WINDOW_CLOSE_ID
     msg
   end
 

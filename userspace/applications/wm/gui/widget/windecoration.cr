@@ -62,6 +62,11 @@ class G::WindowDecoration < G::Widget
 
   @focused = true
 
+  CLOSE_WIDTH = 16
+  CLOSE_HEIGHT = 16
+  @close_x = 0
+  @close_y = 0
+
   def draw_event
     Painter.blit_rect bitmap!, 0, 0, @alpha ? BG_A : BG
 
@@ -83,6 +88,13 @@ class G::WindowDecoration < G::Widget
     Painter.blit_rect bitmap!,
                       1, height-2,
                       width-1, 1, @alpha ? BORDER_A : BORDER
+
+    # close button
+    @close_x = width - CLOSE_WIDTH - TITLE_PADDING_SIDE
+    @close_y = 1
+    Painter.blit_rect bitmap!,
+                      CLOSE_WIDTH, CLOSE_HEIGHT,
+                      @close_x, @close_y, 0xffff0000u32
 
     # title
     if (title = @title)
@@ -127,14 +139,21 @@ class G::WindowDecoration < G::Widget
     if main_widget = @main_widget
       main_widget.mouse_event ev
     end
-    if ev.modifiers.includes?(Wm::IPC::Data::MouseEventModifiers::LeftButton) &&
-        (@last_mouse_x != -1 && @last_mouse_y != -1)
-      delta_x = ev.x - @last_mouse_x
-      delta_y = ev.y - @last_mouse_y
-      if delta_x != 0 || delta_y != 0
-        new_x = @app.not_nil!.x + delta_x
-        new_y = @app.not_nil!.y + delta_y
-        @app.not_nil!.move(new_x, new_y)
+    if ev.modifiers.includes?(Wm::IPC::Data::MouseEventModifiers::LeftButton)
+      relx = ev.x - @app.not_nil!.x
+      rely = ev.y - @app.not_nil!.y
+      if @close_x <= relx <= (@close_x + CLOSE_WIDTH) &&
+         @close_y <= rely <= (@close_y + CLOSE_HEIGHT)
+        # STDERR.print "close!\n"
+        @app.not_nil!.close
+      elsif @last_mouse_x != -1 && @last_mouse_y != -1
+        delta_x = ev.x - @last_mouse_x
+        delta_y = ev.y - @last_mouse_y
+        if delta_x != 0 || delta_y != 0
+          new_x = @app.not_nil!.x + delta_x
+          new_y = @app.not_nil!.y + delta_y
+          @app.not_nil!.move(new_x, new_y)
+        end
       end
     end
     @last_mouse_x = ev.x

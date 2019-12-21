@@ -55,6 +55,13 @@ class G::Application
     @client << Wm::IPC.move_request_message(@x, @y)
   end
 
+  def close
+    @client << Wm::IPC.window_close_message
+    IO::Select.wait @client.socket, UInt32::MAX
+    @client.read_message
+    exit 0
+  end
+
   def run
     if (main_widget = @main_widget)
       main_widget.setup_event

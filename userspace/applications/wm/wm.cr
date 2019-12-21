@@ -176,6 +176,12 @@ module Wm::Server
                                relw, relh, relx, rely,
                                @x + relx, @y + rely, @alpha
     end
+
+    def close
+      @socket.close
+      @bitmap.not_nil!.to_unsafe.unmap_from_memory
+      @bitmap_file.close
+    end
   end
 
   @@framebuffer : Painter::Bitmap? = nil
@@ -526,6 +532,15 @@ module Wm::Server
             make_dirty msg.x, msg.y, msg.width, msg.height
             socket.unbuffered_write IPC.response_message(1).to_slice
           end
+        end
+      when IPC::Data::WINDOW_CLOSE_ID
+        if program = socket.program
+          make_dirty program.x, program.y, program.bitmap.not_nil!.width, program.bitmap.not_nil!.height
+          program.close
+          @@windows.delete program
+        else
+          socket.unbuffered_write IPC.response_message(-1).to_slice
+          next
         end
       end
     end
