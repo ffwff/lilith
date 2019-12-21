@@ -7,9 +7,11 @@ module Adam
   class_property cwd
 end
 
-def getline : String?
+def getline : String
   buffer = uninitialized UInt8[128]
-  return nil if (nread = STDIN.read(buffer.to_slice)) <= 0
+  if (nread = STDIN.read(buffer.to_slice)) <= 0
+    exit 0
+  end
   nread -= 1 # trim newline
   buffer[nread] = 0u8
   String.new(buffer.to_unsafe, nread)
@@ -44,7 +46,5 @@ end
 Adam.cwd = Dir.current.not_nil!
 while true
   print Adam.cwd, "> "
-  if line = getline
-    interpret_line line
-  end
+  interpret_line getline
 end

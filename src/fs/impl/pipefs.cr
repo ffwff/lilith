@@ -72,7 +72,7 @@ private class PipeFSNode < VFS::Node
                  @fs : PipeFS,
                  anonymous = false)
     if anonymous
-      @open_count += 1
+      @open_count = 1
       @flags |= Flags::Anonymous
     end
     @pipe = CircularBuffer.new
@@ -82,7 +82,14 @@ private class PipeFSNode < VFS::Node
   def close
     if @flags.includes?(Flags::Anonymous)
       @open_count -= 1
-      remove if @open_count == 0
+      if @open_count == 1 && (queue = @queue)
+        queue.keep_if do |msg|
+          msg.unawait (-1).to_u64
+          false
+        end
+      elsif @open_count == 0
+        remove
+      end
     end
   end
 
@@ -138,6 +145,10 @@ private class PipeFSNode < VFS::Node
       end
     end
 
+    if @flags.includes?(Flags::Anonymous) && @open_count == 1 && size == 0
+      return VFS_EOF
+    end
+
     if @flags.includes?(Flags::WaitRead) && size == 0
       if @queue.nil?
         @queue = VFS::Queue.new
@@ -185,9 +196,11 @@ private class PipeFSNode < VFS::Node
     return -1 if @flags.includes?(Flags::Removed)
     case request
     when SC_IOCTL_PIPE_CONF_FLAGS
-      # 24-bits for options! (last 8-bits are reserved for node state)
-      data = data.to_u32 & 0xffffff
-      @flags = Flags.new(data)
+      anonymous = @flags.includes?(Flags::Anonymous)
+      @flags = Flags.new(data.to_u32)
+      if anonymous
+        @flags |= Flags::Anonymous
+      end
       0
     when SC_IOCTL_PIPE_CONF_PID
       @s_pid = data.to_i32
