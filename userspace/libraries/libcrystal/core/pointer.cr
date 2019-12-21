@@ -45,4 +45,8 @@ struct Pointer(T)
     io << "0x"
     address.to_s(io, base: 16)
   end
+
+  def unmap_from_memory(size : Int = -1)
+    LibC.munmap self
+  end
 end
