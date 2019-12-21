@@ -625,7 +625,7 @@ rdx, rcx, rbx, rax : UInt64
             sysret(EINVAL)
           end
         end
-        npages = (incr >> 12) + 1
+        npages = incr // 0x1000
         Paging.alloc_page_pg(mmap_heap.end_addr, true, true, npages: npages.to_u64)
         pudata.memory_used += incr // 1024
         mmap_heap.size += incr
