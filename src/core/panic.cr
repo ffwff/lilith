@@ -13,6 +13,7 @@ end
   macro breakpoint
   end
 {% else %}
+  @[NoInline]
   fun breakpoint
     asm("nop")
   end
