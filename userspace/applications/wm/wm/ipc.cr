@@ -63,6 +63,7 @@ module Wm::IPC
     struct MoveRequest
       header : Header
       x, y : Int32
+      relative : UInt8
     end
 
     REFOCUS_ID = 6
@@ -94,6 +95,13 @@ module Wm::IPC
     end
 
     WINDOW_CLOSE_ID = 10
+
+    WINDOW_UPDATE_ID = 11
+    @[Packed]
+    struct WindowUpdate
+      header : Header
+      x, y, width, height : Int32
+    end
   end
 
   struct DynamicResponse
@@ -109,6 +117,8 @@ module Wm::IPC
                   Data::MoveRequest | 
                   Data::RefocusEvent |
                   Data::Query |
+                  Data::RedrawRequest | 
+                  Data::WindowUpdate |
                   DynamicResponse
 
   # Checks if bytes represents a valid IPC message
@@ -174,6 +184,20 @@ module Wm::IPC
     msg
   end
 
+  # Creates window update message
+  def window_update_message(x, y, width, height)
+    msg = uninitialized UInt8[sizeof(Data::WindowUpdate)]
+    wc = msg.to_unsafe.as(Data::WindowUpdate*)
+    wc.value.header = create_header(
+      payload_size(Data::WindowUpdate),
+      Data::WINDOW_UPDATE_ID)
+    wc.value.x = x
+    wc.value.y = y
+    wc.value.width = width
+    wc.value.height = height
+    msg
+  end
+
   # Creates response message
   def response_message(retval)
     msg = uninitialized UInt8[sizeof(Data::Response)]
@@ -212,7 +236,7 @@ module Wm::IPC
   end
 
   # Creates move request message
-  def move_request_message(x, y)
+  def move_request_message(x, y, relative = true)
     msg = uninitialized UInt8[sizeof(Data::MoveRequest)]
     rep = msg.to_unsafe.as(Data::MoveRequest*)
     rep.value.header = create_header(
@@ -220,6 +244,7 @@ module Wm::IPC
       Data::MOVE_REQ_ID)
     rep.value.x = x
     rep.value.y = y
+    rep.value.relative = relative ? 1 : 0
     msg
   end
 

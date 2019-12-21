@@ -1,5 +1,7 @@
 class G::Window < G::Widget
 
+  property x, y
+
   @wm_window : Wm::Window? = nil
   getter wm_window
 
