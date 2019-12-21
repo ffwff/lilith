@@ -372,7 +372,11 @@ module Allocator
   end
 
   {% if flag?(:kernel) %}
+    @@pages_allocated = 0
+    class_getter pages_allocated
+
     private def alloc_page(addr)
+      @@pages_allocated += 1
       if process = Multiprocessing::Scheduler.current_process
         if process.kernel_process? && !Syscall.locked
           return Paging.alloc_page_pg_drv addr, true, false
