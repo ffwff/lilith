@@ -70,8 +70,8 @@ module Wm::Server
     
     def contains_point?(x : Int, y : Int)
       bitmap = @bitmap.not_nil!
-      @x <= x && x <= (@x + bitmap.width) &&
-      @y <= y && y <= (@y + bitmap.height)
+      @x <= x <= (@x + bitmap.width) &&
+      @y <= y <= (@y + bitmap.height)
     end
   end
 

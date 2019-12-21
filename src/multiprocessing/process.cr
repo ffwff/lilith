@@ -165,7 +165,7 @@ module Multiprocessing
 
       # closes a file descriptor
       def close_fd(i : Int32) : Bool
-        return false unless i >= 0 && i <= @fds.size
+        return false unless 0 <= i < @fds.size
         return false if @fds[i].nil?
         @fds[i].not_nil!.node.not_nil!.close
         @fds[i] = nil

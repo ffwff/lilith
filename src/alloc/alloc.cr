@@ -135,7 +135,7 @@ module Allocator
 
     def block_marked?(block : Void*)
       idx = idx_for_block(block)
-      unless 0 <= idx && idx < mark_bitmap.size
+      unless 0 <= idx < mark_bitmap.size
         return true
       end
       mark_bitmap[idx]

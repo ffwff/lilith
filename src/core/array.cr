@@ -88,7 +88,7 @@ class Array(T)
   end
 
   def [](idx : Int)
-    panic "accessing out of bounds!" unless 0 <= idx && idx < size
+    panic "accessing out of bounds!" unless 0 <= idx < size
     to_unsafe[idx]
   end
 
@@ -98,7 +98,7 @@ class Array(T)
   end
 
   def []=(idx : Int, value : T)
-    panic "accessing out of bounds!" unless 0 <= idx && idx < size
+    panic "accessing out of bounds!" unless 0 <= idx < size
     to_unsafe[idx] = value
   end
 
