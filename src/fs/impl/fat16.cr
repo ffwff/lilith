@@ -387,7 +387,6 @@ private class Fat16Node < VFS::Node
     end
     @lfn_segments = nil
     @lfn_length = 0
-    builder.back 1
     builder.to_s
   end
 
