@@ -21,7 +21,7 @@ class IPCServer < IPCSocket
       return nil if char == '/'
     end
     filename = "/sockets/" + name + "/listen"
-    fd = LibC.create(filename.to_unsafe, LibC::O_RDONLY)
+    fd = LibC.create(filename, LibC::O_RDONLY)
     if fd >= 0
       new fd
     end
@@ -35,6 +35,11 @@ class IPCServer < IPCSocket
     if fd >= 0
       IPCSocket.new fd
     end
+  end
+
+  def self.remove(name : String)
+    filename = "/sockets/" + name + "/-"
+    LibC.remove(filename)
   end
 
 end
