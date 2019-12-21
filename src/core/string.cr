@@ -36,6 +36,11 @@ class String
       @bytesize == 0
     end
 
+    def peek
+      return if @capacity == 0
+      @buffer[@bytesize - 1]
+    end
+
     def back(amount : Int)
       panic "overflow" if amount > @bytesize
       @bytesize -= amount
@@ -85,7 +90,8 @@ class String
       write_byte 0u8
 
       header = @buffer.as({Int32, Int32, Int32}*)
-      header.value = {String::TYPE_ID, @bytesize - 1, String.calculate_length(buffer)}
+      bytesize, length = String.calculate_length(buffer)
+      header.value = {String::TYPE_ID, bytesize, length}
       @buffer.as(String)
     end
 
@@ -116,9 +122,10 @@ class String
   end
 
   def self.new(bytes : Slice(UInt8))
-    (new(bytes.size) { |buffer|
+    (new(bytes.size + 1) { |buffer|
       memcpy(buffer, bytes.to_unsafe, bytes.size.to_usize)
-      {bytes.size, String.calculate_length(bytes.to_unsafe)}
+      buffer[bytes.size] = 0u8
+      String.calculate_length(buffer)
     }).not_nil!
   end
 
@@ -141,7 +148,7 @@ class String
       end
       length += 1
     end
-    length
+    {i, length}
   end
 
   private def mask_tail_char(ch : UInt8) : UInt32
