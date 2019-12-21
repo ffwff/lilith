@@ -177,8 +177,6 @@ private class ProcFSProcessMmapNode < VFS::Node
   end
 end
 
-# kernel nodes
-
 # /proc/meminfo
 private class ProcFSMemInfoNode < VFS::Node
   getter fs : VFS::FS
@@ -203,6 +201,10 @@ private class ProcFSMemInfoNode < VFS::Node
 
     SliceWriter.fwrite? writer, "MemUsed: "
     SliceWriter.fwrite? writer, (FrameAllocator.used_blocks * (0x1000 // 1024))
+    SliceWriter.fwrite? writer, " kB\n"
+
+    SliceWriter.fwrite? writer, "HeapSize: "
+    SliceWriter.fwrite? writer, (Allocator.pages_allocated * (0x1000 // 1024))
     SliceWriter.fwrite? writer, " kB\n"
 
     writer.offset
