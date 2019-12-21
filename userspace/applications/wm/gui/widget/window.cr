@@ -62,6 +62,7 @@ class G::Window < G::Widget
 
   def close
     @wm_window.not_nil!.close
+    @bitmap = nil
   end
 
 end
