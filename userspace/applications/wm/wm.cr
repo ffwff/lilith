@@ -104,15 +104,10 @@ module Wm::Server
     end
     
     def render_cropped(buffer : Painter::Bitmap, rect : Wm::Server::DirtyRect)
-      {% if false %}
+      relx, rely, relw, relh = rect.translate_relative @x, @y, bitmap.not_nil!.width, bitmap.not_nil!.height
       Painter.blit_img_cropped buffer, bitmap.not_nil!,
-                               rect.width, rect.height,
-                               rect.x - @x, rect.y - @y,
-                               @x, @y,
-                               rect.x, rect.y, true
-      {% else %}
-       Painter.blit_img buffer, bitmap.not_nil!, @x, @y, true
-      {% end %}
+                               relw, relh, relx, rely,
+                               @x + relx, @y + rely, true
     end
 
     def respond(file)
