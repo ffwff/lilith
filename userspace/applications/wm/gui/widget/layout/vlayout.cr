@@ -9,15 +9,13 @@ class G::VLayout < G::Layout
       widgets_width = 0 
       n_stretch = 0
       @widgets.each do |w|
-        case w
-        when G::Stretch
+        if w.is_a?(G::Stretch)
           n_stretch += 1
         else
           widgets_width += w.width
         end
       end
-      case widget
-      when G::Stretch
+      if widget.is_a?(G::Stretch)
         n_stretch += 1
       else
         widgets_width += widget.width
@@ -27,8 +25,7 @@ class G::VLayout < G::Layout
       stretch_width = (@parent.not_nil!.width - widgets_width) // n_stretch
       placement_x = 0
       @widgets.each do |w|
-        case w
-        when G::Stretch
+        if w.is_a?(G::Stretch)
           placement_x += stretch_width
         else
           w.move placement_x, w.y
@@ -36,15 +33,12 @@ class G::VLayout < G::Layout
         end
       end
 
-      case widget
-      when G::Stretch
-      else
+      unless widget.is_a?(G::Stretch)
         widget.move placement_x, widget.y
       end
       @widgets.push widget
     else
-      case widget
-      when G::Stretch
+      if widget.is_a?(G::Stretch)
         @has_stretch = true
       else
         widget.move @placement_x, widget.y
