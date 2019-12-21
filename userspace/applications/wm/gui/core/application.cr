@@ -56,6 +56,13 @@ class G::Application
   end
 
   def close
+    case widget = @main_widget
+    when G::Window
+      window = widget.as(G::Window)
+      window.close
+    else
+      abort "main widget must be G::Window"
+    end
     @client << Wm::IPC.window_close_message
     IO::Select.wait @client.socket, UInt32::MAX
     @client.read_message

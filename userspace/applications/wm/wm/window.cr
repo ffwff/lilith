@@ -18,4 +18,9 @@ class Wm::Window
     @bitmap
   end
 
+  def close
+    @bitmap.unmap_from_memory
+    @bitmap_file.close
+  end
+
 end
