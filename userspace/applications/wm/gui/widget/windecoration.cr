@@ -9,6 +9,10 @@ module G::Sprites
   @@dec_side : Painter::Bitmap? = nil
   class_property dec_side
 
+  CLOSE = "/hd0/share/wm/close.png"
+  @@close : Painter::Bitmap? = nil
+  class_property close
+
 end
 
 class G::WindowDecoration < G::Widget
@@ -36,6 +40,9 @@ class G::WindowDecoration < G::Widget
     if G::Sprites.dec_side.nil?
       G::Sprites.dec_side = Painter.load_png G::Sprites::DEC_SIDE, @alpha
     end
+    if G::Sprites.close.nil?
+      G::Sprites.close = Painter.load_png G::Sprites::CLOSE, @alpha
+    end
   end
 
   def self.new(window : G::Window, title : String? = nil)
@@ -62,8 +69,6 @@ class G::WindowDecoration < G::Widget
 
   @focused = true
 
-  CLOSE_WIDTH = 16
-  CLOSE_HEIGHT = 16
   @close_x = 0
   @close_y = 0
 
@@ -90,11 +95,11 @@ class G::WindowDecoration < G::Widget
                       width-1, 1, @alpha ? BORDER_A : BORDER
 
     # close button
-    @close_x = width - CLOSE_WIDTH - TITLE_PADDING_SIDE
+    @close_x = width - G::Sprites.close.not_nil!.width - TITLE_PADDING_SIDE
     @close_y = 1
-    Painter.blit_rect bitmap!,
-                      CLOSE_WIDTH, CLOSE_HEIGHT,
-                      @close_x, @close_y, 0xffff0000u32
+    Painter.blit_img  bitmap!,
+                      G::Sprites.close.not_nil!,
+                      @close_x, @close_y
 
     # title
     if (title = @title)
@@ -142,8 +147,9 @@ class G::WindowDecoration < G::Widget
     if ev.modifiers.includes?(Wm::IPC::Data::MouseEventModifiers::LeftButton)
       relx = ev.x - @app.not_nil!.x
       rely = ev.y - @app.not_nil!.y
-      if @close_x <= relx <= (@close_x + CLOSE_WIDTH) &&
-         @close_y <= rely <= (@close_y + CLOSE_HEIGHT)
+      close = G::Sprites.close.not_nil!
+      if @close_x <= relx <= (@close_x + close.width) &&
+         @close_y <= rely <= (@close_y + close.height)
         # STDERR.print "close!\n"
         @app.not_nil!.close
       elsif @last_mouse_x != -1 && @last_mouse_y != -1
