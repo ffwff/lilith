@@ -539,6 +539,7 @@ module Wm::Server
         end
       when IPC::Data::WINDOW_CLOSE_ID
         if program = socket.program
+          socket.unbuffered_write IPC.response_message(1).to_slice
           make_dirty program.x, program.y, program.bitmap.not_nil!.width, program.bitmap.not_nil!.height
           if @@focused == program
             @@focused = nil
@@ -547,7 +548,6 @@ module Wm::Server
           @@windows.delete program
         else
           socket.unbuffered_write IPC.response_message(-1).to_slice
-          next
         end
       end
     end
