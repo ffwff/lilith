@@ -62,6 +62,14 @@ class Object
     pointerof(x).as(T*).value
   end
 
+  def as!(type : T.class) forall T
+    if self.is_a?(T)
+      self.unsafe_as type
+    else
+      abort "invalid type cast!"
+    end
+  end
+
   def ===(other)
     object_id == other.object_id
   end
