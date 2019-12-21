@@ -94,7 +94,7 @@ private def name_from_entry(entry)
     builder = String::Builder.new(name_len + 1)
   end
   (name_len + 1).times do |i|
-    if entry.name[i] >= 'A'.ord && entry.name[i] <= 'Z'.ord
+    if 'A'.ord <= entry.name[i] <= 'Z'.ord
       # to lower case
       builder.write_byte(entry.name[i] - 'A'.ord + 'a'.ord)
     else
@@ -104,7 +104,7 @@ private def name_from_entry(entry)
   if ext_len > 0
     builder << "."
     (ext_len + 1).times do |i|
-      if entry.ext[i] >= 'A'.ord && entry.ext[i] <= 'Z'.ord
+      if 'A'.ord <= entry.ext[i] <= 'Z'.ord
         # to lower case
         builder.write_byte(entry.ext[i] - 'A'.ord + 'a'.ord)
       else

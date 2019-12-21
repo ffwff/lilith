@@ -18,7 +18,7 @@ module BGA
   def init_controller(bus, device, func)
     X86.outw(INDEX_PORT, 0x0)
     i = X86.inw(DATA_PORT)
-    return unless 0xB0C0 <= i && i <= 0xB0C6
+    return unless 0xB0C0 <= i <= 0xB0C6
     X86.outw(DATA_PORT, 0xB0C4)
     i = X86.inw(DATA_PORT)
 

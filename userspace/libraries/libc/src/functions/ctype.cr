@@ -1,12 +1,12 @@
 fun toupper(ch : LibC::Int) : LibC::Int
-  if ch >= 'a'.ord && ch <= 'z'.ord
+  if 'a'.ord <= ch <= 'z'.ord
     ch = ch - 'a'.ord + 'A'.ord
   end
   ch
 end
 
 fun tolower(ch : LibC::Int) : LibC::Int
-  if ch >= 'A'.ord && ch <= 'Z'.ord
+  if 'A'.ord <= ch <= 'Z'.ord
     ch = ch - 'A'.ord + 'a'.ord
   end
   ch
@@ -18,19 +18,19 @@ fun isspace(ch : LibC::Int) : LibC::Int
 end
 
 fun isprint(ch : LibC::Int) : LibC::Int
-  (ch >= 0x20 && ch <= 0x7e).to_int
+  (0x20 <= ch <= 0x7e).to_int
 end
 
 fun isdigit(ch : LibC::Int) : LibC::Int
-  (ch >= '0'.ord && ch <= '9'.ord).to_int
+  ('0'.ord <= ch <= '9'.ord).to_int
 end
 
 fun islower(ch : LibC::Int) : LibC::Int
-  (ch >= 'a'.ord && ch <= 'z'.ord).to_int
+  ('a'.ord <= ch <= 'z'.ord).to_int
 end
 
 fun isupper(ch : LibC::Int) : LibC::Int
-  (ch >= 'A'.ord && ch <= 'Z'.ord).to_int
+  ('A'.ord <= ch <= 'Z'.ord).to_int
 end
 
 fun isalpha(ch : LibC::Int) : LibC::Int

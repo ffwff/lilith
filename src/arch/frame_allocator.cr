@@ -57,7 +57,7 @@ module FrameAllocator
     end
 
     def declaim_addr(addr : UInt64)
-      unless @base_addr <= addr  && addr < (@base_addr + @length)
+      unless @base_addr <= addr < (@base_addr + @length)
         return false
       end
       idx = index_for_address(addr)

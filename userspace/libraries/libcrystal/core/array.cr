@@ -106,17 +106,17 @@ class Array(T)
   end
 
   def [](idx : Int)
-    abort "accessing out of bounds!" unless 0 <= idx && idx < size
+    abort "accessing out of bounds!" unless 0 <= idx < size
     to_unsafe[idx]
   end
 
   def []?(idx : Int) : T?
-    return nil unless 0 <= idx && idx < size
+    return nil unless 0 <= idx < size
     to_unsafe[idx]
   end
 
   def []=(idx : Int, value : T)
-    abort "setting out of bounds!" unless 0 <= idx && idx < size
+    abort "setting out of bounds!" unless 0 <= idx < size
     to_unsafe[idx] = value
   end
 

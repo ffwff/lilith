@@ -136,7 +136,7 @@ private def internal_gscanf(format : UInt8*, args : VaList, &block)
         next
       when '0'.ord
         format += 1
-        while format.value >= '0'.ord && format.value <= '9'.ord
+        while '0'.ord <= format.value <= '9'.ord
           pad_field = pad_field * 10 + (format.value - '0'.ord)
           format += 1
         end

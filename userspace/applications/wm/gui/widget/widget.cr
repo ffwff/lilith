@@ -65,8 +65,8 @@ abstract class G::Widget
 
   def contains_point?(x : Int, y : Int)
     if bitmap = @bitmap
-      @x <= x && x <= (@x + bitmap.width) &&
-      @y <= y && y <= (@y + bitmap.height)
+      @x <= x <= (@x + bitmap.width) &&
+      @y <= y <= (@y + bitmap.height)
     else
       false
     end
