@@ -145,6 +145,12 @@ private class ProcFSProcessStatusNode < VFS::Node
     SliceWriter.fwrite? writer, pp.sched_data.status
     SliceWriter.fwrite? writer, "\n"
 
+    unless pp.kernel_process?
+      SliceWriter.fwrite? writer, "MemUsed: "
+      SliceWriter.fwrite? writer, pp.udata.memory_used
+      SliceWriter.fwrite? writer, " kB\n"
+    end
+
     writer.offset
   end
 end

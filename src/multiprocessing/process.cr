@@ -137,6 +137,10 @@ module Multiprocessing
       # environment variables
       getter environ
 
+      # how much memory we're using (in kb)
+      @memory_used : USize = 0
+      property memory_used
+
       def initialize(@argv : Array(String),
                      @cwd : String, @cwd_node : VFS::Node,
                      @environ = Array(EnvVar).new(0))
@@ -391,6 +395,7 @@ module Multiprocessing
     @[NoInline]
     def self.spawn_user(udata : UserData, result : ElfReader::Result)
       udata.is64 = result.is64
+      udata.memory_used = result.memory_used
       old_pdpt = Pointer(Paging::Data::PDPTable)
         .new(Paging.mt_addr(Paging.current_pdpt.address))
       Multiprocessing::Process.new(udata.argv[0].not_nil!, udata) do |process|
