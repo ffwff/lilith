@@ -148,7 +148,6 @@ class Array(T)
   end
 
   def delete(obj)
-    # FIXME: untested
     i = 0
     size = self.size
     while i < size
