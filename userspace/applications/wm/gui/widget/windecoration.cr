@@ -145,8 +145,8 @@ class G::WindowDecoration < G::Widget
       main_widget.mouse_event ev
     end
     if ev.modifiers.includes?(Wm::IPC::Data::MouseEventModifiers::LeftButton)
-      relx = ev.x - @app.not_nil!.x
-      rely = ev.y - @app.not_nil!.y
+      relx = ev.x - @app.not_nil!.main_widget.not_nil!.x
+      rely = ev.y - @app.not_nil!.main_widget.not_nil!.y
       close = G::Sprites.close.not_nil!
       if @close_x <= relx <= (@close_x + close.width) &&
          @close_y <= rely <= (@close_y + close.height)
@@ -156,9 +156,7 @@ class G::WindowDecoration < G::Widget
         delta_x = ev.x - @last_mouse_x
         delta_y = ev.y - @last_mouse_y
         if delta_x != 0 || delta_y != 0
-          new_x = @app.not_nil!.x + delta_x
-          new_y = @app.not_nil!.y + delta_y
-          @app.not_nil!.move(new_x, new_y)
+          @app.not_nil!.move(delta_x, delta_y)
         end
       end
     end

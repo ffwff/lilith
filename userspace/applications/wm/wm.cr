@@ -151,6 +151,11 @@ module Wm::Server
       def initialize(@fd)
         self.buffer_size = 0
       end
+
+      def send_update_message
+        program = @program.not_nil!
+        unbuffered_write Wm::IPC.window_update_message(program.x, program.y, program.bitmap.not_nil!.width, program.bitmap.not_nil!.height).to_slice
+      end
     end
 
     @socket : Program::Socket
@@ -406,8 +411,7 @@ module Wm::Server
     end
     if modifiers.includes?(IPC::Data::MouseEventModifiers::LeftButton)
       @@windows.reverse_each do |win|
-        case win
-        when Program
+        if win.is_a?(Program)
           win = win.as(Program)
           if win.contains_point?(cursor.x, cursor.y) && win.z_index != -1
             break if win == @@focused
@@ -464,9 +468,7 @@ module Wm::Server
           end
 
           if msg.flags.includes?(IPC::Data::WindowFlags::Background)
-            case @@windows[0]
-            when Background
-            else
+            unless @@windows[0].is_a?(Background)
               socket.unbuffered_write IPC.response_message(-1).to_slice
               next
             end
@@ -495,8 +497,13 @@ module Wm::Server
         if (msg = FixedMessageReader(IPC::Data::MoveRequest).read(header, socket))
           if program = socket.program
             old_x, old_y = program.x, program.y
-            program.x = msg.x.clamp(0, framebuffer.width)
-            program.y = msg.y.clamp(0, framebuffer.height)
+            if msg.relative == 1u8
+              program.x = (program.x + msg.x).clamp(0, framebuffer.width)
+              program.y = (program.y + msg.y).clamp(0, framebuffer.height)
+            else
+              program.x = msg.x.clamp(0, framebuffer.width)
+              program.y = msg.y.clamp(0, framebuffer.height)
+            end
             if bitmap = program.bitmap
               dx = Math.min(old_x, program.x)
               dy = Math.min(old_y, program.y)
@@ -505,7 +512,7 @@ module Wm::Server
               make_dirty dx, dy, dw, dh
               # dw = max(old_x+bwidth,program.x+bwidth)-dx
             end
-            socket.unbuffered_write IPC.response_message(1).to_slice
+            socket.send_update_message
           end
         end
       when IPC::Data::QUERY_ID

@@ -48,21 +48,12 @@ class G::Application
     end
   end
 
-  @x = 0
-  @y = 0
-  getter x, y
-  def move(@x : Int32, @y : Int32)
-    @client << Wm::IPC.move_request_message(@x, @y)
+  def move(x : Int32, y : Int32)
+    @client << Wm::IPC.move_request_message(x, y)
   end
 
   def close
-    case widget = @main_widget
-    when G::Window
-      window = widget.as(G::Window)
-      window.close
-    else
-      abort "main widget must be G::Window"
-    end
+    @main_widget.as!(G::Window).close
     @client << Wm::IPC.window_close_message
     IO::Select.wait @client.socket, UInt32::MAX
     @client.read_message
@@ -81,9 +72,13 @@ class G::Application
         msg = @client.read_message
         if main_widget = @main_widget
           case msg
-          when Wm::IPC::Data::WindowCreate
           when Wm::IPC::Data::Response
             # skip
+          when Wm::IPC::Data::WindowUpdate
+            msg = msg.as Wm::IPC::Data::WindowUpdate
+            window = main_widget.as!(G::Window)
+            window.x = msg.x
+            window.y = msg.y
           when Wm::IPC::Data::MouseEvent
             msg = msg.as Wm::IPC::Data::MouseEvent
             main_widget.mouse_event G::MouseEvent.new(msg.x, msg.y, msg.modifiers, msg.scroll_delta)

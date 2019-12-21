@@ -52,6 +52,8 @@ class Wm::Client
       FixedMessageReader(IPC::Data::RefocusEvent).read(header, @socket)
     when IPC::Data::QUERY_ID
       FixedMessageReader(IPC::Data::Query).read(header, @socket)
+    when IPC::Data::WINDOW_UPDATE_ID
+      FixedMessageReader(IPC::Data::WindowUpdate).read(header, @socket)
     when IPC::Data::DYN_RESPONSE_ID
       payload = Bytes.new header.length
       return if socket.unbuffered_read(payload) != payload.size
@@ -67,8 +69,7 @@ class Wm::Client
     self << IPC.window_create_message(x, y, width, height, flags)
     IO::Select.wait @socket, timeout: (-1).to_u32
     response = read_message
-    case response
-    when IPC::Data::Response
+    if response.is_a?(IPC::Data::Response)
       if response.retval != -1
         return Window.new(response.retval, self,
                           x, y, width, height)
@@ -80,8 +81,7 @@ class Wm::Client
     self << IPC.query_message(IPC::Data::QueryType::ScreenDim)
     IO::Select.wait @socket, timeout: (-1).to_u32
     response = read_message
-    case response
-    when IPC::DynamicResponse
+    if response.is_a?(IPC::DynamicResponse)
       if response.buffer.size == 8
         ptr = response.buffer.to_unsafe.as(Int32*)
         return Tuple.new(ptr[0], ptr[1])
