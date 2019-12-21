@@ -1,7 +1,7 @@
 require "./gui/lib"
 
 app = G::Application.new
-window = G::Window.new(10, 10, 400, 300, Wm::IPC::Data::WindowFlags::Alpha)
+window = G::Window.new(100, 70, 400, 300, Wm::IPC::Data::WindowFlags::Alpha)
 app.main_widget = window
 decoration = G::WindowDecoration.new(window, "terminal")
 
