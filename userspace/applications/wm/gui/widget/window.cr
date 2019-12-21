@@ -58,4 +58,8 @@ class G::Window < G::Widget
     end
   end
 
+  def close
+    @wm_window.not_nil!.close
+  end
+
 end

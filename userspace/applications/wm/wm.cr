@@ -178,9 +178,11 @@ module Wm::Server
     end
 
     def close
+      Wm::Server.selector.delete @socket
       @socket.close
       @bitmap.not_nil!.to_unsafe.unmap_from_memory
       @bitmap_file.close
+      File.remove("/tmp/wm-bm:" + @wid.to_s)
     end
   end
 
@@ -536,6 +538,9 @@ module Wm::Server
       when IPC::Data::WINDOW_CLOSE_ID
         if program = socket.program
           make_dirty program.x, program.y, program.bitmap.not_nil!.width, program.bitmap.not_nil!.height
+          if @@focused == program
+            @@focused = nil
+          end
           program.close
           @@windows.delete program
         else
