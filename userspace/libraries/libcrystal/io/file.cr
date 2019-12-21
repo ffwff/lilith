@@ -10,6 +10,7 @@ lib LibC
   O_APPEND = 1 << 4
   C_ANON   = 1 << 24
 
+  fun remove(filename : LibC::UString) : LibC::Int
   fun open(filename : LibC::UString, mode : LibC::Int) : LibC::Int
   fun _open(filename : LibC::UString, mode : LibC::Int) : LibC::Int
   fun create(filename : LibC::UString, mode : LibC::Int) : LibC::Int
@@ -42,5 +43,9 @@ class File < IO::FileDescriptor
 
   def truncate(length : LibC::Int)
     LibC.ftruncate @fd, length
+  end
+
+  def self.remove(path : String)
+    LibC.remove path
   end
 end
