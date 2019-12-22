@@ -44,6 +44,10 @@ module FrameAllocator
       @search_from = Math.max idx, @search_from
       return nil if iaddr == -1
       @frames[iaddr] = true
+      {% if false %}
+        addr = iaddr.to_usize * 0x1000 + @base_addr
+        Serial.print "claim: ", Pointer(Void).new(addr), '\n'
+      {% end %}
       iaddr
     end
 
@@ -60,6 +64,9 @@ module FrameAllocator
       unless @base_addr <= addr < (@base_addr + @length)
         return false
       end
+      {% if false %}
+        Serial.print "declaim: ", Pointer(Void).new(addr), '\n'
+      {% end %}
       idx = index_for_address(addr)
       @search_from = Math.min idx, @search_from
       @frames[idx] = false
