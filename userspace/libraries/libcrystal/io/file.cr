@@ -10,9 +10,17 @@ lib LibC
   O_APPEND = 1 << 4
   C_ANON   = 1 << 24
 
+  @[Flags]
+  enum FileAttributes : Int32
+    Removed   = 1 << 0
+    Anonymous = 1 << 1
+    Directory = 1 << 2
+  end
+
   fun remove(filename : LibC::UString) : LibC::Int
   fun open(filename : LibC::UString, mode : LibC::Int) : LibC::Int
   fun _open(filename : LibC::UString, mode : LibC::Int) : LibC::Int
+  fun fattr(fd : LibC::Int) : FileAttributes
   fun create(filename : LibC::UString, mode : LibC::Int) : LibC::Int
   fun mmap(addr : Void*, size : LibC::SizeT, prot : LibC::Int,
            flags : LibC::Int, fd : LibC::Int, offset : LibC::OffT) : Void*
@@ -41,8 +49,19 @@ class File < IO::FileDescriptor
     end
   end
 
+  def self.open(filename : String, mode : String = "r", &block)
+    if file = File.new filename, mode
+      yield file
+      file.close
+    end
+  end
+
   def truncate(length : LibC::Int)
     LibC.ftruncate @fd, length
+  end
+
+  def attributes
+    LibC.fattr @fd
   end
 
   def self.remove(path : String)

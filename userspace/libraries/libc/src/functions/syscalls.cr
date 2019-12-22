@@ -80,6 +80,10 @@ fun create(device : UInt8*, flags : LibC::Int) : LibC::Int
   lilith_syscall(SC_CREATE, device, strlen(device), flags)
 end
 
+fun fattr(fd : LibC::Int) : LibC::Int
+  lilith_syscall(SC_FATTR, fd).to_int
+end
+
 fun close(fd : LibC::Int) : LibC::Int
   lilith_syscall(SC_CLOSE, fd).to_int
 end

@@ -295,6 +295,9 @@ rdx, rcx, rbx, rax : UInt64
       path = try(checked_slice(arg(0), arg(1)))
       vfs_node = try(parse_path_into_vfs(path, process, frame, pudata.cwd_node), ENOENT)
       sysret(vfs_node.remove)
+    when SC_FATTR
+      fd = try(pudata.get_fd(arg(0).to_i32), EBADFD)
+      sysret(fd.node.not_nil!.attributes.value)
     when SC_READ
       fd = try(pudata.get_fd(arg(0).to_i32), EBADFD)
       if arg(2) == 0u64
