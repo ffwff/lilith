@@ -257,7 +257,9 @@ rdx, rcx, rbx, rax : UInt64
       when SC_PROCESS_CREATE_DRV
         result = Pointer(ElfReader::Result).new(fv.rbx)
         udata = Pointer(Void).new(fv.rdx).as(Multiprocessing::Process::UserData)
-        process = Multiprocessing::Process.spawn_user(udata, result.value)
+        Idt.disable do
+          process = Multiprocessing::Process.spawn_user(udata, result.value)
+        end
         fv.rax = process.pid
       when SC_SLEEP
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
