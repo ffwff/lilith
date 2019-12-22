@@ -226,23 +226,19 @@ module Gc
     end
   end
 
-  @@spinlock = Spinlock.new
-
   def unsafe_malloc(size : UInt64, atomic = false)
-    @@spinlock.with do
-      {% if flag?(:debug_gc) %}
-        if enabled
-          full_cycle
-        end
-      {% else %}
-        if enabled
-          cycle
-        end
-      {% end %}
-      ptr = Allocator.malloc(size, atomic)
-      push_gray ptr
-      ptr
-    end
+    {% if flag?(:debug_gc) %}
+      if enabled
+        full_cycle
+      end
+    {% else %}
+      if enabled
+        cycle
+      end
+    {% end %}
+    ptr = Allocator.malloc(size, atomic)
+    push_gray ptr
+    ptr
   end
 
   def realloc(ptr : Void*, size : UInt64) : Void*
