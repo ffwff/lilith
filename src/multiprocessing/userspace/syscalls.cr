@@ -556,10 +556,14 @@ rdx, rcx, rbx, rax : UInt64
         end
       end
     when SC_TIME
-      lo = Time.stamp & 0xFFFF_FFFF
-      hi = Time.stamp >> 32
-      fv.rbx = hi
-      sysret(lo)
+      if pudata.is64
+        sysret(Time.stamp)
+      else
+        lo = Time.stamp & 0xFFFF_FFFF
+        hi = Time.stamp >> 32
+        fv.rbx = hi
+        sysret(lo)
+      end
     when SC_SLEEP
       hi = arg(0).to_u32
       lo = arg(1).to_u32
