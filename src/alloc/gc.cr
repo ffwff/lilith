@@ -134,6 +134,18 @@ module Gc
   private def scan_stack
     sp = 0u64
     asm("" : "={rsp}"(sp))
+    {% if flag?(:kernel) %}
+      if (process = Multiprocessing::Scheduler.current_process) && process.kernel_process? && !Syscall.locked
+        while sp < Multiprocessing::KERNEL_STACK_INITIAL
+          root_ptr = Pointer(Void*).new(sp).value
+          if Allocator.contains_ptr? root_ptr
+            push_gray root_ptr
+          end
+          sp += sizeof(Void*)
+        end
+        return
+      end
+    {% end %}
     while sp < @@stack_end.address
       root_ptr = Pointer(Void*).new(sp).value
       if Allocator.contains_ptr? root_ptr
