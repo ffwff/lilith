@@ -523,7 +523,6 @@ module Wm::Server
         end
       when IPC::Data::REDRAW_REQ_ID
         if (msg = FixedMessageReader(IPC::Data::RedrawRequest).read(header, socket))
-          # STDERR.print "redraw: ", msg.x, ' ', msg.y, ' ', msg.width, ' ', msg.height, '\n'
           if msg.x == -1 && msg.y == -1 && msg.width == -1 && msg.height == -1
             if program = socket.program
               make_dirty program.x, program.y, program.bitmap.not_nil!.width, program.bitmap.not_nil!.height

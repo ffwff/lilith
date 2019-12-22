@@ -81,7 +81,12 @@ class G::Application
             window.y = msg.y
           when Wm::IPC::Data::MouseEvent
             msg = msg.as Wm::IPC::Data::MouseEvent
-            main_widget.mouse_event G::MouseEvent.new(msg.x, msg.y, msg.modifiers, msg.scroll_delta)
+            relx = msg.x - @main_widget.not_nil!.x
+            rely = msg.y - @main_widget.not_nil!.y
+            main_widget.mouse_event G::MouseEvent.new(msg.x, msg.y,
+                                                      msg.modifiers,
+                                                      msg.scroll_delta,
+                                                      relx, rely)
           when Wm::IPC::Data::KeyboardEvent
             msg = msg.as Wm::IPC::Data::KeyboardEvent
             main_widget.key_event G::KeyboardEvent.new(msg.ch.unsafe_chr)
