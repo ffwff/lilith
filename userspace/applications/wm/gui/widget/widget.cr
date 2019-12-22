@@ -6,11 +6,12 @@ struct G::KeyboardEvent
 end
 
 struct G::MouseEvent
-  getter x, y, modifiers, scroll_delta
+  getter x, y, relx, rely, modifiers, scroll_delta
 
   def initialize(@x : Int32, @y : Int32,
                  @modifiers : Wm::IPC::Data::MouseEventModifiers,
-                 @scroll_delta : Int32)
+                 @scroll_delta : Int32,
+                 @relx : Int32, @rely : Int32)
   end
 
   def left_clicked?

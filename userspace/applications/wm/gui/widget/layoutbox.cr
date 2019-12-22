@@ -54,7 +54,7 @@ class G::LayoutBox < G::Widget
   def mouse_event(ev : G::MouseEvent)
     if layout = @layout
       layout.widgets.each do |widget|
-        if widget.contains_point?(ev.x, ev.y)
+        if widget.contains_point?(ev.relx, ev.rely)
           widget.mouse_event ev
           return
         end
