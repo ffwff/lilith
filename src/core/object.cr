@@ -60,6 +60,14 @@ class Object
     x = self
     pointerof(x).as(T*).value
   end
+
+  def as!(type : T.class) forall T
+    if self.is_a?(T)
+      self.unsafe_as type
+    else
+      panic "invalid type cast!"
+    end
+  end
 end
 
 struct Nil

@@ -537,8 +537,7 @@ class Fat16FS < VFS::FS
     while true
       process_msg = @queue.not_nil!.dequeue
       if (msg = process_msg)
-        # FIXME: maybe don't use unsafe_as!
-        fat16_node = msg.vfs_node.unsafe_as(Fat16Node)
+        fat16_node = msg.vfs_node.as!(Fat16Node)
         case msg.type
         when VFS::Message::Type::Read
           fat16_node.read_buffer(msg.slice_size,
