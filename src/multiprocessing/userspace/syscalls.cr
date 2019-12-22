@@ -448,8 +448,6 @@ rdx, rcx, rbx, rax : UInt64
         fd.cur_child_end = true
       end
       sysret(SYSCALL_SUCCESS)
-    when SC_GETPID
-      sysret(process.pid)
     when SC_SPAWN
       path = try(checked_slice(arg(0), arg(1)))
       sysret(EINVAL) if path.size < 1

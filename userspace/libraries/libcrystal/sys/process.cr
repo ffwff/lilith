@@ -7,7 +7,6 @@ lib LibC
   end
   fun spawnxv(startup_info : StartupInfo*, file : LibC::UString, argv : UInt8**) : LibC::Pid
   fun waitpid(pid : LibC::Pid, status : LibC::Int*, options : LibC::Int) : LibC::Pid
-  fun getpid : LibC::Pid
 end
 
 class Process
@@ -67,10 +66,6 @@ class Process
     else
       -1
     end
-  end
-
-  def pid : LibC::Pid
-    LibC.getpid
   end
 
   def wait
