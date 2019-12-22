@@ -113,15 +113,14 @@ module Wm::Server
     def respond(file)
       packet = LibC::MousePacket.new
       file.read(Bytes.new(pointerof(packet).as(UInt8*), sizeof(LibC::MousePacket)))
-      speed = Math.log2(packet.x + packet.y)
       old_x, old_y = @x, @y
       if packet.x != 0
-        delta_x = packet.x * speed
+        delta_x = packet.x 
         @x = @x + delta_x
         @x = @x.clamp(0, Server.framebuffer.width)
       end
       if packet.y != 0
-        delta_y = -packet.y * speed
+        delta_y = -packet.y 
         @y = @y + delta_y
         @y = @y.clamp(0, Server.framebuffer.height)
       end
