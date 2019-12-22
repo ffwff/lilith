@@ -11,6 +11,7 @@ ENOEXEC = -6
 SC_OPEN     =  0u32
 SC_READ     =  1u32
 SC_WRITE    =  2u32
+SC_FATTR    =  3u32
 SC_SPAWN    =  4u32
 SC_CLOSE    =  5u32
 SC_EXIT     =  6u32

@@ -536,7 +536,7 @@ class Fat16FS < VFS::FS
   protected def process
     while true
       process_msg = @queue.not_nil!.dequeue
-      unless (msg = process_msg).nil?
+      if (msg = process_msg)
         # FIXME: maybe don't use unsafe_as!
         fat16_node = msg.vfs_node.unsafe_as(Fat16Node)
         case msg.type
