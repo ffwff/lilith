@@ -89,9 +89,11 @@ class ProcFSProcessNode < VFS::Node
   end
 
   def remove : Int32
-    return VFS_ERR if process.removed?
+    return VFS_ERR if removed?
     process.remove false
     @parent.remove_child self
+    @process = nil
+    @attributes |= VFS::Node::Attributes::Removed
     VFS_OK
   end
 

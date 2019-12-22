@@ -19,6 +19,27 @@ module VFS
 
     abstract def fs : VFS::FS
 
+    @[Flags]
+    enum Attributes : UInt32
+      Removed   = 1 << 0
+      Anonymous = 1 << 1
+      Directory = 1 << 2
+    end
+    @attributes : Attributes = Attributes::None
+    getter attributes
+
+    def removed?
+      @attributes.includes?(Attributes::Removed)
+    end
+
+    def directory?
+      @attributes.includes?(Attributes::Directory)
+    end
+
+    def anonymous?
+      @attributes.includes?(Attributes::Anonymous)
+    end
+
     def parent : Node?
     end
 
