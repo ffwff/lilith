@@ -242,34 +242,32 @@ module Gc
   end
 
   def realloc(ptr : Void*, size : UInt64) : Void*
-    @@spinlock.with do
-      oldsize = Allocator.block_size_for_ptr(ptr)
-      return ptr if oldsize >= size
+    oldsize = Allocator.block_size_for_ptr(ptr)
+    return ptr if oldsize >= size
 
-      newptr = Allocator.malloc(size, Allocator.atomic?(ptr))
-      memcpy newptr, ptr, oldsize
-      push_gray newptr
+    newptr = Allocator.malloc(size, Allocator.atomic?(ptr))
+    memcpy newptr, ptr, oldsize
+    push_gray newptr
 
-      if Allocator.marked?(ptr) && @@state != State::ScanRoot
-        idx = -1
-        @@curr_grays_idx.times do |i|
-          if @@curr_grays[i] == ptr
-            idx = i
-            break
-          end
-        end
-        if idx >= 0
-          if idx != @@curr_grays_idx
-            memmove @@curr_grays + idx,
-                    @@curr_grays + idx + 1,
-                    sizeof(Void*) * (@@curr_grays_idx - idx - 1)
-          end
-          @@curr_grays_idx -= 1
+    if Allocator.marked?(ptr) && @@state != State::ScanRoot
+      idx = -1
+      @@curr_grays_idx.times do |i|
+        if @@curr_grays[i] == ptr
+          idx = i
+          break
         end
       end
-
-      newptr
+      if idx >= 0
+        if idx != @@curr_grays_idx
+          memmove @@curr_grays + idx,
+                  @@curr_grays + idx + 1,
+                  sizeof(Void*) * (@@curr_grays_idx - idx - 1)
+        end
+        @@curr_grays_idx -= 1
+      end
     end
+
+    newptr
   end
 
   def dump(io)
