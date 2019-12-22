@@ -6,6 +6,9 @@ module FileMgr
   @@dir_image : Painter::Bitmap? = nil
   class_getter! dir_image
 
+  @@file_image : Painter::Bitmap? = nil
+  class_getter! file_image
+
   @@cwd = ""
   class_property cwd
 
@@ -13,8 +16,8 @@ module FileMgr
   class_getter! layout
     
   class EntryFig < G::Figure
-    def self.new(name)
-      new 0, 0, FileMgr.dir_image, name
+    def self.new(name, is_dir)
+      new 0, 0, is_dir ? FileMgr.dir_image : FileMgr.file_image, name
     end
 
     def mouse_event(ev : G::MouseEvent)
@@ -28,6 +31,7 @@ module FileMgr
 
   def load_images
     @@dir_image = Painter.load_png("/hd0/share/icons/folder.png").not_nil!
+    @@file_image = Painter.load_png("/hd0/share/icons/file.png").not_nil!
   end
 
   def run
@@ -56,7 +60,9 @@ module FileMgr
     layout.clear
     Dir.open(".") do |dir|
       dir.each_child do |child|
-        layout.add_widget EntryFig.new(child)
+        File.open(child) do |file|
+          layout.add_widget EntryFig.new(child, file.attributes.includes?(LibC::FileAttributes::Directory))
+        end
       end
     end
     layout.resize_to_content    
