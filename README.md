@@ -1,7 +1,7 @@
 <h1 align="center">lilith</h1>
 
 <p align="center">
-<img src="./img/screenshot-2109.png" alt="screenshot of lilith"/>
+<img src="./img/screenshot-2212.png" alt="screenshot of lilith"/>
 </p>
 
 <p align="center">
@@ -54,12 +54,14 @@ make run_img
 * [x] Hybrid conservative-precise incremental garbage collector
 * [x] IDE/ATA support (well, it can only load from primary master)
 * [x] FAT16 support
-* [x] Basic syscalls (open, read, write, spawn,...)
+* [x] Unix syscalls (open, read, write, spawn,...)
 * [x] Preemptive multitasking!
-* [x] Userspace C library written in Crystal/C
+* [x] Userspace C library written in Crystal (mostly)
+* [x] A window manager and some graphical programs (terminal emulator, file manager)
 * [ ] And much more as I go...
 
 ## License
 
 Lilith is licensed under MIT. See LICENSE for more details.
 
+Wallpaper: [昼寝覚めたら夜になった](https://www.pixiv.net/en/artworks/78375860) by [catzz](https://www.pixiv.net/member.php?id=1056186)
