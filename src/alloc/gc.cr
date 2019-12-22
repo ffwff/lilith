@@ -226,50 +226,54 @@ module Gc
     end
   end
 
+  @@spinlock = Spinlock.new
+
   def unsafe_malloc(size : UInt64, atomic = false)
-    {% if flag?(:debug_gc) %}
-      if enabled
-        full_cycle
-      end
-    {% else %}
-      if enabled
-        cycle
-      end
-    {% end %}
-    ptr = Allocator.malloc(size, atomic)
-    push_gray ptr
-    # zero out the first word/qword where type_id is stored
-    ptr.as(USize*).value = 0
-    ptr
+    @@spinlock.with do
+      {% if flag?(:debug_gc) %}
+        if enabled
+          full_cycle
+        end
+      {% else %}
+        if enabled
+          cycle
+        end
+      {% end %}
+      ptr = Allocator.malloc(size, atomic)
+      push_gray ptr
+      ptr
+    end
   end
 
   def realloc(ptr : Void*, size : UInt64) : Void*
-    oldsize = Allocator.block_size_for_ptr(ptr)
-    return ptr if oldsize >= size
+    @@spinlock.with do
+      oldsize = Allocator.block_size_for_ptr(ptr)
+      return ptr if oldsize >= size
 
-    newptr = Allocator.malloc(size, Allocator.atomic?(ptr))
-    memcpy newptr, ptr, oldsize
-    push_gray newptr
+      newptr = Allocator.malloc(size, Allocator.atomic?(ptr))
+      memcpy newptr, ptr, oldsize
+      push_gray newptr
 
-    if Allocator.marked?(ptr) && @@state != State::ScanRoot
-      idx = -1
-      @@curr_grays_idx.times do |i|
-        if @@curr_grays[i] == ptr
-          idx = i
-          break
+      if Allocator.marked?(ptr) && @@state != State::ScanRoot
+        idx = -1
+        @@curr_grays_idx.times do |i|
+          if @@curr_grays[i] == ptr
+            idx = i
+            break
+          end
+        end
+        if idx >= 0
+          if idx != @@curr_grays_idx
+            memmove @@curr_grays + idx,
+                    @@curr_grays + idx + 1,
+                    sizeof(Void*) * (@@curr_grays_idx - idx - 1)
+          end
+          @@curr_grays_idx -= 1
         end
       end
-      if idx >= 0
-        if idx != @@curr_grays_idx
-          memmove @@curr_grays + idx,
-                  @@curr_grays + idx + 1,
-                  sizeof(Void*) * (@@curr_grays_idx - idx - 1)
-        end
-        @@curr_grays_idx -= 1
-      end
+
+      newptr
     end
-
-    newptr
   end
 
   def dump(io)
