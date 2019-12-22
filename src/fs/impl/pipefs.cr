@@ -73,14 +73,13 @@ private class PipeFSNode < VFS::Node
                  anonymous = false)
     if anonymous
       @open_count = 1
-      @flags |= Flags::Anonymous
+      @attributes |= VFS::Node::Attributes::Anonymous
     end
     @pipe = CircularBuffer.new
-    # Serial.print "mk ", @name, '\n'
   end
 
   def close
-    if @flags.includes?(Flags::Anonymous)
+    if anonymous?
       @open_count -= 1
       if @open_count == 1 && (queue = @queue)
         queue.keep_if do |msg|
@@ -106,8 +105,6 @@ private class PipeFSNode < VFS::Node
     S_Write   = 1 << 4
     G_Read    = 1 << 5
     G_Write   = 1 << 6
-    Removed   = 1 << 30
-    Anonymous = 1 << 31
   end
 
   @flags = Flags::None
@@ -120,10 +117,10 @@ private class PipeFSNode < VFS::Node
   end
 
   def remove : Int32
-    return VFS_ERR if @flags.includes?(Flags::Removed)
-    @parent.remove self unless @flags.includes?(Flags::Anonymous)
+    return VFS_ERR if removed?
+    @parent.remove self unless anonymous?
     @pipe.deinit_buffer
-    @flags |= Flags::Removed
+    @attributes |= VFS::Node::Attributes::Removed
     VFS_OK
   end
 
@@ -132,7 +129,7 @@ private class PipeFSNode < VFS::Node
 
   def read(slice : Slice, offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
-    return VFS_EOF if @flags.includes?(Flags::Removed)
+    return VFS_EOF if removed?
 
     process = process.not_nil!
     unless @flags.includes?(Flags::G_Read)
@@ -145,7 +142,7 @@ private class PipeFSNode < VFS::Node
       end
     end
 
-    if @flags.includes?(Flags::Anonymous) && @open_count == 1 && size == 0
+    if anonymous? && @open_count == 1 && size == 0
       return VFS_EOF
     end
 
@@ -161,7 +158,7 @@ private class PipeFSNode < VFS::Node
 
   def write(slice : Slice, offset : UInt32,
             process : Multiprocessing::Process? = nil) : Int32
-    return VFS_EOF if @flags.includes?(Flags::Removed)
+    return VFS_EOF if removed?
 
     process = process.not_nil!
     unless @flags.includes?(Flags::G_Write)
@@ -186,21 +183,17 @@ private class PipeFSNode < VFS::Node
   end
 
   def available?(process : Multiprocessing::Process) : Bool
-    return true if @flags.includes?(Flags::Removed)
+    return true if removed?
     size > 0
   end
 
   def ioctl(request : Int32, data : UInt64,
             process : Multiprocessing::Process? = nil) : Int32
     return -1 unless process.not_nil!.pid == @m_pid
-    return -1 if @flags.includes?(Flags::Removed)
+    return -1 if removed?
     case request
     when SC_IOCTL_PIPE_CONF_FLAGS
-      anonymous = @flags.includes?(Flags::Anonymous)
       @flags = Flags.new(data.to_u32)
-      if anonymous
-        @flags |= Flags::Anonymous
-      end
       0
     when SC_IOCTL_PIPE_CONF_PID
       @s_pid = data.to_i32

@@ -115,7 +115,7 @@ rdx, rcx, rbx, rax : UInt64
       elsif segment == ".."
         vfs_node = vfs_node.parent
       else
-        if !vfs_node.dir_populated
+        if vfs_node.directory? && !vfs_node.dir_populated
           case vfs_node.populate_directory
           when VFS_OK
             # ignored

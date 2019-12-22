@@ -131,7 +131,7 @@ private class Fat16Node < VFS::Node
   @first_child : Fat16Node? = nil
 
   def first_child
-    if @directory && !@dir_populated
+    if directory? && !@dir_populated
       @dir_populated = true
       populate_directory
     end
@@ -145,24 +145,22 @@ private class Fat16Node < VFS::Node
   @starting_cluster = 0u32
   getter starting_cluster
 
-  @directory = false
-  def directory?
-    @directory
-  end
-
   @dir_populated = false
   getter dir_populated
 
   getter fs : VFS::FS
 
-  def initialize(@fs : Fat16FS, @name = nil, @directory = false,
+  def initialize(@fs : Fat16FS, @name = nil, directory = false,
                  @next_node = nil, @first_child = nil,
                  @size = 0u32, @starting_cluster = 0u32)
+    if directory
+      @attributes |= VFS::Node::Attributes::Directory
+    end
   end
 
   # children
   def each_child(&block)
-    if @directory && !@dir_populated
+    if directory? && !@dir_populated
       return
     end
     node = first_child

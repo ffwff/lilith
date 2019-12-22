@@ -73,7 +73,6 @@ private class TmpFSNode < VFS::Node
   def initialize(@name : String, @parent : TmpFSRoot, @fs : TmpFS)
   end
 
-  @removed = false
   @first_page = Pointer(TmpFSData::TmpFSPage).null
   @last_page = Pointer(TmpFSData::TmpFSPage).null
   @npages = 0
@@ -129,7 +128,7 @@ private class TmpFSNode < VFS::Node
   # file operations
 
   def remove : Int32
-    return VFS_ERR if @removed
+    return VFS_ERR if removed?
     if @mmap_count > 0
       Serial.print "tmpfs: can't remove if mmapd"
       return VFS_ERR
@@ -147,13 +146,13 @@ private class TmpFSNode < VFS::Node
     end
 
     @parent.remove self
-    @removed = true
+    @attributes |= VFS::Node::Attributes::Removed
     VFS_OK
   end
 
   def read(slice : Slice(UInt8), offset : UInt32,
            process : Multiprocessing::Process? = nil) : Int32
-    return VFS_ERR if @removed
+    return VFS_ERR if removed?
     return VFS_EOF if offset >= @size
 
     foffset = 0
@@ -174,7 +173,7 @@ private class TmpFSNode < VFS::Node
 
   def write(slice : Slice(UInt8), offset : UInt32,
             process : Multiprocessing::Process? = nil) : Int32
-    return VFS_ERR if @removed
+    return VFS_ERR if removed?
     return VFS_EOF if offset > @size
     
     if offset == @size
