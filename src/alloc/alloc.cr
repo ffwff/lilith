@@ -309,7 +309,7 @@ module Allocator
       hdr = Pointer(Data::MmapHeader).new(addr)
       hdr.value.marked == 1 ? true : false
     else
-      true
+      panic "mark: unknown magic"
     end
   end
 
