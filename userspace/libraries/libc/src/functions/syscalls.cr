@@ -1,37 +1,37 @@
 require "../syscall_defs.cr"
 
 {% if flag?(:x86_64) %}
-@[NoInline]
-private def lilith_syscall(rax : UInt32, rbx : UInt64,
-                           rdx = 0u64, rdi = 0u64, rsi = 0u64,
-                           r8 = 0u64) : Int32
-  ret = 0
-  l = 0
-  asm("push $$1f
-       mov %rsp, %rcx
-       syscall
-       1: add $$8, %rsp"
-          : "={rax}"(ret), "={rdi}"(l), "={rsi}"(l), "={r11}"(l), "={r12}"(l)
-          : "{rax}"(rax), "{rbx}"(rbx), "{rdx}"(rdx), "{rdi}"(rdi), "{rsi}"(rsi), "{r8}"(r8)
-          : "cc", "memory", "volatile", "rcx", "r11", "r12")
-  ret
-end
-
-@[NoInline]
-private def lilith_syscall64(rax : UInt32, rbx : UInt64,
+  @[NoInline]
+  private def lilith_syscall(rax : UInt32, rbx : UInt64,
                              rdx = 0u64, rdi = 0u64, rsi = 0u64,
-                             r8 = 0u64) : UInt64
-  ret = 0u64
-  l = 0
-  asm("push $$1f
+                             r8 = 0u64) : Int32
+    ret = 0
+    l = 0
+    asm("push $$1f
        mov %rsp, %rcx
        syscall
        1: add $$8, %rsp"
-          : "={rax}"(ret), "={rdi}"(l), "={rsi}"(l), "={r11}"(l), "={r12}"(l)
-          : "{rax}"(rax), "{rbx}"(rbx), "{rdx}"(rdx), "{rdi}"(rdi), "{rsi}"(rsi), "{r8}"(r8)
-          : "cc", "memory", "volatile", "rcx", "r11", "r12")
-  ret
-end
+            : "={rax}"(ret), "={rdi}"(l), "={rsi}"(l), "={r11}"(l), "={r12}"(l)
+            : "{rax}"(rax), "{rbx}"(rbx), "{rdx}"(rdx), "{rdi}"(rdi), "{rsi}"(rsi), "{r8}"(r8)
+            : "cc", "memory", "volatile", "rcx", "r11", "r12")
+    ret
+  end
+
+  @[NoInline]
+  private def lilith_syscall64(rax : UInt32, rbx : UInt64,
+                               rdx = 0u64, rdi = 0u64, rsi = 0u64,
+                               r8 = 0u64) : UInt64
+    ret = 0u64
+    l = 0
+    asm("push $$1f
+       mov %rsp, %rcx
+       syscall
+       1: add $$8, %rsp"
+            : "={rax}"(ret), "={rdi}"(l), "={rsi}"(l), "={r11}"(l), "={r12}"(l)
+            : "{rax}"(rax), "{rbx}"(rbx), "{rdx}"(rdx), "{rdi}"(rdi), "{rsi}"(rsi), "{r8}"(r8)
+            : "cc", "memory", "volatile", "rcx", "r11", "r12")
+    ret
+  end
 {% end %}
 
 @[AlwaysInline]
@@ -41,33 +41,33 @@ end
 
 @[AlwaysInline]
 private def lilith_syscall(eax : UInt32,
-                             str : UInt8*,
-                             len : LibC::SizeT,
-                             flag : Int32 = 0)
+                           str : UInt8*,
+                           len : LibC::SizeT,
+                           flag : Int32 = 0)
   lilith_syscall(eax, str.address.to_usize, len, flag.to_usize)
 end
 
 @[AlwaysInline]
 private def lilith_syscall(eax : UInt32,
-                             fd : Int32,
-                             str : UInt8*,
-                             len : LibC::SizeT)
+                           fd : Int32,
+                           str : UInt8*,
+                           len : LibC::SizeT)
   lilith_syscall(eax, fd.to_usize, str.address.to_usize, len)
 end
 
 @[AlwaysInline]
 private def lilith_syscall(eax : UInt32,
-                             fd : Int32,
-                             generic : Void*)
+                           fd : Int32,
+                           generic : Void*)
   lilith_syscall(eax, fd.to_usize, generic.address.to_usize)
 end
 
 @[AlwaysInline]
 private def lilith_syscall(eax : UInt32,
-                             str : UInt8*,
-                             len : LibC::SizeT,
-                             s_info : Void*,
-                             argv : UInt8**)
+                           str : UInt8*,
+                           len : LibC::SizeT,
+                           s_info : Void*,
+                           argv : UInt8**)
   lilith_syscall(eax, str.address.to_usize, len, s_info.address.to_usize, argv.address.to_usize)
 end
 
@@ -182,7 +182,7 @@ fun getcwd(str : UInt8*, len : LibC::SizeT) : UInt8*
   else
     lilith_syscall(SC_GETCWD, str, len)
     str
-  end  
+  end
 end
 
 fun chdir(str : UInt8*) : LibC::Int

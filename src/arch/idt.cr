@@ -257,7 +257,7 @@ fun kcpuex_handler(frame : Idt::Data::ExceptionRegisters*)
 end
 
 {% if flag?(:record_cli) %}
-fun __record_cli : UInt64
-  Idt.disabled_at
-end
+  fun __record_cli : UInt64
+    Idt.disabled_at
+  end
 {% end %}

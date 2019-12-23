@@ -5,18 +5,18 @@ lib LibC
     stdout : Int32
     stderr : Int32
   end
+
   fun spawnxv(startup_info : StartupInfo*, file : LibC::UString, argv : UInt8**) : LibC::Pid
   fun waitpid(pid : LibC::Pid, status : LibC::Int*, options : LibC::Int) : LibC::Pid
 end
 
 class Process
-
   private def initialize(@pid : LibC::Pid)
   end
 
   enum Redirect
-    Pipe = 0
-    Close = 1
+    Pipe    = 0
+    Close   = 1
     Inherit = 2
   end
 
@@ -44,8 +44,8 @@ class Process
     startup_info.stdout = stdio_to_fd output, STDOUT
     startup_info.stderr = stdio_to_fd error, STDERR
     pid = LibC.spawnxv(pointerof(startup_info),
-                       command.to_unsafe,
-                       spawn_argv.to_unsafe)
+      command.to_unsafe,
+      spawn_argv.to_unsafe)
     if pid < 0
       nil
     else
@@ -71,5 +71,4 @@ class Process
   def wait
     LibC.waitpid @pid, Pointer(LibC::Int).null, 0
   end
-
 end

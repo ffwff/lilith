@@ -7,11 +7,11 @@ module Bar
   class_getter! time_label
   class_setter time_label
 
-  @@app: G::Application? = nil
+  @@app : G::Application? = nil
   class_getter! app
   class_setter app
 
-  @@window: G::Window? = nil
+  @@window : G::Window? = nil
   class_getter! window
   class_setter window
 

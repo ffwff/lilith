@@ -116,7 +116,7 @@ private def internal_gscanf(format : UInt8*, args : VaList, &block)
           end
           read_bytes += 1
         end
-        
+
         if length_field == LengthField::None
           fptr = args.next(Pointer(Float32))
           fptr.value = sign.to_f32 * (dec.to_f32 + frac.to_f32 / frac_divider.to_f32)

@@ -1,6 +1,6 @@
 class G::Label < G::Widget
-
   getter text
+
   def initialize(@x : Int32, @y : Int32,
                  @text : String)
     width = G::Fonts.text_width(text)
@@ -14,12 +14,11 @@ class G::Label < G::Widget
 
   def redraw
     Painter.blit_rect bitmap!,
-                      0, 0, @bgcolor
+      0, 0, @bgcolor
     G::Fonts.blit self, 0, 0, @text
   end
 
   def text=(@text)
     redraw
   end
-
 end

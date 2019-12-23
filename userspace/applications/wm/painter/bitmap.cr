@@ -20,7 +20,7 @@ module Painter
       LibC.free @to_unsafe
       @to_unsafe = Pointer(UInt32).null
     end
-    
+
     private def malloc_size
       @width.to_u64 * @height.to_u64 * sizeof(UInt32)
     end
@@ -29,5 +29,4 @@ module Painter
       Bytes.new(@to_unsafe.as(UInt8*), malloc_size.to_i32)
     end
   end
-
 end

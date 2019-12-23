@@ -1,7 +1,6 @@
 require "./stdio.cr"
 
 lib LibC
-
   O_RDONLY = 1 << 0
   O_WRONLY = 1 << 1
   O_RDWR   = O_RDONLY | O_WRONLY
@@ -29,7 +28,6 @@ lib LibC
   fun _ioctl(fd : LibC::Int, request : LibC::Int, data : UInt64) : LibC::Int
   fun ftruncate(fd : LibC::Int, size : LibC::Int) : LibC::Int
 end
-
 
 class File < IO::FileDescriptor
   def self.new(filename : String, mode : String = "r") : File?

@@ -9,6 +9,7 @@ module Wm::IPC
       length : UInt8
       type : UInt8
     end
+
     HEADER_SIZE = 8
 
     TEST_MESSAGE_ID = 0
@@ -24,7 +25,7 @@ module Wm::IPC
     @[Flags]
     enum WindowFlags : Int32
       Background = 1 << 0
-      Alpha = 1 << 1
+      Alpha      = 1 << 1
     end
 
     RESPONSE_ID = 2
@@ -53,8 +54,8 @@ module Wm::IPC
 
     @[Flags]
     enum MouseEventModifiers : UInt32
-      LeftButton = 1 << 0
-      RightButton = 1 << 1
+      LeftButton   = 1 << 0
+      RightButton  = 1 << 1
       MiddleButton = 1 << 2
     end
 
@@ -106,6 +107,7 @@ module Wm::IPC
 
   struct DynamicResponse
     getter buffer
+
     def initialize(@buffer : Bytes)
     end
   end
@@ -114,10 +116,10 @@ module Wm::IPC
                   Data::Response |
                   Data::KeyboardEvent |
                   Data::MouseEvent |
-                  Data::MoveRequest | 
+                  Data::MoveRequest |
                   Data::RefocusEvent |
                   Data::Query |
-                  Data::RedrawRequest | 
+                  Data::RedrawRequest |
                   Data::WindowUpdate |
                   DynamicResponse
 
@@ -126,8 +128,8 @@ module Wm::IPC
     return false if msg.size < sizeof(Data::Header)
     header = msg.to_unsafe.as(Data::Header*)
     if LibC.strncmp(header.value.magic.to_unsafe,
-                    Data::MAGIC.to_unsafe,
-                    Data::MAGIC.bytesize) != 0
+         Data::MAGIC.to_unsafe,
+         Data::MAGIC.bytesize) != 0
       return false
     end
     sizeof(Data::Header) + header.value.length <= msg.size
@@ -137,8 +139,8 @@ module Wm::IPC
   def create_header(length, type)
     header = Data::Header.new
     LibC.strncpy(header.magic.to_unsafe,
-                 Data::MAGIC.to_unsafe,
-                 Data::MAGIC.bytesize)
+      Data::MAGIC.to_unsafe,
+      Data::MAGIC.bytesize)
     header.length = length
     header.type = type
     header
@@ -299,5 +301,4 @@ module Wm::IPC
       {% end %}
     end
   end
-
 end

@@ -14,7 +14,7 @@ module FileMgr
 
   @@layout : G::Layout? = nil
   class_getter! layout
-    
+
   class EntryFig < G::Figure
     def self.new(name, is_dir)
       new 0, 0, is_dir ? FileMgr.dir_image : FileMgr.file_image, name
@@ -65,7 +65,7 @@ module FileMgr
         end
       end
     end
-    layout.resize_to_content    
+    layout.resize_to_content
   end
 end
 

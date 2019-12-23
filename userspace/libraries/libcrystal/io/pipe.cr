@@ -1,5 +1,4 @@
 class IO::Pipe < IO::FileDescriptor
-
   SC_IOCTL_PIPE_CONF_FLAGS = 6
   SC_IOCTL_PIPE_CONF_PID   = 7
 
@@ -13,7 +12,7 @@ class IO::Pipe < IO::FileDescriptor
     G_Read   = 1 << 5
     G_Write  = 1 << 6
   end
-  
+
   def self.new(name, mode, flags = Flags::None, pid : Int32? = nil)
     name.each_char do |char|
       return nil if char == '/'
@@ -57,5 +56,4 @@ class IO::Pipe < IO::FileDescriptor
   def pid=(pid : Int32)
     LibC._ioctl(fd, SC_IOCTL_PIPE_CONF_PID, pid.to_u32)
   end
-
 end

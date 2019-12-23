@@ -2,9 +2,9 @@ require "./layout/layout"
 require "./layout/*"
 
 class G::LayoutBox < G::Widget
-
   @layout : G::Layout? = nil
   getter layout
+
   def layout=(@layout : G::Layout)
     @layout.not_nil!.parent = self
     @layout.not_nil!.app = app
@@ -39,13 +39,13 @@ class G::LayoutBox < G::Widget
   def draw_event
     if layout = @layout
       Painter.blit_rect bitmap!,
-                        0, 0, @bgcolor
+        0, 0, @bgcolor
       layout.widgets.each do |widget|
         widget.draw_event
         if wbitmap = widget.bitmap
           Painter.blit_img bitmap!,
-                           wbitmap,
-                           widget.x, widget.y
+            wbitmap,
+            widget.x, widget.y
         end
       end
     end
@@ -61,5 +61,4 @@ class G::LayoutBox < G::Widget
       end
     end
   end
-
 end

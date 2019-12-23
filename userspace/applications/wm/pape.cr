@@ -8,7 +8,7 @@ end
 app = G::Application.new
 w, h = app.client.screen_resolution.not_nil!
 window = G::Window.new(0, 0, w, h,
-                       Wm::IPC::Data::WindowFlags::Background)
+  Wm::IPC::Data::WindowFlags::Background)
 app.main_widget = window
 
 window.setup_event

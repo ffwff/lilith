@@ -52,7 +52,6 @@ class Object
     end
   {% end %}
 
-
   def not_nil!
     self
   end

@@ -32,8 +32,7 @@ end
          dec %rsp
          shl $$4, %rsp
         1:
-         call __start_common"
-        ::: "volatile", "memory", "rsi", "rdi")
+         call __start_common" ::: "volatile", "memory", "rsi", "rdi")
   end
 {% end %}
 

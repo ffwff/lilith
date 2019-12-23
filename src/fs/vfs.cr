@@ -128,7 +128,6 @@ module VFS
 
     abstract def root : Node
   end
-
 end
 
 module RootFS

@@ -36,7 +36,7 @@ struct VaList
     Intrinsics.va_end pointerof(ap)
     retval
   end
-  
+
   @[Primitive(:va_arg)]
   def next(type)
   end

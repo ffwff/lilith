@@ -219,5 +219,4 @@ module VFS
       end
     end
   end
-
 end

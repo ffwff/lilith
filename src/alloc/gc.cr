@@ -198,7 +198,7 @@ module Gc
       end
     end
   end
-  
+
   {% if flag?(:kernel) %}
     private def scan_kernel_thread_registers(thread)
       {% for register in ["rax", "rbx", "rcx", "rdx",
@@ -332,8 +332,8 @@ module Gc
         if idx >= 0
           if idx != @@curr_grays_idx
             memmove @@curr_grays + idx,
-                    @@curr_grays + idx + 1,
-                    sizeof(Void*) * (@@curr_grays_idx - idx - 1)
+              @@curr_grays + idx + 1,
+              sizeof(Void*) * (@@curr_grays_idx - idx - 1)
           end
           @@curr_grays_idx -= 1
         end

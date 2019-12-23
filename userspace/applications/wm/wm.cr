@@ -10,6 +10,7 @@ lib LibC
     ws_xpixel : UInt16
     ws_ypixel : UInt16
   end
+
   TIOCGWINSZ = 2
   TIOCGSTATE = 5
 
@@ -67,11 +68,11 @@ module Wm::Server
     def <=>(other)
       @z_index <=> other.z_index
     end
-    
+
     def contains_point?(x : Int, y : Int)
       bitmap = @bitmap.not_nil!
       @x <= x <= (@x + bitmap.width) &&
-      @y <= y <= (@y + bitmap.height)
+        @y <= y <= (@y + bitmap.height)
     end
   end
 
@@ -87,7 +88,7 @@ module Wm::Server
     def render_cropped(buffer : Painter::Bitmap, rect : Wm::Server::DirtyRect)
       Painter.blit_rect buffer, rect.width, rect.height, rect.x, rect.y, @color
     end
-    
+
     def contains_point?(x : Int, y : Int)
       true
     end
@@ -102,12 +103,12 @@ module Wm::Server
     def render(buffer : Painter::Bitmap)
       Painter.blit_img buffer, bitmap.not_nil!, @x, @y, true
     end
-    
+
     def render_cropped(buffer : Painter::Bitmap, rect : Wm::Server::DirtyRect)
       relx, rely, relw, relh = rect.translate_relative @x, @y, bitmap.not_nil!.width, bitmap.not_nil!.height
       Painter.blit_img_cropped buffer, bitmap.not_nil!,
-                               relw, relh, relx, rely,
-                               @x + relx, @y + rely, true
+        relw, relh, relx, rely,
+        @x + relx, @y + rely, true
     end
 
     def respond(file)
@@ -115,12 +116,12 @@ module Wm::Server
       file.read(Bytes.new(pointerof(packet).as(UInt8*), sizeof(LibC::MousePacket)))
       old_x, old_y = @x, @y
       if packet.x != 0
-        delta_x = packet.x 
+        delta_x = packet.x
         @x = @x + delta_x
         @x = @x.clamp(0, Server.framebuffer.width)
       end
       if packet.y != 0
-        delta_y = -packet.y 
+        delta_y = -packet.y
         @y = @y + delta_y
         @y = @y.clamp(0, Server.framebuffer.height)
       end
@@ -168,12 +169,12 @@ module Wm::Server
     def render(buffer : Painter::Bitmap)
       Painter.blit_img buffer, bitmap.not_nil!, @x, @y, @alpha
     end
-    
+
     def render_cropped(buffer : Painter::Bitmap, rect : Wm::Server::DirtyRect)
       relx, rely, relw, relh = rect.translate_relative @x, @y, bitmap.not_nil!.width, bitmap.not_nil!.height
       Painter.blit_img_cropped buffer, bitmap.not_nil!,
-                               relw, relh, relx, rely,
-                               @x + relx, @y + rely, @alpha
+        relw, relh, relx, rely,
+        @x + relx, @y + rely, @alpha
     end
 
     def close
@@ -198,11 +199,13 @@ module Wm::Server
 
   # window id
   @@wid = 0
+
   def next_wid
     i = @@wid
     @@wid += 1
     i
   end
+
   @@focused : Program?
 
   # io selector
@@ -231,13 +234,14 @@ module Wm::Server
 
   struct DirtyRect
     getter x, y, width, height
+
     def initialize(@x : Int32, @y : Int32, @width : Int32, @height : Int32)
     end
 
     def window_in_rect?(win : Window)
       return false if win.bitmap?.nil?
       @x <= win.x && (win.x + win.bitmap.not_nil!.width) <= (@x + @width) &&
-      @y <= win.y && (win.y + win.bitmap.not_nil!.height) <= (@y + @height)
+        @y <= win.y && (win.y + win.bitmap.not_nil!.height) <= (@y + @height)
     end
 
     def intersects_window?(win : Window)
@@ -257,6 +261,7 @@ module Wm::Server
       {relx, rely, relw, relh}
     end
   end
+
   # dirty rects
   @@dirty_rects : Array(DirtyRect)? = nil
   class_getter! dirty_rects
@@ -378,7 +383,7 @@ module Wm::Server
   def respond_kbd
     packet = uninitialized LibC::KeyboardPacket
     if kbd.unbuffered_read(Bytes.new(pointerof(packet).as(UInt8*), sizeof(LibC::KeyboardPacket))) \
-      != sizeof(LibC::KeyboardPacket)
+         != sizeof(LibC::KeyboardPacket)
       return
     end
     if focused = @@focused
@@ -388,7 +393,7 @@ module Wm::Server
 
   def respond_mouse
     packet = cursor.respond mouse
-    
+
     modifiers = IPC::Data::MouseEventModifiers.new 0
     if packet.attributes.includes?(LibC::MouseAttributes::LeftButton)
       modifiers |= IPC::Data::MouseEventModifiers::LeftButton
@@ -399,7 +404,7 @@ module Wm::Server
     if packet.attributes.includes?(LibC::MouseAttributes::MiddleButton)
       modifiers |= IPC::Data::MouseEventModifiers::MiddleButton
     end
-    
+
     if (focused = @@focused) && focused.contains_point?(cursor.x, cursor.y)
       focused.socket.unbuffered_write IPC.mouse_event_message(cursor.x, cursor.y, modifiers, packet.scroll_delta).to_slice
     end
@@ -447,8 +452,8 @@ module Wm::Server
     while true
       header = uninitialized IPC::Data::Header
       if socket.unbuffered_read(Bytes.new(pointerof(header).as(UInt8*),
-                                          sizeof(IPC::Data::Header))) \
-          != sizeof(IPC::Data::Header)
+           sizeof(IPC::Data::Header))) \
+           != sizeof(IPC::Data::Header)
         return
       end
       case header.type
@@ -471,9 +476,9 @@ module Wm::Server
           if focused = @@focused
             focused.socket.unbuffered_write IPC.refocus_event_message(focused.wid, 0).to_slice
           end
-          socket.program = program = Program.new(socket, msg.x, msg.y, 
-                                                 msg.width, msg.height,
-                                                 msg.flags.includes?(IPC::Data::WindowFlags::Alpha))
+          socket.program = program = Program.new(socket, msg.x, msg.y,
+            msg.width, msg.height,
+            msg.flags.includes?(IPC::Data::WindowFlags::Alpha))
           @@focused = program
           if msg.flags.includes?(IPC::Data::WindowFlags::Background)
             program.z_index = -1
@@ -483,7 +488,7 @@ module Wm::Server
           end
           @@windows.push program
           @@windows.sort!
-          make_dirty msg.x, msg.y, msg.width, msg.height 
+          make_dirty msg.x, msg.y, msg.width, msg.height
 
           socket.unbuffered_write IPC.response_message(program.wid).to_slice
         end
@@ -550,7 +555,6 @@ module Wm::Server
       end
     end
   end
-
 end
 
 Wm::Server.init

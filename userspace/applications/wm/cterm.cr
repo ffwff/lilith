@@ -17,11 +17,11 @@ termbox.input_fd = input_fd
 
 output_fd = IO::Pipe.new("termbox:stdout", "rwa").not_nil!
 output_fd.flags = IO::Pipe::Flags::G_Write |
-                  IO::Pipe::Flags::G_Read 
+                  IO::Pipe::Flags::G_Read
 termbox.output_fd = output_fd
 
 Process.new("ash",
-            input: input_fd,
-            output: output_fd,
-            error: Process::Redirect::Inherit)
+  input: input_fd,
+  output: output_fd,
+  error: Process::Redirect::Inherit)
 app.run

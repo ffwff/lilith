@@ -1,5 +1,4 @@
 module Indexable(T)
-
   def first
     self[0]
   end
@@ -15,5 +14,4 @@ module Indexable(T)
   def last?
     self[self.size - 1]?
   end
-
 end
