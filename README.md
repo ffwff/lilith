@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-A POSIX-like x86-64 kernel with a 32-bit userspace written in Crystal/C.
+A POSIX-like x86-64 kernel and userspace written in Crystal.
 </p>
 
 ## Building
