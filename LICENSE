@@ -1,5 +1,7 @@
 Copyright (c) 2019– ffwff <mogamiriver@tuta.io>
 
+Assembly files under userspace/libraries/libc/src/functions/arch/asm/*/math are from musl-libc.
+
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
 in the Software without restriction, including without limitation the rights
