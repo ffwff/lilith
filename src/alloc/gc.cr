@@ -285,6 +285,14 @@ module Gc
     end
   end
 
+  def non_stw_cycle
+    @@spinlock.with do
+      if @@state != State::ScanRoot
+        unlocked_cycle
+      end
+    end
+  end
+
   @@spinlock = Spinlock.new
 
   def unsafe_malloc(size : UInt64, atomic = false)
