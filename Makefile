@@ -182,7 +182,7 @@ install_kernel_to_disk: build/kernel
 
 distro: $(DRIVE_IMG) install_kernel_to_disk
 	./pkgs/missio build libc libz libpng
-	./pkgs/missio install base adam core wm lua mruby kilo
+	./pkgs/missio install base main adam core wm lua mruby kilo
 
 clean:
 	rm -f build/*

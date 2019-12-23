@@ -1,5 +1,5 @@
 startup = [
-  ["pape", "/hd0/share/papes/cantsleep.png"],
+  ["pape", "/hd0/share/papes/pape.png"],
   ["cterm"],
   ["cbar"],
 ]
