@@ -19,6 +19,7 @@ module Multiprocessing
   USER_MMAP_INITIAL    = USER_STACK_BOTTOM_MAX
   USER_MMAP_INITIAL64  = USER_STACK_BOTTOM_MAX64
 
+  KERNEL_STACK_TOP     = Paging::KERNEL_PDPT_POINTER + 0x7F_FFFF_F000u64
   KERNEL_STACK_INITIAL = Paging::KERNEL_PDPT_POINTER + 0x7F_FFFF_FFFFu64
   KERNEL_HEAP_INITIAL  = Paging::KERNEL_PDPT_POINTER + 0x0u64
 
@@ -50,6 +51,9 @@ module Multiprocessing
 
   @@procfs : ProcFS? = nil
   class_property procfs
+
+  @@kernel_threads : Array(Process)? = nil
+  class_property kernel_threads
 
   class Process
     @pid = 0
@@ -297,6 +301,14 @@ module Multiprocessing
 
       # append to scheduler
       @sched_data = Scheduler.append_process self
+
+      # append to kernel thread
+      if kernel_process?
+        if Multiprocessing.kernel_threads.nil?
+          Multiprocessing.kernel_threads = Array(Process).new
+        end
+        Multiprocessing.kernel_threads.not_nil!.push self
+      end
 
       Idt.enable
     end
@@ -546,7 +558,7 @@ module Multiprocessing
     # get physical page where the address belongs to
     def physical_page_for_address(virt_addr : UInt64)
       return if @phys_pg_struct == 0
-      return if virt_addr > Paging::PDPT_SIZE
+      return if !kernel_process? && virt_addr > Paging::PDPT_SIZE
 
       _, dir_idx, table_idx, page_idx = Paging.page_layer_indexes(virt_addr)
 
