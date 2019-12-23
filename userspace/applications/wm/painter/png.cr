@@ -2,16 +2,17 @@ lib LibC
   fun fopen(path : LibC::UString, mode : LibC::UString) : Void*
 end
 
-PNG_VER_STRING = "1.6.37"
+PNG_VER_STRING            = "1.6.37"
 PNG_COLOR_MASK_PALETTE    = 1
 PNG_COLOR_MASK_COLOR      = 2
 PNG_COLOR_MASK_ALPHA      = 4
 PNG_COLOR_TYPE_GRAY       = 0
 PNG_COLOR_TYPE_RGB        = PNG_COLOR_MASK_COLOR
 PNG_COLOR_TYPE_GRAY_ALPHA = PNG_COLOR_MASK_ALPHA
-PNG_COLOR_TYPE_PALETTE   = (PNG_COLOR_MASK_COLOR | PNG_COLOR_MASK_PALETTE)
-PNG_INFO_tRNS = 0x0010u8
-PNG_FILLER_AFTER = 1
+PNG_COLOR_TYPE_PALETTE    = (PNG_COLOR_MASK_COLOR | PNG_COLOR_MASK_PALETTE)
+PNG_INFO_tRNS             = 0x0010u8
+PNG_FILLER_AFTER          =        1
+
 lib LibPNG
   fun png_create_read_struct(str : LibC::UString, error_ptr : Void*,
                              error_fn : Void*, warn_fn : Void*) : Void*
@@ -44,7 +45,7 @@ module Painter
     end
 
     png_ptr = LibPNG.png_create_read_struct(PNG_VER_STRING, Pointer(Void).null,
-                                            Pointer(Void).null, Pointer(Void).null)
+      Pointer(Void).null, Pointer(Void).null)
     info_ptr = LibPNG.png_create_info_struct(png_ptr)
     LibPNG.png_init_io(png_ptr, fp)
     LibPNG.png_read_info(png_ptr, info_ptr)
@@ -105,5 +106,4 @@ module Painter
     end
     img
   end
-
 end

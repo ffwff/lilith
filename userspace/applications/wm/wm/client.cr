@@ -1,7 +1,6 @@
 require "socket"
 
 class Wm::Client
-
   getter socket
 
   def initialize(@socket : IPCSocket)
@@ -33,8 +32,8 @@ class Wm::Client
   def read_message : IPC::Message?
     header = uninitialized IPC::Data::Header
     if @socket.unbuffered_read(Bytes.new(pointerof(header).as(UInt8*),
-                                            sizeof(IPC::Data::Header))) \
-      != sizeof(IPC::Data::Header)
+         sizeof(IPC::Data::Header))) \
+         != sizeof(IPC::Data::Header)
       return
     end
     case header.type
@@ -72,7 +71,7 @@ class Wm::Client
     if response.is_a?(IPC::Data::Response)
       if response.retval != -1
         return Window.new(response.retval, self,
-                          x, y, width, height)
+          x, y, width, height)
       end
     end
   end
@@ -88,5 +87,4 @@ class Wm::Client
       end
     end
   end
-
 end

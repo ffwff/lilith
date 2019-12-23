@@ -33,9 +33,9 @@ def interpret_line(line)
       wait = false
     end
     if proc = Process.new(cmd, argv,
-          input: Process::Redirect::Inherit,
-          output: Process::Redirect::Inherit,
-          error: Process::Redirect::Inherit)
+         input: Process::Redirect::Inherit,
+         output: Process::Redirect::Inherit,
+         error: Process::Redirect::Inherit)
       proc.wait if wait
     else
       print "unable to spawn ", cmd, '\n'

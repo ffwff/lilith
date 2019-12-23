@@ -173,7 +173,7 @@ class String
         if !remove_empty || (remove_empty && bytesize != 0)
           str = (String.new(bytesize) { |buffer|
             byte_slice[last_sep_byte_idx, bytesize].copy_to buffer, bytesize
-            { bytesize, unisize }
+            {bytesize, unisize}
           }).not_nil!
           yield str
         end
@@ -202,7 +202,7 @@ class String
     if !remove_empty || (remove_empty && bytesize != 0)
       str = (String.new(bytesize + 1) { |buffer|
         byte_slice[last_sep_byte_idx, bytesize].copy_to buffer, bytesize
-        { bytesize, unisize }
+        {bytesize, unisize}
       }).not_nil!
       yield str
     end

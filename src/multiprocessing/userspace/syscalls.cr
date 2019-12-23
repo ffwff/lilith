@@ -671,8 +671,8 @@ rdx, rcx, rbx, rax : UInt64
           sysret(0)
         end
         Paging.alloc_page_pg addr,
-            mmap_attrs.includes?(MemMapNode::Attributes::Write),
-            true, size // 0x1000
+          mmap_attrs.includes?(MemMapNode::Attributes::Write),
+          true, size // 0x1000
         pudata.memory_used += size // 1024
         pudata.mmap_list.add(addr, size, mmap_attrs)
         sysret(addr)

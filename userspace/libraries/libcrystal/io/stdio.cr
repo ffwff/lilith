@@ -8,8 +8,8 @@ lib LibC
 
   @[Flags]
   enum MmapProt : LibC::Int
-    Read = 1 << 0
-    Write = 1 << 1
+    Read    = 1 << 0
+    Write   = 1 << 1
     Execute = 1 << 2
   end
 

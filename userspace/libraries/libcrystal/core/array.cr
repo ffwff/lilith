@@ -134,8 +134,8 @@ class Array(T)
     return nil if size == 0
     retval = to_unsafe[0]
     LibC.memmove(to_unsafe,
-                 to_unsafe + 1, 
-                 sizeof(T) * (self.size - 1))
+      to_unsafe + 1,
+      sizeof(T) * (self.size - 1))
     self.size = self.size - 1
     retval
   end
@@ -152,8 +152,8 @@ class Array(T)
     size = self.size
     while i < size
       if to_unsafe[i] == obj
-        LibC.memmove(to_unsafe + i, to_unsafe + i + 1, 
-                     sizeof(T) * (size - i - 1))
+        LibC.memmove(to_unsafe + i, to_unsafe + i + 1,
+          sizeof(T) * (size - i - 1))
         size -= 1
       else
         i += 1
@@ -167,7 +167,7 @@ class Array(T)
       self.size = self.size - 1
     else
       LibC.memmove(to_unsafe + idx, to_unsafe + idx + 1,
-                   sizeof(T) * (size - idx - 1))
+        sizeof(T) * (size - idx - 1))
     end
     true
   end

@@ -84,5 +84,4 @@ module G::Fonts
       sx, sy,
       str
   end
-
 end

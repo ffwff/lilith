@@ -1,5 +1,4 @@
 class G::Timer
-
   @last_tick = 0u64
   property last_tick
 
@@ -11,5 +10,4 @@ class G::Timer
 
   def on_tick
   end
-
 end

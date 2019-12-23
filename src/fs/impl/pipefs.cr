@@ -98,13 +98,13 @@ private class PipeFSNode < VFS::Node
 
   @[Flags]
   enum Flags : UInt32
-    WaitRead  = 1 << 0
-    M_Read    = 1 << 1
-    S_Read    = 1 << 2
-    M_Write   = 1 << 3
-    S_Write   = 1 << 4
-    G_Read    = 1 << 5
-    G_Write   = 1 << 6
+    WaitRead = 1 << 0
+    M_Read   = 1 << 1
+    S_Read   = 1 << 2
+    M_Write  = 1 << 3
+    S_Write  = 1 << 4
+    G_Read   = 1 << 5
+    G_Write  = 1 << 6
   end
 
   @flags = Flags::None

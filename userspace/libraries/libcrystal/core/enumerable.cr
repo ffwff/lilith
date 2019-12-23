@@ -1,5 +1,4 @@
 module Enumerable(T)
-
   def each_with_index(&block)
     i = 0
     each do |obj|
@@ -15,5 +14,4 @@ module Enumerable(T)
       i += 1
     end
   end
-
 end

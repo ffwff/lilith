@@ -1,5 +1,4 @@
 class IPCSocket < IO::FileDescriptor
-  
   def initialize(@fd)
     self.buffer_size = 0
   end
@@ -11,11 +10,9 @@ class IPCSocket < IO::FileDescriptor
       new fd
     end
   end
-
 end
 
 class IPCServer < IPCSocket
-
   def self.new(name : String)
     name.each_char do |char|
       return nil if char == '/'
@@ -41,5 +38,4 @@ class IPCServer < IPCSocket
     filename = "/sockets/" + name + "/-"
     LibC.remove(filename)
   end
-
 end

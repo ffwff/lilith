@@ -1,5 +1,4 @@
 class G::Window < G::Widget
-
   property x, y
 
   @wm_window : Wm::Window? = nil
@@ -13,6 +12,7 @@ class G::Window < G::Widget
   end
 
   getter width, height, flags
+
   def initialize(@x : Int32, @y : Int32,
                  @width : Int32, @height : Int32,
                  @flags = Wm::IPC::Data::WindowFlags::None)
@@ -54,8 +54,8 @@ class G::Window < G::Widget
       main_widget.draw_event
       if bitmap = @bitmap
         Painter.blit_img bitmap,
-                         main_widget.bitmap!,
-                         0, 0
+          main_widget.bitmap!,
+          0, 0
       end
     end
   end
@@ -64,5 +64,4 @@ class G::Window < G::Widget
     @wm_window.not_nil!.close
     @bitmap = nil
   end
-
 end

@@ -1,5 +1,4 @@
 abstract class G::Layout
-
   @app : G::Application? = nil
   property app
 
@@ -7,6 +6,7 @@ abstract class G::Layout
   property parent
 
   getter widgets
+
   def initialize
     @widgets = [] of G::Widget
   end
@@ -17,5 +17,4 @@ abstract class G::Layout
   def clear
     @widgets.clear
   end
-
 end

@@ -162,7 +162,7 @@ class File
   # reading
   def fputs(str : String)
     write(@fd, str.to_unsafe.as(UInt8*),
-          str.size.to_usize).to_int
+      str.size.to_usize).to_int
   end
 
   def fputs(str)
@@ -181,7 +181,7 @@ class File
       write(@fd, str, len.to_usize).to_int
     else
       @wbuffer.fwrite(@fd, str.as(UInt8*),
-                      len.to_usize, line_buffered?)
+        len.to_usize, line_buffered?)
     end
   end
 
@@ -276,7 +276,7 @@ class File
     return 0.to_usize unless @status.includes?(Status::Read)
     if @buffering == Buffering::Unbuffered
       retval = read(@fd, ptr.as(UInt8*),
-                    len.to_usize).to_usize
+        len.to_usize).to_usize
       if retval < 0
         if retval == EOF
           @status |= Status::EOF
@@ -296,10 +296,10 @@ class File
     return 0.to_usize unless @status.includes?(Status::Write)
     if @buffering == Buffering::Unbuffered
       write(@fd, ptr.as(UInt8*),
-            len.to_usize).to_usize
+        len.to_usize).to_usize
     else
       ret = @wbuffer.fwrite(@fd, ptr.as(UInt8*),
-                            len.to_usize, line_buffered?)
+        len.to_usize, line_buffered?)
       ret == EOF ? 0.to_usize : ret.to_usize
     end
   end

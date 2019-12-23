@@ -26,13 +26,14 @@ module Time
   extend self
 
   @@tm = uninitialized LibC::Tm
+
   def tm_p
     pointerof(@@tm)
   end
 end
 
-private UNIX_YEAR   = 1970
-private SECS_MINUTE =   60u64
+private UNIX_YEAR   =  1970
+private SECS_MINUTE = 60u64
 private SECS_HOUR   = SECS_MINUTE * 60
 private SECS_DAY    = SECS_HOUR * 24
 
@@ -176,7 +177,7 @@ fun mktime(timep : Void*) : LibC::TimeT
   0.to_ulonglong
 end
 
-private macro nformat(n, pad=0)
+private macro nformat(n, pad = 0)
   str, size = printf_int({{ n }})
   if {{ pad }} > 0 && size < {{ pad }}
     padsize = Math.min({{ pad }} - size, max)

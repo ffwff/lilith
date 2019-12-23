@@ -24,7 +24,6 @@ struct G::MouseEvent
 end
 
 abstract class G::Widget
-
   @app : G::Application? = nil
   getter! app
   setter app
@@ -35,7 +34,7 @@ abstract class G::Widget
 
   @bitmap : Painter::Bitmap? = nil
   getter bitmap
-  
+
   def bitmap!
     @bitmap.not_nil!
   end
@@ -58,6 +57,7 @@ abstract class G::Widget
 
   def move(@x : Int32, @y : Int32)
   end
+
   def resize(width : Int32, height : Int32)
     if bitmap = @bitmap
       bitmap.resize width, height
@@ -67,7 +67,7 @@ abstract class G::Widget
   def contains_point?(x : Int, y : Int)
     if bitmap = @bitmap
       @x <= x <= (@x + bitmap.width) &&
-      @y <= y <= (@y + bitmap.height)
+        @y <= y <= (@y + bitmap.height)
     else
       false
     end
@@ -83,11 +83,10 @@ abstract class G::Widget
     end
   end
 
-  def_event   setup
+  def_event setup
   def_event_d wm_message, Wm::IPC::Message
-  def_event   draw
+  def_event draw
   def_event_d io, IO::FileDescriptor
   def_event_d key, KeyboardEvent
   def_event_d mouse, MouseEvent
-
 end

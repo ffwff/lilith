@@ -9,9 +9,9 @@ module Painter
     r0 = r1 = r2 = 0
     asm(
       "cld\nrep stosl"
-        : "={eax}"(r0), "={Di}"(r1), "={ecx}"(r2)
-        : "{eax}"(c), "{Di}"(dst), "{ecx}"(n)
-        : "volatile", "memory"
+            : "={eax}"(r0), "={Di}"(r1), "={ecx}"(r2)
+            : "{eax}"(c), "{Di}"(dst), "{ecx}"(n)
+            : "volatile", "memory"
     )
   end
 
@@ -47,15 +47,15 @@ module Painter
       blit_u32(db + fb_offset, color.to_u32, sw_clamp.to_usize)
     end
   end
-  
+
   def blit_rect(dest : Bitmap, sx : Int, sy : Int, color : Int)
     blit_rect dest.to_unsafe, dest.width, dest.height,
-              dest.width, dest.height, sx, sy, color
+      dest.width, dest.height, sx, sy, color
   end
 
   def blit_rect(dest : Bitmap, sw : Int, sh : Int, sx : Int, sy : Int, color : Int)
     blit_rect dest.to_unsafe, dest.width, dest.height,
-              sw, sh, sx, sy, color
+      sw, sh, sx, sy, color
   end
 
   def blit_img(db : UInt32*, dw : Int, dh : Int,
@@ -68,7 +68,7 @@ module Painter
       else
         LibC.memcpy db, sb, dw.to_u32 * dh.to_u32 * 4
       end
-      return 
+      return
     end
     if sy + sh > dh
       if dh < sy # dh - sy < 0
@@ -94,20 +94,20 @@ module Painter
       src_offset = y * sw * 4
       if alpha?
         Lib.alpha_blend(db.as(UInt8*) + fb_offset,
-                        sb.as(UInt8*) + src_offset,
-                        sw_clamp * 4)
+          sb.as(UInt8*) + src_offset,
+          sw_clamp * 4)
       else
         LibC.memcpy(db.as(UInt8*) + fb_offset,
-                    sb.as(UInt8*) + src_offset,
-                    sw_clamp * 4)
+          sb.as(UInt8*) + src_offset,
+          sw_clamp * 4)
       end
     end
   end
 
   def blit_img(dest : Bitmap, src : Bitmap, sx : Int, sy : Int, alpha? = false)
-    blit_img  dest.to_unsafe, dest.width, dest.height,
-              src.to_unsafe, src.width, src.height,
-              sx, sy, alpha?
+    blit_img dest.to_unsafe, dest.width, dest.height,
+      src.to_unsafe, src.width, src.height,
+      sx, sy, alpha?
   end
 
   def blit_img(db : UInt32*, dw : Int, dh : Int,
@@ -121,7 +121,7 @@ module Painter
       else
         LibC.memcpy db, sb, dw.to_u32 * dh.to_u32 * 4
       end
-      return 
+      return
     end
 
     if dh < dy # dh - dy < 0
@@ -143,20 +143,20 @@ module Painter
       src_offset = (sy + y) * sw * 4
       if alpha?
         Lib.alpha_blend(db.as(UInt8*) + fb_offset,
-                        sb.as(UInt8*) + src_offset,
-                        sw_clamp * 4)
+          sb.as(UInt8*) + src_offset,
+          sw_clamp * 4)
       else
         LibC.memcpy(db.as(UInt8*) + fb_offset,
-                    sb.as(UInt8*) + src_offset,
-                    sw_clamp * 4)
+          sb.as(UInt8*) + src_offset,
+          sw_clamp * 4)
       end
     end
   end
 
   def blit_img(dest : Bitmap, src : Bitmap, dx : Int, dy : Int, sx : Int, sy : Int, alpha? = false)
-    blit_img  dest.to_unsafe, dest.width, dest.height,
-              src.to_unsafe, src.width, src.height,
-              dx, dy, sx, sy, alpha?
+    blit_img dest.to_unsafe, dest.width, dest.height,
+      src.to_unsafe, src.width, src.height,
+      dx, dy, sx, sy, alpha?
   end
 
   def blit_img_cropped(db : UInt32*, dw : Int, dh : Int,
@@ -175,12 +175,12 @@ module Painter
       src_offset = (cy + y) * sw * 4 + cx * 4
       if alpha?
         Lib.alpha_blend(db.as(UInt8*) + fb_offset,
-                        sb.as(UInt8*) + src_offset,
-                        cw_clamp * 4)
+          sb.as(UInt8*) + src_offset,
+          cw_clamp * 4)
       else
         LibC.memcpy(db.as(UInt8*) + fb_offset,
-                    sb.as(UInt8*) + src_offset,
-                    cw_clamp * 4)
+          sb.as(UInt8*) + src_offset,
+          cw_clamp * 4)
       end
     end
   end
@@ -190,7 +190,7 @@ module Painter
                        cx : Int, cy : Int,
                        dx : Int, dy : Int, alpha? = false)
     blit_img_cropped dest.to_unsafe, dest.width, dest.height,
-                     src.to_unsafe, src.width, src.height,
-                     cw, ch, cx, cy, dx, dy, alpha?
+      src.to_unsafe, src.width, src.height,
+      cw, ch, cx, cy, dx, dy, alpha?
   end
 end

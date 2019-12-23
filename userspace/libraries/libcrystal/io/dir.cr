@@ -68,5 +68,4 @@ class Dir
     LibC.free(dir.as(Void*))
     dir_str
   end
-  
 end

@@ -271,10 +271,11 @@ end
 
 module Math
   extend self
+
   macro max(x, y)
     {{ x }} > {{ y }} ? {{ x }} : {{ y }}
   end
-  
+
   macro min(x, y)
     {{ x }} < {{ y }} ? {{ x }} : {{ y }}
   end

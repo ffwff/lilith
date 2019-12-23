@@ -1,10 +1,10 @@
 private NULL_STR = "(null)"
-private HEX_STR = "0x"
+private HEX_STR  = "0x"
 private NINF_STR = "-inf"
 private PINF_STR = "inf"
 private NNAN_STR = "-nan"
 private PNAN_STR = "nan"
-private BASE = "0123456789abcdefghijklmnopqrstuvwxyz"
+private BASE     = "0123456789abcdefghijklmnopqrstuvwxyz"
 
 def printf_int(intg, base = 10)
   s = uninitialized UInt8[128]
@@ -287,25 +287,25 @@ fun sprintf(str : UInt8*, format : UInt8*, ...) : LibC::Int
   end
 end
 
-fun __libc_vprintf(format : UInt8*, ap : LibC::VaList*): LibC::Int
+fun __libc_vprintf(format : UInt8*, ap : LibC::VaList*) : LibC::Int
   VaList.copy(ap) do |args|
     internal_printf(format, args)
   end
 end
 
-fun __libc_vfprintf(stream : Void*, format : UInt8*, ap : LibC::VaList*): LibC::Int
+fun __libc_vfprintf(stream : Void*, format : UInt8*, ap : LibC::VaList*) : LibC::Int
   VaList.copy(ap) do |args|
     internal_fprintf(stream, format, args)
   end
 end
 
-fun __libc_vsnprintf(str : UInt8*, size : LibC::SizeT, format : UInt8*, ap : LibC::VaList*): LibC::Int
+fun __libc_vsnprintf(str : UInt8*, size : LibC::SizeT, format : UInt8*, ap : LibC::VaList*) : LibC::Int
   VaList.copy(ap) do |args|
     internal_snprintf(str, size, format, args)
   end
 end
 
-fun __libc_vsprintf(str : UInt8*, format : UInt8*, ap : LibC::VaList*): LibC::Int
+fun __libc_vsprintf(str : UInt8*, format : UInt8*, ap : LibC::VaList*) : LibC::Int
   VaList.copy(ap) do |args|
     internal_snprintf(str, -1, format, args)
   end

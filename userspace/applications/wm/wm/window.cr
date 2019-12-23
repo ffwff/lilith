@@ -1,5 +1,4 @@
 class Wm::Window
-
   @bitmap_file : File
   @bitmap : UInt32*
   getter wid, x, y, width, height
@@ -22,5 +21,4 @@ class Wm::Window
     @bitmap.unmap_from_memory
     @bitmap_file.close
   end
-
 end

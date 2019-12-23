@@ -439,14 +439,14 @@ private class Fat16Node < VFS::Node
     end
   end
 
-  private def load_file_entry(entry, lfn_name=nil)
+  private def load_file_entry(entry, lfn_name = nil)
     node = Fat16Node.new(fs, lfn_name || name_from_entry(entry),
       starting_cluster: entry.starting_cluster.to_u32,
       size: entry.file_size)
     add_child node
   end
 
-  private def load_dir_entry(entry, lfn_name=nil)
+  private def load_dir_entry(entry, lfn_name = nil)
     name = name_from_entry(entry)
     return if name == "." || name == ".."
     node = Fat16Node.new(fs, lfn_name || name, true,

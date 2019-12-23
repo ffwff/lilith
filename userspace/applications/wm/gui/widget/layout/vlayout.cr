@@ -1,12 +1,11 @@
 class G::VLayout < G::Layout
-
   @placement_x = 0
   @has_stretch = false
 
   def add_widget(widget : G::Widget)
     if @has_stretch
       # calculate widths for stretches
-      widgets_width = 0 
+      widgets_width = 0
       n_stretch = 0
       @widgets.each do |w|
         if w.is_a?(G::Stretch)
@@ -46,7 +45,5 @@ class G::VLayout < G::Layout
       end
       @widgets.push widget
     end
-
   end
-
 end

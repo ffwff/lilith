@@ -1,5 +1,4 @@
 class G::PLayout < G::Layout
-
   @placement_x = 0
   @placement_y = 0
   @line_height = 0
@@ -45,5 +44,4 @@ class G::PLayout < G::Layout
     new_height = Math.max new_height, line_height
     parent.resize new_width, new_height
   end
-
 end

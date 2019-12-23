@@ -1,6 +1,6 @@
 class G::ScrollBox < G::Widget
-
   getter text, bitmap
+
   def initialize(@x : Int32, @y : Int32,
                  @width : Int32, @height : Int32)
     @bitmap = Painter::Bitmap.new(@width, @height)
@@ -26,10 +26,10 @@ class G::ScrollBox < G::Widget
 
   def draw_event
     if widget = @main_widget
-      Painter.blit_img  bitmap!,
-                        widget.bitmap!,
-                        0, 0,
-                        0, @offset_y
+      Painter.blit_img bitmap!,
+        widget.bitmap!,
+        0, 0,
+        0, @offset_y
     end
   end
 
@@ -43,5 +43,4 @@ class G::ScrollBox < G::Widget
       main_widget.mouse_event ev
     end
   end
-
 end

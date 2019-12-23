@@ -3,7 +3,6 @@ lib LibC
 end
 
 class IO::Select
-
   @targets = Array(IO::FileDescriptor).new
   @fds = Array(Int32).new
 
@@ -21,8 +20,8 @@ class IO::Select
 
   def wait(timeout : Int = 0)
     if (fd = LibC.waitfd(@fds.to_unsafe,
-                         @fds.size,
-                         timeout.to_u64)) >= 0
+         @fds.size,
+         timeout.to_u64)) >= 0
       if idx = @fds.index(fd)
         @targets[idx]
       end
@@ -33,5 +32,4 @@ class IO::Select
     fd : LibC::Int = io.fd
     LibC.waitfd(pointerof(fd), 1, timeout.to_u64)
   end
-
 end

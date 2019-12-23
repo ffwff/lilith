@@ -12,11 +12,9 @@ module G::Sprites
   CLOSE = "/hd0/share/wm/close.png"
   @@close : Painter::Bitmap? = nil
   class_property close
-
 end
 
 class G::WindowDecoration < G::Widget
-
   @main_widget : G::Widget? = nil
   getter main_widget
 
@@ -29,6 +27,7 @@ class G::WindowDecoration < G::Widget
   end
 
   getter title
+
   def initialize(@x : Int32, @y : Int32,
                  width : Int32, height : Int32,
                  @title : String? = nil,
@@ -51,9 +50,10 @@ class G::WindowDecoration < G::Widget
     decoration
   end
 
-  TITLE_HEIGHT = 20
-  TITLE_PADDING_TOP = 7
-  TITLE_PADDING_SIDE = 3
+  TITLE_HEIGHT       = 20
+  TITLE_PADDING_TOP  =  7
+  TITLE_PADDING_SIDE =  3
+
   def calculate_main_dimensions
     x = TITLE_PADDING_SIDE
     y = TITLE_HEIGHT
@@ -62,10 +62,10 @@ class G::WindowDecoration < G::Widget
     {x, y, w, h}
   end
 
-  BORDER = 0x121517
-  BG = 0x1d1f21
+  BORDER   = 0x121517
+  BG       = 0x1d1f21
   BORDER_A = 0xff000000 | BORDER
-  BG_A = 0xff000000 | BG
+  BG_A     = 0xff000000 | BG
 
   @focused = true
 
@@ -77,29 +77,29 @@ class G::WindowDecoration < G::Widget
 
     # window decoration frame
     Painter.blit_img bitmap!,
-                     G::Sprites.dec_side.not_nil!,
-                     0, 0
+      G::Sprites.dec_side.not_nil!,
+      0, 0
     Painter.blit_img bitmap!,
-                     G::Sprites.dec_side.not_nil!,
-                     width - 1, 0
+      G::Sprites.dec_side.not_nil!,
+      width - 1, 0
     (width - 2).times do |i|
       Painter.blit_img bitmap!,
-                       G::Sprites.dec_top.not_nil!,
-                       i + 1, 0
+        G::Sprites.dec_top.not_nil!,
+        i + 1, 0
     end
     Painter.blit_rect bitmap!,
-                      1, height-2,
-                      0, 1, @alpha ? BORDER_A : BORDER
+      1, height - 2,
+      0, 1, @alpha ? BORDER_A : BORDER
     Painter.blit_rect bitmap!,
-                      1, height-2,
-                      width-1, 1, @alpha ? BORDER_A : BORDER
+      1, height - 2,
+      width - 1, 1, @alpha ? BORDER_A : BORDER
 
     # close button
     @close_x = width - G::Sprites.close.not_nil!.width - TITLE_PADDING_SIDE
     @close_y = 1
-    Painter.blit_img  bitmap!,
-                      G::Sprites.close.not_nil!,
-                      @close_x, @close_y
+    Painter.blit_img bitmap!,
+      G::Sprites.close.not_nil!,
+      @close_x, @close_y
 
     # title
     if (title = @title)
@@ -111,8 +111,8 @@ class G::WindowDecoration < G::Widget
     if (main_widget = @main_widget)
       main_widget.draw_event
       Painter.blit_img bitmap!,
-                       main_widget.bitmap!,
-                       main_widget.x, main_widget.y
+        main_widget.bitmap!,
+        main_widget.x, main_widget.y
     end
   end
 
@@ -140,6 +140,7 @@ class G::WindowDecoration < G::Widget
 
   @last_mouse_x = -1
   @last_mouse_y = -1
+
   def mouse_event(ev : G::MouseEvent)
     if main_widget = @main_widget
       main_widget.mouse_event ev

@@ -21,5 +21,4 @@ class G::Figure < G::Widget
       G::Fonts.blit self, ((width - G::Fonts.text_width(text)) // 2), @img_bitmap.height, text
     end
   end
-
 end

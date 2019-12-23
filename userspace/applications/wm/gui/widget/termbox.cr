@@ -1,5 +1,4 @@
 class G::Termbox < G::Widget
-
   @input_fd : IO::FileDescriptor? = nil
   @output_fd : IO::FileDescriptor? = nil
   getter input_fd, output_fd
@@ -79,9 +78,9 @@ class G::Termbox < G::Widget
     @cheight.times do |y|
       @cwidth.times do |x|
         G::Fonts.blit(self,
-                      x * G::Fonts.char_width,
-                      y * G::Fonts.char_height,
-                      @cbuffer[y * @cwidth + x])
+          x * G::Fonts.char_width,
+          y * G::Fonts.char_height,
+          @cbuffer[y * @cwidth + x])
       end
     end
   end
@@ -91,6 +90,7 @@ class G::Termbox < G::Widget
   @cwidth = 0
   @cheight = 0
   @cbuffer = Slice(Char).empty
+
   def putc(ch : Char, redraw? = true)
     if @cx == @cwidth
       newline
@@ -101,9 +101,9 @@ class G::Termbox < G::Widget
     end
     @cbuffer[@cy * @cwidth + @cx] = ch
     G::Fonts.blit(self,
-                  @cx * G::Fonts.char_width,
-                  @cy * G::Fonts.char_height,
-                  ch)
+      @cx * G::Fonts.char_width,
+      @cy * G::Fonts.char_height,
+      ch)
     # STDERR.print @cx, '\n'
     @cx += 1
     if redraw?
@@ -154,6 +154,4 @@ class G::Termbox < G::Widget
       app.redraw
     end
   end
-
 end
-
