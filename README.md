@@ -1,7 +1,7 @@
 <h1 align="center">lilith</h1>
 
 <p align="center">
-<img src="./img/screenshot-2212.png" alt="screenshot of lilith"/>
+<img src="./img/screenshot23.png" alt="screenshot of lilith"/>
 </p>
 
 <p align="center">
@@ -63,5 +63,3 @@ make run_img
 ## License
 
 Lilith is licensed under MIT. See LICENSE for more details.
-
-Wallpaper: [昼寝覚めたら夜になった](https://www.pixiv.net/en/artworks/78375860) by [catzz](https://www.pixiv.net/member.php?id=1056186)
