@@ -139,6 +139,7 @@ class G::WindowDecoration < G::Widget
 
   def wm_message_event(ev : Wm::IPC::Message)
     if ev.is_a?(Wm::IPC::Data::RefocusEvent)
+      @app.not_nil!.client << Wm::IPC.cursor_update_request_message(Wm::IPC::Data::CursorType::Default)
       @last_mouse_x = -1
       @last_mouse_y = -1
       @focused = ev.focused > 0
@@ -154,6 +155,7 @@ class G::WindowDecoration < G::Widget
     if (main_widget = @main_widget) && !@win_key_pressed
       main_widget.mouse_event ev
       if main_widget.contains_point?(ev.relx, ev.rely)
+        @app.not_nil!.client << Wm::IPC.cursor_update_request_message(Wm::IPC::Data::CursorType::Default)
         @last_mouse_x = -1
         @last_mouse_y = -1
         return
@@ -168,6 +170,7 @@ class G::WindowDecoration < G::Widget
         delta_x = (ev.x - @last_mouse_x).clamp(-30, 30)
         delta_y = (ev.y - @last_mouse_y).clamp(-30, 30)
         if delta_x != 0 || delta_y != 0
+          @app.not_nil!.client << Wm::IPC.cursor_update_request_message(Wm::IPC::Data::CursorType::Move)
           @app.not_nil!.move(delta_x, delta_y)
         end
       end

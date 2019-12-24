@@ -44,15 +44,11 @@ lib LibC
   end
 end
 
-CURSOR_FILE = "/hd0/share/cursors/cursor.png"
-
-@[NoInline]
-fun breakpoint
-  asm("nop")
-end
-
 module Wm::Server
   extend self
+
+  CURSOR_FILE = "/hd0/share/cursors/cursor.png"
+  CURMOVE_FILE = "/hd0/share/cursors/move.png"
 
   abstract class Window
     @x : Int32 = 0
@@ -104,8 +100,13 @@ module Wm::Server
   end
 
   class Cursor < Window
+    @cursor_def : Painter::Bitmap
+    @cursor_move : Painter::Bitmap
+
     def initialize
-      @bitmap = Painter.load_png(CURSOR_FILE).not_nil!
+      @cursor_def = Painter.load_png(CURSOR_FILE).not_nil!
+      @cursor_move = Painter.load_png(CURMOVE_FILE).not_nil!
+      @bitmap = @cursor_def
       @z_index = Int32::MAX
     end
 
@@ -137,10 +138,19 @@ module Wm::Server
         dw = Math.max(@x, old_x) + bitmap.width - dx
         dh = Math.max(@y, old_y) + bitmap.height - dy
         Wm::Server.make_dirty dx, dy, dw, dh
-        # Wm::Server.make_dirty old_x, old_y, bitmap.width, bitmap.height
-        # Wm::Server.make_dirty @x, @y, bitmap.width, bitmap.height
       end
       packet
+    end
+
+    def change_type(type)
+      @bitmap = case type
+                when IPC::Data::CursorType::Default
+                  @cursor_def
+                when IPC::Data::CursorType::Move
+                  @cursor_move
+                else
+                  @cursor_def
+                end
     end
   end
 
@@ -433,6 +443,7 @@ module Wm::Server
           win = win.as(Program)
           if win.contains_point?(cursor.x, cursor.y) && win.z_index != -1
             break if win == @@focused
+            cursor.change_type Wm::IPC::Data::CursorType::Default
             if focused = @@focused
               focused.socket.unbuffered_write IPC.refocus_event_message(win.wid, 0).to_slice
               focused.z_index = 1
@@ -570,6 +581,11 @@ module Wm::Server
           @@windows.delete program
         else
           socket.unbuffered_write IPC.response_message(-1).to_slice
+        end
+      when IPC::Data::CURSOR_UPDATE_REQ_ID
+        if (msg = FixedMessageReader(IPC::Data::CursorUpdateRequest).read(header, socket))
+          cursor.change_type msg.type
+          socket.unbuffered_write IPC.response_message(1).to_slice
         end
       end
     end

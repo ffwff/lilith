@@ -112,6 +112,17 @@ module Wm::IPC
       header : Header
       x, y, width, height : Int32
     end
+
+    CURSOR_UPDATE_REQ_ID = 12
+    @[Packed]
+    struct CursorUpdateRequest
+      header : Header
+      type : CursorType
+    end
+    enum CursorType : Int32
+      Default = 0
+      Move = 1
+    end
   end
 
   struct DynamicResponse
@@ -293,6 +304,17 @@ module Wm::IPC
     rep.value.y = y
     rep.value.width = width
     rep.value.height = height
+    msg
+  end
+
+  # Creates cursor update message
+  def cursor_update_request_message(type)
+    msg = uninitialized UInt8[sizeof(Data::CursorUpdateRequest)]
+    rep = msg.to_unsafe.as(Data::CursorUpdateRequest*)
+    rep.value.header = create_header(
+      payload_size(Data::CursorUpdateRequest),
+      Data::CURSOR_UPDATE_REQ_ID)
+    rep.value.type = type
     msg
   end
 
