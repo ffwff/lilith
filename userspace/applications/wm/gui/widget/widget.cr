@@ -1,7 +1,8 @@
 struct G::KeyboardEvent
-  getter ch
+  getter ch, modifiers
 
-  def initialize(@ch : Char)
+  def initialize(@ch : Char,
+                 @modifiers : Wm::IPC::Data::KeyboardEventModifiers)
   end
 end
 

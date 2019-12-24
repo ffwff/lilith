@@ -88,7 +88,7 @@ class G::Application
               relx, rely)
           when Wm::IPC::Data::KeyboardEvent
             msg = msg.as Wm::IPC::Data::KeyboardEvent
-            main_widget.key_event G::KeyboardEvent.new(msg.ch.unsafe_chr)
+            main_widget.key_event G::KeyboardEvent.new(msg.ch.unsafe_chr, msg.modifiers)
           else
             if msg
               main_widget.wm_message_event msg

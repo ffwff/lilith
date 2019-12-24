@@ -123,14 +123,21 @@ class G::WindowDecoration < G::Widget
   end
 
   def key_event(ev : G::KeyboardEvent)
+    if ev.modifiers.includes?(Wm::IPC::Data::KeyboardEventModifiers::GuiL)
+      @last_mouse_x = -1
+      @last_mouse_y = -1
+      @win_key_pressed = true
+      return
+    else
+      @win_key_pressed = false
+    end
     if main_widget = @main_widget
       main_widget.key_event ev
     end
   end
 
   def wm_message_event(ev : Wm::IPC::Message)
-    case ev
-    when Wm::IPC::Data::RefocusEvent
+    if ev.is_a?(Wm::IPC::Data::RefocusEvent)
       @last_mouse_x = -1
       @last_mouse_y = -1
       @focused = ev.focused > 0
@@ -140,16 +147,21 @@ class G::WindowDecoration < G::Widget
 
   @last_mouse_x = -1
   @last_mouse_y = -1
+  @win_key_pressed = false
 
   def mouse_event(ev : G::MouseEvent)
-    if main_widget = @main_widget
+    if (main_widget = @main_widget) && !@win_key_pressed
       main_widget.mouse_event ev
+      if main_widget.contains_point?(ev.relx, ev.rely)
+        @last_mouse_x = -1
+        @last_mouse_y = -1
+        return
+      end
     end
     if ev.modifiers.includes?(Wm::IPC::Data::MouseEventModifiers::LeftButton)
       close = G::Sprites.close.not_nil!
       if @close_x <= ev.relx <= (@close_x + close.width) &&
          @close_y <= ev.rely <= (@close_y + close.height)
-        # STDERR.print "close!\n"
         @app.not_nil!.close
       elsif @last_mouse_x != -1 && @last_mouse_y != -1
         delta_x = ev.x - @last_mouse_x

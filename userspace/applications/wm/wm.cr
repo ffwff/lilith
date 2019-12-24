@@ -28,10 +28,19 @@ lib LibC
     scroll_delta : Int8
   end
 
+  @[Flags]
+  enum KeyboardModifiers : Int32
+    ShiftL = 1 << 0
+    ShiftR = 1 << 1
+    CtrlL  = 1 << 2
+    CtrlR  = 1 << 3
+    GuiL   = 1 << 4
+  end
+
   @[Packed]
   struct KeyboardPacket
     ch : Int32
-    modifiers : Int32
+    modifiers : KeyboardModifiers
   end
 end
 
@@ -380,20 +389,30 @@ module Wm::Server
     end
   end
 
+  @@last_kbd_modifiers = IPC::Data::KeyboardEventModifiers::None
   def respond_kbd
     packet = uninitialized LibC::KeyboardPacket
     if kbd.unbuffered_read(Bytes.new(pointerof(packet).as(UInt8*), sizeof(LibC::KeyboardPacket))) \
          != sizeof(LibC::KeyboardPacket)
       return
     end
+    modifiers = IPC::Data::KeyboardEventModifiers.new(packet.modifiers.value)
+    @@last_kbd_modifiers = modifiers
     if focused = @@focused
-      focused.socket.unbuffered_write IPC.kbd_event_message(packet.ch, packet.modifiers).to_slice
+      focused.socket.unbuffered_write IPC.kbd_event_message(packet.ch, modifiers).to_slice
+      if modifiers.includes?(IPC::Data::KeyboardEventModifiers::GuiL)
+        focused.socket.unbuffered_write IPC.mouse_event_message(@@last_mouse_x, @@last_mouse_y, IPC::Data::MouseEventModifiers::None, 0).to_slice
+      end
     end
   end
 
+  @@last_mouse_x = 0u32
+  @@last_mouse_y = 0u32
   @@last_mouse_modifiers = IPC::Data::MouseEventModifiers::None
   def respond_mouse
     packet = cursor.respond mouse
+    @@last_mouse_x = packet.x
+    @@last_mouse_y = packet.y
 
     modifiers = IPC::Data::MouseEventModifiers::None
     if packet.attributes.includes?(LibC::MouseAttributes::LeftButton)
@@ -405,11 +424,9 @@ module Wm::Server
     if packet.attributes.includes?(LibC::MouseAttributes::MiddleButton)
       modifiers |= IPC::Data::MouseEventModifiers::MiddleButton
     end
-
     if (focused = @@focused) &&
         (focused.contains_point?(cursor.x, cursor.y) ||
-          (@@last_mouse_modifiers.includes?(IPC::Data::MouseEventModifiers::LeftButton) &&
-           modifiers.includes?(IPC::Data::MouseEventModifiers::LeftButton)))
+         @@last_kbd_modifiers.includes?(IPC::Data::KeyboardEventModifiers::GuiL))
       focused.socket.unbuffered_write IPC.mouse_event_message(cursor.x, cursor.y, modifiers, packet.scroll_delta).to_slice
       @@last_mouse_modifiers = modifiers
       return

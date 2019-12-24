@@ -40,7 +40,16 @@ module Wm::IPC
     struct KeyboardEvent
       header : Header
       ch : Int32
-      modifiers : Int32
+      modifiers : KeyboardEventModifiers
+    end
+
+    @[Flags]
+    enum KeyboardEventModifiers : Int32
+      ShiftL = 1 << 0
+      ShiftR = 1 << 1
+      CtrlL  = 1 << 2
+      CtrlR  = 1 << 3
+      GuiL   = 1 << 4
     end
 
     MOUSE_EVENT_ID = 4
