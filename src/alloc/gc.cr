@@ -16,6 +16,12 @@ end
       Gc.unsafe_malloc size, true
     end
   end
+
+  fun __crystal_realloc64(ptr : Void*, size : UInt64) : Void*
+    Idt.disable(true) do
+      Gc.realloc ptr, size
+    end
+  end
 {% else %}
   fun __crystal_malloc64(size : UInt64) : Void*
     Gc.unsafe_malloc size
@@ -339,7 +345,7 @@ module Gc
 
     @@spinlock.with do
       newptr = Allocator.malloc(size, Allocator.atomic?(ptr))
-      memcpy newptr, ptr, oldsize
+      memcpy newptr.as(UInt8*), ptr.as(UInt8*), oldsize.to_usize
       push_gray newptr
 
       if Allocator.marked?(ptr) && @@state != State::ScanRoot
@@ -352,9 +358,9 @@ module Gc
         end
         if idx >= 0
           if idx != @@curr_grays_idx
-            memmove @@curr_grays + idx,
-              @@curr_grays + idx + 1,
-              sizeof(Void*) * (@@curr_grays_idx - idx - 1)
+            memmove (@@curr_grays + idx).as(UInt8*),
+              (@@curr_grays + idx + 1).as(UInt8*),
+              (sizeof(Void*) * (@@curr_grays_idx - idx - 1)).to_usize
           end
           @@curr_grays_idx -= 1
         end

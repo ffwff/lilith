@@ -25,22 +25,28 @@ class Array(T)
     new_size.to_usize * sizeof(T) + GC_ARRAY_HEADER_SIZE
   end
 
-  private def new_buffer(capacity)
+  private def capacity_for_ptr(ptr)
+    ((Allocator.block_size_for_ptr(ptr) - GC_ARRAY_HEADER_SIZE) // sizeof(T)).to_i32
+  end
+
+  private def new_buffer(new_capacity)
     if size > capacity
       abort "size must be smaller than capacity"
+    elsif new_capacity <= @capacity
+      return
     end
-    @capacity = capacity
     if @buffer.null?
       {% if T < Int %}
-        @buffer = Gc.unsafe_malloc(malloc_size(capacity), true).as(USize*)
+        @buffer = Gc.unsafe_malloc(malloc_size(new_capacity), true).as(USize*)
       {% else %}
-        @buffer = Gc.unsafe_malloc(malloc_size(capacity)).as(USize*)
+        @buffer = Gc.unsafe_malloc(malloc_size(new_capacity)).as(USize*)
       {% end %}
       @buffer[0] = GC_ARRAY_HEADER_TYPE
       @buffer[1] = 0u32
     else
-      @buffer = Gc.realloc(@buffer.as(Void*), malloc_size(capacity)).as(USize*)
+      @buffer = Gc.realloc(@buffer.as(Void*), malloc_size(new_capacity)).as(USize*)
     end
+    @capacity = capacity_for_ptr @buffer
   end
 
   def initialize
@@ -50,12 +56,12 @@ class Array(T)
 
   def initialize(initial_capacity)
     if initial_capacity > 0
-      @capacity = initial_capacity
       {% if T < Int %}
         @buffer = Gc.unsafe_malloc(malloc_size(initial_capacity), true).as(USize*)
       {% else %}
         @buffer = Gc.unsafe_malloc(malloc_size(initial_capacity)).as(USize*)
       {% end %}
+      @capacity = capacity_for_ptr @buffer
       @buffer[0] = GC_ARRAY_HEADER_TYPE
       @buffer[1] = 0u32
     else

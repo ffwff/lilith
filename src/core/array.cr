@@ -15,7 +15,7 @@ class Array(T)
     @buffer[1] = new_size.to_usize
   end
 
-  private def malloc_bytes(new_size)
+  private def malloc_size(new_size)
     new_size.to_usize * sizeof(T) + GC_ARRAY_HEADER_SIZE
   end
 
@@ -29,17 +29,18 @@ class Array(T)
     elsif new_capacity <= @capacity
       return
     end
-
-    old_size = size
-    old_buffer = @buffer
-    @buffer = Gc.unsafe_malloc(malloc_bytes(new_capacity)).as(USize*)
-    if old_buffer.null?
+    if @buffer.null?
+      {% if T < Int %}
+        @buffer = Gc.unsafe_malloc(malloc_size(new_capacity), true).as(USize*)
+      {% else %}
+        @buffer = Gc.unsafe_malloc(malloc_size(new_capacity)).as(USize*)
+      {% end %}
       @buffer[0] = GC_ARRAY_HEADER_TYPE
       @buffer[1] = 0u32
     else
-      memcpy(@buffer.as(UInt8*), old_buffer.as(UInt8*), malloc_bytes(old_size))
+      @buffer = Gc.realloc(@buffer.as(Void*), malloc_size(new_capacity)).as(USize*)
     end
-    @capacity = capacity_for_ptr(@buffer)
+    @capacity = capacity_for_ptr @buffer
   end
 
   def initialize
@@ -49,10 +50,14 @@ class Array(T)
 
   def initialize(initial_capacity : Int32)
     if initial_capacity > 0
-      @buffer = Gc.unsafe_malloc(malloc_bytes(initial_capacity)).as(USize*)
+      {% if T < Int %}
+        @buffer = Gc.unsafe_malloc(malloc_size(initial_capacity), true).as(USize*)
+      {% else %}
+        @buffer = Gc.unsafe_malloc(malloc_size(initial_capacity)).as(USize*)
+      {% end %}
+      @capacity = capacity_for_ptr(@buffer)
       @buffer[0] = GC_ARRAY_HEADER_TYPE
       @buffer[1] = 0u32
-      @capacity = capacity_for_ptr(@buffer)
     else
       @buffer = Pointer(USize).null
       @capacity = 0
