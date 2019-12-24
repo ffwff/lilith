@@ -21,6 +21,7 @@ lib Kernel
   $text_start : Void*; $text_end : Void*
   $data_start : Void*; $data_end : Void*
   $stack_start : Void*; $stack_end : Void*
+  $int_stack_start : Void*; $int_stack_end : Void*
 end
 
 MAIN_PROGRAM = "/main"
@@ -50,17 +51,18 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Paging.init_table(Kernel.text_start, Kernel.text_end,
     Kernel.data_start, Kernel.data_end,
     Kernel.stack_start, Kernel.stack_end,
+    Kernel.int_stack_start, Kernel.int_stack_end,
     mboot_header)
 
   Console.print "physical memory detected: ", Paging.usable_physical_memory, " bytes\n"
 
   # gc
   Console.print "initializing kernel garbage collector...\n"
-  Allocator.init(Kernel.stack_end.address + 0x1000)
+  Allocator.init(Kernel.int_stack_end.address + 0x1000)
   Gc.init Kernel.stack_start, Kernel.stack_end
 
   # processes
-  Gdt.stack = Kernel.stack_end
+  Gdt.register_int_stack Kernel.int_stack_end
   Gdt.flush_tss
   Kernel.ksyscall_setup
 

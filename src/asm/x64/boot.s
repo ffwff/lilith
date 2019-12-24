@@ -1,4 +1,5 @@
-STACK_SIZE = 32768
+STACK_SIZE = 16384
+INT_STACK_SIZE = 8192
 
 # -- text
 
@@ -52,9 +53,11 @@ ksetup_fxsave_region_base:
 
 # -- data
 .section .data
-.global fxsave_region_ptr
 .global stack_start
 .global stack_end
+.global int_stack_start
+.global int_stack_end
+.global fxsave_region_ptr
 .global fxsave_region_base_ptr
 fxsave_region_ptr:
     .quad fxsave_region
@@ -64,6 +67,10 @@ stack_start:
     .quad stack_bottom
 stack_end:
     .quad stack_top
+int_stack_start:
+    .quad int_stack_bottom
+int_stack_end:
+    .quad int_stack_top
 .align 16
 fxsave_region:
     .skip 512
@@ -78,3 +85,9 @@ fxsave_region_base:
 stack_bottom:
 .skip STACK_SIZE
 stack_top:
+
+.skip 4096
+.align 16
+int_stack_bottom:
+.skip INT_STACK_SIZE
+int_stack_top:

@@ -1,4 +1,4 @@
-private lib Kernel
+lib Kernel
   fun ksyscall_switch(frame : Idt::Data::Registers*) : NoReturn
 end
 
@@ -311,7 +311,7 @@ module Multiprocessing::Scheduler
 
   private def halt_processor
     Gc.non_stw_cycle
-    rsp = Gdt.stack
+    rsp = Kernel.int_stack_end
     asm("mov $0, %rsp
           mov %rsp, %rbp
           sti" :: "r"(rsp) : "volatile", "{rsp}", "{rbp}")

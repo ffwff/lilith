@@ -62,12 +62,6 @@ rdx, rcx, rbx, rax : UInt64
   IRQ_COUNT = 16
   @@irq_handlers = uninitialized InterruptHandler[IRQ_COUNT]
 
-  def initialize
-    {% for i in 0...IRQ_COUNT %}
-      @@irq_handlers[{{ i }}] = ->{ nil }
-    {% end %}
-  end
-
   # table init
   IDT_SIZE = 256
   @@idtr = uninitialized Data::Idt
@@ -99,7 +93,7 @@ rdx, rcx, rbx, rax : UInt64
   def init_idt_entry(num : Int32, selector : UInt16, offset : UInt64, type : UInt16)
     idt = Data::IdtEntry.new
     idt.offset_1 = (offset & 0xFFFF)
-    idt.ist = 0
+    idt.ist = 1
     idt.selector = selector
     idt.type_attr = type
     idt.offset_2 = (offset >> 16) & 0xFFFF
@@ -155,11 +149,15 @@ rdx, rcx, rbx, rax : UInt64
     retval
   end
 
+  @@last_rsp = 0u64
+  class_property last_rsp
+
   @@switch_processes = false
   class_property switch_processes
 end
 
 fun kirq_handler(frame : Idt::Data::Registers*)
+  Idt.last_rsp = frame.value.userrsp
   PIC.eoi frame.value.int_no
 
   if Idt.irq_handlers[frame.value.int_no].pointer.null?

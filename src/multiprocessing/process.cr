@@ -404,7 +404,6 @@ module Multiprocessing
 
     # spawn user process and move the lower-half of the current the address space
     # to the newly-spawned user process
-    @[NoInline]
     def self.spawn_user(udata : UserData, result : ElfReader::Result)
       udata.is64 = result.is64
       udata.memory_used = result.memory_used

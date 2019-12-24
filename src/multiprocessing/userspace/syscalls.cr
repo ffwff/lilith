@@ -265,7 +265,7 @@ rdx, rcx, rbx, rax : UInt64
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
         Multiprocessing::Scheduler.switch_process(frame)
       else
-        sysret(SYSCALL_ERR)
+        panic "unknown syscall!"
       end
       unlock
       return Kernel.ksyscall_sc_ret_driver(frame)

@@ -132,11 +132,8 @@ module Gdt
          ltr %bx" ::: "volatile", "bx")
   end
 
-  def stack : Void*
-    Pointer(Void).new(@@tss.rsp0)
-  end
-
-  def stack=(stack : Void*)
-    @@tss.rsp0 = stack.address
+  def register_int_stack(int_stack_end : Void*)
+    @@tss.rsp0 = int_stack_end.address
+    @@tss.ist_1 = int_stack_end.address
   end
 end

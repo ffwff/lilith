@@ -109,6 +109,7 @@ module Paging
     text_start : Void*, text_end : Void*,
     data_start : Void*, data_end : Void*,
     stack_start : Void*, stack_end : Void*,
+    int_stack_start : Void*, int_stack_end : Void*,
     mboot_header : Multiboot::MultibootInfo*
   )
     cur_mmap_addr = mboot_header.value.mmap_addr
@@ -179,6 +180,11 @@ module Paging
       FrameAllocator.initial_claim(i - Paging::KERNEL_OFFSET)
       i += 0x1000
     end
+    i = int_stack_start.address
+    while i <= int_stack_end.address
+      FrameAllocator.initial_claim(i - Paging::KERNEL_OFFSET)
+      i += 0x1000
+    end
 
     # text segment
     i = text_start.address
@@ -195,6 +201,12 @@ module Paging
     # stack segment
     i = stack_start.address
     while i < stack_end.address
+      alloc_frame_init true, false, i
+      i += 0x1000
+    end
+    # stack segment
+    i = int_stack_start.address
+    while i < int_stack_end.address
       alloc_frame_init true, false, i
       i += 0x1000
     end
