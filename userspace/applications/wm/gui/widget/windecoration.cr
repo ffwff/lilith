@@ -130,6 +130,7 @@ class G::WindowDecoration < G::Widget
       return
     else
       @win_key_pressed = false
+      @app.not_nil!.client << Wm::IPC.cursor_update_request_message(Wm::IPC::Data::CursorType::Default)
     end
     return if ev.ch == '\0'
     if main_widget = @main_widget
