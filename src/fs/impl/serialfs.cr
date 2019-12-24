@@ -1,7 +1,7 @@
-private class SerialFSNode < VFS::Node
+class SerialFS::Node < VFS::Node
   getter fs : VFS::FS
 
-  def initialize(@fs : SerialFS)
+  def initialize(@fs : SerialFS::FS)
   end
 
   def read(slice : Slice, offset : UInt32,
@@ -18,7 +18,7 @@ private class SerialFSNode < VFS::Node
   end
 end
 
-class SerialFS < VFS::FS
+class SerialFS::FS < VFS::FS
   getter! root : VFS::Node
 
   def name : String
@@ -26,6 +26,6 @@ class SerialFS < VFS::FS
   end
 
   def initialize
-    @root = SerialFSNode.new self
+    @root = SerialFS::Node.new self
   end
 end

@@ -1,7 +1,7 @@
-private class ConsoleFSNode < VFS::Node
+class ConsoleFS::Node < VFS::Node
   getter fs : VFS::FS
 
-  def initialize(@fs : ConsoleFS)
+  def initialize(@fs : ConsoleFS::FS)
   end
 
   def read(slice : Slice, offset : UInt32,
@@ -36,7 +36,7 @@ private class ConsoleFSNode < VFS::Node
   end
 end
 
-class ConsoleFS < VFS::FS
+class ConsoleFS::FS < VFS::FS
   getter! root : VFS::Node
 
   def name : String
@@ -44,7 +44,7 @@ class ConsoleFS < VFS::FS
   end
 
   def initialize
-    @root = ConsoleFSNode.new self
+    @root = ConsoleFS::Node.new self
 
     # setup process-local variables
     @process = Multiprocessing::Process

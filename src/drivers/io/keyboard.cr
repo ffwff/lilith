@@ -71,7 +71,7 @@ class Keyboard
   @modifiers = Modifiers::None
   getter modifiers
 
-  @kbdfs : KbdFS? = nil
+  @kbdfs : KbdFS::FS? = nil
   property kbdfs
 
   def initialize

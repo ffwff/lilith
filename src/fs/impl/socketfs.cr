@@ -1,9 +1,9 @@
 require "./pipe/circular_buffer.cr"
 
-private class SocketFSRoot < VFS::Node
+class SocketFS::Root < VFS::Node
   getter fs : VFS::FS
 
-  def initialize(@fs : SocketFS)
+  def initialize(@fs : SocketFS::FS)
   end
 
   def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
@@ -13,7 +13,7 @@ private class SocketFSRoot < VFS::Node
   end
 
   def create(name : Slice, process : Multiprocessing::Process? = nil, options : Int32 = 0) : VFS::Node?
-    node = SocketFSNode.new(String.new(name), self, fs)
+    node = SocketFS::Node.new(String.new(name), self, fs)
     node.next_node = @first_child
     unless @first_child.nil?
       @first_child.not_nil!.prev_node = node
@@ -22,7 +22,7 @@ private class SocketFSRoot < VFS::Node
     node
   end
 
-  def remove(node : SocketFSNode)
+  def remove(node : SocketFS::Node)
     if node == @first_child
       @first_child = node.next_node
     end
@@ -34,7 +34,7 @@ private class SocketFSRoot < VFS::Node
     end
   end
 
-  @first_child : SocketFSNode? = nil
+  @first_child : SocketFS::Node? = nil
   getter first_child
 
   def each_child(&block)
@@ -46,7 +46,7 @@ private class SocketFSRoot < VFS::Node
   end
 end
 
-private class SocketFSNode < VFS::Node
+class SocketFS::Node < VFS::Node
   getter! name : String, listen_node
   getter fs : VFS::FS
 
@@ -54,14 +54,14 @@ private class SocketFSNode < VFS::Node
     @listen_node
   end
 
-  @next_node : SocketFSNode? = nil
+  @next_node : SocketFS::Node? = nil
   property next_node
 
-  @prev_node : SocketFSNode? = nil
+  @prev_node : SocketFS::Node? = nil
   property prev_node
 
-  def initialize(@name : String, @parent : SocketFSRoot, @fs : SocketFS)
-    @listen_node = SocketFSListenNode.new self, @fs
+  def initialize(@name : String, @parent : SocketFS::Root, @fs : SocketFS::FS)
+    @listen_node = SocketFS::ListenNode.new self, @fs
   end
 
   def open(path : Slice, process : Multiprocessing::Process? = nil)
@@ -69,16 +69,16 @@ private class SocketFSNode < VFS::Node
       @listen_node.not_nil!.listener_pid = process.not_nil!.pid
       @listen_node
     else
-      SocketFSConnectionNode.new(self, @fs)
+      SocketFS::ConnectionNode.new(self, @fs)
     end
   end
 end
 
-private class SocketFSListenNode < VFS::Node
+class SocketFS::ListenNode < VFS::Node
   getter fs : VFS::FS, queue : VFS::Queue
   property listener_pid
 
-  def initialize(@parent : SocketFSNode, @fs : SocketFS)
+  def initialize(@parent : SocketFS::Node, @fs : SocketFS::FS)
     @listener_pid = -1
     @queue = VFS::Queue.new
   end
@@ -96,8 +96,8 @@ private class SocketFSListenNode < VFS::Node
     return VFS_ERR if process.not_nil!.pid != @listener_pid
     return 0 if slice.size != sizeof(Int32)
     if (msg = @queue.dequeue)
-      conn = msg.vfs_node.unsafe_as(SocketFSConnectionNode)
-      conn.state = SocketFSConnectionNode::State::Connected
+      conn = msg.vfs_node.as!(SocketFS::ConnectionNode)
+      conn.state = SocketFS::ConnectionNode::State::Connected
       conn.flush_queue
       fd = process.not_nil!.udata.install_fd(conn,
         FileDescriptor::Attributes::Read |
@@ -114,7 +114,7 @@ private class SocketFSListenNode < VFS::Node
   end
 end
 
-class SocketFSConnectionNode < VFS::Node
+class SocketFS::ConnectionNode < VFS::Node
   getter fs : VFS::FS, queue : VFS::Queue
   property connected
 
@@ -126,7 +126,7 @@ class SocketFSConnectionNode < VFS::Node
   @state = State::Disconnected
   property state
 
-  def initialize(@parent : SocketFSNode, @fs : SocketFS)
+  def initialize(@parent : SocketFS::Node, @fs : SocketFS::FS)
     @queue = VFS::Queue.new
     @m_buffer = CircularBuffer.new
     @s_buffer = CircularBuffer.new
@@ -210,7 +210,7 @@ class SocketFSConnectionNode < VFS::Node
   end
 end
 
-class SocketFS < VFS::FS
+class SocketFS::FS < VFS::FS
   getter! root : VFS::Node
 
   def name : String
@@ -218,6 +218,6 @@ class SocketFS < VFS::FS
   end
 
   def initialize
-    @root = SocketFSRoot.new self
+    @root = SocketFS::Root.new self
   end
 end

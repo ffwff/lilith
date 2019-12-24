@@ -90,16 +90,16 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   PS2.init_controller
 
   # initial rootfs
-  Multiprocessing.procfs = ProcFS.new
+  Multiprocessing.procfs = ProcFS::FS.new
   RootFS.append(Multiprocessing.procfs.not_nil!)
-  RootFS.append(KbdFS.new(Keyboard.new))
-  RootFS.append(MouseFS.new(Mouse.new))
-  RootFS.append(ConsoleFS.new)
-  RootFS.append(SerialFS.new)
-  RootFS.append(FbdevFS.new)
-  RootFS.append(PipeFS.new)
-  RootFS.append(TmpFS.new)
-  RootFS.append(SocketFS.new)
+  RootFS.append(KbdFS::FS.new(Keyboard.new))
+  RootFS.append(MouseFS::FS.new(Mouse.new))
+  RootFS.append(ConsoleFS::FS.new)
+  RootFS.append(SerialFS::FS.new)
+  RootFS.append(FbdevFS::FS.new)
+  RootFS.append(PipeFS::FS.new)
+  RootFS.append(TmpFS::FS.new)
+  RootFS.append(SocketFS::FS.new)
 
   # file systems
   root_device = Ide.devices[0]
@@ -111,7 +111,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   main_bin : VFS::Node? = nil
   if (mbr = MBR.read(root_device))
     Console.print "found MBR header...\n"
-    fs = Fat16FS.new root_device, mbr.to_unsafe.value.partitions[0]
+    fs = Fat16FS::FS.new root_device, mbr.to_unsafe.value.partitions[0]
     if !fs.root.dir_populated
       case fs.root.populate_directory
       when VFS_OK

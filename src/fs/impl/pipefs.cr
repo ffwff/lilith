@@ -1,9 +1,9 @@
 require "./pipe/circular_buffer.cr"
 
-private class PipeFSRoot < VFS::Node
+class PipeFS::Root < VFS::Node
   getter fs : VFS::FS
 
-  def initialize(@fs : PipeFS)
+  def initialize(@fs : PipeFS::FS)
   end
 
   def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
@@ -16,12 +16,12 @@ private class PipeFSRoot < VFS::Node
              process : Multiprocessing::Process? = nil,
              options : Int32 = 0) : VFS::Node?
     if (options & VFS_CREATE_ANON) != 0
-      return PipeFSNode.new(String.new(name),
+      return PipeFS::Node.new(String.new(name),
         process.not_nil!.pid,
         self, fs,
         anonymous: true)
     end
-    node = PipeFSNode.new(String.new(name),
+    node = PipeFS::Node.new(String.new(name),
       process.not_nil!.pid,
       self, fs)
     node.next_node = @first_child
@@ -32,7 +32,7 @@ private class PipeFSRoot < VFS::Node
     node
   end
 
-  def remove(node : PipeFSNode)
+  def remove(node : PipeFS::Node)
     if node == @first_child
       @first_child = node.next_node
     end
@@ -44,7 +44,7 @@ private class PipeFSRoot < VFS::Node
     end
   end
 
-  @first_child : PipeFSNode? = nil
+  @first_child : PipeFS::Node? = nil
   getter first_child
 
   def each_child(&block)
@@ -56,20 +56,20 @@ private class PipeFSRoot < VFS::Node
   end
 end
 
-private class PipeFSNode < VFS::Node
+class PipeFS::Node < VFS::Node
   getter! name : String
   getter fs : VFS::FS
 
-  @next_node : PipeFSNode? = nil
+  @next_node : PipeFS::Node? = nil
   property next_node
 
-  @prev_node : PipeFSNode? = nil
+  @prev_node : PipeFS::Node? = nil
   property prev_node
 
   def initialize(@name : String,
                  @m_pid,
-                 @parent : PipeFSRoot,
-                 @fs : PipeFS,
+                 @parent : PipeFS::Root,
+                 @fs : PipeFS::FS,
                  anonymous = false)
     if anonymous
       @open_count = 1
@@ -203,7 +203,7 @@ private class PipeFSNode < VFS::Node
   end
 end
 
-class PipeFS < VFS::FS
+class PipeFS::FS < VFS::FS
   getter! root : VFS::Node
 
   def name : String
@@ -211,6 +211,6 @@ class PipeFS < VFS::FS
   end
 
   def initialize
-    @root = PipeFSRoot.new self
+    @root = PipeFS::Root.new self
   end
 end

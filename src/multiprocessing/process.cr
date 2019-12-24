@@ -49,7 +49,7 @@ module Multiprocessing
   @@fxsave_region_base = Pointer(UInt8).null
   class_property fxsave_region, fxsave_region_base
 
-  @@procfs : ProcFS? = nil
+  @@procfs : ProcFS::FS? = nil
   class_property procfs
 
   @@kernel_threads : Array(Process)? = nil

@@ -1,5 +1,5 @@
 class Mouse
-  @mousefs : MouseFS? = nil
+  @mousefs : MouseFS::FS? = nil
   property mousefs
 
   def initialize
