@@ -44,6 +44,10 @@ class IO::FileDescriptor < IO
     LibC.mmap address, size, prot.value, flags, @fd, offset
   end
 
+  def rewind
+    LibC.lseek @fd, 0, LibC::SEEK_SET
+  end
+
   def size : Int
     cur = LibC.lseek @fd, 0, LibC::SEEK_CUR
     retval = LibC.lseek @fd, 0, LibC::SEEK_END
