@@ -19,8 +19,9 @@ class G::Termbox < G::Widget
     @app.not_nil!.watch_io @output_fd.not_nil!
   end
 
+  @bgcolor = 0x0u32
   @color = 0x0u32
-  property color
+  property bgcolor, color
 
   def initialize(@x : Int32, @y : Int32,
                  width : Int32, height : Int32)
@@ -74,13 +75,14 @@ class G::Termbox < G::Widget
   end
 
   def redraw_all
-    Painter.blit_rect bitmap!, 0, 0, @color
+    Painter.blit_rect bitmap!, 0, 0, @bgcolor
     @cheight.times do |y|
       @cwidth.times do |x|
         G::Fonts.blit(self,
           x * G::Fonts.char_width,
           y * G::Fonts.char_height,
-          @cbuffer[y * @cwidth + x])
+          @cbuffer[y * @cwidth + x],
+          @color)
       end
     end
   end
@@ -103,7 +105,7 @@ class G::Termbox < G::Widget
     G::Fonts.blit(self,
       @cx * G::Fonts.char_width,
       @cy * G::Fonts.char_height,
-      ch)
+      ch, @color)
     # STDERR.print @cx, '\n'
     @cx += 1
     if redraw?

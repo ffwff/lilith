@@ -104,7 +104,7 @@ class G::WindowDecoration < G::Widget
     # title
     if (title = @title)
       tx, ty = (width - G::Fonts.text_width(title)) // 2, TITLE_PADDING_TOP
-      G::Fonts.blit self, tx, ty, title
+      G::Fonts.blit self, tx, ty, title, @alpha ? 0xFFFFFFFFu32 : 0xFFFFFFu32
     end
 
     # widget
@@ -165,8 +165,8 @@ class G::WindowDecoration < G::Widget
          @close_y <= ev.rely <= (@close_y + close.height)
         @app.not_nil!.close
       elsif @last_mouse_x != -1 && @last_mouse_y != -1
-        delta_x = ev.x - @last_mouse_x
-        delta_y = ev.y - @last_mouse_y
+        delta_x = (ev.x - @last_mouse_x).clamp(-30, 30)
+        delta_y = (ev.y - @last_mouse_y).clamp(-30, 30)
         if delta_x != 0 || delta_y != 0
           @app.not_nil!.move(delta_x, delta_y)
         end

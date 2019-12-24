@@ -30,7 +30,8 @@ module G::Fonts
 
   def blit(db : UInt32*,
            dw : Int, dh : Int,
-           sx : Int, sy : Int, ch : Char)
+           sx : Int, sy : Int, ch : Char,
+           color : UInt32 = 0xFFFFFF)
     if bitmap = FONT8x8[ch.ord]?
       WIDTH.times do |cx|
         HEIGHT.times do |cy|
@@ -38,7 +39,7 @@ module G::Fonts
           dy = sy + cy
           next if dy >= dh || dx >= dw
           if (bitmap[cy] & (1 << cx)) != 0
-            db[dy * dw + dx] = 0x00FFFFFF
+            db[dy * dw + dx] = color
           end
         end
       end
@@ -47,41 +48,46 @@ module G::Fonts
 
   def blit(db : UInt32*,
            dw : Int, dh : Int,
-           sx : Int, sy : Int, str : String)
+           sx : Int, sy : Int, str : String,
+           color : UInt32 = 0xFFFFFF)
     cx = sx
     str.each_char do |ch|
-      blit db, dw, dh, cx, sy, ch
+      blit db, dw, dh, cx, sy, ch, color
       cx += WIDTH
     end
   end
 
   def blit(widget : G::Widget,
-           cx : Int, cy : Int, ch : Char)
+           cx : Int, cy : Int, ch : Char,
+           color : UInt32 = 0xFFFFFF)
     blit widget.bitmap!,
       cx, cy,
-      ch
+      ch, color
   end
 
   def blit(widget : G::Widget,
-           sx : Int, sy : Int, str : String)
+           sx : Int, sy : Int, str : String,
+           color : UInt32 = 0xFFFFFF)
     blit widget.bitmap!,
       sx, sy,
-      str
+      str, color
   end
 
   def blit(bitmap : Painter::Bitmap,
-           cx : Int, cy : Int, ch : Char)
+           cx : Int, cy : Int, ch : Char,
+           color : UInt32 = 0xFFFFFF)
     blit bitmap.to_unsafe,
       bitmap.width, bitmap.height,
       cx, cy,
-      ch
+      ch, color
   end
 
   def blit(bitmap : Painter::Bitmap,
-           sx : Int, sy : Int, str : String)
+           sx : Int, sy : Int, str : String,
+           color : UInt32 = 0xFFFFFF)
     blit bitmap.to_unsafe,
       bitmap.width, bitmap.height,
       sx, sy,
-      str
+      str, color
   end
 end

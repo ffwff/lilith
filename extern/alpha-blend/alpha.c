@@ -35,6 +35,17 @@ void preprocess(unsigned char *data, int w, int h) {
     }
 }
 
+void preprocess1(unsigned char *data, int w, int h) {
+    for (int i = 0; i < (w * h * 4); i += 4) {
+        unsigned char r = data[i + 0];
+        unsigned char g = data[i + 1];
+        unsigned char b = data[i + 2];
+        data[i + 0] = b;
+        data[i + 1] = g;
+        data[i + 2] = r;
+    }
+}
+
 void preprocess_multiplied(unsigned char *data, int w, int h) {
     for (int i = 0; i < (w * h * 4); i += 4) {
         unsigned char r = data[i + 0];
@@ -65,7 +76,7 @@ void print128(__m128i var) {
     printf("%08lx %08lx %08lx %08lx", data[0], data[1], data[2], data[3]);
 }
 
-#if 0
+#if 1
 int main(int argc, char const *argv[]) {
     int sx, sy, _;
     printf("loading src\n");
@@ -78,14 +89,14 @@ int main(int argc, char const *argv[]) {
     assert(sx == dx && sy == dy);
 
     printf("preprocessing\n");
-    preprocess_multiplied(src, sx, sy);
+    preprocess1(src, sx, sy);
     preprocess(dst, dx, dy);
 
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC_RAW, &start);
 
     // TODO: indivisible by 4?
-    size_t size = (dx * dy) / 4;  // in 128
+    size_t size = (dx * dy) * 4;  // in 128
     kalpha_blend(dst, src, size);
 
     clock_gettime(CLOCK_MONOTONIC_RAW, &end);
@@ -132,7 +143,6 @@ static inline __m128i clip_u8(__m128i dst) {
     dst = _mm_and_si128(dst, mask);                // chop higher bits
     return dst;
 }
-
 static __m128i blend(__m128i dst, __m128i src) {
     const __m128i rbmask = _mm_setr_epi32(0x00FF00FF, 0x00FF00FF, 0x00FF00FF, 0x00FF00FF);
     const __m128i gmask = _mm_setr_epi32(0x0000FF00, 0x0000FF00, 0x0000FF00, 0x0000FF00);
@@ -183,10 +193,40 @@ static __m128i blend(__m128i dst, __m128i src) {
     return _mm_or_si128(rb, g);
 }
 
-void kalpha_blend(unsigned char *dst, const unsigned char *src, size_t size) {
-    __m128i *dst128 = (__m128i *)dst;
-    __m128i *src128 = (__m128i *)src;
-    for (size_t i = 0; i < size; i++) {
-        _mm_storeu_si128(dst128 + i, blend(_mm_loadu_si128(dst128 + i), _mm_loadu_si128(src128 + i)));
-    }
+#if 0
+void kalpha_blend(unsigned char * restrict dst, const unsigned char * restrict src, size_t size) {
+  unsigned char *rdd = dst;
+  const unsigned char *rds = src;
+  for (size_t i = 0; i < size; i += 4) {
+      unsigned char db = rdd[i + 0], dg = rdd[i + 1], dr = rdd[i + 2];
+      const unsigned char sb = rds[i + 0], sg = rds[i + 1], sr = rds[i + 2], sa = rds[i + 3], saf = 0xff - sa;
+      rdd[i + 0] = (((uint16_t)sb * sa) >> 8) + (((uint16_t)db * saf) >> 8) + 1;
+      rdd[i + 1] = (((uint16_t)sg * sa) >> 8) + (((uint16_t)dg * saf) >> 8) + 1;
+      rdd[i + 2] = (((uint16_t)sr * sa) >> 8) + (((uint16_t)dr * saf) >> 8) + 1;
+  }
 }
+#else
+
+void kalpha_blend(unsigned char * restrict dst, const unsigned char * restrict src, size_t size) {
+  uint32_t *dptr = (uint32_t*)dst;
+  const uint32_t *sptr = (const uint32_t*)src;
+  for (size_t i = 0; i < (size/4); i++) {
+    uint32_t dcolor = dptr[i];
+    uint32_t scolor = sptr[i];
+    const uint32_t alpha = scolor >> 24, falpha = 0xff - alpha;
+    uint32_t srb = (((scolor & 0xff00ff) * alpha) >> 8) & 0xff00ff;
+    uint32_t sg = (((scolor & 0x00ff00) * alpha) >> 8) & 0x00ff00;
+    uint32_t drb = (((dcolor & 0xff00ff) * falpha) >> 8) & 0xff00ff;
+    uint32_t dg = (((dcolor & 0x00ff00) * falpha) >> 8) & 0x00ff00;
+
+    uint32_t nrb = drb + srb;
+    if((nrb&0xff000000)!=0) nrb |= 0x00ff0000;
+    if((nrb&0x0000ff00)!=0) nrb |= 0x000000ff;
+
+    uint32_t ng = dg + sg;
+    if((ng&0x00ff0000)!=0) nrb |= 0x0000ff00;
+
+    dptr[i] = (nrb & 0xFF00FF) | (ng & 0x00FF00);
+  }
+}
+#endif
