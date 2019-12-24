@@ -391,10 +391,11 @@ module Wm::Server
     end
   end
 
+  @@last_mouse_modifiers = IPC::Data::MouseEventModifiers::None
   def respond_mouse
     packet = cursor.respond mouse
 
-    modifiers = IPC::Data::MouseEventModifiers.new 0
+    modifiers = IPC::Data::MouseEventModifiers::None
     if packet.attributes.includes?(LibC::MouseAttributes::LeftButton)
       modifiers |= IPC::Data::MouseEventModifiers::LeftButton
     end
@@ -405,8 +406,13 @@ module Wm::Server
       modifiers |= IPC::Data::MouseEventModifiers::MiddleButton
     end
 
-    if (focused = @@focused) && focused.contains_point?(cursor.x, cursor.y)
+    if (focused = @@focused) &&
+        (focused.contains_point?(cursor.x, cursor.y) ||
+          (@@last_mouse_modifiers.includes?(IPC::Data::MouseEventModifiers::LeftButton) &&
+           modifiers.includes?(IPC::Data::MouseEventModifiers::LeftButton)))
       focused.socket.unbuffered_write IPC.mouse_event_message(cursor.x, cursor.y, modifiers, packet.scroll_delta).to_slice
+      @@last_mouse_modifiers = modifiers
+      return
     end
     if modifiers.includes?(IPC::Data::MouseEventModifiers::LeftButton)
       @@windows.reverse_each do |win|
@@ -427,6 +433,8 @@ module Wm::Server
         end
       end
     end
+
+    @@last_mouse_modifiers = modifiers
   end
 
   def respond_ipc
