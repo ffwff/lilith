@@ -53,8 +53,9 @@ class Keyboard
   enum Modifiers : Int32
     ShiftL = 1 << 0
     ShiftR = 1 << 1
-    CtrlL  = 1 << 3
-    CtrlR  = 1 << 4
+    CtrlL  = 1 << 2
+    CtrlR  = 1 << 3
+    GuiL   = 1 << 4
   end
 
   enum SpecialKeys
@@ -125,6 +126,12 @@ class Keyboard
           @kbdfs.not_nil!.on_key SpecialKeys::RightArrow
         when 0x53 # delete
           @kbdfs.not_nil!.on_key SpecialKeys::Delete
+        when 0x5B # left gui key pressed
+          @modifiers |= Modifiers::GuiL
+          @kbdfs.not_nil!.on_key '\0'
+        when 0xDB # left gui key released
+          @modifiers &= ~Modifiers::GuiL
+          @kbdfs.not_nil!.on_key '\0'
         end
         @last_e0 = false
         @last_f0 = false
