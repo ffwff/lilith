@@ -424,11 +424,10 @@ module Wm::Server
     if packet.attributes.includes?(LibC::MouseAttributes::MiddleButton)
       modifiers |= IPC::Data::MouseEventModifiers::MiddleButton
     end
-    if (focused = @@focused) &&
-        (focused.contains_point?(cursor.x, cursor.y) ||
-         @@last_kbd_modifiers.includes?(IPC::Data::KeyboardEventModifiers::GuiL))
+    @@last_mouse_modifiers = modifiers
+
+    if (focused = @@focused) && focused.contains_point?(cursor.x, cursor.y)
       focused.socket.unbuffered_write IPC.mouse_event_message(cursor.x, cursor.y, modifiers, packet.scroll_delta).to_slice
-      @@last_mouse_modifiers = modifiers
       return
     end
     if modifiers.includes?(IPC::Data::MouseEventModifiers::LeftButton)
@@ -450,8 +449,6 @@ module Wm::Server
         end
       end
     end
-
-    @@last_mouse_modifiers = modifiers
   end
 
   def respond_ipc

@@ -131,6 +131,7 @@ class G::WindowDecoration < G::Widget
     else
       @win_key_pressed = false
     end
+    return if ev.ch == '\0'
     if main_widget = @main_widget
       main_widget.key_event ev
     end
