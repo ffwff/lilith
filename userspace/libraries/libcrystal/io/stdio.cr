@@ -1,21 +1,6 @@
 require "./io.cr"
 require "./buffered.cr"
 
-lib LibC
-  SEEK_SET = 0
-  SEEK_CUR = 1
-  SEEK_END = 2
-
-  @[Flags]
-  enum MmapProt : LibC::Int
-    Read    = 1 << 0
-    Write   = 1 << 1
-    Execute = 1 << 2
-  end
-
-  fun close(fd : LibC::Int) : LibC::Int
-end
-
 class IO::FileDescriptor < IO
   include IO::Buffered
 

@@ -1,11 +1,5 @@
 require "./slice/sort"
 
-lib LibC
-  fun memcpy(dest : Void*, src : Void*, n : SizeT) : Void*
-  fun memmove(dest : Void*, src : Void*, n : SizeT) : Void*
-  fun memset(dest : Void*, c : LibC::Int, n : SizeT) : Void*
-end
-
 struct Slice(T)
   getter size
 

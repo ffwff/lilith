@@ -1,14 +1,14 @@
 require "./prelude/primitives.cr"
 require "./prelude/atomic.cr"
 require "./core/object.cr"
-require "./sys/types.cr"
+require "./c/types.cr"
+require "./c/*"
 require "./core/*"
 require "./sys/*"
 require "./io/io.cr"
 require "./io/*"
 require "./time/*"
 require "./gc/*"
-require "./c/*"
 
 lib LibCrystalMain
   fun __crystal_main(argc : Int32, argv : UInt8**)

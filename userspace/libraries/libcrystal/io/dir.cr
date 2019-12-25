@@ -1,26 +1,5 @@
 require "./file.cr"
 
-lib LibC
-  alias Ino_t = LibC::Int
-
-  @[Packed]
-  struct Dirent
-    # Inode number
-    d_ino : Ino_t
-    # Length of this record
-    d_reclen : UInt16
-    # Type of file; not supported by all filesystem types
-    d_type : UInt8
-    # Null-terminated filename
-    d_name : UInt8[256]
-  end
-
-  fun lilith_readdir(fd : LibC::Int,
-                     direntp : Dirent*) : LibC::Int
-  fun getcwd(path : LibC::UString, length : LibC::SizeT) : LibC::UString
-  fun chdir(path : LibC::UString) : LibC::Int
-end
-
 class Dir
   def self.new(path)
     fd = LibC.open(path, LibC::O_RDONLY)

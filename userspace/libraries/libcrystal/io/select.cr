@@ -1,7 +1,3 @@
-lib LibC
-  fun waitfd(fds : LibC::Int*, nfd : LibC::SizeT, timeout : UInt64) : LibC::Int
-end
-
 class IO::Select
   @targets = Array(IO::FileDescriptor).new
   @fds = Array(Int32).new

@@ -1,8 +1,3 @@
-lib LibC
-  fun usleep(timeout : UInt64) : LibC::Int
-  fun exit(code : LibC::Int) : NoReturn
-end
-
 def usleep(usecs : Int)
   LibC.usleep usecs.to_u64
 end
