@@ -1,3 +1,5 @@
+require "./prelude/primitives.cr"
+require "./prelude/atomic.cr"
 require "./core/object.cr"
 require "./sys/types.cr"
 require "./core/*"
@@ -28,11 +30,11 @@ fun main(argc : LibC::Int, argv : UInt8**) : LibC::Int
   {% if flag?(:i686) %}
     asm("mov %esp, $0" : "=r"(stack_end) :: "volatile")
     Allocator.init 0x8000_0000u64
-    Gc.init(Pointer(Void).new(0xFF80_0000u64), stack_end)
+    GC.init(Pointer(Void).new(0xFF80_0000u64), stack_end)
   {% else %}
     asm("mov %rsp, $0" : "=r"(stack_end) :: "volatile")
     Allocator.init 0x1_0000_0000u64
-    Gc.init(Pointer(Void).new(0x7FFF_FF80_0000u64), stack_end)
+    GC.init(Pointer(Void).new(0x7FFF_FF80_0000u64), stack_end)
   {% end %}
   LibCrystalMain.__crystal_main(argc, argv)
   STDOUT.flush

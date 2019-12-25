@@ -216,7 +216,7 @@ module GC
     pos = 0
     size = LibCrystal.type_size id
     if size == 0
-      Serial.print ptr, '\n'
+      # Serial.print ptr, '\n'
       panic "size is 0"
     end
     while pos < size

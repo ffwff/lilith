@@ -101,7 +101,7 @@ class Array(T) < Markable
   def markgc(&block)
     return if @buffer.null?
     yield @buffer.as(Void*)
-    {% unless T < Int %}
+    {% unless T < Int || T < Struct %}
       each do |obj|
         yield obj.as(Void*)
       end

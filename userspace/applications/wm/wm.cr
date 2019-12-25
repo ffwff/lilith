@@ -392,7 +392,7 @@ module Wm::Server
         @@largest_dirty_width = 0
         @@largest_dirty_height = 0
       end
-      Gc.non_stw_cycle
+      GC.non_stw_cycle
     end
   end
 

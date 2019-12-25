@@ -39,7 +39,7 @@ class String
   end
 
   def self.new(capacity : Int)
-    str = Gc.unsafe_malloc(capacity.to_u64 + HEADER_SIZE + 1, true).as(UInt8*)
+    str = GC.unsafe_malloc(capacity.to_u64 + HEADER_SIZE + 1, true).as(UInt8*)
     buffer = str.as(String).to_unsafe
     bytesize, size = yield buffer
 
