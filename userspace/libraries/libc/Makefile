@@ -18,7 +18,7 @@ CRYSTAL_SRC = $(wildcard src/*.cr) $(wildcard src/functions/*.cr)
 MATH_SRC=$(wildcard src/functions/math/*.cr)
 
 CR=crystal
-CRFLAGS=--cross-compile --target $(CRTARGET) --prelude ./prelude.cr -Ddisable_overflow
+CRFLAGS=--cross-compile --target $(CRTARGET) --prelude ./prelude.cr -Ddisable_overflow --freestanding --no-finalizers
 CCFLAGS = -Isrc/include -nostdlib -Wall
 
 ifeq ($(RELEASE),1)
