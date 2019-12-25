@@ -7,36 +7,41 @@ end
 {% if flag?(:kernel) %}
   fun __crystal_malloc64(size : UInt64) : Void*
     Idt.disable(true) do
-      Gc.unsafe_malloc size
+      GC.unsafe_malloc size
     end
   end
 
   fun __crystal_malloc_atomic64(size : UInt64) : Void*
     Idt.disable(true) do
-      Gc.unsafe_malloc size, true
+      GC.unsafe_malloc size, true
     end
   end
 
   fun __crystal_realloc64(ptr : Void*, size : UInt64) : Void*
     Idt.disable(true) do
-      Gc.realloc ptr, size
+      GC.realloc ptr, size
     end
   end
 {% else %}
   fun __crystal_malloc64(size : UInt64) : Void*
-    Gc.unsafe_malloc size
+    GC.unsafe_malloc size
   end
 
   fun __crystal_malloc_atomic64(size : UInt64) : Void*
-    Gc.unsafe_malloc size, true
+    GC.unsafe_malloc size, true
   end
 
   fun __crystal_realloc64(ptr : Void*, size : UInt64) : Void*
-    Gc.realloc ptr, size
+    GC.realloc ptr, size
   end
 {% end %}
 
-module Gc
+class Markable
+  def markgc(&block)
+  end
+end
+
+module GC
   extend self
 
   lib Data
@@ -47,7 +52,7 @@ module Gc
     end
   end
 
-  # whether the gc is enabled
+  # whether the GC is enabled
   @@enabled = false
   class_property enabled
 
@@ -191,38 +196,39 @@ module Gc
   private def scan_object(ptr : Void*)
     # Serial.print ptr, '\n'
     id = ptr.as(UInt32*).value
-    if id == GC_ARRAY_HEADER_TYPE
-      buffer = ptr.address + sizeof(USize) * 2
-      size = ptr.as(USize*)[1]
-      # Serial.print "buffer: ", ptr, '\n'
-      size.times do |i|
-        ivarp = Pointer(Void*).new(buffer + i.to_u64 * sizeof(Void*))
+    # skip if typeid == 0 (nothing is set)
+    if id == 0
+      push_opposite_gray ptr
+      return
+    end
+    # manual marking
+    if Markable.crystal_instance_min_type_id <= id < Markable.crystal_instance_type_id
+      ptr.as(Markable).markgc do |ivar|
+        if Allocator.contains_ptr? ivar
+          # Serial.print "mark: ", ivar, '\n'
+          push_opposite_gray ivar
+        end
+      end
+      return
+    end
+    # mark everything the compiler knows
+    offsets = LibCrystal.type_offsets id
+    pos = 0
+    size = LibCrystal.type_size id
+    if size == 0
+      Serial.print ptr, '\n'
+      panic "size is 0"
+    end
+    while pos < size
+      if (offsets & 1) != 0
+        ivarp = Pointer(Void*).new(ptr.address + pos)
         ivar = ivarp.value
-        # Serial.print "ivar: ", ivarp, ": ", ivar,'\n'
         if Allocator.contains_ptr? ivar
           push_opposite_gray ivar
         end
       end
-    else
-      if id == 0
-        # Serial.print "zero: ", ptr, '\n'
-        push_opposite_gray ptr
-        return
-      end
-      offsets = LibCrystal.type_offsets id
-      pos = 0
-      size = LibCrystal.type_size id
-      while pos < size
-        if (offsets & 1) != 0
-          ivarp = Pointer(Void*).new(ptr.address + pos)
-          ivar = ivarp.value
-          if Allocator.contains_ptr? ivar
-            push_opposite_gray ivar
-          end
-        end
-        offsets >>= 1
-        pos += sizeof(Void*)
-      end
+      offsets >>= 1
+      pos += sizeof(Void*)
     end
   end
 
@@ -312,6 +318,12 @@ module Gc
     end
   end
 
+  def full_cycle
+    @@spinlock.with do
+      unlocked_full_cycle
+    end
+  end
+
   def non_stw_cycle
     @@spinlock.with do
       if @@state != State::ScanRoot
@@ -324,7 +336,7 @@ module Gc
 
   def unsafe_malloc(size : UInt64, atomic = false)
     @@spinlock.with do
-      {% if flag?(:debug_gc) %}
+      {% if flag?(:debug_GC) %}
         if enabled
           unlocked_full_cycle
         end
@@ -371,7 +383,7 @@ module Gc
   end
 
   def dump(io)
-    io.print "Gc {\n"
+    io.print "GC {\n"
     io.print "  curr_grays ("
     io.print @@curr_grays_idx, "): "
     @@curr_grays_idx.times do |i|

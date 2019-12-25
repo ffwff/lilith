@@ -55,7 +55,7 @@ struct Pointer(T)
   end
 
   def self.malloc_atomic(size = 1)
-    Gc.unsafe_malloc(size.to_usize * sizeof(T), true).as(T*)
+    GC.unsafe_malloc(size.to_usize * sizeof(T), true).as(T*)
   end
 
   def to_s(io)

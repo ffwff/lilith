@@ -310,7 +310,7 @@ module Multiprocessing::Scheduler
   end
 
   private def halt_processor
-    Gc.non_stw_cycle
+    GC.non_stw_cycle
     rsp = Kernel.int_stack_end
     asm("mov $0, %rsp
           mov %rsp, %rbp
