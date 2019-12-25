@@ -378,7 +378,6 @@ module Wm::Server
         @@redraw_all = false
       elsif dirty_rects.size > 0
         dirty_rects.each do |rect|
-          # Painter.blit_rect Wm::Server.framebuffer, rect.width, rect.height, rect.x, rect.y, 0xff0000
           @@windows.each do |window|
             if rect.window_in_rect?(window)
               window.render backbuffer
@@ -393,6 +392,7 @@ module Wm::Server
         @@largest_dirty_width = 0
         @@largest_dirty_height = 0
       end
+      Gc.non_stw_cycle
     end
   end
 
