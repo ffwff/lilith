@@ -83,6 +83,9 @@ class MemMapList
         next_next_node = next_node.next_node
 
         current.next_node = next_next_node
+        if n = next_next_node
+          n.prev_node = current
+        end
         current.size += size + next_node.size
       elsif combine_with_prev
         # current node is before insertion node
@@ -97,10 +100,12 @@ class MemMapList
         node = MemMapNode.new(addr, size, attr)
         node.prev_node = current
         node.next_node = current.next_node
-        current.next_node = node
-        if node.next_node.nil?
+        if nn = current.next_node
+          nn.prev_node = node
+        else
           @last_node = node
         end
+        current.next_node = node
         return node
       end
     end
