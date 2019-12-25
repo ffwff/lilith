@@ -157,8 +157,16 @@ module RootFS
       node.prev_node.not_nil!.next_node = node.next_node
     end
   end
+  
+  def find_root(name)
+    each do |fs|
+      if name == fs.name
+        return fs.root
+      end
+    end
+  end
 
-  def each(&block)
+  private def each(&block)
     node = @@vfs_node
     while !node.nil?
       yield node

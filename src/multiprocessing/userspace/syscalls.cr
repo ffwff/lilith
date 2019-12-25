@@ -101,14 +101,8 @@ rdx, rcx, rbx, rax : UInt64
     end
     parse_path_into_segments(path) do |segment|
       if vfs_node.nil? # no path specifier
-        RootFS.each do |fs|
-          if segment == fs.name
-            if (vfs_node = fs.root).nil?
-              return nil
-            else
-              break
-            end
-          end
+        unless vfs_node = RootFS.find_root(segment)
+          return
         end
       elsif segment == "."
         # ignored
@@ -171,15 +165,8 @@ rdx, rcx, rbx, rax : UInt64
         builder << "/"
         builder << segment
         if vfs_node.nil?
-          RootFS.each do |fs|
-            if segment == fs.name
-              # Serial.print "goto ", fs.name, '\n'
-              if (vfs_node = fs.root).nil?
-                return nil
-              else
-                break
-              end
-            end
+          unless vfs_node = RootFS.find_root(segment)
+            return
           end
         elsif (vfs_node = vfs_node.not_nil!.open(segment)).nil?
           return nil
