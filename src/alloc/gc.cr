@@ -37,6 +37,7 @@ end
 {% end %}
 
 class Markable
+  @[NoInline]
   def markgc(&block)
   end
 end
@@ -54,7 +55,18 @@ module GC
 
   # whether the GC is enabled
   @@enabled = false
-  class_property enabled
+
+  def enabled
+    @@spinlock.with do
+      @@enabled
+    end
+  end
+
+  def enabled=(e)
+    @@spinlock.with do
+      @@enabled = e
+    end
+  end
 
   GRAY_SIZE = 256
   @@front_grays = uninitialized Void*[GRAY_SIZE]
@@ -216,7 +228,7 @@ module GC
     pos = 0
     size = LibCrystal.type_size id
     if size == 0
-      # Serial.print ptr, '\n'
+      Serial.print ptr, '\n'
       panic "size is 0"
     end
     while pos < size
@@ -313,18 +325,20 @@ module GC
   end
 
   private def unlocked_full_cycle
-    while true
+    16.times do
       return if unlocked_cycle
     end
   end
 
   def full_cycle
+    return
     @@spinlock.with do
       unlocked_full_cycle
     end
   end
 
   def non_stw_cycle
+    return
     @@spinlock.with do
       if @@state != State::ScanRoot
         unlocked_cycle
@@ -336,12 +350,12 @@ module GC
 
   def unsafe_malloc(size : UInt64, atomic = false)
     @@spinlock.with do
-      {% if flag?(:debug_GC) %}
-        if enabled
+      {% if flag?(:debug_gc) %}
+        if @@enabled
           unlocked_full_cycle
         end
       {% else %}
-        if enabled
+        if @@enabled
           unlocked_cycle
         end
       {% end %}

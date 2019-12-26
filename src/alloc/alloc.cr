@@ -25,6 +25,7 @@ module Allocator
     struct MmapHeader
       magic : USize
       marked : USize
+      atomic : USize
     end
 
     MAGIC_EMPTY = 0
@@ -203,7 +204,7 @@ module Allocator
       hdr = Pointer(Data::PoolHeader).new(addr)
       Pool.new(hdr).aligned? ptr
     elsif magic == Data::MAGIC_MMAP
-      panic "TODO"
+      true
     else
       false
     end
@@ -244,7 +245,7 @@ module Allocator
     pool
   end
 
-  private def new_mmap(bytes : Int)
+  private def new_mmap(bytes : Int, atomic)
     pool_size = sizeof(Data::MmapHeader) + bytes
     panic "pool size must be <= 0x1000" if pool_size > 0x1000
 
@@ -255,13 +256,14 @@ module Allocator
     hdr = Pointer(Data::MmapHeader).new(addr)
     hdr.value.magic = Data::MAGIC_MMAP
     hdr.value.marked = 0
+    hdr.value.atomic = atomic ? 1 : 0
 
     (hdr + 1).as(Void*)
   end
 
   def malloc(bytes : Int, atomic = false) : Void*
     if bytes > MAX_POOL_SIZE
-      return new_mmap bytes
+      return new_mmap bytes, atomic
     end
     idx = pool_for_bytes bytes
     # NOTE: atomic_pools/pools is passed on the stack
@@ -307,7 +309,7 @@ module Allocator
       Pool.new(hdr).block_marked? ptr
     elsif magic == Data::MAGIC_MMAP
       hdr = Pointer(Data::MmapHeader).new(addr)
-      hdr.value.marked == 1 ? true : false
+      hdr.value.marked == 1
     else
       panic "mark: unknown magic"
     end
@@ -316,7 +318,14 @@ module Allocator
   def atomic?(ptr : Void*)
     addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
     magic = Pointer(USize).new(addr).value
-    magic == Data::MAGIC_ATOMIC
+    case magic
+    when Data::MAGIC_ATOMIC
+      true
+    when Data::MAGIC_MMAP
+      Pointer(Data::MmapHeader).new(addr).value.atomic == 1
+    else
+      false
+    end
   end
 
   def sweep
