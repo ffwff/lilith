@@ -135,6 +135,9 @@ module RootFS
 
   @@vfs_node : VFS::FS? = nil
 
+  @@lookup_cache : Hash(String, VFS::FS)? = nil
+  protected class_getter! lookup_cache
+
   def append(node : VFS::FS)
     if @@vfs_node.nil?
       node.next_node = nil
@@ -145,6 +148,11 @@ module RootFS
       @@vfs_node.not_nil!.prev_node = node
       @@vfs_node = node
     end
+    if @@lookup_cache.nil?
+      @@lookup_cache = Hash(String, VFS::FS).new
+    end
+    lookup_cache[node.name] = node.as(VFS::FS)
+    node
   end
 
   def remove(node : VFS::FS)
@@ -159,11 +167,7 @@ module RootFS
   end
   
   def find_root(name)
-    each do |fs|
-      if name == fs.name
-        return fs.root
-      end
-    end
+    found = lookup_cache[name].root
   end
 
   private def each(&block)
