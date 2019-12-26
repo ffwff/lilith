@@ -2,20 +2,10 @@ module Pmalloc
   extend self
 
   @@addr = 0u64
-
-  def addr
-    @@addr
-  end
-
-  def addr=(@@addr); end
+  class_property addr
 
   @@start = 0u64
-
-  def start
-    @@start
-  end
-
-  def start=(@@start); end
+  class_property start
 
   def alloc(size : USize)
     last = @@addr
@@ -54,8 +44,8 @@ struct Pointer(T)
     ptr
   end
 
-  def self.malloc_atomic(size = 1)
-    GC.unsafe_malloc(size.to_usize * sizeof(T), true).as(T*)
+  def self.malloc_atomic(size : Int = 1)
+    __crystal_malloc_atomic64(size.to_u64 * sizeof(T)).as(T*)
   end
 
   def to_s(io)

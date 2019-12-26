@@ -9,7 +9,7 @@ LD32=$(ARCH32)-ld
 CR=toolchain/crystal/.build/crystal
 LLC=llc
 
-CRFLAGS=-Dkernel --cross-compile --target $(ARCH) --prelude ./prelude.cr --error-trace --mcmodel kernel --mno-red-zone -Ddisable_overflow --freestanding --no-finalizers
+CRFLAGS=--cross-compile --target $(ARCH) --prelude ./prelude.cr --error-trace --mcmodel kernel --mno-red-zone -Ddisable_overflow --freestanding --no-finalizers -Dkernel
 ASFLAGS=-Isrc/asm/x64
 LDFLAGS=-T link64.ld
 KERNEL_OBJ=build/main.o build/boot.o
@@ -23,6 +23,10 @@ endif
 
 ifeq ($(DEBUG_GC),1)
 	CRFLAGS += -Ddebug_gc
+endif
+
+ifeq ($(RECORD_CLI),1)
+	CRFLAGS += -Drecord_cli
 endif
 
 ifeq ($(RELEASE),1)
