@@ -1,6 +1,7 @@
 require "./prelude/primitives.cr"
 require "./prelude/atomic.cr"
 require "./core/object.cr"
+require "./core/markable.cr"
 require "./c/types.cr"
 require "./c/*"
 require "./core/*"

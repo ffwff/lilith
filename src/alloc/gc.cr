@@ -228,7 +228,7 @@ module GC
     pos = 0
     size = LibCrystal.type_size id
     if size == 0
-      Serial.print ptr, '\n'
+      # Serial.print ptr, '\n'
       panic "size is 0"
     end
     while pos < size
@@ -286,9 +286,6 @@ module GC
     private def scan_kernel_threads
       if threads = Multiprocessing.kernel_threads
         threads.each do |thread|
-          # we will only scan threads which can be run
-          # so hopefully sleeping threads should have nothing allocated!
-          next if thread.sched_data.status != Multiprocessing::Scheduler::ProcessData::Status::Normal
           next if thread.frame.nil?
           next if thread == Multiprocessing::Scheduler.current_process
           # Serial.print "scan: ", thread.name, '\n'
