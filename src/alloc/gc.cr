@@ -2,6 +2,7 @@ lib LibCrystal
   $__crystal_gc_globals : Void***
   fun type_offsets = "__crystal_malloc_type_offsets"(type_id : UInt32) : UInt32
   fun type_size = "__crystal_malloc_type_size"(type_id : UInt32) : UInt32
+  fun is_markable = "__crystal_is_markable"(type_id : UInt32) : Int32
 end
 
 {% if flag?(:kernel) %}
@@ -214,7 +215,7 @@ module GC
       return
     end
     # manual marking
-    if Markable.crystal_instance_min_type_id <= id < Markable.crystal_instance_type_id
+    if LibCrystal.is_markable(id) == 1
       ptr.as(Markable).markgc do |ivar|
         if Allocator.contains_ptr? ivar
           # Serial.print "mark: ", ivar, '\n'
