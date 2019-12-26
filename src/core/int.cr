@@ -68,6 +68,10 @@ struct Int
     x - (x >> 1)
   end
 
+  def hash
+    Hasher.hash self
+  end
+
   # format
   private BASE = "0123456789abcdefghijklmnopqrstuvwxyz"
 

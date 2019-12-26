@@ -52,6 +52,10 @@ struct Slice(T)
     end
   end
 
+  def hash(hasher)
+    hasher.hash self
+  end
+
   def ==(other : String)
     other == self
   end

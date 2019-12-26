@@ -250,6 +250,10 @@ class String
     nil
   end
 
+  def hash(hasher)
+    hasher.hash self
+  end
+
   def to_s
     self
   end
