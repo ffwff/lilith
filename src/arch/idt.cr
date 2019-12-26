@@ -149,6 +149,12 @@ rdx, rcx, rbx, rax : UInt64
     retval
   end
 
+  def check_if
+    check = 0
+    asm("pushfq; popq %rax" : "={rax}"(check) :: "volatile")
+    panic "IF is set" if (check & 0x200) != 0
+  end
+
   @@last_rsp = 0u64
   class_property last_rsp
 
