@@ -17,6 +17,7 @@ module Pit
   end
 
   @@ticks = 0u64
+  class_getter ticks
 
   def callback
     @@ticks += 1
