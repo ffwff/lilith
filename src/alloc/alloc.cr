@@ -260,7 +260,9 @@ module Allocator
   end
 
   def malloc(bytes : Int, atomic = false) : Void*
-    if bytes > MAX_POOL_SIZE
+    if bytes > Data::MAX_MMAP_SIZE
+      abort "can't allocate that large a block"
+    elsif bytes > MAX_POOL_SIZE
       return new_mmap(bytes, atomic)
     end
     idx = pool_for_bytes bytes

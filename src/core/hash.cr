@@ -127,7 +127,6 @@ class Hash(K, V) < Markable
         new_idx = old_entry.hash & (@size - 1)
         if @entries[new_idx].empty?
           # this bucket is empty so we can just insert it
-          #Serial.print "idx: ", new_idx, ' ', old_entry.key, '\n'
           @entries[new_idx] = old_entry
         else
           # search for next available bucket
@@ -137,13 +136,13 @@ class Hash(K, V) < Markable
           end
           if new_idx == @size
             # nope, we can't find one!
+            # we don't use this buffer, so free it!
+            Allocator.mark(@entries.as(Void*), false)
             @entries = old_entries
             @size = old_size
-            #Serial.print @size, ' ', size_mul, '\n'
             return rehash(size_mul * 2)
           end
           # insert it
-          #Serial.print "idx: ", new_idx, ' ', old_entry.key, '\n'
           @entries[new_idx] = old_entry
         end
       end
