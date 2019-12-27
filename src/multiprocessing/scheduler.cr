@@ -309,17 +309,6 @@ module Multiprocessing::Scheduler
     end
   end
 
-  private def halt_processor
-    GC.non_stw_cycle
-    rsp = Kernel.int_stack_end
-    asm("mov $0, %rsp
-          mov %rsp, %rbp
-          sti" :: "r"(rsp) : "volatile", "{rsp}", "{rbp}")
-    while true
-      asm("hlt")
-    end
-  end
-
   # context switch
   private def switch_process_save_and_load(remove = false, &block)
     # Serial.print "---\n"
@@ -327,7 +316,7 @@ module Multiprocessing::Scheduler
     if @@current_process.nil?
       @@current_process = get_next_process
       if @@current_process.nil?
-        halt_processor
+        Idt.halt_processor
       end
       next_process = @@current_process.not_nil!
       context_switch_to_process(next_process)
@@ -363,7 +352,7 @@ module Multiprocessing::Scheduler
         # Serial.print Pointer(Void).new(current_process.phys_pg_struct), '\n'
         Paging.free_process_pdpt(current_process.phys_pg_struct)
       end
-      halt_processor
+      Idt.halt_processor
     end
 
     next_process = next_process.not_nil!
@@ -375,7 +364,6 @@ module Multiprocessing::Scheduler
       Paging.free_process_pdpt(current_process.phys_pg_struct)
     end
 
-    # Serial.print "next: ", next_process.name, "\n"
     next_process
   end
 

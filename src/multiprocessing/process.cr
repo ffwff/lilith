@@ -62,10 +62,8 @@ module Multiprocessing
     @prev_process : Process? = nil
     @next_process : Process? = nil
     getter prev_process, next_process
-
-    protected def prev_process=(@prev_process); end
-
-    protected def next_process=(@next_process); end
+    protected setter prev_process
+    protected setter next_process
 
     @initial_ip = 0x8000_0000u64
     property initial_ip
@@ -393,6 +391,7 @@ module Multiprocessing
           frame.rip = Pointer(UInt32).new(syscall_frame.value.rcx).value
           frame.userrsp = syscall_frame.value.rcx & 0xFFFF_FFFFu64
         end
+        # Serial.print name, " save: ",Pointer(Void).new(frame.rip), '\n'
       end
 
       if @frame.nil?

@@ -160,33 +160,52 @@ rdx, rcx, rbx, rax : UInt64
 
   @@switch_processes = false
   class_property switch_processes
+
+  def handle(frame : Idt::Data::Registers*)
+    @@status_mask = true
+
+    @@last_rsp = frame.value.userrsp
+    PIC.eoi frame.value.int_no
+
+    if @@irq_handlers[frame.value.int_no].pointer.null?
+      Serial.print "no handler for ", frame.value.int_no, "\n"
+    else
+      @@irq_handlers[frame.value.int_no].call
+    end
+
+    if frame.value.int_no == 0 && @@switch_processes
+      # preemptive multitasking...
+      if (current_process = Multiprocessing::Scheduler.current_process)
+        if current_process.sched_data.time_slice > 0
+          # FIXME: context_switch_to_process must be called or cpu won't
+          # have current process' context
+          current_process.sched_data.time_slice -= 1
+          Multiprocessing::Scheduler.context_switch_to_process(current_process)
+          return
+        end
+      end
+      Multiprocessing::Scheduler.switch_process(frame)
+    end
+
+    @@status_mask = false
+  end
+
+  def halt_processor
+    GC.non_stw_cycle
+    @@status_mask = false
+    rsp = Kernel.int_stack_end
+    asm("mov $0, %rsp
+          mov %rsp, %rbp
+          sti" :: "r"(rsp) : "volatile", "{rsp}", "{rbp}")
+    while true
+      asm("hlt")
+    end
+  end
+
 end
 
 fun kirq_handler(frame : Idt::Data::Registers*)
-  Idt.last_rsp = frame.value.userrsp
-  PIC.eoi frame.value.int_no
-
-  if Idt.irq_handlers[frame.value.int_no].pointer.null?
-    Serial.print "no handler for ", frame.value.int_no, "\n"
-  else
-    Idt.disable do
-      Idt.irq_handlers[frame.value.int_no].call
-    end
-  end
-
-  if frame.value.int_no == 0 && Idt.switch_processes
-    # preemptive multitasking...
-    if (current_process = Multiprocessing::Scheduler.current_process)
-      if current_process.sched_data.time_slice > 0
-        # FIXME: context_switch_to_process must be called or cpu won't
-        # have current process' context
-        current_process.sched_data.time_slice -= 1
-        Multiprocessing::Scheduler.context_switch_to_process(current_process)
-        return
-      end
-    end
-    Multiprocessing::Scheduler.switch_process(frame)
-  end
+  Idt.handle frame
 end
 
 EX_PAGEFAULT = 14
