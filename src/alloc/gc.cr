@@ -63,6 +63,7 @@ class Markable
 
   @[NoInline]
   def mark(&block : Void* ->)
+    abort "mark isn't implemented!"
   end
 end
 

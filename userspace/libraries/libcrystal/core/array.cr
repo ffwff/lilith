@@ -10,7 +10,7 @@ class Array(T) < Markable
   getter size, capacity
   protected setter size
 
-  @buffer : T*
+  @buffer = Pointer(T).null
   def to_unsafe
     @buffer
   end
@@ -32,17 +32,19 @@ class Array(T) < Markable
   end
 
   def initialize(initial_capacity : Int = 0)
-    if initial_capacity > 0
-      @buffer = GC.unsafe_malloc(initial_capacity.to_u64 * sizeof(T), true).as(T*)
-      recalculate_capacity
-    else
-      @buffer = Pointer(T).null
+    write_barrier do
+      if initial_capacity > 0
+        @buffer = GC.unsafe_malloc(initial_capacity.to_u64 * sizeof(T), true).as(T*)
+        recalculate_capacity
+      end
     end
   end
 
   def self.build(capacity : Int) : self
     ary = Array(T).new(capacity)
-    ary.size = (yield ary.to_unsafe).to_i
+    ary.write_barrier do
+      ary.size = (yield ary.to_unsafe).to_i
+    end
     ary
   end
 
@@ -57,12 +59,14 @@ class Array(T) < Markable
 
   def shift
     return nil if size == 0
-    retval = to_unsafe[0]
-    LibC.memmove(to_unsafe,
-      to_unsafe + 1,
-      sizeof(T) * (self.size - 1))
-    @size -= 1
-    retval
+    write_barrier do
+      retval = to_unsafe[0]
+      LibC.memmove(to_unsafe,
+        to_unsafe + 1,
+        sizeof(T) * (self.size - 1))
+      @size -= 1
+      retval
+    end
   end
 
   def each(&block)
@@ -167,7 +171,7 @@ class Array(T) < Markable
     to_slice.sort!
   end
 
-  def markgc(&block)
+  def mark(&block)
     return if @buffer.null?
     yield @buffer.as(Void*)
     {% unless T < Int || T < Struct %}
