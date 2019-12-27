@@ -72,8 +72,6 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Idt.init_table
   Idt.enable
 
-  X86.calibrate_tsc
-
   # hardware
   # pci
   Console.print "checking PCI buses...\n"
