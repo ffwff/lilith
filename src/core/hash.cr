@@ -161,12 +161,14 @@ class Hash(K, V) < Markable
           # move another entry backwards if necessary
           moveidx = idx
           while moveidx < @size
-            hashidx = @entries[moveidx].hash & (@size - 1)
-            if hashidx <= idx
-              # move this key!
-              @entries[idx] = @entries[moveidx]
-              @entries[moveidx] = Entry(K, V).empty
-              break
+            unless @entries[moveidx].empty?
+              hashidx = @entries[moveidx].hash & (@size - 1)
+              if hashidx <= idx
+                # move this key!
+                @entries[idx] = @entries[moveidx]
+                @entries[moveidx] = Entry(K, V).empty
+                break
+              end
             end
             moveidx += 1
           end
