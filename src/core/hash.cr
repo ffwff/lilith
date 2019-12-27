@@ -23,19 +23,19 @@ class Hash(K, V) < Markable
   @occupied = 0
   getter size, occupied
 
-  @rechaining = false
-
   private def recalculate_size
     @size = (Allocator.block_size_for_ptr(@entries) // sizeof(Entry(K, V))).lowest_power_of_2
   end
 
   def initialize(initial_capacity : Int = 0)
-    if initial_capacity > 0
-      @entries = Pointer(Entry(K, V)).malloc_atomic(initial_capacity)
-      initial_capacity.times do |i|
-        @entries[i] = Entry(K, V).empty
+    write_barrier do
+      if initial_capacity > 0
+        @entries = Pointer(Entry(K, V)).malloc_atomic(initial_capacity)
+        initial_capacity.times do |i|
+          @entries[i] = Entry(K, V).empty
+        end
+        recalculate_size
       end
-      recalculate_size
     end
   end
 
@@ -73,6 +73,7 @@ class Hash(K, V) < Markable
   end
 
   def []=(key : K, value : V, hasher = Hasher.new)
+    write_barrier
     hash = key.hash(hasher).result
     # create entry list if empty
     if @entries.null?
@@ -86,24 +87,26 @@ class Hash(K, V) < Markable
       idx = hash & (@size - 1)
       @entries[idx] = Entry.new(hash, key, value)
       @occupied = 1
+      write_barrier_end
       return value
     end
     # expand if we reached load factor
     # occupied / size >= 1/2 => 2*occupied >= size
-    rehash if @occupied * 2 >= @size
+    rehash(barrier: false) if @occupied * 2 >= @size
     # search a slot and set it
     while true
       idx = hash & (@size - 1)
       if slot = find_slot(key, idx)
         @entries[slot] = Entry.new(hash, key, value)
+        write_barrier_end
         return value
       end
-      rehash
+      rehash(barrier: false)
     end
   end
 
-  def rehash(size_mul = 2)
-    @rechaining = true
+  def rehash(size_mul = 2, barrier = true)
+    write_barrier if barrier
     old_entries = @entries
     old_size = @size
 
@@ -133,7 +136,7 @@ class Hash(K, V) < Markable
             @entries = old_entries
             @size = old_size
             #Serial.print @size, ' ', size_mul, '\n'
-            return rehash(size_mul * 2)
+            return rehash(size_mul * 2, barrier)
           end
           # insert it
           #Serial.print "idx: ", new_idx, ' ', old_entry.key, '\n'
@@ -141,17 +144,11 @@ class Hash(K, V) < Markable
         end
       end
     end
-    @rechaining = false
+    write_barrier_end if barrier
   end
   
   @[NoInline]
-  def markgc(&block)
-    if @rechaining
-      Allocator.mark self.as(Void*), false
-      breakpoint
-      yield self.as(Void*)
-      return
-    end
+  def mark(&block : Void* ->)
     yield @entries.as(Void*)
     @size.times do |i|
       entry = @entries[i]
@@ -159,7 +156,7 @@ class Hash(K, V) < Markable
         {% unless K < Int || K < Struct %}
           yield entry.key.as(Void*)
         {% end %}
-        {% unless V < Int || V < Struct %}
+        {% unless K < Int || K < Struct %}
           yield entry.value.as(Void*)
         {% end %}
       end

@@ -38,8 +38,32 @@ end
 {% end %}
 
 class Markable
+  @markable = true
+  def markable?
+    @markable
+  end
+
+  def write_barrier(&block)
+    panic "multiple write barriers" if !@markable
+    @markable = false
+    retval = yield
+    @markable = true
+    retval
+  end
+
+  def write_barrier
+    panic "multiple write barriers" if !@markable
+    @markable = false
+  end
+
+  def write_barrier_end
+    panic "multiple write barriers" if @markable
+    @markable = true
+  end
+
   @[NoInline]
-  def markgc(&block)
+  def mark(&block : Void* ->)
+    panic "mark not implemented"
   end
 end
 
@@ -215,12 +239,18 @@ module GC
       return
     end
     # manual marking
-    if LibCrystal.is_markable(id) == 1
-      ptr.as(Markable).markgc do |ivar|
-        if Allocator.contains_ptr? ivar
-          # Serial.print "mark: ", ivar, '\n'
-          push_opposite_gray ivar
+    if LibCrystal.is_markable(id) != 0
+      m = ptr.as(Markable)
+      if m.markable?
+        m.mark do |ivar|
+          if Allocator.contains_ptr? ivar
+            # Serial.print "mark: ", ivar, '\n'
+            push_opposite_gray ivar
+          end
         end
+      else
+        Allocator.mark ptr, false
+        push_opposite_gray ptr
       end
       return
     end

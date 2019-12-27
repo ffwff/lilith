@@ -5,7 +5,7 @@ class Array(T) < Markable
   getter size, capacity
   protected setter size
 
-  @buffer : T*
+  @buffer : T* = Pointer(T).null
   def to_unsafe
     @buffer
   end
@@ -27,17 +27,19 @@ class Array(T) < Markable
   end
 
   def initialize(initial_capacity : Int = 0)
-    if initial_capacity > 0
-      @buffer = Pointer(T).malloc_atomic(initial_capacity.to_u64)
-      recalculate_capacity
-    else
-      @buffer = Pointer(T).null
+    write_barrier do
+      if initial_capacity > 0
+        @buffer = Pointer(T).malloc_atomic(initial_capacity.to_u64)
+        recalculate_capacity
+      end
     end
   end
 
   def self.build(capacity : Int) : self
     ary = Array(T).new(capacity)
-    ary.size = (yield ary.to_unsafe).to_i
+    ary.write_barrier do
+      ary.size = (yield ary.to_unsafe).to_i
+    end
     ary
   end
 
@@ -84,22 +86,26 @@ class Array(T) < Markable
   end
 
   def []=(idx : Int, value : T)
-    panic "accessing out of bounds!" unless 0 <= idx < @size
-    @buffer[idx] = value
+    write_barrier do
+      panic "accessing out of bounds!" unless 0 <= idx < @size
+      @buffer[idx] = value
+    end
   end
 
   def push(value : T)
-    if @size < @capacity
-      @buffer[@size] = value
-    else
-      expand(@size + 1)
-      @buffer[@size] = value
+    write_barrier do
+      if @size < @capacity
+        @buffer[@size] = value
+      else
+        expand(@size + 1)
+        @buffer[@size] = value
+      end
+      @size += 1
     end
-    @size += 1
   end
 
   @[NoInline]
-  def markgc(&block)
+  def mark(&block : Void* ->)
     return if @buffer.null?
     yield @buffer.as(Void*)
     {% unless T < Int || T < Struct %}

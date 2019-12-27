@@ -263,7 +263,7 @@ module Allocator
 
   def malloc(bytes : Int, atomic = false) : Void*
     if bytes > MAX_POOL_SIZE
-      return new_mmap bytes, atomic
+      return new_mmap(bytes, atomic)
     end
     idx = pool_for_bytes bytes
     # NOTE: atomic_pools/pools is passed on the stack
