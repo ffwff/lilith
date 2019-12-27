@@ -124,7 +124,6 @@ module Allocator
 
     def release_block(block : Void*)
       idx = idx_for_block(block)
-      abort "double free" if !alloc_bitmap[idx]
       alloc_bitmap[idx] = false
       @header.value.nfree = nfree + 1
     end
@@ -355,7 +354,12 @@ module Allocator
         end
       elsif magic == Data::MAGIC_MMAP
         hdr = Pointer(Data::MmapHeader).new(addr)
-        # TODO
+        if hdr.value.marked == 0
+          hdr = Pointer(Data::EmptyHeader).new(addr)
+          hdr.value.magic = 0
+          hdr.value.next_page = @@empty_pages
+          @@empty_pages = hdr
+        end
       end
       addr += 0x1000
     end
@@ -380,10 +384,10 @@ module Allocator
     Pool.new(hdr).block_size
   end
 
-  {% if flag?(:kernel) %}
-    @@pages_allocated = 0
-    class_getter pages_allocated
+  @@pages_allocated = 0
+  class_getter pages_allocated
 
+  {% if flag?(:kernel) %}
     private def alloc_page(addr)
       @@pages_allocated += 1
       if process = Multiprocessing::Scheduler.current_process
@@ -395,6 +399,7 @@ module Allocator
     end
   {% else %}
     private def alloc_page(addr)
+      @@pages_allocated += 1
       LibC.mmap Pointer(Void).new(addr), 0x1000, (LibC::MmapProt::Read | LibC::MmapProt::Write).value, 0, -1, 0
     end
   {% end %}
