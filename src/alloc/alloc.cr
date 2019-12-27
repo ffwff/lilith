@@ -21,7 +21,7 @@ module Allocator
     end
 
     MAGIC_MMAP = 0x47727532
-
+    MAX_MMAP_SIZE = 0x1000 - sizeof(MmapHeader)
     struct MmapHeader
       magic : USize
       marked : USize
@@ -29,7 +29,6 @@ module Allocator
     end
 
     MAGIC_EMPTY = 0
-
     struct EmptyHeader
       magic : USize
       next_page : EmptyHeader*
@@ -380,8 +379,17 @@ module Allocator
   end
 
   def block_size_for_ptr(ptr)
-    hdr = Pointer(Data::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
-    Pool.new(hdr).block_size
+    addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
+    magic = Pointer(USize).new(addr).value
+    if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
+      hdr = Pointer(Data::PoolHeader).new(ptr.address & 0xFFFF_FFFF_FFFF_F000)
+      Pool.new(hdr).block_size
+    elsif magic == Data::MAGIC_MMAP
+      Data::MAX_MMAP_SIZE
+    else
+      abort
+    end
+
   end
 
   @@pages_allocated = 0
