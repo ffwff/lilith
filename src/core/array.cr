@@ -27,11 +27,9 @@ class Array(T) < Markable
   end
 
   def initialize(initial_capacity : Int = 0)
-    write_barrier do
-      if initial_capacity > 0
-        @buffer = Pointer(T).malloc_atomic(initial_capacity.to_u64)
-        recalculate_capacity
-      end
+    if initial_capacity > 0
+      @buffer = Pointer(T).malloc_atomic(initial_capacity.to_u64)
+      recalculate_capacity
     end
   end
 
@@ -86,10 +84,8 @@ class Array(T) < Markable
   end
 
   def []=(idx : Int, value : T)
-    write_barrier do
-      abort "accessing out of bounds!" unless 0 <= idx < @size
-      @buffer[idx] = value
-    end
+    abort "accessing out of bounds!" unless 0 <= idx < @size
+    @buffer[idx] = value
   end
 
   def push(value : T)

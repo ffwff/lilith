@@ -28,14 +28,12 @@ class Hash(K, V) < Markable
   end
 
   def initialize(initial_capacity : Int = 0)
-    write_barrier do
-      if initial_capacity > 0
-        @entries = Pointer(Entry(K, V)).malloc_atomic(initial_capacity)
-        initial_capacity.times do |i|
-          @entries[i] = Entry(K, V).empty
-        end
-        recalculate_size
+    if initial_capacity > 0
+      @entries = Pointer(Entry(K, V)).malloc_atomic(initial_capacity)
+      initial_capacity.times do |i|
+        @entries[i] = Entry(K, V).empty
       end
+      recalculate_size
     end
   end
 
@@ -92,8 +90,10 @@ class Hash(K, V) < Markable
     end
     # expand if we reached load factor
     # occupied / size >= 1/2 => 2*occupied >= size
-    write_barrier do
-      rehash if @occupied * 2 >= @size
+    if @occupied * 2 >= @size
+      write_barrier do
+        rehash
+      end
     end
     # search a slot and set it
     while true
