@@ -100,53 +100,63 @@ class Array(T) < Markable
 
   def []=(idx : Int, value : T)
     abort "accessing out of bounds!" unless 0 <= idx < @size
-    @buffer[idx] = value
+    write_barrier do
+      @buffer[idx] = value
+    end
   end
 
   def push(value : T)
-    if @size < @capacity
-      @buffer[@size] = value
-    else
-      expand(@size + 1)
-      @buffer[@size] = value
+    write_barrier do
+      if @size < @capacity
+        @buffer[@size] = value
+      else
+        expand(@size + 1)
+        @buffer[@size] = value
+      end
+      @size += 1
     end
-    @size += 1
   end
 
   def pop
     return nil if @size == 0
-    retval = @buffer[@size]
-    @size -= 1
-    retval
+    write_barrier do
+      retval = @buffer[@size]
+      @size -= 1
+      retval
+    end
   end
 
   def delete(obj)
-    i = 0
-    size = self.size
-    while i < size
-      if to_unsafe[i] == obj
-        LibC.memmove(to_unsafe + i, to_unsafe + i + 1,
-          sizeof(T) * (size - i - 1))
-        size -= 1
-      else
-        i += 1
+    write_barrier do
+      i = 0
+      size = self.size
+      while i < size
+        if to_unsafe[i] == obj
+          LibC.memmove(to_unsafe + i, to_unsafe + i + 1,
+            sizeof(T) * (size - i - 1))
+          size -= 1
+        else
+          i += 1
+        end
       end
     end
   end
 
   def delete_at(idx : Int)
-    return false unless 0 <= idx && idx < size
-    if idx == size - 1
-      self.size = self.size - 1
-    else
-      LibC.memmove(to_unsafe + idx, to_unsafe + idx + 1,
-        sizeof(T) * (size - idx - 1))
+    return false unless 0 <= idx < size
+    write_barrier do
+      if idx == size - 1
+        @size -= 1
+      else
+        LibC.memmove(to_unsafe + idx, to_unsafe + idx + 1,
+          sizeof(T) * (size - idx - 1))
+      end
     end
     true
   end
 
   def clear
-    self.size = 0
+    @size = 0
   end
 
   def to_slice
