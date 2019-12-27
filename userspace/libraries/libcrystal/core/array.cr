@@ -32,11 +32,9 @@ class Array(T) < Markable
   end
 
   def initialize(initial_capacity : Int = 0)
-    write_barrier do
-      if initial_capacity > 0
-        @buffer = GC.unsafe_malloc(initial_capacity.to_u64 * sizeof(T), true).as(T*)
-        recalculate_capacity
-      end
+    if initial_capacity > 0
+      @buffer = GC.unsafe_malloc(initial_capacity.to_u64 * sizeof(T), true).as(T*)
+      recalculate_capacity
     end
   end
 
@@ -104,9 +102,7 @@ class Array(T) < Markable
 
   def []=(idx : Int, value : T)
     abort "accessing out of bounds!" unless 0 <= idx < @size
-    write_barrier do
-      @buffer[idx] = value
-    end
+    @buffer[idx] = value
   end
 
   def push(value : T)
