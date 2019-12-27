@@ -223,7 +223,6 @@ rdx, rcx, rbx, rax : UInt64
     return
   end
 
-  @[AlwaysInline]
   def handler(frame : Syscall::Data::Registers*)
     process = Multiprocessing::Scheduler.current_process.not_nil!
     # Serial.print "syscall ", fv.rax, " from ", Multiprocessing::Scheduler.current_process.not_nil!.pid, "\n"
@@ -386,17 +385,14 @@ rdx, rcx, rbx, rax : UInt64
         Multiprocessing::Scheduler.switch_process(frame)
       end
 
-      waitfds = Array(FileDescriptor).build(fds.size) do |buffer|
-        idx = 0
-        fds.each do |fdi|
-          fd = try(pudata.get_fd(fdi))
-          if fd.node.not_nil!.available? process
-            sysret(fdi)
-          end
-          buffer[idx] = fd
-          idx += 1
+      failed = false
+      waitfds = Array(FileDescriptor).new(fds.size)
+      fds.each do |fdi|
+        fd = try(pudata.get_fd(fdi))
+        if fd.node.not_nil!.available? process
+          sysret(fdi)
         end
-        fds.size
+        waitfds.push fd
       end
 
       process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
