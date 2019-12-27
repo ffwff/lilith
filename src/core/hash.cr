@@ -148,6 +148,34 @@ class Hash(K, V) < Markable
       end
     end
   end
+
+  def delete(key, hasher = Hasher.new)
+    return if @size == 0
+    idx = key.hash(hasher).result & (@size - 1)
+    write_barrier do
+      while idx < @size
+        if @entries[idx].key == key
+          # empty this entry
+          @entries[idx] = Entry(K, V).empty
+          @occupied -= 1
+          # move another entry backwards if necessary
+          moveidx = idx
+          while moveidx < @size
+            hashidx = @entries[moveidx].hash & (@size - 1)
+            if hashidx <= idx
+              # move this key!
+              @entries[idx] = @entries[moveidx]
+              @entries[moveidx] = Entry(K, V).empty
+              break
+            end
+            moveidx += 1
+          end
+          break
+        end
+        idx += 1
+      end
+    end
+  end
   
   @[NoInline]
   def mark(&block : Void* ->)

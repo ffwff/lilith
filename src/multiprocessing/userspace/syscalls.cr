@@ -120,7 +120,8 @@ rdx, rcx, rbx, rax : UInt64
             Multiprocessing::Scheduler.switch_process(frame)
           end
         end
-        cur_node = vfs_node.open(segment, process)
+        cur_node = vfs_node.open_cached?(segment) ||
+                   vfs_node.open(segment, process)
         if cur_node.nil? && create
           cur_node = vfs_node.create(segment, process, create_options)
         end

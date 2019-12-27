@@ -114,6 +114,15 @@ module VFS
 
     def queue : Queue?
     end
+
+    alias LookupCache = Hash(String, VFS::Node)
+    @lookup_cache : LookupCache? = nil
+    getter! lookup_cache
+    def open_cached?(path : Slice)
+      if cache = @lookup_cache
+        cache[path]?
+      end
+    end
   end
 
   abstract class FS
@@ -167,15 +176,7 @@ module RootFS
   end
   
   def find_root(name)
-    found = lookup_cache[name].root
-  end
-
-  private def each(&block)
-    node = @@vfs_node
-    while !node.nil?
-      yield node
-      node = node.next_node
-    end
+    lookup_cache[name].root
   end
 end
 

@@ -299,9 +299,10 @@ module Fat16FS
       end
     end
 
-    #
     def fat_populate_directory(allocator : StackAllocator? = nil)
       @dir_populated = true
+      @lookup_cache = LookupCache.new
+
       fat_table = if allocator
                     Slice(UInt16).mmalloc_a fs.fat_sector_size, allocator.not_nil!
                   else
@@ -330,6 +331,10 @@ module Fat16FS
         cluster = fat_table[ent_for cluster]
       end
 
+      each_child do |node|
+        lookup_cache[node.name.not_nil!] = node.as(VFS::Node)
+      end
+
       # clean up within function call
       if allocator
         allocator.not_nil!.clear
@@ -344,6 +349,8 @@ module Fat16FS
         VFS_OK
       end
     end
+
+    @lookup_cache : Hash(String, VFS::Node)? = nil
 
     def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
       return unless directory?

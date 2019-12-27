@@ -3,6 +3,7 @@ class ProcFS::Node < VFS::Node
   getter fs : VFS::FS, raw_node, first_child
 
   def initialize(@fs : ProcFS::FS)
+    @lookup_cache = LookupCache.new
     add_child(ProcFS::ProcessNode.new(self, @fs))
   end
 
@@ -32,6 +33,7 @@ class ProcFS::Node < VFS::Node
   end
 
   private def add_child(node : ProcFS::ProcessNode)
+    lookup_cache[node.name.not_nil!] = node.as(VFS::Node)
     node.next_node = @first_child
     unless @first_child.nil?
       @first_child.not_nil!.prev_node = node
@@ -41,6 +43,9 @@ class ProcFS::Node < VFS::Node
   end
 
   def remove_child(node : ProcFS::ProcessNode)
+    if cache = @lookup_cache 
+      cache.delete node.name.not_nil!
+    end
     if node == @first_child
       @first_child = node.next_node
     end
@@ -63,13 +68,10 @@ class ProcFS::ProcessNode < VFS::Node
   getter! name : String
   getter fs : VFS::FS
   property prev_node, next_node
+  getter! process
 
   @first_child : VFS::Node? = nil
   getter first_child
-
-  def process
-    @process.not_nil!
-  end
 
   def initialize(@process : Multiprocessing::Process?, @parent : ProcFS::Node, @fs : ProcFS::FS,
                  @prev_node : ProcFS::ProcessNode? = nil,
