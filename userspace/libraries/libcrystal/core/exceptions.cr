@@ -2,7 +2,7 @@ def abort
   LibC.abort
 end
 
-def abort(str)
+def abort(str : String)
   LibC.fprintf(LibC.stderr, "%s", str)
   abort
 end
