@@ -49,7 +49,7 @@ class ConsoleFS::FS < VFS::FS
     # setup process-local variables
     @process = Multiprocessing::Process
       .spawn_kernel("[consolefs]",
-        ->(ptr : Void*) { ptr.as(ConsoleFS).process },
+        ->(ptr : Void*) { ptr.as(ConsoleFS::FS).process },
         self.as(Void*),
         stack_pages: 4) do |process|
     end
