@@ -153,7 +153,7 @@ module Multiprocessing::Scheduler
 
     def append_process_data(data : ProcessData)
       if data.next_data || data.prev_data
-        panic "Scheduler::Queue: already in list!"
+        abort "Scheduler::Queue: already in list!"
       end
       data.queue_id = @queue_id
       if @first_data.nil?
@@ -209,7 +209,7 @@ module Multiprocessing::Scheduler
         end
       end
       unless cur.nil?
-        panic "status != Status::Normal" if cur.status != ProcessData::Status::Normal
+        abort "status != Status::Normal" if cur.status != ProcessData::Status::Normal
         cur.process
       else
         nil
@@ -242,7 +242,7 @@ module Multiprocessing::Scheduler
     when @@io_queue.queue_id
       @@io_queue.remove_process_data sched_data
     else
-      panic "unknown queue_id: ", sched_data.queue_id
+      abort "unknown queue_id: ", sched_data.queue_id
     end
   end
 
@@ -256,14 +256,14 @@ module Multiprocessing::Scheduler
 
   protected def move_to_cpu_queue(data : ProcessData)
     unless @@io_queue.remove_process_data data
-      panic "data must be in io_queue"
+      abort "data must be in io_queue"
     end
     @@cpu_queue.append_process_data data
   end
 
   protected def move_to_io_queue(data : ProcessData)
     unless @@cpu_queue.remove_process_data data
-      panic "data must be in cpu_queue"
+      abort "data must be in cpu_queue"
     end
     @@io_queue.append_process_data data
   end

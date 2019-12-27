@@ -20,7 +20,7 @@ struct BitArray
 
   # methods
   def []=(k : Int, value : Bool)
-    panic "pbitarray: out of range" if k > size || k < 0
+    abort "pbitarray: out of range" unless 0 <= k < @size
     if value
       @pointer[index_position k] |= 1 << bit_position k
     else
@@ -29,7 +29,7 @@ struct BitArray
   end
 
   def [](k : Int) : Bool
-    panic "pbitarray: out of range" if k > size || k < 0
+    abort "pbitarray: out of range" unless 0 <= k < @size
     if (@pointer[index_position k] & (1 << bit_position k)) != 0
       true
     else

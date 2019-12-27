@@ -252,7 +252,7 @@ rdx, rcx, rbx, rax : UInt64
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
         Multiprocessing::Scheduler.switch_process(frame)
       else
-        panic "unknown syscall!"
+        abort "unknown syscall!"
       end
       unlock
       return Kernel.ksyscall_sc_ret_driver(frame)
@@ -635,7 +635,7 @@ rdx, rcx, rbx, rax : UInt64
         mmap_heap.size += 0x1000
       elsif incr < 0
         # TODO
-        panic "decreasing heap not implemented"
+        abort "decreasing heap not implemented"
       end
       fv.rax = mmap_heap.addr
     when SC_MMAP

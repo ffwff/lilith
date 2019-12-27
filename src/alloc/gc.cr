@@ -44,7 +44,7 @@ class Markable
   end
 
   def write_barrier(&block)
-    panic "multiple write barriers" if !@markable
+    abort "multiple write barriers" if !@markable
     @markable = false
     retval = yield
     @markable = true
@@ -52,12 +52,12 @@ class Markable
   end
 
   def write_barrier
-    panic "multiple write barriers" if !@markable
+    abort "multiple write barriers" if !@markable
     @markable = false
   end
 
   def write_barrier_end
-    panic "multiple write barriers" if @markable
+    abort "multiple write barriers" if @markable
     @markable = true
   end
 
@@ -111,7 +111,7 @@ module GC
     return if Allocator.marked?(ptr)
     Allocator.mark ptr
     return if Allocator.atomic?(ptr)
-    panic "unable to push gray" if @@curr_grays_idx == GRAY_SIZE - 1
+    abort "unable to push gray" if @@curr_grays_idx == GRAY_SIZE - 1
     @@curr_grays[@@curr_grays_idx] = ptr
     @@curr_grays_idx += 1
   end
@@ -121,7 +121,7 @@ module GC
     return if Allocator.marked?(ptr)
     Allocator.mark ptr
     return if Allocator.atomic?(ptr)
-    panic "unable to push gray" if @@opp_grays_idx == GRAY_SIZE - 1
+    abort "unable to push gray" if @@opp_grays_idx == GRAY_SIZE - 1
     @@opp_grays[@@opp_grays_idx] = ptr
     @@opp_grays_idx += 1
   end
@@ -259,7 +259,7 @@ module GC
     size = LibCrystal.type_size id
     if size == 0
       # Serial.print ptr, '\n'
-      panic "size is 0"
+      abort "size is 0"
     end
     while pos < size
       if (offsets & 1) != 0
@@ -439,11 +439,6 @@ module GC
   end
 
   {% unless flag?(:kernel) %}
-    private def panic(str)
-      LibC.fprintf LibC.stderr, "allocator: %s\n", str
-      abort
-    end
-
     private def memcpy(dest, src, size)
       LibC.memcpy dest, src, size
     end

@@ -484,14 +484,14 @@ module Fat16FS
     def initialize(@device : AtaDevice, partition)
       Console.print "initializing FAT16 filesystem\n"
 
-      panic "device must be ATA" if @device.type != AtaDevice::Type::Ata
+      abort "device must be ATA" if @device.type != AtaDevice::Type::Ata
 
       bs = Pointer(Data::BootSector).malloc_atomic
 
       device.read_sector(bs.as(UInt8*), partition.first_sector.to_u64)
       idx = 0
       bs.value.fs_type.each do |ch|
-        panic "only FAT16 is accepted" if ch != FS_TYPE.to_unsafe[idx]
+        abort "only FAT16 is accepted" if ch != FS_TYPE.to_unsafe[idx]
         idx += 1
       end
 

@@ -16,7 +16,7 @@ class Array(T) < Markable
 
   private def expand(new_capacity)
     if @size > new_capacity
-      panic "size must be smaller than capacity"
+      abort "size must be smaller than capacity"
     end
     if @buffer.null?
       @buffer = Pointer(T).malloc_atomic(new_capacity)
@@ -76,7 +76,7 @@ class Array(T) < Markable
   end
 
   def [](idx : Int)
-    panic "accessing out of bounds!" unless 0 <= idx < @size
+    abort "accessing out of bounds!" unless 0 <= idx < @size
     @buffer[idx]
   end
 
@@ -87,7 +87,7 @@ class Array(T) < Markable
 
   def []=(idx : Int, value : T)
     write_barrier do
-      panic "accessing out of bounds!" unless 0 <= idx < @size
+      abort "accessing out of bounds!" unless 0 <= idx < @size
       @buffer[idx] = value
     end
   end

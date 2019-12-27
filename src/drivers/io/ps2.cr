@@ -76,7 +76,7 @@ module PS2
   def ack
     if (r = read) != 0xFA
       Serial.print "r: ", r, '\n'
-      panic "ACK not received"
+      abort "ACK not received"
     end
   end
 

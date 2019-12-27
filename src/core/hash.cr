@@ -57,7 +57,7 @@ class Hash(K, V) < Markable
   end
 
   def [](key)
-    self[key]? || panic "key not found"
+    self[key]? || abort "key not found"
   end
 
   private def find_slot(key, idx)

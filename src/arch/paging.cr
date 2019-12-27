@@ -257,7 +257,7 @@ module Paging
 
     # claim
     while virt_addr < virt_addr_end
-      panic "allocating user page inside non-user area!" if user && virt_addr > Paging::MAXIMUM_USER_PTR
+      abort "allocating user page inside non-user area!" if user && virt_addr > Paging::MAXIMUM_USER_PTR
 
       # allocate page frame
       pdpt_idx, dir_idx, table_idx, page_idx = page_layer_indexes(virt_addr)

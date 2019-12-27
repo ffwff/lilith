@@ -113,7 +113,7 @@ class MemMapList
   end
 
   def remove(addr, size)
-    panic "unimplemented"
+    abort "unimplemented"
   end
 
   def remove(node : MemMapNode)

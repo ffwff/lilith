@@ -1,4 +1,4 @@
-def panic(*args)
+def abort(*args)
   # TODO: print call stack
   Serial.print *args
   Pointer(Int32).null.value = 0
@@ -9,7 +9,7 @@ end
 def raise(*args)
 end
 
-{% if flag?(:release) %}
+{% if flag?(:release) && false %}
   macro breakpoint
   end
 {% else %}

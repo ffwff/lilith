@@ -25,18 +25,18 @@ struct Slice(T)
   end
 
   def [](idx : Int)
-    panic "Slice: out of range" if idx >= @size || idx < 0
+    abort "Slice: out of range" if idx >= @size || idx < 0
     @buffer[idx]
   end
 
   @[AlwaysInline]
   def []=(idx : Int, value : T)
-    panic "Slice: out of range" if idx >= @size || idx < 0
+    abort "Slice: out of range" if idx >= @size || idx < 0
     @buffer[idx] = value
   end
 
   def [](range : Range(Int, Int))
-    panic "Slice: out of range" if range.begin > range.end
+    abort "Slice: out of range" if range.begin > range.end
     Slice(T).new(@buffer + range.begin, range.size)
   end
 

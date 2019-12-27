@@ -65,14 +65,14 @@ class Object
     if self.is_a?(T)
       self.unsafe_as type
     else
-      panic "invalid type cast!"
+      abort "invalid type cast!"
     end
   end
 end
 
 struct Nil
   def not_nil!
-    panic "casting nil to not-nil!"
+    abort "casting nil to not-nil!"
   end
 
   def to_s(io)

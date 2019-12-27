@@ -321,7 +321,7 @@ module ElfReader
         end
         # TODO section headers
       else
-        panic "unknown"
+        abort "unknown"
       end
       total_bytes += 1
     end

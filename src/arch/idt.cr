@@ -152,7 +152,7 @@ rdx, rcx, rbx, rax : UInt64
   def check_if
     check = 0
     asm("pushfq; popq %rax" : "={rax}"(check) :: "volatile")
-    panic "IF is set" if (check & 0x200) != 0
+    abort "IF is set" if (check & 0x200) != 0
   end
 
   @@last_rsp = 0u64
@@ -181,6 +181,7 @@ rdx, rcx, rbx, rax : UInt64
           # have current process' context
           current_process.sched_data.time_slice -= 1
           Multiprocessing::Scheduler.context_switch_to_process(current_process)
+          @@status_mask = false
           return
         end
       end
@@ -250,9 +251,9 @@ fun kcpuex_handler(frame : Idt::Data::ExceptionRegisters*)
 
     {% if false %}
       if process.kernel_process?
-        panic "segfault from kernel process"
+        abort "segfault from kernel process"
       elsif frame.value.rip > Paging::KERNEL_OFFSET
-        panic "segfault from kernel"
+        abort "segfault from kernel"
       else
         if faulting_address < Multiprocessing::USER_STACK_TOP &&
            faulting_address > Multiprocessing::USER_STACK_BOTTOM_MAX

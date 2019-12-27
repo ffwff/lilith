@@ -260,7 +260,7 @@ module Multiprocessing
       unless yield self
         # unable to setup, bailing
         if kernel_process?
-          panic "unable to set up kernel process"
+          abort "unable to set up kernel process"
         end
         unless last_pg_struct.null?
           Paging.current_pdpt = last_pg_struct
@@ -313,7 +313,7 @@ module Multiprocessing
 
     def initial_switch
       Multiprocessing::Scheduler.current_process = self
-      panic "page dir is nil" if @phys_pg_struct == 0
+      abort "page dir is nil" if @phys_pg_struct == 0
       if kernel_process?
         Paging.current_kernel_pdpt = Pointer(Paging::Data::PDPTable).new(@phys_pg_struct)
         Paging.flush

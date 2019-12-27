@@ -46,7 +46,7 @@ private struct VgaInstance < OutputDriver
 
   # must be called from putc(ch)
   private def putc(state, x : Int32, y : Int32, fg : VgaColor, bg : VgaColor, a : UInt8)
-    panic "drawing out of bounds (80x25)!" if x > VGA_WIDTH || y > VGA_HEIGHT
+    abort "drawing out of bounds (80x25)!" if x > VGA_WIDTH || y > VGA_HEIGHT
     state.buffer[offset x, y] = color_code(fg, bg, a)
   end
 

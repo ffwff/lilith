@@ -9,12 +9,12 @@ struct NullTerminatedSlice
   end
 
   def [](idx : Int)
-    panic "NullTerminatedSlice: out of range" if idx > @size || idx < 0
+    abort "NullTerminatedSlice: out of range" if idx > @size || idx < 0
     @buffer[idx]
   end
 
   def [](range : Range(Int, Int))
-    panic "NullTerminatedSlice: out of range" if range.begin > range.end
+    abort "NullTerminatedSlice: out of range" if range.begin > range.end
     Slice(UInt8).new(@buffer + range.begin, range.size)
   end
 

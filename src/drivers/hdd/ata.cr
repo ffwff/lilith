@@ -359,7 +359,7 @@ class AtaDevice
       builder << "cdrom"
       builder.write_byte (Ide.next_hd_idx + '0'.ord).to_u8
     else
-      panic "unhandled ata type: ", @type
+      abort "unhandled ata type: ", @type
     end
     @name = builder.to_s
 
@@ -419,8 +419,8 @@ class AtaDevice
   end
 
   def read_to_dma_buffer(sector : UInt64, nsectors : Int = 1)
-    panic "can't access atapi" if @type == Type::Atapi
-    panic "device doesn't support dma" if !@can_dma
+    abort "can't access atapi" if @type == Type::Atapi
+    abort "device doesn't support dma" if !@can_dma
     # Serial.print "ata read ", sector, '\n'
 
     retval = false
@@ -444,7 +444,7 @@ class AtaDevice
   MAX_RETRIES = 3
 
   def read_sector(ptr : UInt8*, sector : UInt64, nsectors : Int = 1)
-    panic "can't access atapi" if @type == Type::Atapi
+    abort "can't access atapi" if @type == Type::Atapi
     # Serial.print "ata read ", sector, '\n'
 
     retval = false

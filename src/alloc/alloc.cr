@@ -56,7 +56,7 @@ module Allocator
       if @header.value.magic != Data::MAGIC &&
          @header.value.magic != Data::MAGIC_ATOMIC
         # Serial.print @header, '\n'
-        Allocator.panic "magic pool number is overwritten!"
+        abort "magic pool number is overwritten!"
       end
     end
 
@@ -124,7 +124,7 @@ module Allocator
 
     def release_block(block : Void*)
       idx = idx_for_block(block)
-      panic "double free" if !alloc_bitmap[idx]
+      abort "double free" if !alloc_bitmap[idx]
       alloc_bitmap[idx] = false
       @header.value.nfree = nfree + 1
     end
@@ -247,7 +247,7 @@ module Allocator
 
   private def new_mmap(bytes : Int, atomic)
     pool_size = sizeof(Data::MmapHeader) + bytes
-    panic "pool size must be <= 0x1000" if pool_size > 0x1000
+    abort "pool size must be <= 0x1000" if pool_size > 0x1000
 
     addr = @@placement_addr
     alloc_page addr
@@ -297,7 +297,7 @@ module Allocator
       hdr = Pointer(Data::MmapHeader).new(addr)
       hdr.value.marked = val ? 1 : 0
     else
-      panic "mark: unknown magic"
+      abort "mark: unknown magic"
     end
   end
 
@@ -311,7 +311,7 @@ module Allocator
       hdr = Pointer(Data::MmapHeader).new(addr)
       hdr.value.marked == 1
     else
-      panic "mark: unknown magic"
+      abort "mark: unknown magic"
     end
   end
 
@@ -393,18 +393,9 @@ module Allocator
       end
       Paging.alloc_page_pg addr, true, false
     end
-
-    protected def panic(str)
-      ::panic str
-    end
   {% else %}
     private def alloc_page(addr)
       LibC.mmap Pointer(Void).new(addr), 0x1000, (LibC::MmapProt::Read | LibC::MmapProt::Write).value, 0, -1, 0
-    end
-
-    protected def panic(str)
-      LibC.fprintf LibC.stderr, "allocator: %s\n", str
-      abort
     end
   {% end %}
 end

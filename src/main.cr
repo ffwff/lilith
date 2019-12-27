@@ -28,7 +28,7 @@ MAIN_PROGRAM = "/main"
 
 fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   if mboot_magic != MULTIBOOT_BOOTLOADER_MAGIC
-    panic "Kernel should be booted from a multiboot bootloader!"
+    abort "Kernel should be booted from a multiboot bootloader!"
   end
 
   Multiprocessing.fxsave_region = Kernel.fxsave_region_ptr
@@ -108,7 +108,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   # file systems
   root_device = Ide.devices[0]
   if root_device.nil?
-    panic "no disk found!"
+    abort "no disk found!"
   end
   root_device = root_device.not_nil!
 
@@ -121,7 +121,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
       when VFS_OK
         # ignored
       when VFS_WAIT
-        panic "TODO"
+        abort "TODO"
       end
     end
     fs.root.each_child do |node|
@@ -131,7 +131,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     end
     RootFS.append(fs)
   else
-    panic "can't boot from this device"
+    abort "can't boot from this device"
   end
 
   # load main.bin
@@ -161,7 +161,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
     case main_bin.not_nil!.spawn(udata)
     when VFS_ERR
-      panic "unable to load main!"
+      abort "unable to load main!"
     when VFS_WAIT
       fs.not_nil!.queue.not_nil!
         .enqueue(VFS::Message.new(udata, main_bin))

@@ -130,7 +130,7 @@ module FrameAllocator
         return frame
       end
     end
-    panic "no more physical memory!"
+    abort "no more physical memory!"
     0
   end
 
@@ -151,7 +151,7 @@ module FrameAllocator
         return frame
       end
     end
-    panic "no more physical memory!"
+    abort "no more physical memory!"
     0u64
   end
 end
