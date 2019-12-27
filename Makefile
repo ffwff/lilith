@@ -29,6 +29,10 @@ ifeq ($(RECORD_CLI),1)
 	CRFLAGS += -Drecord_cli
 endif
 
+ifeq ($(RECORD_MARKABLE),1)
+	CRFLAGS += -Drecord_markable
+endif
+
 ifeq ($(RELEASE),1)
 	CRFLAGS += --release
 else

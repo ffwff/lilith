@@ -38,21 +38,39 @@ end
 {% end %}
 
 class Markable
-  @markable = true
-  def markable?
-    @markable
-  end
+  {% if flag?(:record_markable) %}
+    @markable : UInt64 = 0u64
+    def markable?
+      @markable == 0
+    end
 
-  def write_barrier(&block)
-    abort "multiple write barriers" if !@markable
-    @markable = false
-    retval = yield
+    def write_barrier(&block)
+      abort "multiple write barriers" if !markable?
+      asm("lea (%rip), $0" : "=r"(@markable) :: "volatile")
+      retval = yield
+      @markable = 0u64 
+      # perform a non stw cycle here so the gray stack
+      # doesn't get clogged with write barrier'd classes
+      GC.non_stw_cycle
+      retval
+    end
+  {% else %}
     @markable = true
-    # perform a non stw cycle here so the gray stack
-    # doesn't get clogged with write barrier'd classes
-    GC.non_stw_cycle
-    retval
-  end
+    def markable?
+      @markable
+    end
+
+    def write_barrier(&block)
+      abort "multiple write barriers" if !markable?
+      @markable = false
+      retval = yield
+      @markable = true
+      # perform a non stw cycle here so the gray stack
+      # doesn't get clogged with write barrier'd classes
+      GC.non_stw_cycle
+      retval
+    end
+  {% end %}
 
   @[NoInline]
   def mark(&block : Void* ->)
@@ -231,6 +249,9 @@ module GC
           end
         end
       else
+        {% if flag?(:record_markable) %}
+          Serial.print "not markable: ", ptr,'\n'
+        {% end %}
         Allocator.mark ptr, false
         push_opposite_gray ptr
       end
@@ -313,6 +334,7 @@ module GC
   {% end %}
 
   private def unlocked_cycle
+    # Serial.print "---\n"
     case @@state
     when State::ScanRoot
       scan_globals
@@ -361,15 +383,13 @@ module GC
 
   def unsafe_malloc(size : UInt64, atomic = false)
     @@spinlock.with do
-      {% if flag?(:debug_gc) %}
-        if @@enabled
+      if @@enabled
+        {% if flag?(:debug_gc) %}
           unlocked_full_cycle
-        end
-      {% else %}
-        if @@enabled
+        {% else %}
           unlocked_cycle
-        end
-      {% end %}
+        {% end %}
+      end
       ptr = Allocator.malloc(size, atomic)
       push_gray ptr
       ptr
@@ -385,7 +405,7 @@ module GC
       memcpy newptr.as(UInt8*), ptr.as(UInt8*), oldsize.to_usize
       push_gray newptr
 
-      if @@enabled && Allocator.marked?(ptr) && @@state != State::ScanRoot
+      if Allocator.marked?(ptr) && @@state != State::ScanRoot
         idx = -1
         @@curr_grays_idx.times do |i|
           if @@curr_grays[i] == ptr
