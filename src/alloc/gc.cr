@@ -48,17 +48,10 @@ class Markable
     @markable = false
     retval = yield
     @markable = true
+    # perform a non stw cycle here so the gray stack
+    # doesn't get clogged with write barrier'd classes
+    GC.non_stw_cycle
     retval
-  end
-
-  def write_barrier
-    abort "multiple write barriers" if !@markable
-    @markable = false
-  end
-
-  def write_barrier_end
-    abort "multiple write barriers" if @markable
-    @markable = true
   end
 
   @[NoInline]
@@ -80,18 +73,7 @@ module GC
 
   # whether the GC is enabled
   @@enabled = false
-
-  def enabled
-    @@spinlock.with do
-      @@enabled
-    end
-  end
-
-  def enabled=(e)
-    @@spinlock.with do
-      @@enabled = e
-    end
-  end
+  class_getter enabled
 
   GRAY_SIZE = 256
   @@front_grays = uninitialized Void*[GRAY_SIZE]
@@ -317,6 +299,9 @@ module GC
     private def scan_kernel_threads
       if threads = Multiprocessing.kernel_threads
         threads.each do |thread|
+          # we will only scan threads which can be run
+          # so hopefully sleeping threads should have nothing allocated!
+          next if thread.sched_data.status != Multiprocessing::Scheduler::ProcessData::Status::Normal
           next if thread.frame.nil?
           next if thread == Multiprocessing::Scheduler.current_process
           # Serial.print "scan: ", thread.name, '\n'
@@ -359,14 +344,12 @@ module GC
   end
 
   def full_cycle
-    return
     @@spinlock.with do
       unlocked_full_cycle
     end
   end
 
   def non_stw_cycle
-    return
     @@spinlock.with do
       if @@state != State::ScanRoot
         unlocked_cycle
@@ -402,7 +385,7 @@ module GC
       memcpy newptr.as(UInt8*), ptr.as(UInt8*), oldsize.to_usize
       push_gray newptr
 
-      if Allocator.marked?(ptr) && @@state != State::ScanRoot
+      if @@enabled && Allocator.marked?(ptr) && @@state != State::ScanRoot
         idx = -1
         @@curr_grays_idx.times do |i|
           if @@curr_grays[i] == ptr

@@ -73,40 +73,44 @@ class Hash(K, V) < Markable
   end
 
   def []=(key : K, value : V, hasher = Hasher.new)
-    write_barrier
     hash = key.hash(hasher).result
     # create entry list if empty
     if @entries.null?
-      # resize
-      @entries = Pointer(Entry(K, V)).malloc_atomic(INITIAL_CAPACITY)
-      INITIAL_CAPACITY.times do |i|
-        @entries[i] = Entry(K, V).empty
+      write_barrier do
+        # resize
+        @entries = Pointer(Entry(K, V)).malloc_atomic(INITIAL_CAPACITY)
+        INITIAL_CAPACITY.times do |i|
+          @entries[i] = Entry(K, V).empty
+        end
+        recalculate_size
+        # insert
+        idx = hash & (@size - 1)
+        @entries[idx] = Entry.new(hash, key, value)
+        @occupied = 1
       end
-      recalculate_size
-      # insert
-      idx = hash & (@size - 1)
-      @entries[idx] = Entry.new(hash, key, value)
-      @occupied = 1
-      write_barrier_end
       return value
     end
     # expand if we reached load factor
     # occupied / size >= 1/2 => 2*occupied >= size
-    rehash(barrier: false) if @occupied * 2 >= @size
+    write_barrier do
+      rehash if @occupied * 2 >= @size
+    end
     # search a slot and set it
     while true
       idx = hash & (@size - 1)
       if slot = find_slot(key, idx)
-        @entries[slot] = Entry.new(hash, key, value)
-        write_barrier_end
+        write_barrier do
+          @entries[slot] = Entry.new(hash, key, value)
+        end
         return value
       end
-      rehash(barrier: false)
+      write_barrier do
+        rehash
+      end
     end
   end
 
-  def rehash(size_mul = 2, barrier = true)
-    write_barrier if barrier
+  private def rehash(size_mul = 2)
     old_entries = @entries
     old_size = @size
 
@@ -136,7 +140,7 @@ class Hash(K, V) < Markable
             @entries = old_entries
             @size = old_size
             #Serial.print @size, ' ', size_mul, '\n'
-            return rehash(size_mul * 2, barrier)
+            return rehash(size_mul * 2)
           end
           # insert it
           #Serial.print "idx: ", new_idx, ' ', old_entry.key, '\n'
@@ -144,7 +148,6 @@ class Hash(K, V) < Markable
         end
       end
     end
-    write_barrier_end if barrier
   end
   
   @[NoInline]
