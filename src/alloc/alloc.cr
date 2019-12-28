@@ -1,11 +1,72 @@
-# Kernel memory allocator
-# this is an implementation of a simple pool memory allocator
-# each pool is 4096 bytes, and are chained together
-
 {% if flag?(:kernel) %}
   require "../arch/paging.cr"
 {% end %}
 
+# Memory allocator used by the garbage collector, used by userspace libcrystal and the kernel.
+# This is an implementation of a simple pool-based memory allocator,
+# each pool is 4096 bytes, and are chained together. Pool headers include
+# an allocation bitmap for fast allocation and GC metadata bitmap for faster sweep phase.
+# The memory allocator can allocate for sizes from 32 up to ~4096.
+#
+# ### Small and large pools
+#
+# Each **small pool** (for sizes <= 1024) has the following layout:
+#
+# ```
+# struct Pool
+#   struct Data
+#      struct Header
+#        @magic     : USize
+#        @next_pool : Pool*
+#        @idx       : USize
+#        @nfree     : USize
+#      end
+#      @alloc_bitmap : UInt32[...]
+#      @mark_bitmap  : UInt32[...]
+#      @alignment_padding : UInt32 # optional
+#   end
+#   @payload : UInt8[4096 - sizeof(Data)]
+# end
+# ```
+#
+# Each header holds information about the pool's identity, block size and number of free blocks.
+# The payload is divided into equal spaces of N kilobytes each, where N can be determined by
+# getting `Allocator::SIZES[@idx]`.
+#
+# Allocation can be done by searching through the `alloc_bitmap` and finding the first free bit.
+# The index of that bit in the bitmap determines where the block is (`@payload + idx * @idx`).
+# Set bits represent allocated blocks, while unset bits represent freed blocks. Allocation
+# also decreases `nfree` by 1. Once nfree reaches zero, the pool is considered free and is chained
+# into the global allocator free list.
+#
+# Marking a block can be done by setting that block's corresponding index in the `mark_bitmap`.
+#
+# Each **large pool** has the following layout:
+#
+# ```
+# struct Pool
+#   struct Header
+#     @magic  : USize
+#     @marked : USize
+#     @atomic : USize
+#   end
+#   @payload : UInt8[4096 - sizeof(Header)]
+# end
+# ```
+#
+# Allocation is simply getting a free page, filling the headers of the page to default values.
+# Marking can be done by setting `@marked` to 1.
+#
+# ### Allocating pools
+#
+# The allocator keeps track of empty pages through a linked list, forming a free stack.
+# If a page can be popped from the stack, it is used as the page for a new pool. If not,
+# the private method `Allocator.alloc_page` is called, getting a new page from the OS or from
+# the `FrameAllocator`.
+#
+# ## See also
+#
+# See `Allocator::Pool` for more information.
 module Allocator
   extend self
 
@@ -35,8 +96,8 @@ module Allocator
     end
   end
 
-  # a bitmapped memory pool
-  # [ hdr ][ alloc_bitmap ][ mark_bitmap ]( x * sz )
+  # A wrapper for handling bitmapped small memory pool used by the allocator, the wrapper
+  # contains a page-aligned pointer to the pool, as well as allocation sizes.
   struct Pool
     SIZE = 0x1000
 
@@ -51,6 +112,12 @@ module Allocator
       @blocks = Allocator::ITEMS[@idx]
     end
 
+    def initialize(@header : Data::PoolHeader*, @idx : Int32)
+      @block_size = Allocator::SIZES[@idx]
+      @blocks = Allocator::ITEMS[@idx]
+    end
+
+    # Checks if the pool has correct magic numbers.
     def validate_header
       if @header.value.magic != Data::MAGIC &&
          @header.value.magic != Data::MAGIC_ATOMIC
@@ -59,15 +126,12 @@ module Allocator
       end
     end
 
-    def initialize(@header : Data::PoolHeader*, @idx : Int32)
-      @block_size = Allocator::SIZES[@idx]
-      @blocks = Allocator::ITEMS[@idx]
-    end
-
+    # Gets the number of free blocks.
     def nfree
       @header.value.nfree
     end
 
+    # Initializes the header, this must be called after the page for the pool is allocated.
     def init_header(atomic = false)
       @header.value.magic = atomic ? Data::MAGIC_ATOMIC : Data::MAGIC
       @header.value.next_pool = Pointer(Data::PoolHeader).null
@@ -77,12 +141,14 @@ module Allocator
       mark_bitmap.clear
     end
 
+    # Returns the allocation bitmap.
     def alloc_bitmap
       BitArray
         .new((@header.as(Void*) + sizeof(Data::PoolHeader)).as(UInt32*),
           blocks)
     end
 
+    # Returns the mark bitmap.
     def mark_bitmap
       BitArray
         .new((@header.as(Void*) +
@@ -91,10 +157,12 @@ module Allocator
           blocks)
     end
 
+    # Returns the aligment padding's size.
     def alignment_padding
       @block_size >= MIN_SIZE_TO_ALIGN ? 8 : 0
     end
 
+    # Gets the block corresponding to `idx` in the allocation bitmap.
     def block(idx : Int)
       (@header.as(Void*) +
         sizeof(Data::PoolHeader) +
@@ -103,14 +171,17 @@ module Allocator
         idx * @block_size)
     end
 
+    # Checks if the block is aligned.
     def aligned?(block : Void*)
       (block.address - @header.address - alignment_padding - BitArray.malloc_size(@blocks)*4*2 - sizeof(Data::PoolHeader)) & (@block_size - 1) == 0
     end
 
+    # Gets the corresponding index for the block.
     def idx_for_block(block : Void*)
       (block.address - @header.address - alignment_padding - BitArray.malloc_size(@blocks)*4*2 - sizeof(Data::PoolHeader)) >> (@idx + MIN_POW2)
     end
 
+    # Gets the first free block in the allocation bitmap,
     def get_free_block : Void*
       if (idx = alloc_bitmap.first_unset) != -1
         @header.value.nfree = nfree - 1
@@ -121,17 +192,20 @@ module Allocator
       end
     end
 
+    # Sets the corresponding element for the block to zero, freeing  the block.
     def release_block(block : Void*)
       idx = idx_for_block(block)
       alloc_bitmap[idx] = false
       @header.value.nfree = nfree + 1
     end
 
+    # Marks the block.
     def mark_block(block : Void*, val : Bool)
       idx = idx_for_block(block)
       mark_bitmap[idx] = val
     end
 
+    # Checks if the block is marked.
     def block_marked?(block : Void*)
       idx = idx_for_block(block)
       unless 0 <= idx < mark_bitmap.size
@@ -140,6 +214,7 @@ module Allocator
       mark_bitmap[idx]
     end
 
+    # Performs a sweep.
     def sweep
       {% if false %}
         idx = 0
@@ -166,20 +241,32 @@ module Allocator
     end
   end
 
+  # Minimum pool block size for the alignment padding to appear.
   MIN_SIZE_TO_ALIGN = 128
+
+  # Binary log of the smallest size the allocator can allocate.
   MIN_POW2          =   5
 
-  # sizes of a pool
+  # Sizes of a small pool, according to its `@idx`.
   SIZES = StaticArray[32, 64, 128, 256, 512, 1024]
-  # maximum pool size
+
+  # Maximum size for the allocating a small pool.
   MAX_POOL_SIZE = 1024
-  # maximum number of blocks a given pool can store
+
+  # Maximum number of blocks a pool of a given `@idx` can store
   ITEMS = StaticArray[126, 63, 31, 15, 7, 3]
-  # placement address of first pool
+
+  # Placement address of first pool
   @@start_addr = 0u64
-  # placement address of new pool
-  @@placement_addr = 0u64
+
+  # Placement address of newest pool
   class_getter placement_addr
+  @@placement_addr = 0u64
+
+  # Number of pages the allocator has allocated (number of mmap calls/frames claimed).
+  class_getter pages_allocated
+  @@pages_allocated = 0
+
   # available pool list
   @@pools = uninitialized Data::PoolHeader*[7]
   # available pool list (atomic)
@@ -187,6 +274,7 @@ module Allocator
   # empty, reusable pages
   @@empty_pages = Pointer(Data::EmptyHeader).null
 
+  # Initializes the memory allocator.
   def init(@@placement_addr)
     @@start_addr = @@placement_addr
     @@pools.size.times do |i|
@@ -195,7 +283,7 @@ module Allocator
     end
   end
 
-  def aligned?(ptr : Void*)
+  private def aligned?(ptr : Void*)
     addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
     magic = Pointer(USize).new(addr).value
     if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
@@ -208,6 +296,8 @@ module Allocator
     end
   end
 
+  # Checks if `ptr` is allocated by the Allocator. If `ptr` is pointing to data inside
+  # a small pool's block, `false` is returned.
   def contains_ptr?(ptr)
     @@start_addr <= ptr.address && ptr.address < @@placement_addr && aligned?(ptr)
   end
@@ -259,6 +349,7 @@ module Allocator
     (hdr + 1).as(Void*)
   end
 
+  # Allocates some bytes with optional `atomic` flag.
   def malloc(bytes : Int, atomic = false) : Void*
     if bytes > Data::MAX_MMAP_SIZE
       abort "can't allocate that large a block"
@@ -286,6 +377,7 @@ module Allocator
     end
   end
 
+  # Marks the pointer.
   def mark(ptr : Void*, val = true)
     # Serial.print "mark: ", ptr, '\n'
     addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
@@ -301,6 +393,7 @@ module Allocator
     end
   end
 
+  # Checks if the pointer is marked.
   def marked?(ptr : Void*)
     addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
     magic = Pointer(USize).new(addr).value
@@ -315,6 +408,7 @@ module Allocator
     end
   end
 
+  # Checks if the pointer is atomic.
   def atomic?(ptr : Void*)
     addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
     magic = Pointer(USize).new(addr).value
@@ -328,6 +422,10 @@ module Allocator
     end
   end
 
+  # Sweeps the heap. This done by:
+  #   1. Resetting the list of free pools to null
+  #   2. Loops through every page of the heap. If it's a **small pool**, perform a binary and operation between each bit of the `alloc_bitmap` and `mark_bitmap`, and clear the `mark_bitmap`. If it's a **large pool**, free the pool if it is marked.
+  #   3. Rechain each of the pool into the list of free pools.
   def sweep
     @@pools.size.times do |i|
       @@pools[i] = Pointer(Data::PoolHeader).null
@@ -366,6 +464,7 @@ module Allocator
     end
   end
 
+  # Dumps the entire heap for easier debugging.
   def dump
     addr = @@start_addr
     while addr < @@placement_addr.to_u64
@@ -380,6 +479,7 @@ module Allocator
     end
   end
 
+  # Gets the block size of the pool containing `ptr`.
   def block_size_for_ptr(ptr)
     addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
     magic = Pointer(USize).new(addr).value
@@ -393,9 +493,6 @@ module Allocator
     end
 
   end
-
-  @@pages_allocated = 0
-  class_getter pages_allocated
 
   {% if flag?(:kernel) %}
     private def alloc_page(addr)

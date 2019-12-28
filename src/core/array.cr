@@ -1,3 +1,4 @@
+# A simple dynamic array, see [Crystal's documentation](https://crystal-lang.org/api/0.32.1/Array.html) for more detail.
 class Array(T) < Markable
 
   @size = 0

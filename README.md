@@ -1,12 +1,11 @@
-<h1 align="center">lilith</h1>
+# lilith
 
-<p align="center">
-<img src="./img/screenshot23.png" alt="screenshot of lilith"/>
-</p>
 
-<p align="center">
 A POSIX-like x86-64 kernel and userspace written in Crystal.
-</p>
+
+## Screenshot
+
+![screenshot](https://raw.githubusercontent.com/ffwff/lilith/master/img/screenshot23.png "screenshot of lilith")
 
 ## Building
 
@@ -50,15 +49,15 @@ make run_img
 
 ## Features
 
-* [x] Basic x86-64 support
-* [x] Hybrid conservative-precise incremental garbage collector
-* [x] IDE/ATA support (well, it can only load from primary master)
-* [x] FAT16 support
-* [x] Unix syscalls (open, read, write, spawn,...)
-* [x] Preemptive multitasking!
-* [x] Userspace C library written in Crystal (mostly)
-* [x] A window manager and some graphical programs (terminal emulator, file manager)
-* [ ] And much more as I go...
+* Basic x86-64 support
+* Hybrid conservative-precise incremental garbage collector
+* IDE/ATA support (well, it can only load from primary master)
+* FAT16 support
+* Unix syscalls (open, read, write, spawn,...)
+* Preemptive multitasking!
+* Userspace C library written in Crystal (mostly)
+* A window manager and some graphical programs (terminal emulator, file manager)
+* And much more as I go...
 
 ## License
 
