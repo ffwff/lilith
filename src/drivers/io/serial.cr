@@ -1,4 +1,3 @@
-
 private struct SerialInstance < OutputDriver
   private PORT = 0x3F8
   def initialize
@@ -11,9 +10,8 @@ private struct SerialInstance < OutputDriver
     X86.outb((PORT + 4).to_u16, 0x0Bu8) # IRQs enabled, RTS/DSR set
   end
 
-  #
-  def available
-    X86.inb((PORT + 5).to_u16) & 1
+  def available?
+    X86.inb((PORT + 5).to_u16) & 1 == 0
   end
 
   def transmit_empty?
@@ -21,6 +19,9 @@ private struct SerialInstance < OutputDriver
   end
 
   def putc(a : UInt8)
+    while transmit_empty?
+      asm("pause")
+    end
     X86.outb(PORT.to_u16, a)
   end
 end
