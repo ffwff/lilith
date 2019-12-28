@@ -56,9 +56,6 @@ module Multiprocessing
   @@kernel_threads : Array(Process)? = nil
   class_property kernel_threads
 
-  @@kernel_threads_lock = Spinlock.new
-  class_getter kernel_threads_lock
-
   class Process
     @pid = 0
     getter pid
@@ -321,12 +318,10 @@ module Multiprocessing
 
       # append to kernel thread
       if kernel_process?
-        Multiprocessing.kernel_threads_lock.with do
-          if Multiprocessing.kernel_threads.nil?
-            Multiprocessing.kernel_threads = Array(Process).new
-          end
-          Multiprocessing.kernel_threads.not_nil!.push self
+        if Multiprocessing.kernel_threads.nil?
+          Multiprocessing.kernel_threads = Array(Process).new
         end
+        Multiprocessing.kernel_threads.not_nil!.push self
       end
 
       Idt.enable

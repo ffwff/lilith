@@ -50,6 +50,9 @@ rdx, rcx, rbx, rax : UInt64
   @@locked = false
   class_getter locked
 
+  @@frame = Pointer(Data::Registers).null
+  class_getter frame
+
   def lock
     # NOTE: we disable process switching because
     # other processes might do another syscall
@@ -60,6 +63,7 @@ rdx, rcx, rbx, rax : UInt64
   end
 
   def unlock
+    @@frame = Pointer(Data::Registers).null
     @@locked = false
     Idt.switch_processes = true
     Idt.disable
@@ -225,6 +229,7 @@ rdx, rcx, rbx, rax : UInt64
   end
 
   def handler(frame : Syscall::Data::Registers*)
+    @@frame = frame
     process = Multiprocessing::Scheduler.current_process.not_nil!
     # Serial.print "syscall ", fv.rax, " from ", Multiprocessing::Scheduler.current_process.not_nil!.pid, "\n"
 

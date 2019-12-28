@@ -268,29 +268,39 @@ module GC
       {% end %}
     end
     private def scan_kernel_thread_stack(thread)
-      page_end = Multiprocessing::KERNEL_STACK_TOP + 1
+      page_end = Multiprocessing::KERNEL_STACK_INITIAL + 1
       page_start = page_end - thread.kdata.stack_pages * 0x1000
+      # Serial.print "scan: ", Pointer(Void).new(page_start), Pointer(Void).new(page_end), '\n'
       while page_start < page_end
         if phys = thread.physical_page_for_address(page_start)
+          #Serial.print phys, ' ', Pointer(Void).new(phys.address+0x1000u64), '\n'
           conservative_scan(phys.address, phys.address+0x1000u64)
           page_start += 0x1000
         else
+          # Serial.print "ended: ", Pointer(Void).new(page_start), '\n'
           break
         end
       end
     end
     private def scan_kernel_threads
-      Multiprocessing.kernel_threads_lock.with do
-        if threads = Multiprocessing.kernel_threads
-          threads.each do |thread|
-            # NOTE: we will only scan threads which can be run
-            # so hopefully sleeping threads should have nothing allocated!
-            next if thread.sched_data.status == Multiprocessing::Scheduler::ProcessData::Status::WaitIo
-            next if !thread.frame_initialized
-            next if thread == Multiprocessing::Scheduler.current_process
-            scan_kernel_thread_registers thread
-            scan_kernel_thread_stack thread
+      unless Syscall.frame.null?
+        {% for register in ["rax", "rbx", "rcx", "rdx",
+                            "r8", "r9", "r10", "r11", "rsi", "rdi",
+                            "r12", "r13", "r14", "r15"] %}
+          ptr = Pointer(Void).new(Syscall.frame.value.{{ register.id }})
+          if Allocator.contains_ptr? ptr
+            push_gray ptr
           end
+        {% end %}
+      end
+      if threads = Multiprocessing.kernel_threads
+        threads.each do |thread|
+          # NOTE: we will only scan threads which can be run
+          # so hopefully sleeping threads should have nothing allocated!
+          # next if thread.sched_data.status == Multiprocessing::Scheduler::ProcessData::Status::WaitIo
+          next if !thread.frame_initialized
+          scan_kernel_thread_registers thread
+          scan_kernel_thread_stack thread
         end
       end
     end
