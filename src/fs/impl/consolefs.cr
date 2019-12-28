@@ -18,7 +18,7 @@ class ConsoleFS::Node < VFS::Node
             process : Multiprocessing::Process? = nil) : Int32
     case request
     when SC_IOCTL_TIOCGWINSZ
-      unless (ptr = checked_pointer(IoctlData::Winsize, data)).nil?
+      unless (ptr = checked_pointer(IoctlHandler::Data::Winsize, data)).nil?
         IoctlHandler.winsize(ptr.not_nil!, Console.width, Console.height, 1, 1)
       else
         -1

@@ -42,21 +42,21 @@ module KbdFS
               process : Multiprocessing::Process? = nil) : Int32
       case request
       when SC_IOCTL_TCSAFLUSH
-        data = checked_pointer(IoctlData::Termios, data)
+        data = checked_pointer(IoctlHandler::Data::Termios, data)
         return -1 if data.nil?
         data = data.not_nil!.value
-        @fs.echo_input = data.c_lflag.includes?(TermiosData::LFlag::ECHO)
-        @fs.canonical = data.c_lflag.includes?(TermiosData::LFlag::ICANON)
+        @fs.echo_input = data.c_lflag.includes?(IoctlHandler::Data::LFlag::ECHO)
+        @fs.canonical = data.c_lflag.includes?(IoctlHandler::Data::LFlag::ICANON)
         0
       when SC_IOCTL_TCSAGETS
-        data = checked_pointer(IoctlData::Termios, data)
+        data = checked_pointer(IoctlHandler::Data::Termios, data)
         return -1 if data.nil?
         IoctlHandler.tcsa_gets(data.not_nil!) do |termios|
           if @fs.echo_input
-            termios.c_lflag |= TermiosData::LFlag::ECHO
+            termios.c_lflag |= IoctlHandler::Data::LFlag::ECHO
           end
           if @fs.canonical
-            termios.c_lflag |= TermiosData::LFlag::ICANON
+            termios.c_lflag |= IoctlHandler::Data::LFlag::ICANON
           end
           termios
         end

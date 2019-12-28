@@ -52,7 +52,7 @@ class FbdevFS::Node < VFS::Node
             process : Multiprocessing::Process? = nil) : Int32
     case request
     when SC_IOCTL_TIOCGWINSZ
-      unless (ptr = checked_pointer(IoctlData::Winsize, data)).nil?
+      unless (ptr = checked_pointer(IoctlHandler::Data::Winsize, data)).nil?
         retval = 0
         FbdevState.lock do |state|
           retval = IoctlHandler.winsize(ptr.not_nil!, state.width, state.height, 1, 1)
