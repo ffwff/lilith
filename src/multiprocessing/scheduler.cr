@@ -364,6 +364,7 @@ module Multiprocessing::Scheduler
       Paging.free_process_pdpt(current_process.phys_pg_struct)
     end
 
+    # Serial.print "next: ", next_process.name, ' ', Pointer(Void).new(next_process.frame.not_nil!.to_unsafe.value.rip), "\n"
     next_process
   end
 
