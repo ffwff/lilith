@@ -40,8 +40,8 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Console.print "initializing gdtr...\n"
   Gdt.init_table
 
-  # drivers
-  Pit.init_device
+  # timer
+  PIT.init_device
 
   # paging
   Console.print "initializing paging...\n"

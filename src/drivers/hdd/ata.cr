@@ -296,194 +296,195 @@ module Ata
     end
     @@interrupted = true
   end
-end
 
-class AtaDevice
-  def disk_port
-    @primary ? Ata::DISK_PORT_PRIMARY : Ata::DISK_PORT_SECONDARY
-  end
-
-  def cmd_port
-    @primary ? Ata::CMD_PORT_PRIMARY : Ata::CMD_PORT_SECONDARY
-  end
-
-  getter primary, slave
-
-  @name : String? = nil
-  getter! name
-
-  @can_dma = false
-
-  enum Type
-    Ata
-    Atapi
-  end
-  @type = Type::Ata
-  getter type
-
-  def irq
-    @primary ? 14 : 15
-  end
-
-  # NOTE: idx must be between 0..3
-  def initialize(@primary = true, @slave = false)
-  end
-
-  # initialize device
-  def init_device
-    X86.outb disk_port + 1, 1
-    X86.outb disk_port + 0x306, 0
-
-    Ata.select disk_port, @slave
-    Ata.wait_io disk_port
-
-    Ata.identify disk_port
-    Ata.wait_io disk_port
-
-    cl, ch = Ata.read_cyl(disk_port)
-    if cl == 0xFF && ch == 0xFF
-      return false
-    elsif (cl == 0x00 && ch == 0x00) || (cl == 0x3C && ch == 0xC3)
-      @type = Type::Ata
-    elsif (cl == 0x14 && ch == 0xEB) || (cl == 0x69 && ch == 0x96)
-      @type = Type::Atapi
+  class Device
+    def disk_port
+      @primary ? Ata::DISK_PORT_PRIMARY : Ata::DISK_PORT_SECONDARY
     end
 
-    case @type
-    when Type::Ata
-      builder = String::Builder.new 4
-      builder << "hd"
-      builder.write_byte (Ide.next_hd_idx + '0'.ord).to_u8
-    when Type::Atapi
-      builder = String::Builder.new 7
-      builder << "cdrom"
-      builder.write_byte (Ide.next_hd_idx + '0'.ord).to_u8
-    else
-      abort "unhandled ata type: ", @type
+    def cmd_port
+      @primary ? Ata::CMD_PORT_PRIMARY : Ata::CMD_PORT_SECONDARY
     end
-    @name = builder.to_s
 
-    # read device identifier
-    device = Pointer(Ata::Data::AtaIdentify).malloc_atomic
+    getter primary, slave
 
-    case @type
-    when Type::Ata
+    @name : String? = nil
+    getter! name
+
+    @can_dma = false
+
+    enum Type
+      Ata
+      Atapi
+    end
+    @type = Type::Ata
+    getter type
+
+    def irq
+      @primary ? 14 : 15
+    end
+
+    # NOTE: idx must be between 0..3
+    def initialize(@primary = true, @slave = false)
+    end
+
+    # initialize device
+    def init_device
+      X86.outb disk_port + 1, 1
+      X86.outb disk_port + 0x306, 0
+
+      Ata.select disk_port, @slave
+      Ata.wait_io disk_port
+
       Ata.identify disk_port
       Ata.wait_io disk_port
 
-      status = Ata.status disk_port
-      # Serial.print "status: ", status, '\n'
-      if status == 0
-        # cleanup
+      cl, ch = Ata.read_cyl(disk_port)
+      if cl == 0xFF && ch == 0xFF
         return false
+      elsif (cl == 0x00 && ch == 0x00) || (cl == 0x3C && ch == 0xC3)
+        @type = Type::Ata
+      elsif (cl == 0x14 && ch == 0xEB) || (cl == 0x69 && ch == 0x96)
+        @type = Type::Atapi
       end
-    when Type::Atapi
-      Ata.identify_packet disk_port
-      Ata.wait_io disk_port
 
-      status = Ata.status disk_port
-      # Serial.print "status: ", status, '\n'
-      if status == 0
-        # cleanup
-        return false
+      case @type
+      when Type::Ata
+        builder = String::Builder.new 4
+        builder << "hd"
+        builder.write_byte (Ide.next_hd_idx + '0'.ord).to_u8
+      when Type::Atapi
+        builder = String::Builder.new 7
+        builder << "cdrom"
+        builder.write_byte (Ide.next_hd_idx + '0'.ord).to_u8
+      else
+        abort "unhandled ata type: ", @type
       end
-    end
+      @name = builder.to_s
 
-    buf = device.as(UInt16*)
-    256.times do |i|
-      buf[i] = X86.inw disk_port
-    end
+      # read device identifier
+      device = Pointer(Ata::Data::AtaIdentify).malloc_atomic
 
-    if (device.value.capabilities[0] & (1 << 8)) != 0
-      @can_dma = true
-    end
+      case @type
+      when Type::Ata
+        Ata.identify disk_port
+        Ata.wait_io disk_port
 
-    # fix model name from endianness
-    {% for key in ["serial", "firmware", "model"] %}
-      {% key = key.id %}
-      i = 0
-      while i < device.value.{{ key }}.size
-        device.value.{{ key }}[i], device.value.{{ key }}[i+1] = \
-        device.value.{{ key }}[i+1], device.value.{{ key }}[i]
-        i += 2
-      end
-    {% end %}
-
-    true
-  end
-
-  def dma_buffer?
-    if @can_dma
-      Ide.dma_buffer
-    end
-  end
-
-  def read_to_dma_buffer(sector : UInt64, nsectors : Int = 1)
-    abort "can't access atapi" if @type == Type::Atapi
-    abort "device doesn't support dma" if !@can_dma
-    # Serial.print "ata read ", sector, '\n'
-
-    retval = false
-    Ide.lock do
-      retries = 0
-      while retries < MAX_RETRIES
-        Ata.interrupted = false
-        Ata.read_dma sector, disk_port, cmd_port, slave, nsectors.to_u8
-        # poll
-        while !Ata.interrupted
-          asm("pause")
+        status = Ata.status disk_port
+        # Serial.print "status: ", status, '\n'
+        if status == 0
+          # cleanup
+          return false
         end
-        Ata.flush_dma
-        retval = true
-        break
+      when Type::Atapi
+        Ata.identify_packet disk_port
+        Ata.wait_io disk_port
+
+        status = Ata.status disk_port
+        # Serial.print "status: ", status, '\n'
+        if status == 0
+          # cleanup
+          return false
+        end
+      end
+
+      buf = device.as(UInt16*)
+      256.times do |i|
+        buf[i] = X86.inw disk_port
+      end
+
+      if (device.value.capabilities[0] & (1 << 8)) != 0
+        @can_dma = true
+      end
+
+      # fix model name from endianness
+      {% for key in ["serial", "firmware", "model"] %}
+        {% key = key.id %}
+        i = 0
+        while i < device.value.{{ key }}.size
+          device.value.{{ key }}[i], device.value.{{ key }}[i+1] = \
+          device.value.{{ key }}[i+1], device.value.{{ key }}[i]
+          i += 2
+        end
+      {% end %}
+
+      true
+    end
+
+    def dma_buffer?
+      if @can_dma
+        Ide.dma_buffer
       end
     end
-    retval
-  end
 
-  MAX_RETRIES = 3
+    def read_to_dma_buffer(sector : UInt64, nsectors : Int = 1)
+      abort "can't access atapi" if @type == Type::Atapi
+      abort "device doesn't support dma" if !@can_dma
+      # Serial.print "ata read ", sector, '\n'
 
-  def read_sector(ptr : UInt8*, sector : UInt64, nsectors : Int = 1)
-    abort "can't access atapi" if @type == Type::Atapi
-    # Serial.print "ata read ", sector, '\n'
-
-    retval = false
-    Ide.lock do
-      retries = 0
-      while retries < MAX_RETRIES
-        if @can_dma
+      retval = false
+      Ide.lock do
+        retries = 0
+        while retries < MAX_RETRIES
           Ata.interrupted = false
           Ata.read_dma sector, disk_port, cmd_port, slave, nsectors.to_u8
           # poll
           while !Ata.interrupted
             asm("pause")
           end
-          memcpy(ptr, Ide.dma_buffer, 512u64 * nsectors)
           Ata.flush_dma
-        else
-          Ata.read sector, disk_port, slave, nsectors.to_u8
-          # poll
-          unless Ata.wait(disk_port, true)
-            retval = false
-            retries += 1
-            next
-          end
-          # read from sector
-          l0 = l1 = 0
-          nwords = 256 * nsectors
-          asm("rep insw"
-                  : "={Di}"(l0), "={cx}"(l1)
-                  : "{Di}"(ptr), "{cx}"(nwords), "{dx}"(disk_port)
-                  : "volatile", "memory")
+          retval = true
+          break
         end
-        retval = true
-        break
       end
+      retval
     end
 
-    retval
+    MAX_RETRIES = 3
+
+    def read_sector(ptr : UInt8*, sector : UInt64, nsectors : Int = 1)
+      abort "can't access atapi" if @type == Type::Atapi
+      # Serial.print "ata read ", sector, '\n'
+
+      retval = false
+      Ide.lock do
+        retries = 0
+        while retries < MAX_RETRIES
+          if @can_dma
+            Ata.interrupted = false
+            Ata.read_dma sector, disk_port, cmd_port, slave, nsectors.to_u8
+            # poll
+            while !Ata.interrupted
+              asm("pause")
+            end
+            memcpy(ptr, Ide.dma_buffer, 512u64 * nsectors)
+            Ata.flush_dma
+          else
+            Ata.read sector, disk_port, slave, nsectors.to_u8
+            # poll
+            unless Ata.wait(disk_port, true)
+              retval = false
+              retries += 1
+              next
+            end
+            # read from sector
+            l0 = l1 = 0
+            nwords = 256 * nsectors
+            asm("rep insw"
+                    : "={Di}"(l0), "={cx}"(l1)
+                    : "{Di}"(ptr), "{cx}"(nwords), "{dx}"(disk_port)
+                    : "volatile", "memory")
+          end
+          retval = true
+          break
+        end
+      end
+
+      retval
+    end
   end
 end
+
 
 module Ide
   extend self
@@ -547,12 +548,12 @@ module Ide
     @@prdt.address = dma_buffer_phys
     @@prdt.end_of_table = 0x8000
 
-    @@devices = Array(AtaDevice?).new 4
+    @@devices = Array(Ata::Device?).new 4
 
-    devices.push AtaDevice.new(true, false)
-    devices.push AtaDevice.new(true, true)
-    devices.push AtaDevice.new(false, false)
-    devices.push AtaDevice.new(false, true)
+    devices.push Ata::Device.new(true, false)
+    devices.push Ata::Device.new(true, true)
+    devices.push Ata::Device.new(false, false)
+    devices.push Ata::Device.new(false, true)
 
     Idt.register_irq 14, ->ata_primary_irq_handler
     Idt.register_irq 15, ->ata_secondary_irq_handler

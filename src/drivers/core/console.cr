@@ -54,7 +54,7 @@ private struct ConsoleInstance < OutputDriver
 
   def locked?
     if @text_mode
-      VgaState.locked?
+      VGADevice.locked?
     else
       FbdevState.locked?
     end

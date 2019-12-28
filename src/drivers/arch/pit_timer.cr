@@ -1,4 +1,4 @@
-module Pit
+module PIT
   extend self
 
   private PIT_CONST      = 1193180

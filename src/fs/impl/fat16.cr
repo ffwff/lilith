@@ -488,10 +488,10 @@ module Fat16FS
       device.not_nil!.name
     end
 
-    def initialize(@device : AtaDevice, partition)
+    def initialize(@device : Ata::Device, partition)
       Console.print "initializing FAT16 filesystem\n"
 
-      abort "device must be ATA" if @device.type != AtaDevice::Type::Ata
+      abort "device must be ATA" if @device.type != Ata::Device::Type::Ata
 
       bs = Pointer(Data::BootSector).malloc_atomic
 
