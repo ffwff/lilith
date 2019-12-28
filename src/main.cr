@@ -35,6 +35,8 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Multiprocessing.fxsave_region_base = Kernel.fxsave_region_base_ptr
   Kernel.ksetup_fxsave_region_base
 
+  VGA.init_device
+
   Console.print "Booting lilith...\n"
 
   Console.print "initializing gdtr...\n"
