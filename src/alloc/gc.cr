@@ -278,61 +278,6 @@ module GC
     end
   end
 
-  {% if flag?(:kernel) %}
-    private def scan_kernel_thread_registers(thread)
-      {% for register in ["rax", "rbx", "rcx", "rdx",
-                          "r8", "r9", "r10", "r11", "rsi", "rdi",
-                          "r12", "r13", "r14", "r15"] %}
-        ptr = Pointer(Void).new(thread.frame.not_nil!.to_unsafe.value.{{ register.id }})
-        if Allocator.contains_ptr? ptr
-          push_gray ptr
-        end
-      {% end %}
-    end
-    private def scan_kernel_thread_stack(thread)
-      # FIXME: uncommenting the debug prints might lead to memory corruption
-      # it works if we don't have it though
-      rsp = thread.frame.not_nil!.to_unsafe.value.userrsp
-      return if rsp == Multiprocessing::KERNEL_STACK_INITIAL
-      # virtual addresses
-      page_start = Paging.aligned_floor(rsp)
-      page_end = Paging.aligned(Multiprocessing::KERNEL_STACK_INITIAL)
-      p_offset = rsp & 0xFFF
-      #Serial.print "rsp: ", Pointer(Void).new(rsp), ' ', Pointer(Void).new(page_start), ' ', Pointer(Void).new(page_end), '\n'
-      while page_start < page_end
-        if phys = thread.physical_page_for_address(page_start)
-          #Serial.print "phys: ", phys, '\n'
-          while p_offset < 0x1000
-            root_ptr = Pointer(Void*).new(phys.address + p_offset).value
-            if Allocator.contains_ptr? root_ptr
-              #Serial.print "root_ptr: ", root_ptr, '\n'
-              push_gray root_ptr
-            end
-            p_offset += sizeof(Void*)
-          end
-          page_start += 0x1000
-          p_offset = 0
-        else
-          break
-        end
-      end
-    end
-    private def scan_kernel_threads
-      if threads = Multiprocessing.kernel_threads
-        threads.each do |thread|
-          # we will only scan threads which can be run
-          # so hopefully sleeping threads should have nothing allocated!
-          next if thread.sched_data.status != Multiprocessing::Scheduler::ProcessData::Status::Normal
-          next if thread.frame.nil?
-          next if thread == Multiprocessing::Scheduler.current_process
-          # Serial.print "scan: ", thread.name, '\n'
-          scan_kernel_thread_registers thread
-          scan_kernel_thread_stack thread
-        end
-      end
-    end
-  {% end %}
-
   private def unlocked_cycle
     # Serial.print "---\n"
     case @@state
@@ -340,9 +285,6 @@ module GC
       scan_globals
       scan_registers
       scan_stack
-      {% if flag?(:kernel) %}
-        scan_kernel_threads
-      {% end %}
       @@state = State::ScanGray
       false
     when State::ScanGray
