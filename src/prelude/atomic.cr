@@ -1,7 +1,4 @@
-# A value that may be updated atomically.
-#
-# Only primitive integer types, reference types or nilable reference types
-# can be used with an Atomic type.
+# :nodoc:
 struct Atomic(T)
   # Creates an Atomic with the given initial value.
   def initialize(@value : T)

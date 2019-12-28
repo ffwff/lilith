@@ -1,6 +1,7 @@
 module PIC
   extend self
 
+  # Initializes the 8259 PIC with zero interrupt mask
   def init_interrupts
     X86.outb 0x20, 0x11
     X86.outb 0xA0, 0x11
@@ -14,7 +15,7 @@ module PIC
     X86.outb 0xA1, 0x0
   end
 
-  # sets the PIC mask
+  # Sets the PIC mask for an IRQ, enabling interrupts from IRQ
   def enable(irq)
     if irq >= 8
       imr = X86.inb 0xA1
@@ -27,7 +28,7 @@ module PIC
     end
   end
 
-  # clears the PIC mask
+  # Clears the PIC mask for an IRQ, disabling interrupts from IRQ
   def disable(irq)
     if irq >= 8
       imr = X86.inb 0xA1
@@ -40,8 +41,8 @@ module PIC
     end
   end
 
+  # Send EOI signal to the PIC for the `irq`.
   def eoi(irq : Int)
-    # send EOI signal to PICs
     if irq >= 8
       # send to slave
       X86.outb 0xA0, 0x20

@@ -1,3 +1,4 @@
+# :nodoc:
 struct Bool
   def to_unsafe
     self ? 1 : 0

@@ -2,6 +2,7 @@ VGA_WIDTH  = 80
 VGA_HEIGHT = 25
 VGA_SIZE   = VGA_WIDTH * VGA_HEIGHT
 
+# A VGA text mode driver which renders output into `0xB8000` (identity mapped at `0xFFFF8000000B8000`).
 module VGA
   extend self
 
@@ -159,6 +160,7 @@ module VGA
     end
   end
 
+  # Initialises the VGA device by clearing the screen and resetting the cursor.
   def init_device
     lock do |state|
       state.init_device
@@ -167,16 +169,19 @@ module VGA
 
   @@lock = Spinlock.new
 
+  # Locks the VGA device
   def lock(&block)
     @@lock.with do
       yield Unlocked
     end
   end
 
+  # Checks if VGA device is locked
   def locked?
     @@lock.locked?
   end
 
+  # VGA Color
   enum Color : UInt16
     Black      =  0
     Blue       =  1
@@ -196,12 +201,14 @@ module VGA
     White      = 15
   end
 
+  # Prints a character to screen
   def putc(ch : UInt8)
     lock do |state|
       state.putc ch
     end
   end
 
+  # Prints objects to screen
   def print(*args)
     args.each do |arg|
       arg.to_s self

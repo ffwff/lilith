@@ -1,3 +1,4 @@
+# A bitmap array, see [Crystal's documentation](https://crystal-lang.org/api/0.32.1/BitArray.html) for more detail.
 struct BitArray
   @size = 0
   getter size

@@ -135,7 +135,7 @@ module Paging
     @@pml4_table.value.pdpt[257] = @@current_pdpt.address | PT_MASK
 
     # identity map the physical memory on the higher half
-    if Cpuid.has_feature?(Cpuid::FeaturesExtendedEdx::PDPE1GB)
+    if X86::CPUID.has_feature?(X86::CPUID::FeaturesExtendedEdx::PDPE1GB)
       # 1 GiB paging
       identity_map_pdpt = Pointer(Data::PDPTable).pmalloc_a
       _, dirs, _, _ = page_layer_indexes(@@usable_physical_memory)

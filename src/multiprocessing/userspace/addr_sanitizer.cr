@@ -1,3 +1,4 @@
+# FIXME: remove module and use functions
 module UserAddressSanitiser
   extend self
 

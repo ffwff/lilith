@@ -1,5 +1,6 @@
 require "./static_array.cr"
 
+# :nodoc:
 struct Int
   alias Signed = Int8 | Int16 | Int32 | Int64 | Int128
   alias Unsigned = UInt8 | UInt16 | UInt32 | UInt64 | UInt128
@@ -135,68 +136,90 @@ struct Int
   end
 end
 
+# :nodoc:
 struct Int8
   def popcount
     Intrinsics.popcount8 self
   end
 end
 
+# :nodoc:
 struct UInt8
   def popcount
     Intrinsics.popcount8 self
   end
 end
 
+# :nodoc:
 struct Int16
   def popcount
     Intrinsics.popcount16 self
   end
 end
 
+# :nodoc:
 struct UInt16
   def popcount
     Intrinsics.popcount16 self
   end
 end
 
+# :nodoc:
 struct Int32
   def popcount
     Intrinsics.popcount32 self
   end
 end
 
+# :nodoc:
 struct UInt32
   def popcount
     Intrinsics.popcount32 self
   end
 end
 
+# :nodoc:
 struct Int64
   def popcount
     Intrinsics.popcount64 self
   end
 end
 
+# :nodoc:
 struct UInt64
   def popcount
     Intrinsics.popcount64 self
   end
 end
 
+# :nodoc:
 alias ISize = Int64
+
+# :nodoc:
 alias USize = UInt64
+
+# :nodoc:
+struct Int128
+end
+
+# :nodoc:
+struct UInt128
+end
 
 module Math
   extend self
 
+  # Returns the minimum between `a` and `b`.
   def min(a, b)
     a < b ? a : b
   end
 
+  # Returns the maximum between `a` and `b`.
   def max(a, b)
     a > b ? a : b
   end
 
+  # Clamps `x` to `min` and `max`.
   def clamp(x, min, max)
     return min if x < min
     return max if x > max

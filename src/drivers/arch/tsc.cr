@@ -3,6 +3,7 @@ module X86
 
   @@usecs_per_tsc = 0.0f32
 
+  # Executes the `rdtscp` instruction and returns the timestamp in EDX:EAX
   def rdtscp
     tsc = 0u64
     asm("rdtscp
@@ -13,6 +14,7 @@ module X86
     tsc
   end
 
+  # Calculates the number of microseconds a CPU counter returned by `rdtscp` lasts
   def calibrate_tsc
     ts = rdtscp
     old_usecs = Time.usecs_since_boot
