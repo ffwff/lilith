@@ -183,28 +183,7 @@ module GC
     sp = 0u64
     asm("" : "={rsp}"(sp))
     {% if flag?(:kernel) %}
-      if Kernel.int_stack_start.address <= sp <= Kernel.int_stack_end.address
-        # scan interrupt stack
-        while sp < Kernel.int_stack_end.address
-          root_ptr = Pointer(Void*).new(sp).value
-          if Allocator.contains_ptr? root_ptr
-            push_gray root_ptr
-          end
-          sp += sizeof(Void*)
-        end
-        # scan kernel stack
-        if @@stack_start.address <= Idt.last_rsp <= @@stack_end.address
-          sp = Idt.last_rsp
-          while sp < @@stack_end.address
-            root_ptr = Pointer(Void*).new(sp).value
-            if Allocator.contains_ptr? root_ptr
-              push_gray root_ptr
-            end
-            sp += sizeof(Void*)
-          end
-        end
-        return
-      elsif (process = Multiprocessing::Scheduler.current_process) && process.kernel_process? && !Syscall.locked
+      if (process = Multiprocessing::Scheduler.current_process) && process.kernel_process? && !Syscall.locked
         while sp < Multiprocessing::KERNEL_STACK_INITIAL
           root_ptr = Pointer(Void*).new(sp).value
           if Allocator.contains_ptr? root_ptr
@@ -324,6 +303,13 @@ module GC
   @@spinlock = Spinlock.new
 
   def unsafe_malloc(size : UInt64, atomic = false)
+    {% if flag?(:kernel) %}
+      sp = 0u64
+      asm("" : "={rsp}"(sp))
+      if Kernel.int_stack_start.address <= sp <= Kernel.int_stack_end.address
+        abort "must not be called from intrq"
+      end
+    {% end %}
     @@spinlock.with do
       if @@enabled
         {% if flag?(:debug_gc) %}

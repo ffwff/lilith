@@ -80,18 +80,22 @@ module Multiprocessing
     property phys_user_pg_struct
 
     # interrupt frame for preemptive multitasking
-    @frame : Box(Idt::Data::Registers)? = nil
+    @frame = uninitialized Idt::Data::Registers
     property frame
+
+    def frameptr
+      pointerof(@frame)
+    end
+
+    @frame_initialized = false
+    getter frame_initialized
 
     # sse state
     @fxsave_region = Pointer(UInt8).null
     getter fxsave_region
 
     @sched_data : Scheduler::ProcessData? = nil
-
-    def sched_data
-      @sched_data.not_nil!
-    end
+    getter! sched_data
 
     # user-mode process data
     class UserData
@@ -322,11 +326,13 @@ module Multiprocessing
         Paging.current_pdpt = Pointer(Paging::Data::PDPTable).new(@phys_pg_struct)
         Paging.flush
       end
-      Kernel.ksyscall_switch(@frame.not_nil!.to_unsafe)
+      Kernel.ksyscall_switch(pointerof(@frame))
     end
 
     # new register frame for multitasking
     def new_frame
+      abort "may only call new_frame once" if @frame_initialized
+
       frame = Idt::Data::Registers.new
       frame.userrsp = @initial_sp
       frame.rip = @initial_ip
@@ -348,11 +354,8 @@ module Multiprocessing
         end
       end
 
-      if @frame.nil?
-        @frame = Box.new(frame)
-      else
-        @frame.not_nil!.to_unsafe.value = frame
-      end
+      @frame = frame
+      @frame_initialized = true
     end
 
     def new_frame_from_syscall(syscall_frame : Syscall::Data::Registers*)
@@ -395,11 +398,7 @@ module Multiprocessing
         # Serial.print name, " save: ",Pointer(Void).new(frame.rip), '\n'
       end
 
-      if @frame.nil?
-        @frame = Box.new(frame)
-      else
-        @frame.not_nil!.to_unsafe.value = frame
-      end
+      @frame = frame
     end
 
     # spawn user process and move the lower-half of the current the address space
@@ -481,10 +480,15 @@ module Multiprocessing
 
         unless arg.nil?
           process.new_frame
-          process.frame.not_nil!.to_unsafe.value.rdi = arg.not_nil!.address
+          process.frame.rdi = arg.not_nil!.address
         end
         true
       end
+    end
+
+    # spawn kernel process with optional argument
+    def self.spawn_kernel(name : String, function, arg : Void*? = nil, stack_pages = 1)
+      spawn_kernel(name, function, arg, stack_pages) { }
     end
 
     # deinitialize
@@ -513,7 +517,6 @@ module Multiprocessing
       # cleanup gc data so as to minimize leaks
       @fxsave_region = Pointer(UInt8).null
       @udata = nil
-      @frame = nil
       @prev_process = nil
       @next_process = nil
       # remove from scheduler
@@ -581,9 +584,7 @@ module Multiprocessing
       io.print " status: ", @sched_data.not_nil!.status, ", \n"
       io.print " initial_sp: ", Pointer(Void).new(@initial_sp), ", \n"
       io.print " initial_ip: ", Pointer(Void).new(@initial_ip), ", \n"
-      if @frame
-        io.print " ip: ", Pointer(Void).new(@frame.not_nil!.to_unsafe.value.rip), ", \n"
-      end
+      io.print " ip: ", Pointer(Void).new(@frame.rip), ", \n"
       io.print "}"
     end
 

@@ -171,7 +171,6 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
     Idt.disable # disable so the cpu doesn't interrupt mid context switch
     Idt.switch_processes = true
     Multiprocessing.first_process.not_nil!
-      .next_process.not_nil!
       .initial_switch
   end
 end

@@ -149,20 +149,20 @@ module VFS
       if @fd
         @fd.not_nil!.offset += @offset
       end
-      @process.not_nil!.frame.not_nil!.to_unsafe.value.rax = @offset
+      @process.not_nil!.frame.rax = @offset
     end
 
     def unawait(retval)
       return if !unawait_no_return
-      @process.not_nil!.frame.not_nil!.to_unsafe.value.rax = retval
+      @process.not_nil!.frame.rax = retval
     end
 
     # wakes up the process and have it redo the syscall
     def unawait_rewind
       return if !unawait_no_return
       # 2 = sizeof(syscall/sysenter instruction)
-      rip = @process.not_nil!.frame.not_nil!.to_unsafe.value.rip
-      @process.not_nil!.frame.not_nil!.to_unsafe.value.rip = rip - 2
+      rip = @process.not_nil!.frame.rip
+      @process.not_nil!.frame.rip = rip - 2
     end
   end
 

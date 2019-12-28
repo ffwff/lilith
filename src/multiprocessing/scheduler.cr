@@ -96,7 +96,7 @@ module Multiprocessing::Scheduler
         case wait_object
         when Array(FileDescriptor)
           if process.udata.wait_end != 0 && process.udata.wait_end <= Time.usecs_since_boot
-            process.frame.not_nil!.to_unsafe.value.rax = 0
+            process.frame.rax = 0
             process.unawait
             return true
           end
@@ -104,7 +104,7 @@ module Multiprocessing::Scheduler
           fds.each do |fd|
             fd = fd.not_nil!
             if fd.node.not_nil!.available? process
-              process.frame.not_nil!.to_unsafe.value.rax = fd.idx
+              process.frame.rax = fd.idx
               process.unawait
               return true
             end
@@ -112,13 +112,13 @@ module Multiprocessing::Scheduler
           false
         when FileDescriptor
           if process.udata.wait_end != 0 && process.udata.wait_end <= Time.usecs_since_boot
-            process.frame.not_nil!.to_unsafe.value.rax = 0
+            process.frame.rax = 0
             process.unawait
             return true
           end
           fd = wait_object.as(FileDescriptor)
           if fd.node.not_nil!.available? process
-            process.frame.not_nil!.to_unsafe.value.rax = fd.idx
+            process.frame.rax = fd.idx
             process.unawait
             true
           else
@@ -286,11 +286,10 @@ module Multiprocessing::Scheduler
   class_property current_process
 
   def context_switch_to_process(process : Multiprocessing::Process)
-    if process.frame.nil?
-      # create new frame if necessary
+    unless process.frame_initialized
       process.new_frame
     end
-
+    
     # switch page directory
     if process.kernel_process?
       Paging.current_pdpt = Pointer(Paging::Data::PDPTable)
@@ -370,9 +369,9 @@ module Multiprocessing::Scheduler
 
   def switch_process(frame : Idt::Data::Registers*)
     current_process = switch_process_save_and_load do |process|
-      process.frame.not_nil!.to_unsafe.value = frame.value
+      process.frame = frame.value
     end
-    frame.value = current_process.frame.not_nil!.to_unsafe.value
+    frame.value = current_process.frame
   end
 
   def switch_process(frame : Syscall::Data::Registers*)
@@ -380,12 +379,12 @@ module Multiprocessing::Scheduler
     current_process = switch_process_save_and_load do |process|
       process.new_frame_from_syscall frame
     end
-    Kernel.ksyscall_switch(current_process.frame.not_nil!.to_unsafe)
+    Kernel.ksyscall_switch(current_process.frameptr)
   end
 
   def switch_process_and_terminate
     Syscall.unlock
     current_process = switch_process_save_and_load(true) { }
-    Kernel.ksyscall_switch(current_process.frame.not_nil!.to_unsafe)
+    Kernel.ksyscall_switch(current_process.frameptr)
   end
 end
