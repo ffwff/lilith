@@ -1,6 +1,6 @@
 lib LibCrystal
   $__crystal_gc_globals : Void***
-  fun type_offsets = "__crystal_malloc_type_offsets"(type_id : UInt32) : UInt32
+  fun type_offsets = "__crystal_malloc_type_offsets"(type_id : UInt32) : UInt64
   fun type_size = "__crystal_malloc_type_size"(type_id : UInt32) : UInt32
   fun is_markable = "__crystal_is_markable"(type_id : UInt32) : Int32
 end
@@ -179,28 +179,27 @@ module GC
     {% end %}
   end
 
+  private def conservative_scan(from : UInt64, to : UInt64)
+    i = from
+    while i < to
+      root_ptr = Pointer(Void*).new(i).value
+      if Allocator.contains_ptr? root_ptr
+        push_gray root_ptr
+      end
+      i += sizeof(Void*)
+    end
+  end
+
   private def scan_stack
     sp = 0u64
     asm("" : "={rsp}"(sp))
     {% if flag?(:kernel) %}
       if (process = Multiprocessing::Scheduler.current_process) && process.kernel_process? && !Syscall.locked
-        while sp < Multiprocessing::KERNEL_STACK_INITIAL
-          root_ptr = Pointer(Void*).new(sp).value
-          if Allocator.contains_ptr? root_ptr
-            push_gray root_ptr
-          end
-          sp += sizeof(Void*)
-        end
+        conservative_scan(sp, Multiprocessing::KERNEL_STACK_INITIAL)
         return
       end
     {% end %}
-    while sp < @@stack_end.address
-      root_ptr = Pointer(Void*).new(sp).value
-      if Allocator.contains_ptr? root_ptr
-        push_gray root_ptr
-      end
-      sp += sizeof(Void*)
-    end
+    conservative_scan(sp, @@stack_end.address)
   end
 
   private def scan_gray_nodes
@@ -245,17 +244,57 @@ module GC
       abort "size is 0"
     end
     while pos < size
-      if (offsets & 1) != 0
+      if (offsets & 1u64) != 0u64
         ivarp = Pointer(Void*).new(ptr.address + pos)
         ivar = ivarp.value
         if Allocator.contains_ptr? ivar
           push_opposite_gray ivar
         end
       end
-      offsets >>= 1
+      offsets >>= 1u64
       pos += sizeof(Void*)
     end
   end
+
+  {% if flag?(:kernel) %}
+    private def scan_kernel_thread_registers(thread)
+      {% for register in ["rax", "rbx", "rcx", "rdx",
+                          "r8", "r9", "r10", "r11", "rsi", "rdi",
+                          "r12", "r13", "r14", "r15"] %}
+        ptr = Pointer(Void).new(thread.frame.{{ register.id }})
+        if Allocator.contains_ptr? ptr
+          push_gray ptr
+        end
+      {% end %}
+    end
+    private def scan_kernel_thread_stack(thread)
+      page_end = Multiprocessing::KERNEL_STACK_TOP + 1
+      page_start = page_end - thread.kdata.stack_pages * 0x1000
+      while page_start < page_end
+        if phys = thread.physical_page_for_address(page_start)
+          conservative_scan(phys.address, phys.address+0x1000u64)
+          page_start += 0x1000
+        else
+          break
+        end
+      end
+    end
+    private def scan_kernel_threads
+      Multiprocessing.kernel_threads_lock.with do
+        if threads = Multiprocessing.kernel_threads
+          threads.each do |thread|
+            # NOTE: we will only scan threads which can be run
+            # so hopefully sleeping threads should have nothing allocated!
+            next if thread.sched_data.status == Multiprocessing::Scheduler::ProcessData::Status::WaitIo
+            next if !thread.frame_initialized
+            next if thread == Multiprocessing::Scheduler.current_process
+            scan_kernel_thread_registers thread
+            scan_kernel_thread_stack thread
+          end
+        end
+      end
+    end
+  {% end %}
 
   private def unlocked_cycle
     # Serial.print "---\n"
@@ -264,6 +303,9 @@ module GC
       scan_globals
       scan_registers
       scan_stack
+      {% if flag?(:kernel) %}
+        scan_kernel_threads
+      {% end %}
       @@state = State::ScanGray
       false
     when State::ScanGray

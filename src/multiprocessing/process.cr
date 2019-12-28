@@ -56,6 +56,9 @@ module Multiprocessing
   @@kernel_threads : Array(Process)? = nil
   class_property kernel_threads
 
+  @@kernel_threads_lock = Spinlock.new
+  class_getter kernel_threads_lock
+
   class Process
     @pid = 0
     getter pid
@@ -79,14 +82,6 @@ module Multiprocessing
     @phys_user_pg_struct : UInt64 = 0u64
     property phys_user_pg_struct
 
-    # interrupt frame for preemptive multitasking
-    @frame = uninitialized Idt::Data::Registers
-    property frame
-
-    def frameptr
-      pointerof(@frame)
-    end
-
     @frame_initialized = false
     getter frame_initialized
 
@@ -96,6 +91,23 @@ module Multiprocessing
 
     @sched_data : Scheduler::ProcessData? = nil
     getter! sched_data
+
+    # interrupt frame for preemptive multitasking
+    @frame = uninitialized Idt::Data::Registers
+    property frame
+
+    def frameptr
+      pointerof(@frame)
+    end
+
+    @pdata : (UserData | KernelData)? = nil
+
+    def udata; @pdata.as!(UserData); end
+    def kdata; @pdata.as!(KernelData); end
+    def user_process?; @pdata.is_a?(UserData); end
+    def kernel_process?; @pdata.is_a?(KernelData); end
+
+    getter name
 
     # user-mode process data
     class UserData
@@ -221,26 +233,28 @@ module Multiprocessing
       end
     end
 
-    @udata : UserData? = nil
-    getter! udata
+    # kernel mode process data
+    class KernelData
+      @stack_pages = 0
+      property stack_pages
 
-    def kernel_process?
-      @udata.nil?
+      def initialize(@stack_pages : Int32)
+      end
     end
 
-    getter name
-
-    def initialize(@name : String?, @udata : UserData? = nil, &on_setup_paging : Process -> _)
+    def initialize(@name : String?, @pdata : UserData | KernelData, &on_setup_paging : Process -> _)
       Multiprocessing.n_process += 1
       @pid = Multiprocessing.pids
       Multiprocessing.pids += 1
 
       if kernel_process?
         @initial_sp = KERNEL_STACK_INITIAL
-      elsif @udata.not_nil!.is64
-        @initial_sp = USER_STACK_INITIAL64
       else
-        @initial_sp = USER_STACK_INITIAL
+        if udata.is64
+          @initial_sp = USER_STACK_INITIAL64
+        else
+          @initial_sp = USER_STACK_INITIAL
+        end
       end
 
       Idt.disable
@@ -307,10 +321,12 @@ module Multiprocessing
 
       # append to kernel thread
       if kernel_process?
-        if Multiprocessing.kernel_threads.nil?
-          Multiprocessing.kernel_threads = Array(Process).new
+        Multiprocessing.kernel_threads_lock.with do
+          if Multiprocessing.kernel_threads.nil?
+            Multiprocessing.kernel_threads = Array(Process).new
+          end
+          Multiprocessing.kernel_threads.not_nil!.push self
         end
-        Multiprocessing.kernel_threads.not_nil!.push self
       end
 
       Idt.enable
@@ -471,7 +487,7 @@ module Multiprocessing
 
     # spawn kernel process with optional argument
     def self.spawn_kernel(name : String, function, arg : Void*? = nil, stack_pages = 1, &block)
-      Multiprocessing::Process.new(name) do |process|
+      Multiprocessing::Process.new(name, KernelData.new(stack_pages)) do |process|
         stack_start = Paging.aligned_floor(process.initial_sp) - (stack_pages - 1) * 0x1000
         stack = Paging.alloc_page_pg(stack_start, true, false, npages: stack_pages.to_u64)
         process.initial_ip = function.pointer.address
@@ -500,7 +516,7 @@ module Multiprocessing
       else
         @next_process.not_nil!.prev_process = @prev_process
       end
-      if @udata
+      if udata = @pdata.as?(UserData)
         # cleanup file descriptors
         udata.fds.each do |fd|
           unless fd.nil?
@@ -516,7 +532,7 @@ module Multiprocessing
       end
       # cleanup gc data so as to minimize leaks
       @fxsave_region = Pointer(UInt8).null
-      @udata = nil
+      @pdata = nil
       @prev_process = nil
       @next_process = nil
       # remove from scheduler
@@ -591,8 +607,8 @@ module Multiprocessing
     protected def unawait
       @sched_data.not_nil!.status =
         Multiprocessing::Scheduler::ProcessData::Status::Normal
-      @udata.not_nil!.wait_object = nil
-      @udata.not_nil!.wait_end = 0u64
+      udata.wait_object = nil
+      udata.wait_end = 0u64
     end
   end
 
