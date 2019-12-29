@@ -24,16 +24,16 @@ class Array(T) < Markable
       abort "size must be smaller than capacity"
     end
     if @buffer.null?
-      @buffer = GC.unsafe_malloc(new_capacity.to_u64 * sizeof(T), true).as(T*)
+      @buffer = Pointer.malloc_atomic(new_capacity.to_u64)
     else
-      @buffer = GC.realloc(@buffer.as(Void*), new_capacity.to_u64 * sizeof(T)).as(T*)
+      @buffer = @buffer.realloc(new_capacity.to_u64)
     end
     recalculate_capacity
   end
 
   def initialize(initial_capacity : Int = 0)
     if initial_capacity > 0
-      @buffer = GC.unsafe_malloc(initial_capacity.to_u64 * sizeof(T), true).as(T*)
+      @buffer = Pointer(T).malloc_atomic(initial_capacity.to_u64)
       recalculate_capacity
     end
   end

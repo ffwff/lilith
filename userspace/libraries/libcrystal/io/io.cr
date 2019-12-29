@@ -29,4 +29,13 @@ abstract class IO
     end
     nil
   end
+
+  def gets_to_end
+    buffer = uninitialized UInt8[512]
+    builder = String::Builder.new
+    while (nread = read(buffer.to_slice)) > 0
+      builder << buffer[0, nread]
+    end
+    builder.to_s
+  end
 end

@@ -5,8 +5,8 @@ struct Pointer(T)
     new 0u64
   end
 
-  def realloc(size)
-    Gc.realloc(self.as(Void*), size.to_u64 * sizeof(T)).as(T*)
+  def self.malloc_atomic(size : Int = 1)
+    __crystal_malloc_atomic64(size.to_u64 * sizeof(T)).as(T*)
   end
 
   def null?

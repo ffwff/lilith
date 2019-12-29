@@ -20,8 +20,9 @@ class File < IO::FileDescriptor
 
   def self.open(filename : String, mode : String = "r", &block)
     if file = File.new filename, mode
-      yield file
+      retval = yield file
       file.close
+      retval
     end
   end
 

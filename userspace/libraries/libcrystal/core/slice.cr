@@ -7,7 +7,7 @@ struct Slice(T)
   end
 
   def self.new(size : Int)
-    new GC.unsafe_malloc(size.to_u64 * sizeof(T), true).as(T*), size.to_i32
+    new Pointer(T).malloc_atomic(size.to_u64), size.to_i32
   end
 
   def self.empty
@@ -18,19 +18,19 @@ struct Slice(T)
     new LibC.calloc(1, size.to_u64 * sizeof(T)).as(T*), size.to_i32
   end
 
-  def realloc(size : Int)
-    if @size == 0
-      Slice(T).new size
-    else
-      Slice(T).new Gc.realloc(@buffer.as(Void*), size.to_u64 * sizeof(T)).as(T*), size.to_i32
-    end
-  end
-
   def mrealloc(size : Int)
     if @size == 0
       Slice(T).mmalloc size
     else
       Slice(T).new LibC.realloc(@buffer.as(Void*), size.to_u64 * sizeof(T)).as(T*), size.to_i32
+    end
+  end
+
+  def realloc(size : Int)
+    if @size == 0
+      Slice(T).new size
+    else
+      Slice(T).new @buffer.realloc(size.to_u64), size.to_i32
     end
   end
 

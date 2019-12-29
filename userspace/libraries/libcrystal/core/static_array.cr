@@ -18,17 +18,22 @@ struct StaticArray(T, N)
   end
 
   def []=(idx : Int, value : T)
-    abort "setting out of bounds!" unless 0 <= idx && idx < N
+    abort "setting out of bounds!" unless 0 <= idx < N
     to_unsafe[idx] = value
   end
 
   def [](idx : Int)
-    abort "accessing out of bounds!" unless 0 <= idx && idx < N
+    abort "accessing out of bounds!" unless 0 <= idx < N
     to_unsafe[idx]
   end
 
+  def [](idx : Int, len : Int)
+    abort "accessing out of bounds!" unless 0 <= idx < N && 0 <= idx + len < N
+    Slice(T).new(to_unsafe + idx, len)
+  end
+
   def []?(idx : Int)
-    return nil unless 0 <= idx && idx < N
+    return nil unless 0 <= idx < N
     to_unsafe[idx]
   end
 

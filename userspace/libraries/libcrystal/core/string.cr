@@ -6,13 +6,108 @@ class String
   HEADER_SIZE = sizeof({Int32, Int32, Int32})
 
   class Builder
+    @capacity : Int32 = 0
+    @bytesize : Int32 = 0
+    getter capacity, bytesize
+
+    def initialize(capacity : Int32)
+      @buffer = Pointer(UInt8).malloc_atomic(capacity.to_u32 + 1 + HEADER_SIZE)
+      @capacity = capacity_for_ptr @buffer
+      @bytesize = 0
+      @finished = false
+    end
+
+    def initialize
+      @capacity = 0
+      @buffer = Pointer(UInt8).null
+      @bytesize = 0
+      @finished = false
+    end
+
+    private def capacity_for_ptr(ptr)
+      (Allocator.block_size_for_ptr(ptr) - HEADER_SIZE).to_i32
+    end
+
+    def buffer
+      @buffer + String::HEADER_SIZE
+    end
+
+    def empty?
+      @bytesize == 0
+    end
+
+    def peek
+      return if @capacity == 0
+      @buffer[@bytesize - 1]
+    end
+
+    def back(amount : Int)
+      abort "overflow" if amount > @bytesize
+      @bytesize -= amount
+    end
+
+    def write_byte(other : UInt8)
+      if @bytesize == @capacity
+        if @buffer.null?
+          @buffer = Pointer(UInt8).malloc_atomic(5 + HEADER_SIZE)
+          @capacity = capacity_for_ptr @buffer
+        else
+          old_buffer = @buffer
+          old_size = @capacity.to_usize + 1 + HEADER_SIZE
+          @buffer = Pointer(UInt8).malloc_atomic(@bytesize.to_u32 + 1 + HEADER_SIZE)
+          @capacity = capacity_for_ptr @buffer
+          LibC.memcpy(@buffer, old_buffer, old_size)
+        end
+      end
+      buffer[@bytesize] = other
+      @bytesize += 1
+    end
+
+    def <<(other : String)
+      other.each_byte do |byte|
+        write_byte byte
+      end
+    end
+
+    def <<(other : Slice(UInt8))
+      other.each do |byte|
+        write_byte byte
+      end
+    end
+
+    def <<(other : Char)
+      if other.ord <= 0xFF
+        write_byte other.ord.to_u8
+      else
+        abort "TODO: support utf-8 for builder"
+      end
+    end
+
+    def to_s : String
+      abort "Can only invoke 'to_s' once on String::Builder" if @finished
+      @finished = true
+
+      write_byte 0u8
+
+      header = @buffer.as({Int32, Int32, Int32}*)
+      bytesize, length = String.calculate_length(buffer)
+      header.value = {String::TYPE_ID, bytesize, length}
+      @buffer.as(String)
+    end
+
+    def reset(capacity : Int32)
+      @buffer = Pointer(UInt8).malloc_atomic(capacity.to_u32 + 1 + HEADER_SIZE)
+      @capacity = capacity_for_ptr @buffer
+      @bytesize = 0
+      @finished = false
+    end
   end
 
   def self.new(chars : UInt8*)
     size = LibC.strlen(chars)
     (new(size) { |buffer|
       LibC.strcpy buffer, chars
-      {size, String.calculate_length(buffer)}
+      String.calculate_length(buffer)
     }).not_nil!
   end
 
@@ -20,9 +115,10 @@ class String
     (new(bytesize) { |buffer|
       LibC.strncpy buffer, chars, bytesize.to_usize
       if size == 0
-        size = String.calculate_length buffer
+        String.calculate_length buffer
+      else
+        {bytesize, size}
       end
-      {bytesize, size}
     }).not_nil!
   end
 
@@ -31,7 +127,7 @@ class String
   end
 
   def self.new(capacity : Int)
-    str = GC.unsafe_malloc(capacity.to_u64 + HEADER_SIZE + 1, true).as(UInt8*)
+    str = Pointer(UInt8).malloc_atomic(capacity.to_u64 + HEADER_SIZE + 1)
     buffer = str.as(String).to_unsafe
     bytesize, size = yield buffer
 
@@ -63,7 +159,7 @@ class String
       end
       length += 1
     end
-    length
+    {i, length}
   end
 
   private def mask_tail_char(ch : UInt8) : UInt32
@@ -98,6 +194,11 @@ class String
     end
   end
 
+  def starts_with?(str : String)
+    return false if bytesize < str.bytesize
+    LibC.strncmp(to_unsafe, str.to_unsafe, str.bytesize) == 0
+  end
+
   def size
     @length
   end
@@ -125,6 +226,24 @@ class String
       return char if i == index
     end
     0.unsafe_chr
+  end
+
+  def [](idx : Int, count : Int)
+    if count < 0
+      end_idx = size + count
+    else
+      end_idx = idx + count - 1
+    end
+    abort "out of range" unless 0 <= idx < size && 0 <= end_idx < size
+    builder = String::Builder.new count
+    each_unicode_point do |char, i|
+      if idx <= i <= end_idx
+        builder << char
+      elsif i > end_idx
+        return builder.to_s
+      end
+    end
+    return builder.to_s
   end
 
   def ==(other : self)
