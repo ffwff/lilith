@@ -176,10 +176,12 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   end
 end
 
+@[Internal]
 fun __crystal_once_init : Void*
   Pointer(Void).new 0
 end
 
+@[Internal]
 fun __crystal_once(state : Void*, flag : Bool*, initializer : Void*)
   unless flag.value
     Proc(Nil).new(initializer, Pointer(Void).new 0).call

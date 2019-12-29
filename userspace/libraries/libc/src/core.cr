@@ -256,12 +256,12 @@ struct Char
   end
 end
 
-@[Weak]
+@[Internal]
 fun __crystal_once_init : Void*
   Pointer(Void).new 0
 end
 
-@[Weak]
+@[Internal]
 fun __crystal_once(state : Void*, flag : Bool*, initializer : Void*)
   unless flag.value
     Proc(Nil).new(initializer, Pointer(Void).new 0).call
