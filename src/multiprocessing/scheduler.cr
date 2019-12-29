@@ -345,6 +345,10 @@ module Multiprocessing::Scheduler
       end
     end
 
+    # scan kernel threads
+    # FIXME: this should be improved when we add SMP
+    GC.scan_kernel_threads_if_necessary
+
     if next_process.nil?
       if remove
         # breakpoint

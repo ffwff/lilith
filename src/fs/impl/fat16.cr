@@ -543,12 +543,9 @@ module Fat16FS
     # queue
     getter queue
 
-    @process_msg  : VFS::Message? = nil
-
     protected def process
       while true
-        @process_msg = @queue.not_nil!.dequeue
-        if (msg = @process_msg)
+        if (msg = @queue.not_nil!.dequeue)
           fat16_node = msg.vfs_node.as!(Node)
           case msg.type
           when VFS::Message::Type::Read

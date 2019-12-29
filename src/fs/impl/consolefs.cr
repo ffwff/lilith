@@ -58,12 +58,9 @@ class ConsoleFS::FS < VFS::FS
 
   getter queue
 
-  @process_msg  : VFS::Message? = nil
-
   protected def process
     while true
-      @process_msg = @queue.not_nil!.dequeue
-      unless (msg = @process_msg).nil?
+      unless (msg = @queue.not_nil!.dequeue).nil?
         case msg.type
         when VFS::Message::Type::Write
           msg.read do |ch|

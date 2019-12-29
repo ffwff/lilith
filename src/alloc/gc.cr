@@ -194,7 +194,7 @@ module GC
     sp = 0u64
     asm("" : "={rsp}"(sp))
     {% if flag?(:kernel) %}
-      if (process = Multiprocessing::Scheduler.current_process) && process.kernel_process? && !Syscall.locked
+      if Multiprocessing::KERNEL_INITIAL <= sp <= Multiprocessing::KERNEL_STACK_INITIAL
         conservative_scan(sp, Multiprocessing::KERNEL_STACK_INITIAL)
         return
       end
@@ -267,44 +267,36 @@ module GC
         end
       {% end %}
     end
+
     private def scan_kernel_thread_stack(thread)
       page_end = Multiprocessing::KERNEL_STACK_INITIAL + 1
       page_start = page_end - thread.kdata.stack_pages * 0x1000
-      # Serial.print "scan: ", Pointer(Void).new(page_start), Pointer(Void).new(page_end), '\n'
       while page_start < page_end
         if phys = thread.physical_page_for_address(page_start)
-          #Serial.print phys, ' ', Pointer(Void).new(phys.address+0x1000u64), '\n'
           conservative_scan(phys.address, phys.address+0x1000u64)
           page_start += 0x1000
         else
-          # Serial.print "ended: ", Pointer(Void).new(page_start), '\n'
           break
         end
       end
     end
-    private def scan_kernel_threads
-      unless Syscall.frame.null?
-        {% for register in ["rax", "rbx", "rcx", "rdx",
-                            "r8", "r9", "r10", "r11", "rsi", "rdi",
-                            "r12", "r13", "r14", "r15"] %}
-          ptr = Pointer(Void).new(Syscall.frame.value.{{ register.id }})
-          if Allocator.contains_ptr? ptr
-            push_gray ptr
+
+    # NOTE: must be called from context switching
+    def scan_kernel_threads_if_necessary
+      if @@needs_scan_kernel_threads
+        if threads = Multiprocessing.kernel_threads
+          threads.each do |thread|
+            next if !thread.frame_initialized
+            scan_kernel_thread_registers thread
+            scan_kernel_thread_stack thread
           end
-        {% end %}
-      end
-      if threads = Multiprocessing.kernel_threads
-        threads.each do |thread|
-          # NOTE: we will only scan threads which can be run
-          # so hopefully sleeping threads should have nothing allocated!
-          # next if thread.sched_data.status == Multiprocessing::Scheduler::ProcessData::Status::WaitIo
-          next if !thread.frame_initialized
-          scan_kernel_thread_registers thread
-          scan_kernel_thread_stack thread
         end
+        @@needs_scan_kernel_threads = false
       end
     end
   {% end %}
+
+  @@needs_scan_kernel_threads = false
 
   private def unlocked_cycle
     # Serial.print "---\n"
@@ -314,16 +306,22 @@ module GC
       scan_registers
       scan_stack
       {% if flag?(:kernel) %}
-        scan_kernel_threads
+        @@needs_scan_kernel_threads = true
       {% end %}
       @@state = State::ScanGray
       false
     when State::ScanGray
       scan_gray_nodes
       swap_grays
-      if gray_empty?
-        @@state = State::Sweep
-      end
+      {% if flag?(:kernel) %}
+        if gray_empty? && !@@needs_scan_kernel_threads
+          @@state = State::Sweep
+        end
+      {% else %}
+        if gray_empty?
+          @@state = State::Sweep
+        end
+      {% end %}
       false
     when State::Sweep
       Allocator.sweep
@@ -360,6 +358,13 @@ module GC
       asm("" : "={rsp}"(sp))
       if Kernel.int_stack_start.address <= sp <= Kernel.int_stack_end.address
         abort "must not be called from intrq"
+      end
+      if Multiprocessing::KERNEL_INITIAL <= sp <= Multiprocessing::KERNEL_STACK_INITIAL
+        return @@spinlock.with do
+          ptr = Allocator.malloc(size, atomic)
+          push_gray ptr
+          ptr
+        end
       end
     {% end %}
     @@spinlock.with do
