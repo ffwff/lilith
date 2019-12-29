@@ -51,17 +51,14 @@ class ConsoleFS::FS < VFS::FS
       .spawn_kernel("[consolefs]",
         ->(ptr : Void*) { ptr.as(ConsoleFS::FS).process },
         self.as(Void*),
-        stack_pages: 4) do |process|
+        stack_pages: 2) do |process|
     end
     @queue = VFS::Queue.new(@process)
-    @process_msg = nil
   end
 
-  # queue
   getter queue
 
-  # process
-  @process_msg : VFS::Message? = nil
+  @process_msg  : VFS::Message? = nil
 
   protected def process
     while true
