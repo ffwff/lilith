@@ -41,7 +41,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Console.print "Booting lilith...\n"
 
   Console.print "initializing gdtr...\n"
-  Gdt.init_table
+  GDT.init_table
 
   # timer
   PIT.init_device
@@ -65,8 +65,8 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   GC.init Kernel.stack_start, Kernel.stack_end
 
   # processes
-  Gdt.register_int_stack Kernel.int_stack_end
-  Gdt.flush_tss
+  GDT.register_int_stack Kernel.int_stack_end
+  GDT.flush_tss
   Kernel.ksyscall_setup
 
   # interrupts

@@ -1,17 +1,17 @@
 GDT_REGULARS = 9
 
-module Gdt
+module GDT
   extend self
 
   private lib Data
     @[Packed]
-    struct Gdtr
+    struct GDTr
       size : UInt16
       offset : UInt64
     end
 
     @[Packed]
-    struct GdtEntry
+    struct GDTEntry
       limit_low : UInt16
       base_low : UInt16
       base_middle : UInt8
@@ -21,7 +21,7 @@ module Gdt
     end
 
     @[Packed]
-    struct GdtSystemEntry
+    struct GDTSystemEntry
       limit_low : UInt16
       base_low : UInt16
       base_middle : UInt8
@@ -52,20 +52,20 @@ module Gdt
     end
 
     @[Packed]
-    struct Gdt
-      entries : Data::GdtEntry[GDT_REGULARS]
-      sys_entries : GdtSystemEntry[1] # tss
+    struct GDT
+      entries : Data::GDTEntry[GDT_REGULARS]
+      sys_entries : GDTSystemEntry[1] # tss
     end
 
-    fun kload_gdt(ptr : Gdtr*)
+    fun kload_gdt(ptr : GDTr*)
   end
 
-  @@gdtr = uninitialized Data::Gdtr
-  @@gdt = uninitialized Data::Gdt
+  @@gdtr = uninitialized Data::GDTr
+  @@gdt = uninitialized Data::GDT
   @@tss = uninitialized Data::Tss
 
   def init_table
-    @@gdtr.size = sizeof(Data::Gdt) - 1
+    @@gdtr.size = sizeof(Data::GDT) - 1
     @@gdtr.offset = pointerof(@@gdt).address
 
     # this must be placed in the following order
@@ -86,7 +86,7 @@ module Gdt
 
   private def init_gdt_entry(num : ISize,
                              base : USize, limit : USize, access : USize, gran : USize)
-    entry = Data::GdtEntry.new
+    entry = Data::GDTEntry.new
 
     entry.base_low = (base & 0xFFFF).to_u16
     entry.base_middle = ((base >> 16) & 0xFF).to_u8
@@ -103,7 +103,7 @@ module Gdt
 
   private def init_gdt_sys_entry(num : ISize,
                                  base : USize, limit : USize, access : USize, gran : USize)
-    entry = Data::GdtSystemEntry.new
+    entry = Data::GDTSystemEntry.new
 
     entry.base_low = (base & 0xFFFF).to_u16
     entry.base_middle = ((base >> 16) & 0xFF).to_u8
