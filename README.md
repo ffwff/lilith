@@ -25,12 +25,18 @@ make build/kernel
 
 A Makefile is provided for building the userspace toolchain, to build it, go to the `userspace/toolchain` directory and use `make`.
 
-Once built, a patched version of GCC/Binutils will be installed in `userspace/toolchain/tools/bin`, simply set your PATH variable to that location and you can use the toolchain (with the `i386-elf-lilith` prefix)
+Once built, a patched version of GCC/Binutils will be installed in `userspace/toolchain/tools/bin`, simply set your PATH variable to that location and you can use the toolchain (with the `i386-elf-lilith` or `x86_64-elf-lilith` prefix).
 
-To compile C programs for the system, you'll also need to build the libc. In the `userspace/toolchain` directory, do:
+After building the toolchain, set the necessary environment variables by doing:
 
 ```
-make build_libc
+source ./env.sh
+```
+
+To compile C programs for the system, you'll also need to build the libc:
+
+```
+./pkgs/missio build libc
 ```
 
 ## Running
