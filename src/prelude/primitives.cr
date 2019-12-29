@@ -6,6 +6,7 @@
 #   in Crystal by assigning `self` to a variable and casting a pointer to it to `Int32`,
 #   and then reading back the value.
 
+# :nodoc:
 class Object
   # Returns the **runtime** `Class` of an object.
   #
@@ -51,6 +52,7 @@ class Reference
   end
 end
 
+# :nodoc:
 class Class
   # :nodoc:
   @[Primitive(:class_crystal_instance_type_id)]
@@ -105,6 +107,7 @@ struct Char
   {% end %}
 end
 
+# :nodoc:
 struct Symbol
   # Returns `true` if `self` is equal to *other*.
   @[Primitive(:binary)]
@@ -273,6 +276,7 @@ end
   {% binaries = {"+" => "adding", "-" => "subtracting", "*" => "multiplying"} %}
 
   {% for num in nums %}
+    # :nodoc:
     struct {{num.id}}
       {% for name, type in {
                              to_i: Int32, to_u: UInt32, to_f: Float64,

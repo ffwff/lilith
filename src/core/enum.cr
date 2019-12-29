@@ -1,3 +1,4 @@
+# :nodoc:
 struct Enum
   def ==(other)
     value == other.value

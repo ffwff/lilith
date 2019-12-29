@@ -1,3 +1,4 @@
+# :nodoc:
 struct Tuple
   def self.new(*args : *T)
     args

@@ -1,3 +1,4 @@
+# An argv builder to populate the userspace stack with process arguments.
 struct ArgvBuilder
   MAX_ARGS          =   255
   MAX_STR_PLACEMENT = 0x800
@@ -8,7 +9,6 @@ struct ArgvBuilder
   def initialize(@process : Multiprocessing::Process)
   end
 
-  # placement functions
   private def place(char : UInt8)
     # stack grows downwards in x86
     ptr = Pointer(UInt8).new((@process.initial_sp - @placement).to_u64)
@@ -44,7 +44,9 @@ struct ArgvBuilder
     true
   end
 
-  # builder functions
+  # Places an argument into the stack and increases the `argc` count.
+  #
+  # Returns `true` if stack space is available, and `false` if not.
   def from_string(arg)
     if !place_str arg
       return false
@@ -53,7 +55,7 @@ struct ArgvBuilder
     true
   end
 
-  # build argv/argc
+  # Builds the accumulated `argv` for a 32-bit process.
   def build32
     # build argv
     scan_start = @process.initial_sp - @placement
@@ -81,7 +83,7 @@ struct ArgvBuilder
     @process.initial_sp -= @placement
   end
 
-  # build argv/argc
+  # Builds the accumulated `argv` for a 64-bit process.
   def build64
     # build argv
     scan_start = @process.initial_sp - @placement

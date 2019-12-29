@@ -34,7 +34,7 @@
 # getting `Allocator::SIZES[@idx]`.
 #
 # Allocation can be done by searching through the `alloc_bitmap` and finding the first free bit.
-# The index of that bit in the bitmap determines where the block is (`@payload + idx * @idx`).
+# The index of that bit in the bitmap determines where the block is (`payload + idx * block_size`).
 # Set bits represent allocated blocks, while unset bits represent freed blocks. Allocation
 # also decreases `nfree` by 1. Once nfree reaches zero, the pool is considered free and is chained
 # into the global allocator free list.

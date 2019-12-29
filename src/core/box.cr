@@ -1,3 +1,4 @@
+# :nodoc:
 class Box(T)
   def initialize
     @object = uninitialized T

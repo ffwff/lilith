@@ -1,3 +1,4 @@
+# A simple handler for ANSI escape codes.
 struct AnsiHandler
   enum State : Int32
     Default
@@ -22,7 +23,9 @@ struct AnsiHandler
   end
 
   @state = State::Default
+  # Gets the current parser state.
   getter state
+
   @arg_n : UInt16? = nil
   @arg_m : UInt16? = nil
   @csi_m = false
@@ -36,6 +39,7 @@ struct AnsiHandler
     ch - '0'.ord.to_u8
   end
 
+  # Resets the ANSI handler to default state.
   def reset
     @state = State::Default
     @arg_n = nil
@@ -44,7 +48,9 @@ struct AnsiHandler
     @csi_priv = false
   end
 
-  def parse(ch)
+  # Parses a byte character, returning a sequence if it is complete,
+  # or the byte character if no sequence is recognized.
+  def parse(ch : UInt8)
     case @state
     when State::Default
       if ch == 0x1B

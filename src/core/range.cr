@@ -1,3 +1,4 @@
+# :nodoc:
 struct Range(B, E)
   def begin
     @begin

@@ -15,6 +15,7 @@ module BGA
   INDEX_PORT = 0x1CEu16
   DATA_PORT  = 0x1CFu16
 
+  # Initializes the BGA state from a PCI address.
   def init_controller(bus, device, func)
     X86.outw(INDEX_PORT, 0x0)
     i = X86.inw(DATA_PORT)
@@ -32,13 +33,14 @@ module BGA
     end
   end
 
+  # Checks if a PCI device is a valid BGA device.
   def pci_device?(vendor_id, device_id)
     (vendor_id == 0x1234 && device_id == 0x1111) ||
       (vendor_id == 0x80EE && device_id == 0xBEEF) ||
       (vendor_id == 0x10de && device_id == 0x0a20)
   end
 
-  # resolution
+  # Changes the resolution of the BGA device and returns the newly set resolution.
   def set_resolution(w : UInt16, h : UInt16)
     # disable vbe extensions
     X86.outw(INDEX_PORT, INDEX_ENABLE)

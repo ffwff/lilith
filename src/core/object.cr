@@ -70,6 +70,7 @@ class Object
   end
 end
 
+# :nodoc:
 struct Nil
   def not_nil!
     abort "casting nil to not-nil!"

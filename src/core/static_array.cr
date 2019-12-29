@@ -1,3 +1,4 @@
+# :nodoc:
 struct StaticArray(T, N)
   macro [](*args)
     %array = uninitialized StaticArray(typeof({{*args}}), {{args.size}})

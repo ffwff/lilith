@@ -1,3 +1,4 @@
+# :nodoc:
 class Reference
   def ==(other : self)
     same?(other)
