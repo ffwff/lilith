@@ -101,6 +101,12 @@ class Array(T) < Markable
     end
   end
 
+  def clear
+    write_barrier do
+      @size = 0
+    end
+  end
+
   @[NoInline]
   def mark(&block : Void* ->)
     return if @buffer.null?

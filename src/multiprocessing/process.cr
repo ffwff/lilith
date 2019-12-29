@@ -602,7 +602,6 @@ module Multiprocessing
     protected def unawait
       @sched_data.not_nil!.status =
         Multiprocessing::Scheduler::ProcessData::Status::Normal
-      udata.wait_object = nil
       udata.wait_end = 0u64
     end
   end

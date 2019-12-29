@@ -73,15 +73,11 @@ module Multiprocessing::Scheduler
       case @status
       when ProcessData::Status::Normal
         true
-      when ProcessData::Status::Removed
-        false
-      when ProcessData::Status::WaitIo
-        false
       when ProcessData::Status::WaitProcess
         wait_object = process.udata.wait_object
-        case wait_object
-        when Process
+        if wait_object.is_a?(Process)
           if wait_object.as(Process).removed?
+            process.udata.wait_object = nil
             process.unawait
             true
           else
@@ -112,12 +108,14 @@ module Multiprocessing::Scheduler
           false
         when FileDescriptor
           if process.udata.wait_end != 0 && process.udata.wait_end <= Time.usecs_since_boot
+            process.udata.wait_object = nil
             process.frame.rax = 0
             process.unawait
             return true
           end
           fd = wait_object.as(FileDescriptor)
           if fd.node.not_nil!.available? process
+            process.udata.wait_object = nil
             process.frame.rax = fd.idx
             process.unawait
             true

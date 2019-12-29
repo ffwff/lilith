@@ -391,18 +391,23 @@ rdx, rcx, rbx, rax : UInt64
         Multiprocessing::Scheduler.switch_process(frame)
       end
 
-      failed = false
-      waitfds = Array(FileDescriptor).new(fds.size)
+      if waitfds = pudata.wait_object.as?(Array(FileDescriptor))
+        waitfds.clear
+      else
+        waitfds = Array(FileDescriptor).new fds.size
+        pudata.wait_object = waitfds
+      end
+
       fds.each do |fdi|
         fd = try(pudata.get_fd(fdi))
         if fd.node.not_nil!.available? process
+          waitfds.clear
           sysret(fdi)
         end
         waitfds.push fd
       end
 
       process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitFd
-      pudata.wait_object = waitfds
       pudata.wait_usecs timeout
       Multiprocessing::Scheduler.switch_process(frame)
     when SC_READDIR

@@ -221,7 +221,7 @@ module Allocator
         mark_bitmap.each do |bit|
           if !bit && alloc_bitmap[idx]
             ptr = block(idx)
-            Serial.print "free: ", ptr, '\n'
+            Serial.print "free: ", ptr, ' ', ptr.as(Int32*).value, '\n'
           end
           idx += 1
         end
