@@ -36,6 +36,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   Kernel.ksetup_fxsave_region_base
 
   VGA.init_device
+  Serial.init_device
 
   Console.print "Booting lilith...\n"
 

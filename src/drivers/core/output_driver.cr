@@ -1,5 +1,5 @@
-abstract struct OutputDriver
-  abstract def putc(c : UInt8)
+module OutputDriver
+  extend self
 
   def print(*args)
     args.each do |arg|

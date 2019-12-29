@@ -1,14 +1,17 @@
 require "./output_driver.cr"
 
-private struct ConsoleInstance < OutputDriver
-  @enabled = true
-  property enabled
+module Console
+  extend self
+  include OutputDriver
 
-  @text_mode = true
-  property text_mode
+  @@enabled = true
+  class_property enabled
+
+  @@text_mode = true
+  class_property text_mode
 
   def device
-    if @text_mode
+    if @@text_mode
       VGA
     else
       Fbdev
@@ -16,12 +19,12 @@ private struct ConsoleInstance < OutputDriver
   end
 
   def putc(ch : UInt8)
-    return unless @enabled
+    return unless @@enabled
     device.putc ch
   end
 
   def print(args)
-    return unless @enabled
+    return unless @@enabled
     device.print args
   end
 
@@ -29,7 +32,7 @@ private struct ConsoleInstance < OutputDriver
   end
 
   def width
-    if @text_mode
+    if @@text_mode
       VGA_WIDTH
     else
       width = 0
@@ -41,7 +44,7 @@ private struct ConsoleInstance < OutputDriver
   end
 
   def height
-    if @text_mode
+    if @@text_mode
       VGA_HEIGHT
     else
       height = 0
@@ -53,12 +56,10 @@ private struct ConsoleInstance < OutputDriver
   end
 
   def locked?
-    if @text_mode
+    if @@text_mode
       VGA.locked?
     else
       FbdevState.locked?
     end
   end
 end
-
-Console = ConsoleInstance.new
