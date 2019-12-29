@@ -1,3 +1,4 @@
+# /proc/[pid]
 class ProcFS::Node < VFS::Node
   @first_child : ProcFS::ProcessNode? = nil
   getter fs : VFS::FS, raw_node, first_child
@@ -60,8 +61,6 @@ class ProcFS::Node < VFS::Node
   end
 end
 
-# process nodes
-
 # /proc/[pid]
 class ProcFS::ProcessNode < VFS::Node
   @name : String? = nil
@@ -88,6 +87,7 @@ class ProcFS::ProcessNode < VFS::Node
                  @next_node : ProcFS::ProcessNode? = nil)
     @name = "kernel"
     add_child(ProcFS::MemInfoNode.new(self, @fs))
+    add_child(ProcFS::CPUInfoNode.new(self, @fs))
   end
 
   def remove : Int32
@@ -187,7 +187,7 @@ class ProcFS::ProcessMmapNode < VFS::Node
   end
 end
 
-# /proc/meminfo
+# /proc/kernel/meminfo
 class ProcFS::MemInfoNode < VFS::Node
   getter fs : VFS::FS
 
@@ -216,6 +216,32 @@ class ProcFS::MemInfoNode < VFS::Node
     SliceWriter.fwrite? writer, "HeapSize: "
     SliceWriter.fwrite? writer, (Allocator.pages_allocated * (0x1000 // 1024))
     SliceWriter.fwrite? writer, " kB\n"
+
+    writer.offset
+  end
+end
+
+# /proc/kernel/cpuinfo
+class ProcFS::CPUInfoNode < VFS::Node
+  getter fs : VFS::FS
+
+  def name
+    "cpuinfo"
+  end
+
+  @next_node : VFS::Node? = nil
+  property next_node
+
+  def initialize(@parent : ProcFS::ProcessNode, @fs : ProcFS::FS)
+  end
+
+  def read(slice : Slice, offset : UInt32,
+           process : Multiprocessing::Process? = nil) : Int32
+    writer = SliceWriter.new(slice, offset.to_i32)
+
+    SliceWriter.fwrite? writer, "Model name: "
+    SliceWriter.fwrite? writer, X86::CPUID.brand
+    SliceWriter.fwrite? writer, "\n"
 
     writer.offset
   end

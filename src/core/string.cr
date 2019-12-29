@@ -129,6 +129,14 @@ class String
     }).not_nil!
   end
 
+  def self.new(bytes : StaticArray)
+    (new(bytes.size + 1) { |buffer|
+      memcpy(buffer, bytes.to_unsafe, bytes.size.to_usize)
+      buffer[bytes.size] = 0u8
+      String.calculate_length(buffer)
+    }).not_nil!
+  end
+
   def self.new(bytes : NullTerminatedSlice)
     String.new Slice(UInt8).new(bytes.to_unsafe, bytes.size)
   end
