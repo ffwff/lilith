@@ -1,6 +1,6 @@
 require "./userspace/*"
 
-private lib Kernel
+lib Kernel
   fun ksyscall_switch(frame : Idt::Data::Registers*) : NoReturn
 end
 
