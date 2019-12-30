@@ -58,9 +58,15 @@
 .extern kcpuex_handler
 kcpuex_stub:
     pusha64
-    mov %rsp, %rdi
+    movabs $fxsave_region, %rax
+    fxsave64 (%rax)
+    # call the handler
     cld
+    mov %rsp, %rdi
     call kcpuex_handler
+    # return
+    movabs $fxsave_region, %rax
+    fxrstor64 (%rax)
     popa64
     add $16, %rsp # skip int_no, ex
     iretq
