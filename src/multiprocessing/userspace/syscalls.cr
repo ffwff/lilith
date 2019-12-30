@@ -1,5 +1,5 @@
 require "./syscall_defs.cr"
-require "./addr_sanitizer.cr"
+require "./checked_pointers.cr"
 require "./argv_builder.cr"
 
 lib Kernel
@@ -480,7 +480,7 @@ rdx, rcx, rbx, rax : UInt64
             break
           end
           # FIXME: check for size of NullTerminatedSlice
-          arg = NullTerminatedSlice.new(try(checked_pointer(UInt8, argv[i]), EFAULT))
+          arg = NullTerminatedSlice.new(try(checked_pointer(UInt8, argv[i].to_u64), EFAULT))
           pargv.push String.new(arg)
           i += 1
         end

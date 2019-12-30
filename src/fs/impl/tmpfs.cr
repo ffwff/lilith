@@ -241,7 +241,7 @@ module TmpFS
 
     def munmap(addr : UInt64, size : UInt64, process : Multiprocessing::Process) : Int32
       @mmap_count -= 1
-      i = addr.address
+      i = addr
       end_addr = i + size
       while i < end_addr
         Paging.remove_page(i)
