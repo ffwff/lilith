@@ -1,5 +1,5 @@
 struct StaticArray(T, N)
-  include Enumerable(T)
+  include Indexable(T)
 
   macro [](*args)
     %array = uninitialized StaticArray(typeof({{*args}}), {{args.size}})
@@ -44,6 +44,12 @@ struct StaticArray(T, N)
   def each : Nil
     {% for i in 0...N %}
       yield self[{{i}}]
+    {% end %}
+  end
+
+  def each_with_index : Nil
+    {% for i in 0...N %}
+      yield self[{{i}}], {{i}}
     {% end %}
   end
 end
