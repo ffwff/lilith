@@ -1,3 +1,17 @@
+lib Kernel
+  $fxsave_region_ptr : UInt8*
+  $fxsave_region_base_ptr : UInt8*
+  $kernel_end : Void*
+  $text_start : Void*; $text_end : Void*
+  $data_start : Void*; $data_end : Void*
+  $stack_start : Void*; $stack_end : Void*
+  $int_stack_start : Void*; $int_stack_end : Void*
+end
+
+lib LibCrystalMain
+  fun __crystal_main(argc : Int32, argv : UInt8**)
+end
+
 fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
   if mboot_magic != MULTIBOOT_BOOTLOADER_MAGIC
     abort "Kernel should be booted from a multiboot bootloader!"

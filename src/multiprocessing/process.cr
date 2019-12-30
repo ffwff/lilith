@@ -129,7 +129,7 @@ module Multiprocessing
       # mmap
       getter mmap_list
 
-      @mmap_heap : MemMapNode? = nil
+      @mmap_heap : MemMapList::Node? = nil
       property mmap_heap
 
       # working directory
@@ -444,7 +444,7 @@ module Multiprocessing
 
         # heap
         udata.mmap_heap = udata.mmap_list.add(result.heap_start, 0,
-          MemMapNode::Attributes::Read | MemMapNode::Attributes::Write).not_nil!
+          MemMapList::Node::Attributes::Read | MemMapList::Node::Attributes::Write).not_nil!
 
         # stack
         stack_size = 0x1000u64 * 4
@@ -452,7 +452,7 @@ module Multiprocessing
         stack = Paging.alloc_page_pg(stack_addr, true, true, 4)
         zero_page Pointer(UInt8).new(stack), 4
         udata.mmap_list.add(stack_addr & 0xFFFF_FFFF_FFFF_F000, stack_size + 0x1000,
-          MemMapNode::Attributes::Read | MemMapNode::Attributes::Write | MemMapNode::Attributes::Stack)
+          MemMapList::Node::Attributes::Read | MemMapList::Node::Attributes::Write | MemMapList::Node::Attributes::Stack)
 
         # argv
         argv_builder = ArgvBuilder.new process
@@ -520,8 +520,8 @@ module Multiprocessing
         end
         # cleanup memory mapped regions
         udata.mmap_list.each do |node|
-          if node.attr.includes?(MemMapNode::Attributes::SharedMem)
-            node.shm_node.not_nil!.munmap(node, self)
+          if node.attr.includes?(MemMapList::Node::Attributes::SharedMem)
+            node.shm_node.not_nil!.munmap(node.addr, node.size, self)
           end
         end
       end

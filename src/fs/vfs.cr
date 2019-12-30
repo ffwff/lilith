@@ -100,11 +100,11 @@ module VFS
       VFS_ERR
     end
 
-    def mmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
+    def mmap(node : MemMapList::Node, process : Multiprocessing::Process) : Int32
       VFS_ERR
     end
 
-    def munmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
+    def munmap(addr : UInt64, size : UInt64, process : Multiprocessing::Process) : Int32
       VFS_ERR
     end
 
@@ -118,6 +118,7 @@ module VFS
     alias LookupCache = Hash(String, VFS::Node)
     @lookup_cache : LookupCache? = nil
     getter! lookup_cache
+
     def open_cached?(path : Slice)
       if cache = @lookup_cache
         cache[path]?

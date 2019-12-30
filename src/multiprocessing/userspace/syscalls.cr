@@ -649,12 +649,12 @@ rdx, rcx, rbx, rax : UInt64
       fdi = arg(0).to_i32
 
       prot = Syscall::Data::MmapProt.new(arg(1).to_i32)
-      mmap_attrs = MemMapNode::Attributes::Read
+      mmap_attrs = MemMapList::Node::Attributes::Read
       if prot.includes?(Syscall::Data::MmapProt::Write)
-        mmap_attrs |= MemMapNode::Attributes::Write
+        mmap_attrs |= MemMapList::Node::Attributes::Write
       end
       if prot.includes?(Syscall::Data::MmapProt::Execute)
-        mmap_attrs |= MemMapNode::Attributes::Execute
+        mmap_attrs |= MemMapList::Node::Attributes::Execute
       end
 
       addr = arg(3)
@@ -665,13 +665,13 @@ rdx, rcx, rbx, rax : UInt64
           sysret(0)
         end
         Paging.alloc_page_pg addr,
-          mmap_attrs.includes?(MemMapNode::Attributes::Write),
+          mmap_attrs.includes?(MemMapList::Node::Attributes::Write),
           true, size // 0x1000
         pudata.memory_used += size // 1024
         pudata.mmap_list.add(addr, size, mmap_attrs)
         sysret(addr)
       else
-        mmap_attrs |= MemMapNode::Attributes::SharedMem
+        mmap_attrs |= MemMapList::Node::Attributes::SharedMem
         fd = try(pudata.get_fd(fdi))
         if size > fd.node.not_nil!.size
           size = fd.node.not_nil!.size.to_u64
@@ -696,8 +696,8 @@ rdx, rcx, rbx, rax : UInt64
       # TODO: support size argument
       addr = arg(0)
       pudata.mmap_list.each do |node|
-        if node.addr == addr && node.attr.includes?(MemMapNode::Attributes::SharedMem)
-          node.shm_node.not_nil!.munmap(node, process)
+        if node.addr == addr && node.attr.includes?(MemMapList::Node::Attributes::SharedMem)
+          node.shm_node.not_nil!.munmap(node.addr, node.size, process)
           pudata.mmap_list.remove(node)
           sysret(0)
         end

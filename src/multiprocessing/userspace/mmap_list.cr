@@ -1,62 +1,62 @@
-class MemMapNode
-  @[Flags]
-  enum Attributes
-    Read
-    Write
-    Execute
-    Stack
-    SharedMem
-  end
-
-  def combinable_attrs(attr)
-    if @attr.includes?(Attributes::SharedMem) ||
-       attr.includes?(Attributes::SharedMem)
-      return false
-    end
-    true
-  end
-
-  @next_node : MemMapNode? = nil
-  property next_node
-
-  @prev_node : MemMapNode? = nil
-  property prev_node
-
-  property addr, attr, size
-
-  @shm_node : VFS::Node? = nil
-  property shm_node
-
-  def initialize(@addr : UInt64, @size : UInt64, @attr : Attributes = Attributes::None)
-  end
-
-  def end_addr
-    @addr + @size
-  end
-
-  def each_page(&block)
-    i = 0
-    while i < @size
-      yield @addr + i
-      i += 0x1000
-    end
-  end
-
-  def to_s(io)
-    io.print Pointer(Void).new(@addr), ' '
-    @size.to_s io, 16
-    io.print ' ', @attr
-  end
-end
-
 class MemMapList
-  @first_node : MemMapNode? = nil
-  @last_node : MemMapNode? = nil
+  class Node
+    @[Flags]
+    enum Attributes
+      Read
+      Write
+      Execute
+      Stack
+      SharedMem
+    end
 
-  def add(addr : UInt64, size : UInt64, attr) : MemMapNode?
+    def combinable_attrs(attr)
+      if @attr.includes?(Attributes::SharedMem) ||
+         attr.includes?(Attributes::SharedMem)
+        return false
+      end
+      true
+    end
+
+    @next_node : MemMapList::Node? = nil
+    property next_node
+
+    @prev_node : MemMapList::Node? = nil
+    property prev_node
+
+    property addr, attr, size
+
+    @shm_node : VFS::Node? = nil
+    property shm_node
+
+    def initialize(@addr : UInt64, @size : UInt64, @attr : Attributes = Attributes::None)
+    end
+
+    def end_addr
+      @addr + @size
+    end
+
+    def each_page(&block)
+      i = 0
+      while i < @size
+        yield @addr + i
+        i += 0x1000
+      end
+    end
+
+    def to_s(io)
+      io.print Pointer(Void).new(@addr), ' '
+      @size.to_s io, 16
+      io.print ' ', @attr
+    end
+  end
+
+  @first_node : MemMapList::Node? = nil
+  @last_node : MemMapList::Node? = nil
+
+  def add(addr : UInt64, size : UInt64, attr) : MemMapList::Node?
     end_addr = addr + size
     if @first_node.nil? || end_addr < @first_node.not_nil!.addr
-      node = MemMapNode.new(addr, size, attr)
+      node = MemMapList::Node.new(addr, size, attr)
       node.next_node = @first_node
       if node.next_node.nil?
         @last_node = node
@@ -97,7 +97,7 @@ class MemMapList
         next_node.size += size
       else
         # create new node
-        node = MemMapNode.new(addr, size, attr)
+        node = MemMapList::Node.new(addr, size, attr)
         node.prev_node = current
         node.next_node = current.next_node
         if nn = current.next_node
@@ -116,7 +116,7 @@ class MemMapList
     abort "unimplemented"
   end
 
-  def remove(node : MemMapNode)
+  def remove(node : MemMapList::Node)
     if node.prev_node
       node.prev_node.not_nil!.next_node = node.next_node
     else
@@ -129,15 +129,15 @@ class MemMapList
     end
   end
 
-  def space_for_mmap(process : Multiprocessing::Process, size : UInt64, attr : MemMapNode::Attributes)
+  def space_for_mmap(process : Multiprocessing::Process, size : UInt64, attr : MemMapList::Node::Attributes)
     # look backwards from the stack
     reverse_each do |node|
       return if node.prev_node.nil?
       prev_node = node.prev_node.not_nil!
 
       # don't allocate in the middle of the stack
-      next if node.attr.includes?(MemMapNode::Attributes::Stack) &&
-              prev_node.attr.includes?(MemMapNode::Attributes::Stack)
+      next if node.attr.includes?(MemMapList::Node::Attributes::Stack) &&
+              prev_node.attr.includes?(MemMapList::Node::Attributes::Stack)
 
       start_addr = prev_node.end_addr
       end_addr = node.addr
@@ -156,7 +156,7 @@ class MemMapList
         start_addr = end_addr - mmap_size
       end
 
-      new_node = MemMapNode.new(start_addr, size, attr)
+      new_node = MemMapList::Node.new(start_addr, size, attr)
       prev_node.next_node = new_node
       new_node.prev_node = prev_node
       node.prev_node = new_node

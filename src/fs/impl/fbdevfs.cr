@@ -66,21 +66,24 @@ class FbdevFS::Node < VFS::Node
     end
   end
 
-  def mmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
+  def mmap(node : MemMapList::Node, process : Multiprocessing::Process) : Int32
     npages = node.size // 0x1000
-    node.attr &= ~MemMapNode::Attributes::Execute
+    node.attr &= ~MemMapList::Node::Attributes::Execute
     FbdevState.lock do |state|
       phys_address = state.buffer.to_unsafe.address & ~Paging::IDENTITY_MASK
       Paging.alloc_page_pg node.addr,
-        node.attr.includes?(MemMapNode::Attributes::Write),
+        node.attr.includes?(MemMapList::Node::Attributes::Write),
         true, npages, phys_address
     end
     VFS_OK
   end
 
-  def munmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
-    node.each_page do |page|
-      Paging.remove_page(page)
+  def munmap(addr : UInt64, size : UInt64, process : Multiprocessing::Process) : Int32
+    i = addr.address
+    end_addr = i + size
+    while i < end_addr
+      Paging.remove_page(i)
+      i += 0x1000
     end
     VFS_OK
   end

@@ -223,7 +223,7 @@ module TmpFS
     
     @mmap_count = 0
 
-    def mmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
+    def mmap(node : MemMapList::Node, process : Multiprocessing::Process) : Int32
       @mmap_count += 1
       npages = Math.min(node.size // 0x1000, @npages)
       i = 0
@@ -231,18 +231,21 @@ module TmpFS
         break if i == npages
         phys = frame.address & ~Paging::IDENTITY_MASK
         Paging.alloc_page_pg(node.addr + i * 0x1000,
-              node.attr.includes?(MemMapNode::Attributes::Write),
+              node.attr.includes?(MemMapList::Node::Attributes::Write),
               true, 1, phys,
-              execute: node.attr.includes?(MemMapNode::Attributes::Execute))
+              execute: node.attr.includes?(MemMapList::Node::Attributes::Execute))
         i += 1
       end
       VFS_OK
     end
 
-    def munmap(node : MemMapNode, process : Multiprocessing::Process) : Int32
+    def munmap(addr : UInt64, size : UInt64, process : Multiprocessing::Process) : Int32
       @mmap_count -= 1
-      node.each_page do |page|
-        Paging.remove_page(page)
+      i = addr.address
+      end_addr = i + size
+      while i < end_addr
+        Paging.remove_page(i)
+        i += 0x1000
       end
       VFS_OK
     end

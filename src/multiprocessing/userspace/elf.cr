@@ -159,7 +159,7 @@ module ElfReader
     def initialize(@file_offset : USize,
                    @filesz : USize,
                    @vaddr : USize,
-                   @memsz : USize, @attrs : MemMapNode::Attributes)
+                   @memsz : USize, @attrs : MemMapList::Node::Attributes)
     end
   end
 
@@ -175,15 +175,15 @@ module ElfReader
   end
 
   def p_flags_to_mmap_attrs(p_flags)
-    attrs = MemMapNode::Attributes::None
+    attrs = MemMapList::Node::Attributes::None
     if p_flags.includes?(ElfStructs::Elf32PFlags::PF_R)
-      attrs |= MemMapNode::Attributes::Read
+      attrs |= MemMapList::Node::Attributes::Read
     end
     if p_flags.includes?(ElfStructs::Elf32PFlags::PF_W)
-      attrs |= MemMapNode::Attributes::Write
+      attrs |= MemMapList::Node::Attributes::Write
     end
     if p_flags.includes?(ElfStructs::Elf32PFlags::PF_X)
-      attrs |= MemMapNode::Attributes::Execute
+      attrs |= MemMapList::Node::Attributes::Execute
     end
     attrs
   end
@@ -358,16 +358,16 @@ module ElfReader
           mmap_list[mmap_append_idx] = data
           mmap_append_idx += 1
 
-          if data.attrs.includes?(MemMapNode::Attributes::Read)
+          if data.attrs.includes?(MemMapList::Node::Attributes::Read)
             section_start = Paging.aligned_floor(data.vaddr.to_u64)
             section_end = Paging.aligned(data.vaddr.to_u64 + data.memsz.to_u64)
             npages = (section_end - section_start) // 0x1000
             memory_used += (section_end - section_start) // 1024
             # create page and zero-initialize it
             page_start = Paging.alloc_page_pg_drv(section_start,
-              data.attrs.includes?(MemMapNode::Attributes::Write),
+              data.attrs.includes?(MemMapList::Node::Attributes::Write),
               true, npages,
-              execute: data.attrs.includes?(MemMapNode::Attributes::Execute))
+              execute: data.attrs.includes?(MemMapList::Node::Attributes::Execute))
             zero_page Pointer(UInt8).new(page_start), npages
           end
           # heap should start right after the last segment
