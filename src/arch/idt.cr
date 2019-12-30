@@ -161,9 +161,7 @@ rdx, rcx, rbx, rax : UInt64
   @@switch_processes = false
   class_property switch_processes
 
-  def handle(frame : Idt::Data::Registers*)
-    @@status_mask = true
-
+  private def handle_unmasked(frame : Idt::Data::Registers*)
     @@last_rsp = frame.value.userrsp
     PIC.eoi frame.value.int_no
 
@@ -177,18 +175,22 @@ rdx, rcx, rbx, rax : UInt64
       # preemptive multitasking...
       if (current_process = Multiprocessing::Scheduler.current_process)
         if current_process.sched_data.time_slice > 0
-          # FIXME: context_switch_to_process must be called or cpu won't
-          # have current process' context
           current_process.sched_data.time_slice -= 1
-          Multiprocessing::Scheduler.context_switch_to_process(current_process)
-          @@status_mask = false
           return
         end
       end
       Multiprocessing::Scheduler.switch_process(frame)
     end
+  end
+
+  def handle(frame : Idt::Data::Registers*)
+    GC.needs_scan_interrupt = true
+    @@status_mask = true
+
+    handle_unmasked frame
 
     @@status_mask = false
+    GC.needs_scan_interrupt = false
   end
 
   private def handle_exception_unmasked(frame : Idt::Data::ExceptionRegisters*)

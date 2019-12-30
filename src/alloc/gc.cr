@@ -294,9 +294,16 @@ module GC
         @@needs_scan_kernel_threads = false
       end
     end
-  {% end %}
 
-  @@needs_scan_kernel_threads = false
+    def scan_interrupt
+      conservative_scan Kernel.int_stack_start.address, Kernel.int_stack_end.address
+      @@needs_scan_interrupt = false
+    end
+
+    @@needs_scan_kernel_threads = false
+    @@needs_scan_interrupt = false
+    class_setter needs_scan_interrupt
+  {% end %}
 
   private def unlocked_cycle
     # Serial.print "---\n"
@@ -314,6 +321,10 @@ module GC
       scan_gray_nodes
       swap_grays
       {% if flag?(:kernel) %}
+        if @@needs_scan_interrupt
+          scan_interrupt
+          return false
+        end
         if gray_empty? && !@@needs_scan_kernel_threads
           @@state = State::Sweep
         end
@@ -353,20 +364,6 @@ module GC
   @@spinlock = Spinlock.new
 
   def unsafe_malloc(size : UInt64, atomic = false)
-    {% if flag?(:kernel) %}
-      sp = 0u64
-      asm("" : "={rsp}"(sp))
-      if Kernel.int_stack_start.address <= sp <= Kernel.int_stack_end.address
-        abort "must not be called from intrq"
-      end
-      if Multiprocessing::KERNEL_INITIAL <= sp <= Multiprocessing::KERNEL_STACK_INITIAL
-        return @@spinlock.with do
-          ptr = Allocator.malloc(size, atomic)
-          push_gray ptr
-          ptr
-        end
-      end
-    {% end %}
     @@spinlock.with do
       if @@enabled
         {% if flag?(:debug_gc) %}
