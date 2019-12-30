@@ -24,7 +24,7 @@ class Array(T) < Markable
       abort "size must be smaller than capacity"
     end
     if @buffer.null?
-      @buffer = Pointer.malloc_atomic(new_capacity.to_u64)
+      @buffer = Pointer(T).malloc_atomic(new_capacity.to_u64)
     else
       @buffer = @buffer.realloc(new_capacity.to_u64)
     end
