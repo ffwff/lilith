@@ -205,6 +205,7 @@ rdx, rcx, rbx, rax : UInt64
     when EX_PAGEFAULT
       faulting_address = 0u64
       asm("mov %cr2, $0" : "=r"(faulting_address) :: "volatile")
+      faulting_page = Paging.aligned_floor faulting_address
 
       present = (errcode & 0x1) != 0
       rw = (errcode & 0x2) != 0
@@ -221,7 +222,7 @@ rdx, rcx, rbx, rax : UInt64
       else
         process.udata.mmap_list.each do |node|
           if node.contains_address? faulting_address
-            if node.handle_page_fault(present, rw, user, faulting_address)
+            if node.handle_page_fault(present, rw, user, faulting_page)
               return
             else
               panic "unhandled fault"
@@ -241,9 +242,13 @@ rdx, rcx, rbx, rax : UInt64
   end
 
   def handle_exception(frame : Idt::Data::ExceptionRegisters*)
+    GC.needs_scan_interrupt = true
     @@status_mask = true
+
     handle_exception_unmasked frame
+
     @@status_mask = false
+    GC.needs_scan_interrupt = false
   end
 
   def halt_processor

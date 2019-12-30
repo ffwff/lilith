@@ -47,10 +47,11 @@ class MemMapList
       end
     end
 
-    def handle_page_fault(present, rw, user, faulting_address : UInt64)
+    def handle_page_fault(present, rw, user, page : UInt64)
       if @attr.includes?(Attributes::Stack)
         unless present
-          Paging.alloc_page_pg faulting_address, true, true, 1
+          Paging.alloc_page_pg page, true, true, 1
+          zero_page Pointer(UInt8).new(page)
           return true
         end
       end
