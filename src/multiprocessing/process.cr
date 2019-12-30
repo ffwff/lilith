@@ -11,8 +11,8 @@ module Multiprocessing
   USER_STACK_SIZE         =      0x80_0000u64 # 8 mb
   USER_STACK_TOP          =    0xFFFF_F000u64
   USER_STACK_TOP64        = 0x7F_FFFF_F000u64
-  USER_STACK_BOTTOM_MAX   = USER_STACK_TOP - USER_STACK_SIZE
-  USER_STACK_BOTTOM_MAX64 = USER_STACK_TOP64 - USER_STACK_SIZE
+  USER_STACK_BOTTOM_MAX   = USER_STACK_TOP - USER_STACK_SIZE + 0x1000u64
+  USER_STACK_BOTTOM_MAX64 = USER_STACK_TOP64 - USER_STACK_SIZE + 0x1000u64
 
   USER_STACK_INITIAL   =    0xFFFF_FFFFu64
   USER_STACK_INITIAL64 = 0x7F_FFFF_FFFFu64
@@ -447,12 +447,17 @@ module Multiprocessing
           MemMapList::Node::Attributes::Read | MemMapList::Node::Attributes::Write).not_nil!
 
         # stack
-        stack_size = 0x1000u64 * 4
-        stack_addr = process.initial_sp - stack_size
-        stack = Paging.alloc_page_pg(stack_addr, true, true, 4)
-        zero_page Pointer(UInt8).new(stack), 4
-        udata.mmap_list.add(stack_addr & 0xFFFF_FFFF_FFFF_F000, stack_size + 0x1000,
-          MemMapList::Node::Attributes::Read | MemMapList::Node::Attributes::Write | MemMapList::Node::Attributes::Stack)
+        if udata.is64
+          Paging.alloc_page_pg(USER_STACK_TOP64, true, true, 1)
+          zero_page Pointer(UInt8).new(USER_STACK_TOP64), 1
+          udata.mmap_list.add(USER_STACK_BOTTOM_MAX64, USER_STACK_SIZE,
+            MemMapList::Node::Attributes::Read | MemMapList::Node::Attributes::Write | MemMapList::Node::Attributes::Stack)
+        else
+          Paging.alloc_page_pg(USER_STACK_TOP, true, true, 1)
+          zero_page Pointer(UInt8).new(USER_STACK_TOP), 1
+          udata.mmap_list.add(USER_STACK_BOTTOM_MAX, USER_STACK_SIZE,
+            MemMapList::Node::Attributes::Read | MemMapList::Node::Attributes::Write | MemMapList::Node::Attributes::Stack)
+        end
 
         # argv
         argv_builder = ArgvBuilder.new process

@@ -17,6 +17,10 @@ class MemMapList
       true
     end
 
+    def contains_address?(address : UInt64)
+      @addr <= address <= end_addr
+    end
+
     @next_node : MemMapList::Node? = nil
     property next_node
 
@@ -41,6 +45,16 @@ class MemMapList
         yield @addr + i
         i += 0x1000
       end
+    end
+
+    def handle_page_fault(present, rw, user, faulting_address : UInt64)
+      if @attr.includes?(Attributes::Stack)
+        unless present
+          Paging.alloc_page_pg faulting_address, true, true, 1
+          return true
+        end
+      end
+      false
     end
 
     def to_s(io)

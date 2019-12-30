@@ -191,6 +191,59 @@ rdx, rcx, rbx, rax : UInt64
     @@status_mask = false
   end
 
+  private def handle_exception_unmasked(frame : Idt::Data::ExceptionRegisters*)
+    errcode = frame.value.errcode
+    unless process = Multiprocessing::Scheduler.current_process
+      dump_frame(frame)
+      Serial.print "segfault from pre-startup kernel code?"
+      while true; end
+    end
+    process = process.not_nil!
+    case frame.value.int_no
+    when EX_PAGEFAULT
+      faulting_address = 0u64
+      asm("mov %cr2, $0" : "=r"(faulting_address) :: "volatile")
+
+      present = (errcode & 0x1) != 0
+      rw = (errcode & 0x2) != 0
+      user = (errcode & 0x4) != 0
+      reserved = (errcode & 0x8) != 0
+      id = (errcode & 0x10) != 0
+
+      Serial.print Pointer(Void).new(faulting_address), " from ", Pointer(Void).new(frame.value.rip), " proc ", process.name, '\n'
+
+      if process.kernel_process?
+        panic "segfault from kernel process"
+      elsif frame.value.rip > Multiprocessing::KERNEL_INITIAL
+        panic "segfault from kernel"
+      else
+        process.udata.mmap_list.each do |node|
+          if node.contains_address? faulting_address
+            if node.handle_page_fault(present, rw, user, faulting_address)
+              return
+            else
+              panic "unhandled fault"
+            end
+          end
+        end
+      end
+
+      dump_frame(frame)
+      panic "unhandled fault"
+    else
+      dump_frame(frame)
+      Serial.print "process: ", process.name, '\n'
+      Serial.print "unhandled cpu exception: ", frame.value.int_no, ' ', errcode, '\n'
+      while true; end
+    end
+  end
+
+  def handle_exception(frame : Idt::Data::ExceptionRegisters*)
+    @@status_mask = true
+    handle_exception_unmasked frame
+    @@status_mask = false
+  end
+
   def halt_processor
     GC.non_stw_cycle
     @@status_mask = false
@@ -227,57 +280,7 @@ private def dump_frame(frame : Idt::Data::ExceptionRegisters*)
 end
 
 fun kcpuex_handler(frame : Idt::Data::ExceptionRegisters*)
-  errcode = frame.value.errcode
-  unless process = Multiprocessing::Scheduler.current_process
-    dump_frame(frame)
-    Serial.print "segfault from pre-startup kernel code?"
-    while true; end
-  end
-  process = process.not_nil!
-  case frame.value.int_no
-  when EX_PAGEFAULT
-    faulting_address = 0u64
-    asm("mov %cr2, $0" : "=r"(faulting_address) :: "volatile")
-
-    present = (errcode & 0x1) == 0
-    rw = (errcode & 0x2) != 0
-    user = (errcode & 0x4) != 0
-    reserved = (errcode & 0x8) != 0
-    id = (errcode & 0x10) != 0
-
-    Serial.print Pointer(Void).new(faulting_address), user, " ", Pointer(Void).new(frame.value.rip), "\n"
-    Serial.print "from ", process.name, '\n'
-    while true; end
-
-    {% if false %}
-      if process.kernel_process?
-        abort "segfault from kernel process"
-      elsif frame.value.rip > Paging::KERNEL_OFFSET
-        abort "segfault from kernel"
-      else
-        if faulting_address < Multiprocessing::USER_STACK_TOP &&
-           faulting_address > Multiprocessing::USER_STACK_BOTTOM_MAX
-          # stack page fault
-          Idt.disable do
-            stack_address = Paging.t_addr(faulting_address)
-            process.udata.not_nil!.mmap_list.add(stack_address, 0x1000,
-              MemMapNode::Attributes::Read | MemMapNode::Attributes::Write | MemMapNode::Attributes::Stack)
-
-            addr = Paging.alloc_page_pg(stack_address, true, true)
-            zero_page Pointer(UInt8).new(addr)
-          end
-          return
-        else
-          Multiprocessing::Scheduler.switch_process_and_terminate
-        end
-      end
-    {% end %}
-  else
-    dump_frame(frame)
-    Serial.print "process: ", process.name, '\n'
-    Serial.print "unhandled cpu exception: ", frame.value.int_no, ' ', errcode, '\n'
-    while true; end
-  end
+  Idt.handle_exception frame
 end
 
 {% if flag?(:record_cli) %}
