@@ -25,5 +25,5 @@ def checked_slice(type : T.class, addr : UInt64, len : Int) : Slice(T)? forall T
     return unless Paging.check_user_addr(Pointer(Void).new(i))
     i += 0x1000u64
   end
-  Slice(T).new Pointer(T).new(addr), (len.to_i32 * sizeof(T))
+  Slice(T).new Pointer(T).new(addr), len.to_i32
 end
