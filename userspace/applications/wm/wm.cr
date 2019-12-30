@@ -433,6 +433,9 @@ module Wm::Server
     end
     @@last_mouse_modifiers = modifiers
 
+    if (background = @@windows[0]?) && background.is_a?(Program) && background.as(Program).contains_point?(cursor.x, cursor.y)
+      background.socket.unbuffered_write IPC.mouse_event_message(cursor.x, cursor.y, modifiers, packet.scroll_delta).to_slice
+    end
     if (focused = @@focused) && focused.contains_point?(cursor.x, cursor.y)
       focused.socket.unbuffered_write IPC.mouse_event_message(cursor.x, cursor.y, modifiers, packet.scroll_delta).to_slice
       return
