@@ -2,7 +2,7 @@ module VFS
   extend self
 
   class Message
-    @next_msg = Atomic(Message?).new(nil)
+    @next_msg : Message? = nil
     property next_msg
 
     def slice_size
@@ -167,24 +167,24 @@ module VFS
   end
 
   class Queue
-    @first_msg = Atomic(Message?).new(nil)
-    @last_msg = Atomic(Message?).new(nil)
+    @first_msg : Message? = nil
+    @last_msg : Message? = nil
 
     def initialize(@wake_process : Multiprocessing::Process? = nil)
     end
 
     def empty?
-      @first_msg.get.nil?
+      @first_msg.nil?
     end
 
     def enqueue(msg : Message)
-      if @first_msg.get.nil?
-        @first_msg.set(msg)
-        @last_msg.set(msg)
-        msg.next_msg.set(nil)
+      if @first_msg.nil?
+        @first_msg = msg
+        @last_msg = msg
+        msg.next_msg = nil
       else
-        @last_msg.get.not_nil!.next_msg.set(msg)
-        @last_msg.set(msg)
+        @last_msg.not_nil!.next_msg = msg
+        @last_msg = msg
       end
       if @wake_process
         @wake_process.not_nil!.sched_data.status =
@@ -193,26 +193,24 @@ module VFS
     end
 
     def dequeue
-      unless (msg = @first_msg.get).nil?
-        @first_msg.set(msg.not_nil!.next_msg.get)
+      if msg = @first_msg
+        @first_msg = msg.not_nil!.next_msg
         msg
-      else
-        nil
       end
     end
 
     def keep_if(&block : Message -> _)
       prev = nil
       cur = @first_msg
-      until (c = cur.get).nil?
+      until (c = cur).nil?
         c = c.not_nil!
         if yield c
           prev = c
         else
           if prev.nil?
-            @first_msg.set(c.next_msg.get)
+            @first_msg = c.next_msg
           else
-            prev.next_msg.set(nil)
+            prev.next_msg = nil
           end
         end
         cur = c.next_msg

@@ -156,11 +156,6 @@ class MemMapList
 
       start_addr = prev_node.end_addr
       end_addr = node.addr
-      if process.udata.is64 && end_addr > Multiprocessing::USER_MMAP_INITIAL64
-        end_addr = Multiprocessing::USER_MMAP_INITIAL64
-      elsif !process.udata.is64 && end_addr > Multiprocessing::USER_MMAP_INITIAL
-        end_addr = Multiprocessing::USER_MMAP_INITIAL
-      end
       mmap_size = end_addr - start_addr
 
       if mmap_size < size
