@@ -707,12 +707,12 @@ rdx, rcx, rbx, rax : UInt64
         if node.addr == addr && size == node.size
           if node.attr.includes?(MemMapList::Node::Attributes::SharedMem)
             node.shm_node.not_nil!.munmap(node.addr, node.size, process)
-          end
-          size = full_size ? node.size : size
-          i = 0
-          while i < size
-            Paging.remove_page addr + i
-            i += 0x1000
+          else
+            i = 0
+            while i < node.size
+              Paging.remove_page addr + i
+              i += 0x1000
+            end
           end
           pudata.mmap_list.remove(node)
           sysret(0)

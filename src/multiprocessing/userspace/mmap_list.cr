@@ -133,12 +133,9 @@ class MemMapList
     elsif node.end_addr == addr + size
       node.size -= size
     else
-      # [                     ]
-      # [   ][   rem  ][      ]
       left_addr = node.addr
       left_size = addr - node.addr
 
-      Serial.print Pointer(Void).new(node.end_addr), Pointer(Void).new(addr), '\n'
       right = MemMapList::Node.new(addr + size, node.end_addr - addr - size, node.attr)
       right.prev_node = node
       right.next_node = node.next_node
