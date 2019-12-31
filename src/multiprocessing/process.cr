@@ -612,7 +612,7 @@ module Multiprocessing
   end
 
   # sleep from kernel thread
-  def sleep_drv
+  def sleep
     retval = 0u64
     asm("syscall"
             : "={rax}"(retval)

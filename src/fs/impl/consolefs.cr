@@ -69,7 +69,7 @@ class ConsoleFS::FS < VFS::FS
           msg.unawait(msg.slice_size)
         end
       else
-        Multiprocessing.sleep_drv
+        Multiprocessing.sleep
       end
     end
   end
