@@ -440,7 +440,7 @@ module Wm::Server
     if (background = @@windows[0]?) && background.is_a?(Program)
       bg_mouse_event = true
       @@windows.each do |win|
-        next if win == background
+        next if win == background || win == cursor
         if win.contains_point?(cursor.x, cursor.y)
           bg_mouse_event = false
           break
