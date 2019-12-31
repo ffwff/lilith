@@ -47,6 +47,6 @@ struct Pointer(T)
   end
 
   def unmap_from_memory(size : Int = -1)
-    LibC.munmap self
+    LibC.munmap self, size
   end
 end

@@ -129,8 +129,8 @@ fun mmap(addr : Void*, size : LibC::SizeT, prot : LibC::Int,
   {% end %}
 end
 
-fun munmap(addr : Void*)
-  lilith_syscall(SC_MUNMAP, addr.address.to_usize)
+fun munmap(addr : Void*, length : LibC::SizeT)
+  lilith_syscall(SC_MUNMAP, addr.address.to_usize, length.to_usize)
 end
 
 fun lilith_readdir(fd : LibC::Int, direntp : Void*) : LibC::Int

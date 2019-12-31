@@ -15,7 +15,7 @@ int _ioctl(int fd, int request, unsigned long arg);
 int waitfd(int *fds, size_t nfds, useconds_t timeout);
 void *mmap(void *addr, size_t len, int prot, int flags,
            int fd, off_t off);
-void munmap(void *addr);
+void munmap(void *addr, size_t len);
 int remove(char *device);
 void *sbrk(size_t size);
 

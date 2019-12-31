@@ -616,14 +616,14 @@ rdx, rcx, rbx, rax : UInt64
       incr = arg(0).to_i64
       # must be page aligned
       if (incr & 0xfff != 0) || pudata.mmap_heap.nil?
-        sysret(EINVAL)
+        sysret(0)
       end
       mmap_heap = pudata.mmap_heap.not_nil!
       if incr > 0
         if !mmap_heap.next_node.nil?
           if mmap_heap.end_addr + incr >= mmap_heap.next_node.not_nil!.addr
             # out of virtual memory
-            sysret(EINVAL)
+            sysret(0)
           end
         end
         npages = incr // 0x1000
@@ -634,7 +634,7 @@ rdx, rcx, rbx, rax : UInt64
         if !mmap_heap.next_node.nil?
           if mmap_heap.end_addr + 0x1000 >= mmap_heap.next_node.not_nil!.addr
             # out of virtual memory
-            sysret(EINVAL)
+            sysret(0)
           end
         end
         Paging.alloc_page_pg(mmap_heap.addr, true, true)
@@ -644,7 +644,7 @@ rdx, rcx, rbx, rax : UInt64
         # TODO
         abort "decreasing heap not implemented"
       end
-      fv.rax = mmap_heap.addr
+      sysret(mmap_heap.addr + mmap_heap.size - incr)
     when SC_MMAP
       fdi = arg(0).to_i32
 
@@ -693,15 +693,45 @@ rdx, rcx, rbx, rax : UInt64
         end
       end
     when SC_MUNMAP
-      # TODO: support size argument
       addr = arg(0)
+      size = arg(1)
+      if pudata.is64
+        full_size = size == 0xFFFF_FFFF_FFFF_FFFFu64
+      else
+        full_size = size == 0xFFFF_FFFFu64
+      end
+      unless (size & 0xfff) == 0 || full_size
+        sysret(EINVAL)
+      end
       pudata.mmap_list.each do |node|
-        if node.addr == addr && node.attr.includes?(MemMapList::Node::Attributes::SharedMem)
-          node.shm_node.not_nil!.munmap(node.addr, node.size, process)
+        if node.addr == addr && size == node.size
+          if node.attr.includes?(MemMapList::Node::Attributes::SharedMem)
+            node.shm_node.not_nil!.munmap(node.addr, node.size, process)
+          end
+          size = full_size ? node.size : size
+          i = 0
+          while i < size
+            Paging.remove_page addr + i
+            i += 0x1000
+          end
           pudata.mmap_list.remove(node)
+          sysret(0)
+        elsif node.contains_address?(addr) && (node.contains_address?(addr + size) || full_size)
+          if node.attr.includes?(MemMapList::Node::Attributes::SharedMem)
+            # FIXME: allow partial unmapping of shared memory
+            sysret(EINVAL)
+          end
+          size = full_size ? node.end_addr - addr : size
+          i = 0
+          while i < size
+            Paging.remove_page addr + i
+            i += 0x1000
+          end
+          pudata.mmap_list.split_node(node, addr, size)
           sysret(0)
         end
       end
+      sysret(EINVAL)
     else
       sysret(EINVAL)
     end
