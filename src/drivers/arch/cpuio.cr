@@ -1,6 +1,10 @@
 module X86
   extend self
 
+  def flush_memory
+    asm("" ::: "memory")
+  end
+
   # Sends a hardware output to `port` with byte value `val`
   def outb(port : UInt16, val : UInt8)
     asm("outb $1, $0" :: "{dx}"(port), "{al}"(val) : "volatile")
@@ -35,5 +39,12 @@ module X86
     result = 0_u32
     asm("inl $1, $0" : "={eax}"(result) : "{dx}"(port) : "volatile")
     result
+  end
+
+  # Waits for ~3 microseconds
+  def io_delay
+    32.times do
+      X86.inb 0x80
+    end
   end
 end

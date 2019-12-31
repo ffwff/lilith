@@ -21,6 +21,8 @@ module PCI
   PCI_BAR4            = 0x20u32
   PCI_BAR5            = 0x24u32
 
+  PCI_MEMORY_BASE0    = 0x10u32
+
   PCI_INTERRUPT_LINE = 0x3Cu32
 
   PCI_SECONDARY_BUS = 0x19u32
@@ -54,6 +56,16 @@ module PCI
       X86.inb PCI_VALUE_PORT + (field & 3)
     else
       0xFFFF
+    end
+  end
+
+  def read_base_address(bus : UInt32, slot : UInt32, func : UInt32, header_type : Int)
+    case header_type
+    when 0x0
+      config_address bus, slot, func, PCI_MEMORY_BASE0
+      X86.inl(PCI_VALUE_PORT).to_u64
+    else
+      abort "TODO: handle header_type != 0x0"
     end
   end
 
