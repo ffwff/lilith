@@ -102,7 +102,7 @@ module FrameAllocator
     end
   end
 
-  def each_region(&block)
+  private def each_region(&block)
     region = @@first_region
     while !region.null?
       if @@is_paging_setup

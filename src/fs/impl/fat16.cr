@@ -584,7 +584,7 @@ module Fat16FS
             Idt.switch_processes = true
           end
         else
-          Multiprocessing.sleep
+          Multiprocessing.sleep_disable_gc
         end
       end
     end

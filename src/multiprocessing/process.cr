@@ -235,6 +235,9 @@ module Multiprocessing
       @stack_pages = 0
       property stack_pages
 
+      @gc_enabled = true
+      property gc_enabled
+
       def initialize(@stack_pages : Int32)
       end
     end
@@ -612,6 +615,7 @@ module Multiprocessing
   end
 
   # sleep from kernel thread
+  @[NoInline]
   def sleep
     retval = 0u64
     asm("syscall"
@@ -619,6 +623,13 @@ module Multiprocessing
             : "{rax}"(SC_SLEEP)
             : "cc", "memory", "{rcx}", "{r11}", "{rdi}", "{rsi}")
     retval
+  end
+
+  # sleep from kernel thread and disable GC
+  def sleep_disable_gc
+    Multiprocessing::Scheduler.current_process.not_nil!.kdata.gc_enabled = false
+    sleep
+    Multiprocessing::Scheduler.current_process.not_nil!.kdata.gc_enabled = true
   end
 
   # iteration

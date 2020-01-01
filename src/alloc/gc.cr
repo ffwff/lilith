@@ -286,7 +286,7 @@ module GC
       if @@needs_scan_kernel_threads
         if threads = Multiprocessing.kernel_threads
           threads.each do |thread|
-            next if !thread.frame_initialized
+            next unless thread.frame_initialized && thread.kdata.gc_enabled
             scan_kernel_thread_registers thread
             scan_kernel_thread_stack thread
           end
