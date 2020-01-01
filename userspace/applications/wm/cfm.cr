@@ -35,7 +35,7 @@ module FileMgr
             app.redraw
           end
         else
-          @double_clicks = 0
+          @double_clicks = 1
         end
         @last_clicked = current
       end
