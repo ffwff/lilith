@@ -21,8 +21,6 @@ module PCI
   PCI_BAR4            = 0x20u32
   PCI_BAR5            = 0x24u32
 
-  PCI_MEMORY_BASE0    = 0x10u32
-
   PCI_INTERRUPT_LINE = 0x3Cu32
 
   PCI_SECONDARY_BUS = 0x19u32
@@ -45,55 +43,57 @@ module PCI
     X86.outl PCI_ADDRESS_PORT, address
   end
 
-  def read_field(bus : UInt32, slot : UInt32, func : UInt32, field : UInt32, size : Int)
+  def read_long(bus : UInt32, slot : UInt32, func : UInt32, field : UInt32)
     config_address bus, slot, func, field
-    case size
-    when 4
-      X86.inl PCI_VALUE_PORT
-    when 2
-      X86.inw PCI_VALUE_PORT + (field & 2)
-    when 1
-      X86.inb PCI_VALUE_PORT + (field & 3)
-    else
-      0xFFFF
-    end
+    X86.inl PCI_VALUE_PORT
+  end
+
+  def read_word(bus : UInt32, slot : UInt32, func : UInt32, field : UInt32)
+    config_address bus, slot, func, field
+    X86.inw PCI_VALUE_PORT + (field & 2)
+  end
+
+  def read_byte(bus : UInt32, slot : UInt32, func : UInt32, field : UInt32)
+    config_address bus, slot, func, field
+    X86.inb PCI_VALUE_PORT + (field & 3)
   end
 
   def read_base_address(bus : UInt32, slot : UInt32, func : UInt32, header_type : Int)
     case header_type
     when 0x0
-      config_address bus, slot, func, PCI_MEMORY_BASE0
+      config_address bus, slot, func, PCI_BAR0
       X86.inl(PCI_VALUE_PORT).to_u64
     else
       abort "TODO: handle header_type != 0x0"
     end
   end
 
-  def write_field(bus : UInt32, slot : UInt32, func : UInt32, field : UInt32, value : Int, size : Int)
+  def write_long(bus : UInt32, slot : UInt32, func : UInt32, field : UInt32, value : Int)
     config_address bus, slot, func, field
-    case size
-    when 4
-      X86.outl PCI_VALUE_PORT, value.to_u32
-    when 2
-      X86.outw PCI_VALUE_PORT + (field & 2), value.to_u16
-    when 1
-      X86.outb PCI_VALUE_PORT + (field & 3), value.to_u8
-    else
-      0xFFFF
-    end
+    X86.outl PCI_VALUE_PORT, value.to_u32
+  end
+
+  def write_word(bus : UInt32, slot : UInt32, func : UInt32, field : UInt32, value : Int)
+    config_address bus, slot, func, field
+    X86.outw PCI_VALUE_PORT + (field & 2), value.to_u16
+  end
+
+  def write_byte(bus : UInt32, slot : UInt32, func : UInt32, field : UInt32, value : Int)
+    config_address bus, slot, func, field
+    X86.outb PCI_VALUE_PORT + (field & 3), value.to_u8
   end
 
   # pci scanning
   private def check_device(bus : UInt32, device : UInt32, &block)
-    vendor_id = read_field bus, device, 0, PCI_VENDOR_ID, 2
+    vendor_id = read_word bus, device, 0, PCI_VENDOR_ID
     return if vendor_id == PCI_NONE # device doesn't exist
     func = 0u32
     yield bus, device, 0u32, vendor_id
-    header_type = read_field bus, device, 0, PCI_HEADER_TYPE, 1
+    header_type = read_byte bus, device, 0, PCI_HEADER_TYPE
     if (header_type & 0x80) != 0
       func = 1u32
       while func < 8
-        if (vendor_id = read_field(bus, device, func, PCI_VENDOR_ID, 2)) != PCI_NONE
+        if (vendor_id = read_word(bus, device, func, PCI_VENDOR_ID)) != PCI_NONE
           yield bus, device, func, vendor_id
         end
         func += 1
@@ -112,7 +112,7 @@ module PCI
   end
 
   def check_all_buses(&block)
-    header_type = read_field 0u32, 0u32, 0u32, PCI_HEADER_TYPE, 1
+    header_type = read_byte 0u32, 0u32, 0u32, PCI_HEADER_TYPE
     if (header_type & 0x80) == 0
       # Single PCI host controller
       check_bus(0) do |bus, device, func, vendor_id|
@@ -121,7 +121,7 @@ module PCI
     else
       func = 0u32
       while func < 8
-        break if read_field(0u32, 0u32, func, PCI_VENDOR_ID, 2) != 0xFFFF
+        break if read_word(0u32, 0u32, func, PCI_VENDOR_ID) != 0xFFFF
         check_bus(func) do |bus, device, func, vendor_id|
           yield bus, device, func, vendor_id
         end
@@ -131,9 +131,9 @@ module PCI
   end
 
   def enable_bus_mastering(bus : UInt32, slot : UInt32, func : UInt32)
-    value = read_field bus, slot, func, PCI_COMMAND, 2
+    value = read_word bus, slot, func, PCI_COMMAND
     value |= (1 << 2)
     value |= (1 << 0)
-    write_field bus, slot, func, PCI_COMMAND, value, 2
+    write_word bus, slot, func, PCI_COMMAND, value
   end
 end

@@ -72,7 +72,7 @@ module HDA
   def init_controller(@@bus : UInt32, @@device : UInt32, @@func : UInt32)
     Console.print "Initializing Intel HDA...\n"
 
-    header_type = PCI.read_field @@bus, @@device, @@func, PCI::PCI_HEADER_TYPE, 1
+    header_type = PCI.read_byte @@bus, @@device, @@func, PCI::PCI_HEADER_TYPE
     PCI.enable_bus_mastering @@bus, @@device, @@func
     phys = PCI.read_base_address(@@bus, @@device, @@func, header_type)
 

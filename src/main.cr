@@ -36,7 +36,7 @@ private def init_hardware
   # pci
   Console.print "checking PCI buses...\n"
   PCI.check_all_buses do |bus, device, func, vendor_id|
-    device_id = PCI.read_field bus, device, func, PCI::PCI_DEVICE_ID, 2
+    device_id = PCI.read_word bus, device, func, PCI::PCI_DEVICE_ID
     if Ide.pci_device?(vendor_id, device_id)
       Ide.init_controller bus, device, func
     elsif BGA.pci_device?(vendor_id, device_id)

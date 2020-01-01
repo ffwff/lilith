@@ -541,7 +541,7 @@ module Ide
   def init_controller(@@bus : UInt32, @@device : UInt32, @@func : UInt32)
     # set up dma transfers
     PCI.enable_bus_mastering @@bus, @@device, @@func
-    @@bus_master = (PCI.read_field(@@bus, @@device, @@func, PCI::PCI_BAR4, 4) & 0xFFFC).to_u16
+    @@bus_master = (PCI.read_long(@@bus, @@device, @@func, PCI::PCI_BAR4) & 0xFFFC).to_u16
 
     @@dma_buffer = Pointer(UInt8).new(FrameAllocator.claim_with_addr | Paging::IDENTITY_MASK)
     zero_page @@dma_buffer
