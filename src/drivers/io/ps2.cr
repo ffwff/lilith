@@ -48,6 +48,12 @@ module PS2
     ack
     @@mouse_id = read.to_i32
 
+    # sample rate to 100
+    mouse_write 0xF3
+    ack
+    mouse_write 100
+    ack
+
     # enable mouse
     mouse_write 0xF4
     ack
