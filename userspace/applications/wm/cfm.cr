@@ -20,11 +20,24 @@ module FileMgr
       new 0, 0, is_dir ? FileMgr.dir_image : FileMgr.file_image, name
     end
 
+    @last_clicked = 0u64
+    @double_clicks = 0
+    MAX_DOUBLE_CLICK = 1
     def mouse_event(ev : G::MouseEvent)
       if ev.left_clicked?
-        Dir.cd @text.not_nil!
-        FileMgr.load_dir
-        app.redraw
+        current = Time.unix
+        if (current - @last_clicked) <= MAX_DOUBLE_CLICK || @last_clicked == 0
+          @double_clicks += 1
+          if @double_clicks == 2
+            @double_clicks = 0
+            Dir.cd @text.not_nil!
+            FileMgr.load_dir
+            app.redraw
+          end
+        else
+          @double_clicks = 0
+        end
+        @last_clicked = current
       end
     end
   end
