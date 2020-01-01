@@ -46,7 +46,8 @@ QEMUFLAGS += \
 	-m 512M \
 	-serial stdio \
 	-no-shutdown -no-reboot \
-	-vga std
+	-vga std \
+	-device intel-hda,debug=9 -device hda-duplex,cad=0,debug=9
 
 ifeq ($(KVM),1)
 	QEMUFLAGS += -enable-kvm

@@ -25,11 +25,29 @@ module HDA
   end
 
   private def long_reg(offset)
-    (@@registers + offset).as(UInt32*)
+  end
+
+  private def read_word(offset)
+    (@@registers + offset).as(UInt16*).value
+  end
+
+  private def write_word(offset, value : UInt16)
+    (@@registers + offset).as(UInt16*).value = value
+  end
+
+  private def read_long(offset)
+    (@@registers + offset).as(UInt32*).value
+  end
+
+  private def write_long(offset, value : UInt32)
+    (@@registers + offset).as(UInt32*).value = value
   end
 
   GCTL      = 0x08
   INTCTL    = 0x20
+  INTSTS    = 0x24
+  WAKEEN    = 0x0C
+  STATESTS  = 0x0E
 
   CORBLBASE = 0x40
   CORBUBASE = 0x44
@@ -45,12 +63,17 @@ module HDA
   RIRBSTS   = 0x5D
   RINTCNT   = 0x5A
 
-  GET_PARAMETER = 0xF00
+  GET_PARAMETER = 0xF00u32
+
+  def corb_entry(data : UInt32, command : UInt32, nidx : UInt32, codec : UInt32)
+    (data & 0xFF) | ((command & 0xFFF) << 8) | ((nidx & 0xFF) << 19) | ((codec & 0xF) << 27)
+  end
 
   def init_controller(@@bus : UInt32, @@device : UInt32, @@func : UInt32)
     Console.print "Initializing Intel HDA...\n"
 
     header_type = PCI.read_field @@bus, @@device, @@func, PCI::PCI_HEADER_TYPE, 1
+    PCI.enable_bus_mastering @@bus, @@device, @@func
     phys = PCI.read_base_address(@@bus, @@device, @@func, header_type)
 
     @@corb = Pointer(UInt32).new(FrameAllocator.claim_with_addr | Paging::IDENTITY_MASK)
@@ -65,15 +88,27 @@ module HDA
     Serial.print @@rirb, '\n'
 
     # reset the device
-    long_reg(GCTL).value = 0x1
+    write_long GCTL, 0x0
+    X86.flush_memory
+    while (read_long(GCTL) & 0x1) != 0
+      # wait until bit 15 is cleared
+    end
+    write_long GCTL, 0x1
+    X86.flush_memory
+    while (read_long(GCTL) & 0x1) == 0
+      # wait until bit 15 is cleared
+    end
+
+    # codecs
+    Serial.print "statests: ", word_reg(STATESTS).value, '\n'
 
     # set corb address
-    long_reg(CORBLBASE).value = (corb_phys & 0xFFFF_FFFFu64).to_u32
-    long_reg(CORBUBASE).value = (corb_phys >> 32).to_u32
+    write_long CORBLBASE, (corb_phys & 0xFFFF_FFFFu64).to_u32
+    write_long CORBUBASE, (corb_phys >> 32).to_u32
 
     # set rirb address
-    long_reg(RIRBLBASE).value = (rirb_phys & 0xFFFF_FFFFu64).to_u32
-    long_reg(RIRBUBASE).value = (rirb_phys >> 32).to_u32
+    write_long RIRBLBASE, (rirb_phys & 0xFFFF_FFFFu64).to_u32
+    write_long RIRBUBASE, (rirb_phys >> 32).to_u32
 
     # set CORB/RIRB size
     set_buffer_size_register CORBSIZE
@@ -82,31 +117,30 @@ module HDA
     # RIRBSTS
     @@registers[RIRBCTL] = @@registers[RIRBCTL] | 0b1
 
-    push_corb 0xdeadbeefu32
-    
-    breakpoint
-
     # set the Read Pointer Reset bit
-    word_reg(CCORBRP).value = 0x8000
-    while (word_reg(CCORBRP).value >> 15) == 0
+    write_long CCORBRP, 0x8000
+    X86.flush_memory
+    while (read_long(CCORBRP) >> 15) == 0
       # wait until bit 15 is set
     end
+
     X86.flush_memory
-    word_reg(CCORBRP).value = 0x0
-    while (word_reg(CCORBRP).value >> 15) == 1
-      # wait until bit 15 is clear
+    write_long CCORBRP, 0x0
+    X86.flush_memory
+    while (read_long(CCORBRP) >> 15) == 1
+      # wait until bit 15 is set
     end
 
+    push_corb corb_entry(0x4u32, GET_PARAMETER, 0u32, 0u32)
+    
     # set N Response Interrupt Count to 1
-    word_reg(RINTCNT).value = 0x1
-
-    # enable the CORB DMA engine
-    word_reg(CORBCTL).value = word_reg(CORBCTL).value | 0b10
-    X86.flush_memory
-    abort "CORB DMA engine not enabled" if (word_reg(CORBCTL).value & 0b10) == 0
+    write_word RINTCNT, 0x1
 
     # enable the RIRB DMA engine
-    word_reg(RIRBCTL).value = word_reg(RIRBCTL).value | 0b11
+    write_word RIRBCTL, read_word(RIRBCTL) | 0b11
+
+    # enable the CORB DMA engine
+    write_word CORBCTL, read_word(CORBCTL) | 0b10
 
 
     breakpoint
@@ -135,7 +169,7 @@ module HDA
     end
     @@corb_idx += 1
     @@corb[@@corb_idx] = entry
-    word_reg(CCORBWP).value = @@corb_idx.to_u16
+    write_word CCORBWP, @@corb_idx.to_u16
   end
 
   # check pci device
