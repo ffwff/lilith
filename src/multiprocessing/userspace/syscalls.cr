@@ -704,7 +704,7 @@ rdx, rcx, rbx, rax : UInt64
         sysret(EINVAL)
       end
       pudata.mmap_list.each do |node|
-        if node.addr == addr && size == node.size
+        if node.addr == addr && (size == node.size || full_size)
           if node.attr.includes?(MemMapList::Node::Attributes::SharedMem)
             node.shm_node.not_nil!.munmap(node.addr, node.size, process)
           else

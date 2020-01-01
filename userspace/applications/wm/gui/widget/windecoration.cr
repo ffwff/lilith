@@ -167,6 +167,7 @@ class G::WindowDecoration < G::Widget
       if @close_x <= ev.relx <= (@close_x + close.width) &&
          @close_y <= ev.rely <= (@close_y + close.height)
         @app.not_nil!.close
+        return
       elsif @last_mouse_x != -1 && @last_mouse_y != -1
         delta_x = (ev.x - @last_mouse_x).clamp(-30, 30)
         delta_y = (ev.y - @last_mouse_y).clamp(-30, 30)
