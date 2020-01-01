@@ -1,5 +1,5 @@
 NPROC ?= $(shell nproc)
-ARCH ?= i386-elf-lilith
+ARCH ?= x86_64-elf-lilith
 
 all: build_binutils build_gcc build_libc
 
