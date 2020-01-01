@@ -482,7 +482,6 @@ module Fat16FS
     @sectors_per_cluster = 0u64
     getter sectors_per_cluster
 
-    # impl
     getter! root : VFS::Node
     getter device
 

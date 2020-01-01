@@ -348,20 +348,6 @@ module Ata
         @type = Type::Atapi
       end
 
-      case @type
-      when Type::Ata
-        builder = String::Builder.new 4
-        builder << "hd"
-        builder.write_byte (Ide.next_hd_idx + '0'.ord).to_u8
-      when Type::Atapi
-        builder = String::Builder.new 7
-        builder << "cdrom"
-        builder.write_byte (Ide.next_hd_idx + '0'.ord).to_u8
-      else
-        abort "unhandled ata type: ", @type
-      end
-      @name = builder.to_s
-
       # read device identifier
       device = Pointer(Ata::Data::AtaIdentify).malloc_atomic
 
@@ -371,9 +357,7 @@ module Ata
         Ata.wait_io disk_port
 
         status = Ata.status disk_port
-        # Serial.print "status: ", status, '\n'
         if status == 0
-          # cleanup
           return false
         end
       when Type::Atapi
@@ -381,12 +365,21 @@ module Ata
         Ata.wait_io disk_port
 
         status = Ata.status disk_port
-        # Serial.print "status: ", status, '\n'
         if status == 0
-          # cleanup
           return false
         end
       end
+
+      builder = String::Builder.new
+      case @type
+      when Type::Ata
+        builder << "hd"
+        builder << Ide.next_hd_idx
+      when Type::Atapi
+        builder << "cdrom"
+        builder << Ide.next_cdrom_idx
+      end
+      @name = builder.to_s
 
       buf = device.as(UInt16*)
       256.times do |i|
@@ -538,6 +531,9 @@ module Ide
   @@device = 0u32
   @@func = 0u32
 
+  @@devices : Array(Ata::Device)? = nil
+  class_getter! devices
+
   def init_controller(@@bus : UInt32, @@device : UInt32, @@func : UInt32)
     # set up dma transfers
     PCI.enable_bus_mastering @@bus, @@device, @@func
@@ -548,19 +544,19 @@ module Ide
     @@prdt.address = dma_buffer_phys
     @@prdt.end_of_table = 0x8000
 
-    @@devices = Array(Ata::Device?).new 4
-
-    devices.push Ata::Device.new(true, false)
-    devices.push Ata::Device.new(true, true)
-    devices.push Ata::Device.new(false, false)
-    devices.push Ata::Device.new(false, true)
+    @@devices = Array(Ata::Device).new
+    try_add_device true, false
+    try_add_device true, true
+    try_add_device false, false
+    try_add_device false, true
 
     Idt.register_irq 14, ->ata_primary_irq_handler
     Idt.register_irq 15, ->ata_secondary_irq_handler
-    devices.size.times do |idx|
-      unless devices[idx].not_nil!.init_device
-        devices[idx] = nil
-      end
+  end
+
+  private def try_add_device(primary, slave)
+    if (device = Ata::Device.new(primary, slave)).init_device
+      devices.push device
     end
   end
 

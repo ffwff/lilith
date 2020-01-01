@@ -83,6 +83,14 @@ class String
       end
     end
 
+    def putc(other : UInt8)
+      write_byte other
+    end
+
+    def <<(other)
+      other.to_s self
+    end
+
     def to_s : String
       abort "Can only invoke 'to_s' once on String::Builder" if @finished
       @finished = true
