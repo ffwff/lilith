@@ -12,7 +12,7 @@ struct BitArray
   end
 
   def self.pmalloc(size : Int32)
-    new Pointer(UInt32).pmalloc(malloc_size(size)), size
+    new PermaAllocator.malloc(malloc_size(size)).as(UInt32*), size
   end
 
   def self.null

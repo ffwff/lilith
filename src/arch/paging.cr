@@ -127,17 +127,17 @@ module Paging
       cur_mmap_addr += cur_entry[0].size + sizeof(UInt32)
     end
 
-    @@pml4_table = Pointer(Data::PML4Table).pmalloc_a
+    @@pml4_table = PermaAllocator.malloca_t(Data::PML4Table)
 
     # allocate for the kernel's pdpt
-    @@current_pdpt = Pointer(Data::PDPTable).pmalloc_a
+    @@current_pdpt = PermaAllocator.malloca_t(Data::PDPTable)
     # store it at the kernel offset
     @@pml4_table.value.pdpt[257] = @@current_pdpt.address | PT_MASK
 
     # identity map the physical memory on the higher half
     if X86::CPUID.has_feature?(X86::CPUID::FeaturesExtendedEdx::PDPE1GB)
       # 1 GiB paging
-      identity_map_pdpt = Pointer(Data::PDPTable).pmalloc_a
+      identity_map_pdpt = PermaAllocator.malloca_t(Data::PDPTable)
       _, dirs, _, _ = page_layer_indexes(@@usable_physical_memory)
       (dirs + 1).times do |i|
         pg = (i.to_u64 * 0x4000_0000u64) | PT_MASK_GB_IDENTITY
@@ -146,7 +146,7 @@ module Paging
       @@pml4_table.value.pdpt[256] = identity_map_pdpt.address | PT_MASK
     else
       # 2 MiB paging
-      identity_map_pdpt = Pointer(Data::PDPTable).pmalloc_a
+      identity_map_pdpt = PermaAllocator.malloca_t(Data::PDPTable)
       _, dirs, tables, _ = page_layer_indexes(@@usable_physical_memory)
       # add remaining tables to directory count
       if tables > 0
@@ -154,7 +154,7 @@ module Paging
       end
       # directories
       dirs.times do |i|
-        identity_dir = Pointer(Data::PageDirectory).pmalloc_a
+        identity_dir = PermaAllocator.malloca_t(Data::PageDirectory)
         512.times do |j|
           identity_dir_phys = i.to_u64 * 0x4000_0000u64 + j.to_u64 * 0x20_0000u64
           identity_dir.value.tables[j] = identity_dir_phys | PT_MASK_MB_IDENTITY_TABLE
@@ -212,8 +212,8 @@ module Paging
     end
     # claim placement heap segment
     # we do this because the kernel's page table lies here:
-    i = Pmalloc.start
-    while i <= aligned(Pmalloc.addr)
+    i = PermaAllocator.start
+    while i <= aligned(PermaAllocator.addr)
       FrameAllocator.initial_claim(i)
       i += 0x1000
     end
@@ -447,7 +447,7 @@ module Paging
 
     # directory
     if @@current_pdpt.value.dirs[dir_idx] == 0
-      pd = Pointer(Data::PageDirectory).pmalloc_a
+      pd = PermaAllocator.malloca_t(Data::PageDirectory)
       paddr = pd.address | PT_MASK
       @@current_pdpt.value.dirs[dir_idx] = paddr
     else
@@ -456,7 +456,7 @@ module Paging
 
     # table
     if pd.value.tables[table_idx] == 0
-      pt = Pointer(Data::PageTable).pmalloc_a
+      pt = PermaAllocator.malloca_t(Data::PageTable)
       paddr = pt.address | PT_MASK
       pd.value.tables[table_idx] = paddr
     else

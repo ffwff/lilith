@@ -91,7 +91,7 @@ module FrameAllocator
   @@lock = Spinlock.new
 
   def add_region(base_addr : UInt64, length : UInt64)
-    region = Pointer(Region).pmalloc
+    region = PermaAllocator.malloca_t(Region)
     region.value._initialize(base_addr, length)
     if @@first_region.null?
       @@first_region = region
