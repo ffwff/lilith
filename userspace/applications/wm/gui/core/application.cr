@@ -62,7 +62,7 @@ class G::Application
   def run
     if (main_widget = @main_widget)
       main_widget.setup_event
-      main_widget.draw_event
+      redraw
     end
     while @running
       io = @selector.wait @selector_timeout

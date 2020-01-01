@@ -38,7 +38,7 @@ module FileMgr
     load_images
 
     app = G::Application.new
-    window = G::Window.new(0, 0, 400, 300)
+    window = G::Window.new(30, 30, 400, 300)
     app.main_widget = window
 
     decoration = G::WindowDecoration.new(window, "fm")
