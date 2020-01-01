@@ -9,35 +9,7 @@ A POSIX-like x86-64 kernel and userspace written in Crystal.
 
 ## Building
 
-lilith needs to be compiled with a patched crystal compiler, to build it, run the command:
-
-```
-make toolchain/crystal/.build/crystal
-```
-
-You will also need an appropriate `x86_64-elf` binutils toolchain in order to link and assemble the kernel, as well as `i686-elf` binutils to build the bootstrap code.
-
-```
-make build/kernel
-```
-
-### Building the userspace
-
-A Makefile is provided for building the userspace toolchain, to build it, go to the `userspace/toolchain` directory and use `make`.
-
-Once built, a patched version of GCC/Binutils will be installed in `userspace/toolchain/tools/bin`, simply set your PATH variable to that location and you can use the toolchain (with the `i386-elf-lilith` or `x86_64-elf-lilith` prefix).
-
-After building the toolchain, set the necessary environment variables by doing:
-
-```
-source ./env.sh
-```
-
-To compile C programs for the system, you'll also need to build the libc:
-
-```
-./pkgs/missio build libc
-```
+See [BUILDING.md](./BUILDING.md).
 
 ## Running
 
@@ -49,8 +21,10 @@ make run
 
 To run with storage, an MBR-formatted hard drive image with a FAT16 partition must be provided in the running directory with the name `drive.img`. The kernel will automatically boot the `main.bin` executable on the hard drive, or panic if it can't be loaded.
 
+Issue this command to run with gdb attached:
+
 ```
-make run_img
+make rungdb_img
 ```
 
 ## Features
