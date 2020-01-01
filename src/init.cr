@@ -63,3 +63,14 @@ fun __crystal_once(state : Void*, flag : Bool*, initializer : Void*)
     flag.value = true
   end
 end
+
+fun __crystal_personality
+end
+
+fun __crystal_raise(unwind_ex : Void*)
+  abort "__crystal_raise called"
+end
+
+fun __crystal_get_exception(unwind_ex : Void*) : UInt64
+  0u64
+end

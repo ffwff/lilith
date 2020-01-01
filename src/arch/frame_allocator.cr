@@ -1,16 +1,14 @@
 module FrameAllocator
   extend self
 
-  struct Region
+  private struct Region
     @base_addr = 0u64
     @length = 0u64
     getter base_addr, length
 
     @frames = BitArray.null
     getter frames
-
-    protected def frames=(@frames)
-    end
+    protected setter frames
 
     @search_from = 0
 
@@ -37,6 +35,13 @@ module FrameAllocator
       return false if @frames[idx]
       @frames[idx] = true
       true
+    end
+
+    @lock = Spinlock.new
+    def lock
+      @lock.with do
+        yield
+      end
     end
 
     def claim
@@ -83,6 +88,8 @@ module FrameAllocator
   @@used_blocks = 0u64
   class_getter used_blocks
 
+  @@lock = Spinlock.new
+
   def add_region(base_addr : UInt64, length : UInt64)
     region = Pointer(Region).pmalloc
     region.value._initialize(base_addr, length)
@@ -125,9 +132,11 @@ module FrameAllocator
 
   def claim
     each_region do |region|
-      if frame = region.claim
-        @@used_blocks += 1
-        return frame
+      region.lock do
+        if frame = region.claim
+          @@used_blocks += 1
+          return frame
+        end
       end
     end
     abort "no more physical memory!"
@@ -136,19 +145,23 @@ module FrameAllocator
 
   def declaim_addr(addr : UInt64)
     each_region do |region|
-      if region.declaim_addr addr
-        @@used_blocks -= 1
-        return true
+      region.lock do
+        if region.declaim_addr addr
+          @@used_blocks -= 1
+          return
+        end
       end
     end
-    false
+    abort "unknown address"
   end
 
   def claim_with_addr
     each_region do |region|
-      if frame = region.claim_with_addr
-        @@used_blocks += 1
-        return frame
+      region.lock do
+        if frame = region.claim_with_addr
+          @@used_blocks += 1
+          return frame
+        end
       end
     end
     abort "no more physical memory!"

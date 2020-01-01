@@ -142,11 +142,13 @@ rdx, rcx, rbx, rax : UInt64
     {% if flag?(:record_cli) %}
       asm("lea (%rip), $0" : "=r"(@@disabled_at) :: "volatile")
     {% end %}
-    retval = yield
-
-    @@status_mask = false
-    enable if reenable
-    retval
+    begin
+      retval = yield
+    ensure
+      @@status_mask = false
+      enable if reenable
+      retval
+    end
   end
 
   def check_if

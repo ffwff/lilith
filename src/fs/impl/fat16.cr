@@ -256,38 +256,40 @@ module Fat16FS
                          Slice(UInt8).new(allocator.not_nil!.malloc(cluster_bufsz).as(UInt8*), cluster_bufsz)
                        end
       last_cluster = 0
-      while remaining_bytes > 0 && cluster < 0xFFF8
-        sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
-        retval = if fs.device.dma_buffer?
-                   fs.device.read_to_dma_buffer sector, fs.sectors_per_cluster
-                 else
-                   fs.device.read_sector(cluster_buffer.to_unsafe, sector, fs.sectors_per_cluster)
-                 end
-        unless retval
-          Serial.print "unable to read from device, returning garbage!"
-          remaining_bytes = 0
-          break
-        end
+      begin
+        while remaining_bytes > 0 && cluster < 0xFFF8
+          sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
+          retval = if fs.device.dma_buffer?
+                     fs.device.read_to_dma_buffer sector, fs.sectors_per_cluster
+                   else
+                     fs.device.read_sector(cluster_buffer.to_unsafe, sector, fs.sectors_per_cluster)
+                   end
+          unless retval
+            Serial.print "unable to read from device, returning garbage!"
+            remaining_bytes = 0
+            break
+          end
 
-        if offset_bytes <= cluster_buffer.size
-          cur_buffer = Slice(UInt8).new(cluster_buffer.to_unsafe + offset_bytes,
-            Math.min(cluster_buffer.size - offset_bytes, remaining_bytes.to_i32))
-          yield cur_buffer
-          offset += cur_buffer.size
-          remaining_bytes -= cur_buffer.size
-          offset_bytes = 0
-        else
-          offset_bytes -= cluster_buffer.size
+          if offset_bytes <= cluster_buffer.size
+            cur_buffer = Slice(UInt8).new(cluster_buffer.to_unsafe + offset_bytes,
+              Math.min(cluster_buffer.size - offset_bytes, remaining_bytes.to_i32))
+            yield cur_buffer
+            offset += cur_buffer.size
+            remaining_bytes -= cur_buffer.size
+            offset_bytes = 0
+          else
+            offset_bytes -= cluster_buffer.size
+          end
+          fat_sector = read_fat_table fat_table, cluster, fat_sector
+          last_cluster = cluster
+          cluster = fat_table[ent_for cluster]
         end
-        fat_sector = read_fat_table fat_table, cluster, fat_sector
-        last_cluster = cluster
-        cluster = fat_table[ent_for cluster]
-      end
-      insert_cache offset, last_cluster.to_u32
-
-      # clean up within function call
-      if allocator
-        allocator.not_nil!.clear
+      ensure
+        # set cache and clear allocation
+        insert_cache offset, last_cluster.to_u32
+        if allocator
+          allocator.not_nil!.clear
+        end
       end
     end
 
