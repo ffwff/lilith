@@ -43,7 +43,7 @@ private def init_hardware
       BGA.init_controller bus, device, func
       Console.text_mode = false
     elsif HDA.pci_device?(vendor_id, device_id)
-      HDA.init_controller bus, device, func
+      # HDA.init_controller bus, device, func
     end
   end
 

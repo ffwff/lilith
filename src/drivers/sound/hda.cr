@@ -69,6 +69,19 @@ module HDA
     (data & 0xFF) | ((command & 0xFFF) << 8) | ((nidx & 0xFF) << 19) | ((codec & 0xF) << 27)
   end
 
+  class Codec
+    getter id
+    def initialize(@id : Int32)
+    end
+
+    def node_count
+      HDA.push_corb HDA.corb_entry(0x4u32, GET_PARAMETER, 0u32, 0u32)
+    end
+  end
+
+  @@codecs : Array(Codec)? = nil
+  class_getter! codecs
+
   def init_controller(@@bus : UInt32, @@device : UInt32, @@func : UInt32)
     Console.print "Initializing Intel HDA...\n"
 
@@ -87,6 +100,7 @@ module HDA
     Serial.print @@corb, '\n'
     Serial.print @@rirb, '\n'
 
+
     # reset the device
     write_long GCTL, 0x0
     X86.flush_memory
@@ -99,8 +113,27 @@ module HDA
       # wait until bit 15 is cleared
     end
 
+    # intctl
+    write_long INTCTL, 0x80000000u32
+    if (irq = PCI.read_byte(@@bus, @@device, @@func, PCI::PCI_INTERRUPT_LINE)) == 0
+      abort "irq is zero!"
+    end
+    Idt.register_irq irq, ->irq_handler
+
     # codecs
-    Serial.print "statests: ", word_reg(STATESTS).value, '\n'
+    state_sts = word_reg(STATESTS).value & 0x7fff
+    return if state_sts == 0
+    idx = 0
+    while idx < 15
+      if (state_sts & 0x1) != 0
+        if !@@codecs
+          @@codecs = Array(Codec).new
+        end
+        codecs.push Codec.new(idx)
+      end
+      state_sts >>= 1
+      idx += 1
+    end
 
     # set corb address
     write_long CORBLBASE, (corb_phys & 0xFFFF_FFFFu64).to_u32
@@ -131,17 +164,7 @@ module HDA
       # wait until bit 15 is set
     end
 
-    push_corb corb_entry(0x4u32, GET_PARAMETER, 0u32, 0u32)
-    
-    # set N Response Interrupt Count to 1
-    write_word RINTCNT, 0x1
-
-    # enable the RIRB DMA engine
-    write_word RIRBCTL, read_word(RIRBCTL) | 0b11
-
-    # enable the CORB DMA engine
-    write_word CORBCTL, read_word(CORBCTL) | 0b10
-
+    codecs[0].node_count
 
     breakpoint
   end
@@ -170,6 +193,15 @@ module HDA
     @@corb_idx += 1
     @@corb[@@corb_idx] = entry
     write_word CCORBWP, @@corb_idx.to_u16
+    # set N Response Interrupt Count to 1
+    write_word RINTCNT, 0x1
+
+    # enable the DMA engine
+    write_word RIRBCTL, read_word(RIRBCTL) | 0b11
+    write_word CORBCTL, 0b10
+  end
+
+  def irq_handler
   end
 
   # check pci device
