@@ -413,6 +413,7 @@ module Ata
     def read_to_dma_buffer(sector : UInt64, nsectors : Int = 1)
       abort "can't access atapi" if @type == Type::Atapi
       abort "device doesn't support dma" if !@can_dma
+      abort "nsectors must be <= 8" if nsectors <= 8
       # Serial.print "ata read ", sector, '\n'
 
       retval = false
@@ -444,6 +445,7 @@ module Ata
         retries = 0
         while retries < MAX_RETRIES
           if @can_dma
+            abort "nsectors must be <= 8" if nsectors <= 8
             Ata.interrupted = false
             Ata.read_dma sector, disk_port, cmd_port, slave, nsectors.to_u8
             # poll
