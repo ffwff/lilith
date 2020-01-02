@@ -1,10 +1,10 @@
 module Ata
   extend self
 
+  # T13/1699-D Revision 3f
+  # 7.16 IDENTIFY DEVICE, pg 90
+  # also see ftp://ftp.seagate.com/acrobat/reference/111-1c.pdf
   lib Data
-    # T13/1699-D Revision 3f
-    # 7.16 IDENTIFY DEVICE, pg 90
-    # also see ftp://ftp.seagate.com/acrobat/reference/111-1c.pdf
     @[Packed]
     struct AtaIdentify
       flags : UInt16
@@ -27,6 +27,42 @@ module Ata
       # Total Number of User Addressable Sectors for the 48-bit Address feature set
       sectors_48 : UInt64
       unused7 : UInt16[152]
+    end
+
+    @[Packed]
+    struct AtapiIdentify
+      flag : UInt16
+      unused1 : UInt16[9]
+      serial : UInt8[20]
+      unused2 : UInt16[3]
+      firmware : UInt8[8]
+      model : UInt8[40]
+      unused3 : UInt16[2]
+      capabilities1 : UInt16
+      capabilities2 : UInt16
+      unused4 : UInt16[12]
+      dma_caps : UInt16
+      pio_caps : UInt16
+      dma_cycles : UInt16
+      rec_dma_cycles : UInt16
+      pio_no_flow : UInt16
+      pio_iordy : UInt16
+      unused5 : UInt16[2]
+      packet_ns : UInt16 
+      service_ns : UInt16
+      unused6 : UInt16
+      queue_depth : UInt16
+      unused7 : UInt16[4]
+      major_version : UInt16
+      minor_version : UInt16
+      cmd_set1 : UInt16
+      cmd_set2 : UInt16
+      cmd_ext1 : UInt16
+      cmd_set3 : UInt16
+      cmd_set4 : UInt16
+      cmd_set_default : UInt16
+      dma_mode : UInt16
+      unused8 : UInt16[167]
     end
   end
 
@@ -346,10 +382,13 @@ module Ata
         @type = Type::Ata
       elsif (cl == 0x14 && ch == 0xEB) || (cl == 0x69 && ch == 0x96)
         @type = Type::Atapi
+      else
+        Serial.print "unknown device type!\n"
+        return false
       end
 
       # read device identifier
-      device = Pointer(Ata::Data::AtaIdentify).malloc_atomic
+      identify = Slice(UInt16).malloc_atomic 256
 
       case @type
       when Type::Ata
@@ -370,6 +409,7 @@ module Ata
         end
       end
 
+      # name for the device
       builder = String::Builder.new
       case @type
       when Type::Ata
@@ -381,13 +421,8 @@ module Ata
       end
       @name = builder.to_s
 
-      buf = device.as(UInt16*)
       256.times do |i|
-        buf[i] = X86.inw disk_port
-      end
-
-      if (device.value.capabilities[0] & (1 << 8)) != 0
-        @can_dma = true
+        identify.to_unsafe[i] = X86.inw disk_port
       end
 
       # fix model name from endianness
@@ -400,6 +435,16 @@ module Ata
           i += 2
         end
       {% end %}
+
+      case @type
+      when Type::Ata
+        identify = identify.to_unsafe.as(Ata::Data::AtaIdentify*)
+        if (device.value.capabilities[0] & (1 << 8)) != 0
+          @can_dma = true
+        end
+      when Type::Atapi
+        abort "TODO: handle ATAPI"
+      end
 
       true
     end
@@ -424,6 +469,7 @@ module Ata
           Ata.read_dma sector, disk_port, cmd_port, slave, nsectors.to_u8
           # poll
           while !Ata.interrupted
+            # FIXME: make ATA.interrupted a futex once we implement that
             asm("pause")
           end
           Ata.flush_dma
@@ -438,7 +484,6 @@ module Ata
 
     def read_sector(ptr : UInt8*, sector : UInt64, nsectors : Int = 1)
       abort "can't access atapi" if @type == Type::Atapi
-      # Serial.print "ata read ", sector, '\n'
 
       retval = false
       Ide.lock do
@@ -450,6 +495,7 @@ module Ata
             Ata.read_dma sector, disk_port, cmd_port, slave, nsectors.to_u8
             # poll
             while !Ata.interrupted
+              # FIXME: make ATA.interrupted a futex once we implement that
               asm("pause")
             end
             memcpy(ptr, Ide.dma_buffer, 512u64 * nsectors)
