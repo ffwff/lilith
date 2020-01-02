@@ -238,7 +238,7 @@ rdx, rcx, rbx, rax : UInt64
       case fv.rax
       when SC_MMAP_DRV
         virt_addr = fv.rbx
-        fv.rax = Paging.alloc_page_pg(
+        fv.rax = Paging.alloc_page(
           virt_addr, fv.rdx != 0, fv.r8 != 0,
           fv.r9,
           execute: fv.r10 != 0
@@ -627,8 +627,7 @@ rdx, rcx, rbx, rax : UInt64
           end
         end
         npages = incr // 0x1000
-        Paging.alloc_page_pg(mmap_heap.end_addr, true, true, npages: npages.to_u64)
-        pudata.memory_used += incr // 1024
+        Paging.alloc_page(mmap_heap.end_addr, true, true, npages: npages.to_u64)
         mmap_heap.size += incr
       elsif incr == 0 && mmap_heap.size == 0u64
         if !mmap_heap.next_node.nil?
@@ -637,8 +636,7 @@ rdx, rcx, rbx, rax : UInt64
             sysret(0)
           end
         end
-        Paging.alloc_page_pg(mmap_heap.addr, true, true)
-        pudata.memory_used += (0x1000 // 1024)
+        Paging.alloc_page(mmap_heap.addr, true, true)
         mmap_heap.size += 0x1000
       elsif incr < 0
         # TODO
@@ -646,6 +644,7 @@ rdx, rcx, rbx, rax : UInt64
       end
       sysret(mmap_heap.addr + mmap_heap.size - incr)
     when SC_MMAP
+      Serial.print process.name, '\n'
       fdi = arg(0).to_i32
 
       prot = Syscall::Data::MmapProt.new(arg(1).to_i32)
@@ -664,10 +663,9 @@ rdx, rcx, rbx, rax : UInt64
         if (size & 0xfff) != 0
           sysret(0)
         end
-        Paging.alloc_page_pg addr,
+        Paging.alloc_page addr,
           mmap_attrs.includes?(MemMapList::Node::Attributes::Write),
           true, size // 0x1000
-        pudata.memory_used += size // 1024
         pudata.mmap_list.add(addr, size, mmap_attrs)
         sysret(addr)
       else

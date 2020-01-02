@@ -50,7 +50,8 @@ class MemMapList
     def handle_page_fault(present, rw, user, page : UInt64)
       if @attr.includes?(Attributes::Stack)
         unless present
-          Paging.alloc_page_pg page, true, true, 1
+          # FIXME: replace this with process allocation
+          Paging.alloc_page page, true, true, 1
           zero_page Pointer(UInt8).new(page)
           return true
         end

@@ -71,7 +71,7 @@ class FbdevFS::Node < VFS::Node
     node.attr &= ~MemMapList::Node::Attributes::Execute
     FbdevState.lock do |state|
       phys_address = state.buffer.to_unsafe.address & ~Paging::IDENTITY_MASK
-      Paging.alloc_page_pg node.addr,
+      Paging.alloc_page node.addr,
         node.attr.includes?(MemMapList::Node::Attributes::Write),
         true, npages, phys_address
     end

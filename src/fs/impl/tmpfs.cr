@@ -230,7 +230,7 @@ module TmpFS
       each_frame do |frame|
         break if i == npages
         phys = frame.address & ~Paging::IDENTITY_MASK
-        Paging.alloc_page_pg(node.addr + i * 0x1000,
+        Paging.alloc_page(node.addr + i * 0x1000,
               node.attr.includes?(MemMapList::Node::Attributes::Write),
               true, 1, phys,
               execute: node.attr.includes?(MemMapList::Node::Attributes::Execute))

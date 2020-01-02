@@ -244,9 +244,9 @@ module Paging
 
   # allocate page when pg is enabled
   # returns page address
-  def alloc_page_pg(virt_addr_start : UInt64, rw : Bool, user : Bool,
-                    npages : USize = 1, phys_addr_start : UInt64 = 0,
-                    execute = false) : UInt64
+  def alloc_page(virt_addr_start : UInt64, rw : Bool, user : Bool,
+                 npages : USize = 1, phys_addr_start : UInt64 = 0,
+                 execute = false) : UInt64
     # Serial.print "allocate: ", Pointer(Void).new(virt_addr_start), ' ', npages, '\n'
     Idt.disable
 
@@ -299,6 +299,7 @@ module Paging
       else
         phys_addr = FrameAllocator.claim_with_addr
       end
+      abort "page must be zero" if pt.value.pages[page_idx] != 0
       page = page_create(rw, user, phys_addr, execute)
       pt.value.pages[page_idx] = page
 
@@ -313,7 +314,7 @@ module Paging
   end
 
   @[NoInline]
-  def alloc_page_pg_drv(virt_addr_start : UInt64, rw : Bool, user : Bool,
+  def alloc_page_drv(virt_addr_start : UInt64, rw : Bool, user : Bool,
                         npages : USize = 1,
                         execute : Bool = false) : UInt64
     retval = 0u64

@@ -364,7 +364,7 @@ module ElfReader
             npages = (section_end - section_start) // 0x1000
             memory_used += (section_end - section_start) // 1024
             # create page and zero-initialize it
-            page_start = Paging.alloc_page_pg_drv(section_start,
+            page_start = Paging.alloc_page_drv(section_start,
               data.attrs.includes?(MemMapList::Node::Attributes::Write),
               true, npages,
               execute: data.attrs.includes?(MemMapList::Node::Attributes::Execute))

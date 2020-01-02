@@ -529,7 +529,7 @@ module Fat16FS
           ->(ptr : Void*) { ptr.as(FS).process },
           self.as(Void*),
           stack_pages: 4) do |process|
-        Paging.alloc_page_pg(Multiprocessing::KERNEL_HEAP_INITIAL, true, false, 2)
+        Paging.alloc_page(Multiprocessing::KERNEL_HEAP_INITIAL, true, false, 2)
       end
 
       @queue = VFS::Queue.new(@process)

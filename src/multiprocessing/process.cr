@@ -154,6 +154,7 @@ module Multiprocessing
       getter environ
 
       # how much memory we're using (in kb)
+      # FIXME: add alloc_page function
       @memory_used : USize = 0
       property memory_used
 
@@ -451,12 +452,12 @@ module Multiprocessing
 
         # stack
         if udata.is64
-          Paging.alloc_page_pg(USER_STACK_TOP64, true, true, 1)
+          Paging.alloc_page(USER_STACK_TOP64, true, true, 1)
           zero_page Pointer(UInt8).new(USER_STACK_TOP64), 1
           udata.mmap_list.add(USER_STACK_BOTTOM_MAX64, USER_STACK_SIZE,
             MemMapList::Node::Attributes::Read | MemMapList::Node::Attributes::Write | MemMapList::Node::Attributes::Stack)
         else
-          Paging.alloc_page_pg(USER_STACK_TOP, true, true, 1)
+          Paging.alloc_page(USER_STACK_TOP, true, true, 1)
           zero_page Pointer(UInt8).new(USER_STACK_TOP), 1
           udata.mmap_list.add(USER_STACK_BOTTOM_MAX, USER_STACK_SIZE,
             MemMapList::Node::Attributes::Read | MemMapList::Node::Attributes::Write | MemMapList::Node::Attributes::Stack)
@@ -492,7 +493,7 @@ module Multiprocessing
     def self.spawn_kernel(name : String, function, arg : Void*? = nil, stack_pages = 1, &block)
       Multiprocessing::Process.new(name, KernelData.new(stack_pages)) do |process|
         stack_start = Paging.aligned_floor(process.initial_sp) - (stack_pages - 1) * 0x1000
-        stack = Paging.alloc_page_pg(stack_start, true, false, npages: stack_pages.to_u64)
+        stack = Paging.alloc_page(stack_start, true, false, npages: stack_pages.to_u64)
         process.initial_ip = function.pointer.address
 
         yield process
