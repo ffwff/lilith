@@ -37,6 +37,8 @@ end
   end
 {% end %}
 
+# A class which objects can inherit from to mark dynamically-sized
+# buffers. This is inherited by data structures such as `Array` or `Hash`.
 class Markable
   {% if flag?(:record_markable) %}
     @markable : UInt64 = 0u64
@@ -44,53 +46,79 @@ class Markable
       @markable == 0
     end
 
+    # Activates the write barrier for the markable object.
     def write_barrier(&block)
       abort "multiple write barriers" if !markable?
       asm("lea (%rip), $0" : "=r"(@markable) :: "volatile")
-      retval = yield
-      @markable = 0u64 
-      # perform a non stw cycle here so the gray stack
-      # doesn't get clogged with write barrier'd classes
-      GC.non_stw_cycle
-      retval
+      begin
+        retval = yield
+      ensure
+        @markable = 0u64 
+        # perform a non stw cycle here so the gray stack
+        # doesn't get clogged with write barrier'd classes
+        GC.non_stw_cycle
+        retval
+      end
     end
   {% else %}
     @markable = true
     def markable?
       @markable
     end
-
+    
+    # Activates the write barrier for the markable object.
     def write_barrier(&block)
       abort "multiple write barriers" if !markable?
       @markable = false
-      retval = yield
-      @markable = true
-      # perform a non stw cycle here so the gray stack
-      # doesn't get clogged with write barrier'd classes
-      GC.non_stw_cycle
-      retval
+      begin
+        retval = yield
+      ensure
+        @markable = true
+        # perform a non stw cycle here so the gray stack
+        # doesn't get clogged with write barrier'd classes
+        GC.non_stw_cycle
+        retval
+      end
     end
   {% end %}
 
+  # Marks any object connected to the markable object.
   @[NoInline]
   def mark(&block : Void* ->)
     abort "mark isn't implemented!"
   end
 end
 
+# A simple hybrid conservtive-precise incremental garbage collector.
+# The GC uses the tri-color marking algorithm, storing whether or not 
+# the object is marked in the `Allocator` pool's metadata bitmap.
+# Gray nodes are stored in two internal fixed-size gray stacks (a front and a back stack),
+# one of which is scanned each cycle (after root nodes have been scanned).
+#
+# The GC starts by scanning roots in the data segment (by marking and graying
+# out pointers in the null-terminated pointer array `__crystal_gc_globals`),
+# and scanning roots conservatively. This part of the cycle stops the world,
+# as this cycle usually has long pause times. Once every root has been marked,
+# they are pushed into the gray stack, adn the collector transitions into
+# the gray-scanning cycle.
+# 
+# The collector then pops and scans each object in the front stack, precisely marking every
+# pointer contained within the object (based on marking data exposed by the compiler
+# in the `__crystal_malloc_type_offsets`), pushing the newly marked pointer into the back gray
+# stack. After each gray-scanning cycle, the front stack and the back stack is swapped.
+# Once the back stack is empty, the collector transitions into the sweep cycle.
+#
+# On the sweep cycle, we call `Allocator.sweep` to scan the heap and freeing every marked object.
+# The collector resets to the initial state.
+#
+# ### See also
+#
+# See `Allocator` for more information.
 module GC
   extend self
 
-  lib Data
-    struct GrayNode
-      prev_node : GrayNode*
-      next_node : GrayNode*
-      ptr : Void*
-    end
-  end
-
-  # whether the GC is enabled
   @@enabled = false
+  # whether the GC is enabled
   class_getter enabled
 
   GRAY_SIZE = 256
@@ -152,12 +180,14 @@ module GC
   @@stack_start = Pointer(Void).null
   @@stack_end = Pointer(Void).null
 
+  # Initializes the garbage collector and enables it.
   def init(@@stack_start : Void*, @@stack_end : Void*)
     @@curr_grays = @@front_grays.to_unsafe
     @@opp_grays = @@back_grays.to_unsafe
     @@enabled = true
   end
 
+  # Scans the global variables specified in __crystal_gc_globals.
   private def scan_globals
     global_ptr = LibCrystal.__crystal_gc_globals
     while (ptr = global_ptr.value)
@@ -169,6 +199,7 @@ module GC
     end
   end
 
+  # Scans registers.
   private def scan_registers
     {% for register in ["rbx", "r12", "r13", "r14", "r15"] %}
       ptr = Pointer(Void).null
@@ -179,6 +210,7 @@ module GC
     {% end %}
   end
 
+  # Conservatively scan a data segment.
   private def conservative_scan(from : UInt64, to : UInt64)
     i = from
     while i < to
@@ -190,6 +222,7 @@ module GC
     end
   end
 
+  # Scans the call stack before GC.cycle was called.
   private def scan_stack
     sp = 0u64
     asm("" : "={rsp}"(sp))
@@ -202,12 +235,14 @@ module GC
     conservative_scan(sp, @@stack_end.address)
   end
 
+  # Scans the list of gray nodes.
   private def scan_gray_nodes
     while ptr = pop_gray
       scan_object ptr
     end
   end
 
+  # Scans an object.
   private def scan_object(ptr : Void*)
     # Serial.print ptr, '\n'
     id = ptr.as(UInt32*).value
@@ -347,12 +382,14 @@ module GC
     end
   end
 
+  # Tries to do at most 16 GC cycles, stopping upon a sweep stage.
   def full_cycle
     @@spinlock.with do
       unlocked_full_cycle
     end
   end
 
+  # Tries to do a non stop-the-world cycle.
   def non_stw_cycle
     @@spinlock.with do
       if @@state != State::ScanRoot
@@ -363,6 +400,7 @@ module GC
 
   @@spinlock = Spinlock.new
 
+  # Allocates an object and marks it gray.
   def unsafe_malloc(size : UInt64, atomic = false)
     @@spinlock.with do
       if @@enabled
@@ -378,6 +416,7 @@ module GC
     end
   end
 
+  # Resizes an object to `size`, returning itself (if there is still space available) or a new pointer.
   def realloc(ptr : Void*, size : UInt64) : Void*
     oldsize = Allocator.block_size_for_ptr(ptr)
     return ptr if oldsize >= size
@@ -409,6 +448,7 @@ module GC
     end
   end
 
+  # Dumps the GC state into `io`.
   def dump(io)
     io.print "GC {\n"
     io.print "  curr_grays ("
