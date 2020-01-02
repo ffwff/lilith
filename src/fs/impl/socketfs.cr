@@ -122,6 +122,7 @@ class SocketFS::ConnectionNode < VFS::Node
     Disconnected
     TryConnect
     Connected
+    DisconnectedForever
   end
   @state = State::Disconnected
   property state
@@ -142,7 +143,7 @@ class SocketFS::ConnectionNode < VFS::Node
     if @open_count == 0
       @m_buffer.deinit_buffer
       @s_buffer.deinit_buffer
-      @state = State::Disconnected
+      @state = State::DisconnectedForever
     end
   end
 
@@ -154,6 +155,8 @@ class SocketFS::ConnectionNode < VFS::Node
       @state = State::TryConnect
       return 0
     when State::TryConnect
+      return 0
+    when State::DisconnectedForever
       return 0
     end
     if process.not_nil!.pid == @parent.listen_node.listener_pid
@@ -171,6 +174,8 @@ class SocketFS::ConnectionNode < VFS::Node
       return VFS_WAIT_QUEUE
     when State::TryConnect
       return VFS_WAIT_QUEUE
+    when State::DisconnectedForever
+      return 0
     end
     if process.not_nil!.pid == @parent.listen_node.listener_pid
       @m_buffer.write slice
@@ -201,6 +206,8 @@ class SocketFS::ConnectionNode < VFS::Node
       return false
     when State::TryConnect
       return false
+    when State::DisconnectedForever
+      return true
     end
     if process.pid == @parent.listen_node.listener_pid
       @s_buffer.size > 0

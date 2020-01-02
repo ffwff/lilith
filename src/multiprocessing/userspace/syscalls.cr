@@ -644,7 +644,6 @@ rdx, rcx, rbx, rax : UInt64
       end
       sysret(mmap_heap.addr + mmap_heap.size - incr)
     when SC_MMAP
-      Serial.print process.name, '\n'
       fdi = arg(0).to_i32
 
       prot = Syscall::Data::MmapProt.new(arg(1).to_i32)
