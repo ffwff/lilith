@@ -248,9 +248,7 @@ module Fat16FS
 
       # read file
       cluster_bufsz = 512 * fs.sectors_per_cluster
-      cluster_buffer = if (ptr = fs.device.dma_buffer?)
-                         Slice(UInt8).new(ptr, cluster_bufsz)
-                       elsif allocator.nil?
+      cluster_buffer = if allocator.nil?
                          Slice(UInt8).malloc(cluster_bufsz)
                        else
                          Slice(UInt8).new(allocator.not_nil!.malloc(cluster_bufsz).as(UInt8*), cluster_bufsz)
@@ -259,11 +257,7 @@ module Fat16FS
       begin
         while remaining_bytes > 0 && cluster < 0xFFF8
           sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
-          retval = if fs.device.dma_buffer?
-                     fs.device.read_to_dma_buffer sector, fs.sectors_per_cluster
-                   else
-                     fs.device.read_sector(cluster_buffer.to_unsafe, sector, fs.sectors_per_cluster)
-                   end
+          retval = fs.device.read_sector(cluster_buffer.to_unsafe, sector, fs.sectors_per_cluster)
           unless retval
             Serial.print "unable to read from device, returning garbage!"
             remaining_bytes = 0

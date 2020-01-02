@@ -38,9 +38,9 @@ module Ata
       firmware : UInt8[8]
       model : UInt8[40]
       unused3 : UInt16[2]
-      capabilities1 : UInt16
-      capabilities2 : UInt16
-      unused4 : UInt16[12]
+      capabilities : UInt16[2]
+      unused4 : UInt16[11]
+      dma_support : UInt16
       dma_caps : UInt16
       pio_caps : UInt16
       dma_cycles : UInt16
@@ -62,7 +62,7 @@ module Ata
       cmd_set4 : UInt16
       cmd_set_default : UInt16
       dma_mode : UInt16
-      unused8 : UInt16[167]
+      unused8 : UInt16[168]
     end
   end
 
@@ -162,8 +162,6 @@ module Ata
     {cl, ch}
   end
 
-  # drive = 0 => primary
-  # drive = 1 => secondary
   def select(bus, slave)
     devsel = 0xA0
     if slave
@@ -202,8 +200,9 @@ module Ata
   def wait_atapi(bus)
     while ((status = X86.inb(bus + REG_STATUS)) & SR_BSY) != 0 &&
           (status & SR_DRQ) != 0
+      return false if (status & SR_ERR) != 0
     end
-    status
+    true
   end
 
   def wait(bus, advanced = false)
@@ -219,8 +218,7 @@ module Ata
     true
   end
 
-  def devsel(slave)
-    retval = 0xe0
+  def devsel(retval, slave)
     if slave
       retval |= 1 << 4
     end
@@ -232,7 +230,7 @@ module Ata
     # PIO 24-bit
     wait_ready bus
 
-    X86.outb(bus + REG_HDDEVSEL, (devsel(slave) |
+    X86.outb(bus + REG_HDDEVSEL, (devsel(0xE0, slave) |
                                   ((sector & 0x0f000000) >> 24)).to_u8)
     X86.outb(bus + REG_FEATURES, 0x00)
     X86.outb(bus + REG_SECCOUNT0, nsectors)
@@ -257,7 +255,7 @@ module Ata
     wait_ready bus
 
     X86.outb(control, 0)
-    X86.outb(bus + REG_HDDEVSEL, (devsel(slave) |
+    X86.outb(bus + REG_HDDEVSEL, (devsel(0xE0, slave) |
                                   ((sector & 0x0f000000) >> 24)).to_u8)
     X86.outb(bus + REG_FEATURES, 0x00)
     X86.outb(bus + REG_SECCOUNT0, nsectors)
@@ -276,6 +274,18 @@ module Ata
     # Almost all ATAPI devices have a sector size of 2048
     sector_size = 2048
 
+    wait_ready bus
+
+    X86.outb(bus + REG_HDDEVSEL, devsel(0xA0, slave).to_u8)
+    wait_io bus
+
+    X86.outb(bus + REG_FEATURES, 0x00)
+    X86.outb(bus + REG_LBA1, (sector_size & 0xFF).to_u8)
+    X86.outb(bus + REG_LBA2, (sector_size >> 8).to_u8)
+    X86.outb(bus + REG_COMMAND, CMD_PACKET)
+
+    return unless wait(bus, true)
+
     # SCSI packet
     packet = uninitialized UInt8[SCSI_PACKET_SIZE]
     packet[0] = ATAPI_CMD_READ
@@ -291,20 +301,8 @@ module Ata
     packet[10] = 0x0u8
     packet[11] = 0x0u8
 
-    wait_ready bus
-
-    X86.outb(bus + REG_HDDEVSEL, (slave << 4).to_u8)
-    wait_io bus
-
-    X86.outb(bus + REG_FEATURES, 0x00)
-    X86.outb(bus + REG_LBA0, (sector_size & 0xFF).to_u8)
-    X86.outb(bus + REG_LBA1, (sector_size >> 8).to_u8)
-    X86.outb(bus + REG_COMMAND, CMD_PACKET)
-
-    return unless wait(bus, true)
-
-    6.times do |i|
-      packet.to_unsafe.as(UInt16*)[i]
+    (SCSI_PACKET_SIZE // 2).times do |i|
+      X86.outw bus, packet.to_unsafe.as(UInt16*)[i]
     end
 
     # read alternate status and ignore it
@@ -319,8 +317,8 @@ module Ata
     X86.outb(bus + REG_COMMAND, CMD_CACHE_FLUSH)
   end
 
-  # irq handler
   @@interrupted = false
+  # FIXME: separate variables for interrupted port
   class_property interrupted
 
   def irq_handler(bus)
@@ -425,103 +423,81 @@ module Ata
         identify.to_unsafe[i] = X86.inw disk_port
       end
 
-      # fix model name from endianness
-      {% for key in ["serial", "firmware", "model"] %}
-        {% key = key.id %}
-        i = 0
-        while i < device.value.{{ key }}.size
-          device.value.{{ key }}[i], device.value.{{ key }}[i+1] = \
-          device.value.{{ key }}[i+1], device.value.{{ key }}[i]
-          i += 2
-        end
-      {% end %}
-
       case @type
       when Type::Ata
         identify = identify.to_unsafe.as(Ata::Data::AtaIdentify*)
-        if (device.value.capabilities[0] & (1 << 8)) != 0
+        if (identify.value.capabilities[0] & (1 << 8)) != 0
           @can_dma = true
         end
       when Type::Atapi
-        abort "TODO: handle ATAPI"
+        identify = identify.to_unsafe.as(Ata::Data::AtapiIdentify*)
+        if (identify.value.capabilities[0] & (1 << 10)) != 0
+          @can_dma = true
+        end
       end
 
       true
     end
 
-    def dma_buffer?
-      if @can_dma
-        Ide.dma_buffer
-      end
-    end
-
-    def read_to_dma_buffer(sector : UInt64, nsectors : Int = 1)
-      abort "can't access atapi" if @type == Type::Atapi
-      abort "device doesn't support dma" if !@can_dma
-      abort "nsectors must be <= 8" if nsectors <= 8
-      # Serial.print "ata read ", sector, '\n'
-
-      retval = false
-      Ide.lock do
-        retries = 0
-        while retries < MAX_RETRIES
-          Ata.interrupted = false
-          Ata.read_dma sector, disk_port, cmd_port, slave, nsectors.to_u8
-          # poll
-          while !Ata.interrupted
-            # FIXME: make ATA.interrupted a futex once we implement that
-            asm("pause")
-          end
-          Ata.flush_dma
-          retval = true
-          break
-        end
-      end
-      retval
-    end
-
     MAX_RETRIES = 3
 
     def read_sector(ptr : UInt8*, sector : UInt64, nsectors : Int = 1)
-      abort "can't access atapi" if @type == Type::Atapi
-
-      retval = false
       Ide.lock do
         retries = 0
-        while retries < MAX_RETRIES
-          if @can_dma
-            abort "nsectors must be <= 8" if nsectors <= 8
-            Ata.interrupted = false
-            Ata.read_dma sector, disk_port, cmd_port, slave, nsectors.to_u8
-            # poll
-            while !Ata.interrupted
-              # FIXME: make ATA.interrupted a futex once we implement that
-              asm("pause")
+        case @type
+        when Type::Ata
+          while retries < MAX_RETRIES
+            if @can_dma
+              abort "nsectors must be <= 8" unless nsectors <= 8
+              Ata.interrupted = false
+              Ata.read_dma sector, disk_port, cmd_port, slave, nsectors.to_u8
+              # poll
+              while !Ata.interrupted
+                # FIXME: make ATA.interrupted a futex once we implement that
+                asm("pause")
+              end
+              memcpy(ptr, Ide.dma_buffer, 512u64 * nsectors)
+              Ata.flush_dma
+            else
+              Ata.read sector, disk_port, slave, nsectors.to_u8
+              # poll
+              unless Ata.wait(disk_port, true)
+                retries += 1
+                next
+              end
+              # read from sector
+              l0 = l1 = 0
+              nwords = 256 * nsectors
+              asm("rep insw"
+                      : "={Di}"(l0), "={cx}"(l1)
+                      : "{Di}"(ptr), "{cx}"(nwords), "{dx}"(disk_port)
+                      : "volatile", "memory")
             end
-            memcpy(ptr, Ide.dma_buffer, 512u64 * nsectors)
-            Ata.flush_dma
-          else
-            Ata.read sector, disk_port, slave, nsectors.to_u8
+            return true
+          end
+        when Type::Atapi
+          while retries < MAX_RETRIES
+            Ata.read_atapi sector, disk_port, slave
             # poll
-            unless Ata.wait(disk_port, true)
-              retval = false
+            unless Ata.wait_atapi(disk_port)
               retries += 1
               next
             end
             # read from sector
             l0 = l1 = 0
-            nwords = 256 * nsectors
+            nwords = 1024 * nsectors
             asm("rep insw"
                     : "={Di}"(l0), "={cx}"(l1)
                     : "{Di}"(ptr), "{cx}"(nwords), "{dx}"(disk_port)
                     : "volatile", "memory")
+            # wait until rdy
+            Ata.wait_ready disk_port
+            return true
           end
-          retval = true
-          break
         end
       end
 
-      retval
+      false
     end
   end
 end
