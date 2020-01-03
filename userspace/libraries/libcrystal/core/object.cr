@@ -52,6 +52,10 @@ class Object
     end
   {% end %}
 
+  def !=(other)
+    !(self == other)
+  end
+
   def not_nil!
     self
   end

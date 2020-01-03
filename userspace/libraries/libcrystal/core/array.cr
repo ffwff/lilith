@@ -127,18 +127,8 @@ class Array(T) < Markable
   end
 
   def delete(obj)
-    write_barrier do
-      i = 0
-      size = self.size
-      while i < size
-        if to_unsafe[i] == obj
-          LibC.memmove(to_unsafe + i, to_unsafe + i + 1,
-            sizeof(T) * (size - i - 1))
-          size -= 1
-        else
-          i += 1
-        end
-      end
+    select! do |other|
+      other != obj
     end
   end
 
@@ -165,6 +155,21 @@ class Array(T) < Markable
 
   def sort!
     to_slice.sort!
+  end
+
+  def select!(&block)
+    write_barrier do
+      i = 0
+      while i < @size
+        unless yield to_unsafe[i]
+          LibC.memmove(to_unsafe + i, to_unsafe + i + 1,
+            sizeof(T) * (@size - i - 1))
+          @size -= 1
+        else
+          i += 1
+        end
+      end
+    end
   end
 
   def mark(&block)
