@@ -57,6 +57,12 @@ class Array(T) < Markable
     end
   end
 
+  def each_with_index(&block)
+    @size.times do |i|
+      yield @buffer[i], i
+    end
+  end
+
   def reverse_each
     i = size - 1
     while i >= 0

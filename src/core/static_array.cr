@@ -37,6 +37,12 @@ struct StaticArray(T, N)
     {% end %}
   end
 
+  def each_with_index : Nil
+    {% for i in 0...N %}
+      yield self[{{i}}], {{i}}
+    {% end %}
+  end
+
   def to_s(io)
     io.print "StaticArray(", to_unsafe, " ", N, ")"
   end

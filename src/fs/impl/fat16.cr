@@ -479,14 +479,19 @@ module Fat16FS
     getter! root : VFS::Node
     getter device
 
-    def name : String
-      device.not_nil!.name
-    end
+    @name = ""
+    getter name
 
-    def initialize(@device : Ata::Device, partition)
+    def initialize(@device : Ata::Device, partition, idx)
       Console.print "initializing FAT16 filesystem\n"
 
       abort "device must be ATA" if @device.type != Ata::Device::Type::Ata
+
+      builder = String::Builder.new
+      builder << @device.not_nil!.name
+      builder << 'p'
+      builder << idx
+      @name = builder.to_s
 
       bs = Pointer(Data::BootSector).malloc_atomic
 

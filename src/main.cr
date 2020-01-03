@@ -96,18 +96,20 @@ private def init_boot_device
   Ide.devices.each do |device|
     if (mbr = MBR.read(device))
       Console.print "found MBR header...\n"
-      case mbr.to_unsafe.value.partitions[0].type
-      when Fat16FS::MBR_TYPE
-        fs = Fat16FS::FS.new device, mbr.to_unsafe.value.partitions[0]
-        if (found_main = init_fs_with_main(fs)) && !main_bin
-          RootFS.root_device = fs
-          main_bin = found_main
+      mbr.to_unsafe.value.partitions.each_with_index do |partition, idx|
+        case partition.type
+        when 0
+          # skipped
+        when Fat16FS::MBR_TYPE
+          fs = Fat16FS::FS.new device, partition, idx
+          if (found_main = init_fs_with_main(fs)) && !main_bin
+            RootFS.root_device = fs
+            main_bin = found_main
+          end
+        else
+          Serial.print "unknown MBR partition type: ", partition.type, "\n"
         end
-      else
-        abort "unknown MBR partition type"
       end
-    else
-      next
     end
   end
 
