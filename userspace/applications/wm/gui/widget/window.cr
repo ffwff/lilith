@@ -20,7 +20,7 @@ class G::Window < G::Widget
 
   def setup_event
     if @wm_window.nil?
-      @wm_window = app.client.create_window(@x, @y, @width, @height, @flags).not_nil!
+      @wm_window = app.client.create_window(@x, @y, @width, @height, @flags)
       @bitmap = Painter::Bitmap.new(@width, @height, @wm_window.not_nil!.bitmap)
     end
   end

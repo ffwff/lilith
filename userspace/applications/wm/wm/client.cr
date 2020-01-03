@@ -72,7 +72,11 @@ class Wm::Client
       if response.retval != -1
         return Window.new(response.retval, self,
           x, y, width, height)
+      else
+        STDERR.print "retval == -1\n"
       end
+    else
+      STDERR.print "no response message sent\n"
     end
   end
 

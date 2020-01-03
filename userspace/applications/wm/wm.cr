@@ -198,7 +198,7 @@ module Wm::Server
     end
 
     def close
-      Wm::Server.selector.delete @socket
+      @socket.program = nil
       @socket.close
       @bitmap.not_nil!.to_unsafe.unmap_from_memory
       @bitmap_file.close
@@ -367,9 +367,11 @@ module Wm::Server
       else
         abort "unhandled socket" unless selected.nil?
       end
-      clients.each do |socket|
+
+      clients.select! do |socket|
         respond_ipc_socket socket
       end
+
       if @@redraw_all
         @@windows.each do |window|
           window.render backbuffer
@@ -495,13 +497,13 @@ module Wm::Server
     end
   end
 
-  def respond_ipc_socket(socket)
+  def respond_ipc_socket(socket : Program::Socket) : Bool
     while true
       header = uninitialized IPC::Data::Header
       if socket.unbuffered_read(Bytes.new(pointerof(header).as(UInt8*),
            sizeof(IPC::Data::Header))) \
            != sizeof(IPC::Data::Header)
-        return
+        return true
       end
       case header.type
       when IPC::Data::TEST_MESSAGE_ID
@@ -509,12 +511,14 @@ module Wm::Server
       when IPC::Data::WINDOW_CREATE_ID
         if (msg = FixedMessageReader(IPC::Data::WindowCreate).read(header, socket))
           unless socket.program.nil?
+            STDERR.print "socket already has a program?\n"
             socket.unbuffered_write IPC.response_message(-1).to_slice
             next
           end
 
           if msg.flags.includes?(IPC::Data::WindowFlags::Background)
             unless @@windows[0].is_a?(Background)
+              STDERR.print "multiple backgrounds\n"
               socket.unbuffered_write IPC.response_message(-1).to_slice
               next
             end
@@ -594,8 +598,9 @@ module Wm::Server
           if @@focused == program
             @@focused = nil
           end
-          program.close
           @@windows.delete program
+          program.close
+          return false
         else
           socket.unbuffered_write IPC.response_message(-1).to_slice
         end
@@ -606,6 +611,7 @@ module Wm::Server
         end
       end
     end
+    true
   end
 end
 
