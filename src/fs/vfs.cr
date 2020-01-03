@@ -143,20 +143,23 @@ end
 module RootFS
   extend self
 
-  @@vfs_node : VFS::FS? = nil
+  @@first_node : VFS::FS? = nil
 
   @@lookup_cache : Hash(String, VFS::FS)? = nil
   protected class_getter! lookup_cache
 
+  @@root_device : VFS::FS? = nil
+  class_property root_device
+
   def append(node : VFS::FS)
-    if @@vfs_node.nil?
+    if @@first_node.nil?
       node.next_node = nil
       node.prev_node = nil
-      @@vfs_node = node
+      @@first_node = node
     else
-      node.next_node = @@vfs_node
-      @@vfs_node.not_nil!.prev_node = node
-      @@vfs_node = node
+      node.next_node = @@first_node
+      @@first_node.not_nil!.prev_node = node
+      @@first_node = node
     end
     if @@lookup_cache.nil?
       @@lookup_cache = Hash(String, VFS::FS).new
@@ -170,14 +173,19 @@ module RootFS
       node.next_node.not_nil!.prev_node = node.prev_node
     end
     if node.prev_node.nil?
-      @@vfs_node = node.next_node
+      @@first_node = node.next_node
     else
       node.prev_node.not_nil!.next_node = node.next_node
     end
+    lookup_cache.delete name
   end
   
   def find_root(name)
-    lookup_cache[name].root
+    if name == MAIN_PATH
+      @@root_device.not_nil!.root
+    elsif node = lookup_cache[name]
+      node.root
+    end
   end
 end
 

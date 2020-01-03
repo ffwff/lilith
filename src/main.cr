@@ -17,7 +17,8 @@ lib Kernel
   fun ksetup_fxsave_region_base
 end
 
-MAIN_PROGRAM = "/main"
+MAIN_PATH = "drv"
+MAIN_PROGRAM = "main"
 
 private def init_arch
   # processes
@@ -67,66 +68,69 @@ private def init_rootfs
   RootFS.append(SocketFS::FS.new)
 end
 
+private def init_fs_with_main(fs)
+  main_bin = nil
+  if !fs.root.dir_populated
+    case fs.root.populate_directory
+    when VFS_OK
+      # ignored
+    when VFS_WAIT
+      abort "TODO: wait for vfs to pull resources"
+    else
+      abort "error populating device"
+    end
+  end
+  fs.root.each_child do |node|
+    if node.name == MAIN_PROGRAM
+      main_bin = node
+      break
+    end
+  end
+  RootFS.append(fs)
+  main_bin
+end
+
 private def init_boot_device
   # file systems
-  root_device = Ide.devices[0]
-  if root_device.nil?
-    abort "no disk found!"
-  end
-  root_device = root_device.not_nil!
-
   main_bin : VFS::Node? = nil
-  if (mbr = MBR.read(root_device))
-    Console.print "found MBR header...\n"
-    fs = Fat16FS::FS.new root_device, mbr.to_unsafe.value.partitions[0]
-    if !fs.root.dir_populated
-      case fs.root.populate_directory
-      when VFS_OK
-        # ignored
-      when VFS_WAIT
-        abort "TODO: wait for vfs to pull resources"
+  Ide.devices.each do |device|
+    if (mbr = MBR.read(device))
+      Console.print "found MBR header...\n"
+      case mbr.to_unsafe.value.partitions[0].type
+      when Fat16FS::MBR_TYPE
+        fs = Fat16FS::FS.new device, mbr.to_unsafe.value.partitions[0]
+        if (found_main = init_fs_with_main(fs)) && !main_bin
+          RootFS.root_device = fs
+          main_bin = found_main
+        end
+      else
+        abort "unknown MBR partition type"
       end
+    else
+      next
     end
-    fs.root.each_child do |node|
-      if node.name == "main"
-        main_bin = node
-      end
-    end
-    RootFS.append(fs)
-  else
-    abort "can't boot from this device"
   end
 
   # load main.bin
   if main_bin.nil?
-    Console.print "no main.bin detected.\n"
+    Console.print "no main detected.\n"
     while true
     end
   else
-    Console.print "executing MAIN.BIN...\n"
-
-    builder = String::Builder.new(1 + fs.not_nil!.name.bytesize)
-    builder << "/"
-    builder << fs.not_nil!.name
-    main_path = builder.to_s
+    Console.print "executing main...\n"
 
     argv = Array(String).new 0
-    builder.reset(main_path.bytesize + MAIN_PROGRAM.bytesize)
-    builder << main_path
-    builder << MAIN_PROGRAM
-    argv.push builder.to_s
+    argv.push {{ "/#{MAIN_PATH.id}/#{MAIN_PROGRAM.id}" }}
 
     udata = Multiprocessing::Process::UserData
-      .new(argv,
-        main_path,
-        fs.not_nil!.root)
-    udata.setenv("PATH", "/hd0/bin")
+      .new(argv, {{ "/#{MAIN_PATH.id}" }}, RootFS.root_device.not_nil!.root)
+    udata.setenv("PATH", {{ "/#{MAIN_PATH.id}/bin" }})
 
     case main_bin.not_nil!.spawn(udata)
     when VFS_ERR
       abort "unable to load main!"
     when VFS_WAIT
-      fs.not_nil!.queue.not_nil!
+      RootFS.root_device.not_nil!.queue.not_nil!
         .enqueue(VFS::Message.new(udata, main_bin))
     end
 

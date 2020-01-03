@@ -3,6 +3,8 @@ require "./fat/cache.cr"
 module Fat16FS
   extend self
 
+  MBR_TYPE = 0x06
+
   private lib Data
     @[Packed]
     struct BootSector
@@ -463,8 +465,6 @@ module Fat16FS
   end
 
   class FS < VFS::FS
-    FS_TYPE = "FAT16   "
-
     @fat_sector = 0u32
     getter fat_sector
     @fat_sector_size = 0
@@ -491,11 +491,6 @@ module Fat16FS
       bs = Pointer(Data::BootSector).malloc_atomic
 
       device.read_sector(bs.as(UInt8*), partition.first_sector.to_u64)
-      idx = 0
-      bs.value.fs_type.each do |ch|
-        abort "only FAT16 is accepted" if ch != FS_TYPE.to_unsafe[idx]
-        idx += 1
-      end
 
       @fat_sector = partition.first_sector + bs.value.reserved_sectors
       @fat_sector_size = bs.value.sector_size.to_i32 // sizeof(UInt16)
