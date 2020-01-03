@@ -99,6 +99,7 @@ class SocketFS::ListenNode < VFS::Node
       conn = msg.vfs_node.as!(SocketFS::ConnectionNode)
       conn.state = SocketFS::ConnectionNode::State::Connected
       conn.flush_queue
+      conn.clone
       fd = process.not_nil!.udata.install_fd(conn,
         FileDescriptor::Attributes::Read |
         FileDescriptor::Attributes::Write)
@@ -124,10 +125,10 @@ class SocketFS::ConnectionNode < VFS::Node
     Connected
     DisconnectedForever
   end
-  @state = State::Disconnected
   property state
 
   def initialize(@parent : SocketFS::Node, @fs : SocketFS::FS)
+    @state = State::Disconnected
     @queue = VFS::Queue.new
     @m_buffer = CircularBuffer.new
     @s_buffer = CircularBuffer.new
@@ -157,7 +158,7 @@ class SocketFS::ConnectionNode < VFS::Node
     when State::TryConnect
       return 0
     when State::DisconnectedForever
-      return 0
+      return VFS_EOF
     end
     if process.not_nil!.pid == @parent.listen_node.listener_pid
       @s_buffer.read slice
@@ -175,7 +176,7 @@ class SocketFS::ConnectionNode < VFS::Node
     when State::TryConnect
       return VFS_WAIT_QUEUE
     when State::DisconnectedForever
-      return 0
+      return VFS_EOF
     end
     if process.not_nil!.pid == @parent.listen_node.listener_pid
       @m_buffer.write slice
