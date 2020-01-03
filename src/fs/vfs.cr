@@ -183,7 +183,7 @@ module RootFS
   def find_root(name)
     if name == MAIN_PATH
       @@root_device.not_nil!.root
-    elsif node = lookup_cache[name]
+    elsif node = lookup_cache[name]?
       node.root
     end
   end
