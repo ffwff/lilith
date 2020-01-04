@@ -196,7 +196,7 @@ module ISO9660FS
 
             builder.reset
 
-            slice = NullTerminatedSlice.new(name, byte_size - b_offset)
+            slice = Slice.new(name, header.value.name_length.to_i32)
             slice.each do |ch|
               if valid_char?(ch)
                 builder << normalize_char(ch)
