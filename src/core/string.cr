@@ -36,11 +36,6 @@ class String
       @bytesize == 0
     end
 
-    def peek
-      return if @capacity == 0 || @bytesize == 0
-      @buffer[@bytesize - 1]
-    end
-
     def back(amount : Int)
       abort "overflow" if amount > @bytesize
       @bytesize -= amount

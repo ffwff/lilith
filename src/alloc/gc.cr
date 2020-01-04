@@ -391,6 +391,9 @@ module GC
   @@spinlock = Spinlock.new
 
   # Allocates an object and marks it gray.
+  #
+  # NOTE: this must be NoInline which forces the compiler to store the callee's local variables inside a stack frame.
+  @[NoInline]
   def unsafe_malloc(size : UInt64, atomic = false)
     @@spinlock.with do
       if @@enabled
@@ -407,6 +410,9 @@ module GC
   end
 
   # Resizes an object to `size`, returning itself (if there is still space available) or a new pointer.
+  #
+  # NOTE: see `unsafe_malloc`
+  @[NoInline]
   def realloc(ptr : Void*, size : UInt64) : Void*
     oldsize = Allocator.block_size_for_ptr(ptr)
     return ptr if oldsize >= size
