@@ -37,7 +37,7 @@ class String
     end
 
     def peek
-      return if @capacity == 0
+      return if @capacity == 0 || @bytesize == 0
       @buffer[@bytesize - 1]
     end
 
@@ -101,6 +101,13 @@ class String
       bytesize, length = String.calculate_length(buffer)
       header.value = {String::TYPE_ID, bytesize, length}
       @buffer.as(String)
+    end
+    
+    def reset
+      @buffer = Pointer(UInt8).null
+      @capacity = 0
+      @bytesize = 0
+      @finished = false
     end
 
     def reset(capacity : Int32)

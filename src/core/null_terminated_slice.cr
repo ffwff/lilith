@@ -8,6 +8,13 @@ struct NullTerminatedSlice
     end
   end
 
+  def initialize(@buffer : UInt8*, max : Int32)
+    @size = 0
+    until @buffer[@size] == 0 && @size < max
+      @size += 1
+    end
+  end
+
   def [](idx : Int)
     abort "NullTerminatedSlice: out of range" unless 0 <= idx < @size
     @buffer[idx]
