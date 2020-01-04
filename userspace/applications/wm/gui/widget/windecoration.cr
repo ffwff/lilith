@@ -1,15 +1,15 @@
 module G::Sprites
   extend self
 
-  DEC_TOP = "/hd0/share/wm/dec_top.png"
+  DEC_TOP = "/drv/share/wm/dec_top.png"
   @@dec_top : Painter::Bitmap? = nil
   class_property dec_top
 
-  DEC_SIDE = "/hd0/share/wm/dec_side.png"
+  DEC_SIDE = "/drv/share/wm/dec_side.png"
   @@dec_side : Painter::Bitmap? = nil
   class_property dec_side
 
-  CLOSE = "/hd0/share/wm/close.png"
+  CLOSE = "/drv/share/wm/close.png"
   @@close : Painter::Bitmap? = nil
   class_property close
 end

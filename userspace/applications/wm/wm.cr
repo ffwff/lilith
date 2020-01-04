@@ -47,8 +47,8 @@ end
 module Wm::Server
   extend self
 
-  CURSOR_FILE = "/hd0/share/cursors/cursor.png"
-  CURMOVE_FILE = "/hd0/share/cursors/move.png"
+  CURSOR_FILE = "/drv/share/cursors/cursor.png"
+  CURMOVE_FILE = "/drv/share/cursors/move.png"
 
   abstract class Window
     @x : Int32 = 0

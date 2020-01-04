@@ -43,8 +43,8 @@ module FileMgr
   end
 
   def load_images
-    @@dir_image = Painter.load_png("/hd0/share/icons/folder.png").not_nil!
-    @@file_image = Painter.load_png("/hd0/share/icons/file.png").not_nil!
+    @@dir_image = Painter.load_png("/drv/share/icons/folder.png").not_nil!
+    @@file_image = Painter.load_png("/drv/share/icons/file.png").not_nil!
   end
 
   def run
