@@ -137,22 +137,26 @@ module GC
 
   # pushes a node to the current gray stack
   private def push_gray(ptr : Void*)
-    return if Allocator.marked?(ptr)
-    Allocator.mark ptr
-    return if Allocator.atomic?(ptr)
-    abort "unable to push gray" if @@curr_grays_idx == GRAY_SIZE - 1
-    @@curr_grays[@@curr_grays_idx] = ptr
-    @@curr_grays_idx += 1
+    if ptr = Allocator.align(ptr)
+      return if Allocator.marked?(ptr)
+      Allocator.mark ptr
+      return if Allocator.atomic?(ptr)
+      abort "unable to push gray" if @@curr_grays_idx == GRAY_SIZE - 1
+      @@curr_grays[@@curr_grays_idx] = ptr
+      @@curr_grays_idx += 1
+    end
   end
 
   # pushes a node to the opposite gray stack
   private def push_opposite_gray(ptr : Void*)
-    return if Allocator.marked?(ptr)
-    Allocator.mark ptr
-    return if Allocator.atomic?(ptr)
-    abort "unable to push gray" if @@opp_grays_idx == GRAY_SIZE - 1
-    @@opp_grays[@@opp_grays_idx] = ptr
-    @@opp_grays_idx += 1
+    if ptr = Allocator.align(ptr)
+      return if Allocator.marked?(ptr)
+      Allocator.mark ptr
+      return if Allocator.atomic?(ptr)
+      abort "unable to push gray" if @@opp_grays_idx == GRAY_SIZE - 1
+      @@opp_grays[@@opp_grays_idx] = ptr
+      @@opp_grays_idx += 1
+    end
   end
 
   # pops a node from the current gray stack
@@ -192,9 +196,7 @@ module GC
     global_ptr = LibCrystal.__crystal_gc_globals
     while (ptr = global_ptr.value)
       root_ptr = ptr.value
-      if Allocator.contains_ptr? root_ptr
-        push_gray root_ptr
-      end
+      push_gray root_ptr
       global_ptr += 1
     end
   end
@@ -204,9 +206,7 @@ module GC
     {% for register in ["rbx", "r12", "r13", "r14", "r15"] %}
       ptr = Pointer(Void).null
       asm("" : {{ "={#{register.id}}" }}(ptr))
-      if Allocator.contains_ptr? ptr
-        push_gray ptr
-      end
+      push_gray ptr
     {% end %}
   end
 
@@ -215,9 +215,7 @@ module GC
     i = from
     while i < to
       root_ptr = Pointer(Void*).new(i).value
-      if Allocator.contains_ptr? root_ptr
-        push_gray root_ptr
-      end
+      push_gray root_ptr
       i += sizeof(Void*)
     end
   end
@@ -256,10 +254,8 @@ module GC
       m = ptr.as(Markable)
       if m.markable?
         m.mark do |ivar|
-          if Allocator.contains_ptr? ivar
-            # Serial.print "mark: ", ivar, '\n'
-            push_opposite_gray ivar
-          end
+          # Serial.print "mark: ", ivar, '\n'
+          push_opposite_gray ivar
         end
       else
         {% if flag?(:record_markable) %}
@@ -282,9 +278,7 @@ module GC
       if (offsets & 1u64) != 0u64
         ivarp = Pointer(Void*).new(ptr.address + pos)
         ivar = ivarp.value
-        if Allocator.contains_ptr? ivar
-          push_opposite_gray ivar
-        end
+        push_opposite_gray ivar
       end
       offsets >>= 1u64
       pos += sizeof(Void*)
@@ -297,9 +291,7 @@ module GC
                           "r8", "r9", "r10", "r11", "rsi", "rdi",
                           "r12", "r13", "r14", "r15"] %}
         ptr = Pointer(Void).new(thread.frame.{{ register.id }})
-        if Allocator.contains_ptr? ptr
-          push_gray ptr
-        end
+        push_gray ptr
       {% end %}
     end
 

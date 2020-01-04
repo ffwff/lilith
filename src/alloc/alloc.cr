@@ -171,14 +171,18 @@ module Allocator
         idx * @block_size)
     end
 
-    # Checks if the block is aligned.
-    def aligned?(block : Void*)
-      (block.address - @header.address - alignment_padding - BitArray.malloc_size(@blocks)*4*2 - sizeof(Data::PoolHeader)) & (@block_size - 1) == 0
+    private def relative_addr(ptr)
+      ptr.address - @header.address - alignment_padding - BitArray.malloc_size(@blocks)*4*2 - sizeof(Data::PoolHeader)
+    end
+
+    def align(block : Void*)
+      rem = relative_addr(block) & (@block_size - 1)
+      Pointer(Void).new(block.address - rem.to_u64)
     end
 
     # Gets the corresponding index for the block.
     def idx_for_block(block : Void*)
-      (block.address - @header.address - alignment_padding - BitArray.malloc_size(@blocks)*4*2 - sizeof(Data::PoolHeader)) >> (@idx + MIN_POW2)
+      relative_addr(block) >> (@idx + MIN_POW2)
     end
 
     # Gets the first free block in the allocation bitmap,
@@ -283,23 +287,20 @@ module Allocator
     end
   end
 
-  private def aligned?(ptr : Void*)
+  # Rounds a pointer to the nearest block in a pool
+  #
+  # FIXME: this doesn't work unless we NoInline it
+  @[NoInline]
+  def align(ptr : Void*) : Void*?
+    return unless @@start_addr <= ptr.address < @@placement_addr
     addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
     magic = Pointer(USize).new(addr).value
     if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
       hdr = Pointer(Data::PoolHeader).new(addr)
-      Pool.new(hdr).aligned? ptr
+      Pool.new(hdr).align ptr
     elsif magic == Data::MAGIC_MMAP
-      true
-    else
-      false
+      Pointer(Void).new(addr + sizeof(Data::MmapHeader))
     end
-  end
-
-  # Checks if `ptr` is allocated by the Allocator. If `ptr` is pointing to data inside
-  # a small pool's block, `false` is returned.
-  def contains_ptr?(ptr)
-    @@start_addr <= ptr.address && ptr.address < @@placement_addr && aligned?(ptr)
   end
 
   private def pool_for_bytes(bytes : Int)
