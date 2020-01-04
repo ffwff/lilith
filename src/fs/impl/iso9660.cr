@@ -103,7 +103,7 @@ module ISO9660FS
       fs_version : UInt8
       unused3 : UInt8
       application_used : UInt8[512]
-      reserved : UInt8[653]
+      reserved : UInt8[693]
     end
   end
 
@@ -133,7 +133,7 @@ module ISO9660FS
     getter dir_populated
 
     def initialize(@fs : FS, @name : String?, directory,
-                   @extent_start : UInt64, @extent_length : UInt64)
+                   @extent_start : Int32, @extent_length : Int32)
       if directory
         @attributes |= VFS::Node::Attributes::Directory
       end
@@ -152,6 +152,19 @@ module ISO9660FS
       v + (v & 1)
     end
 
+    private def valid_char?(ch)
+      '0'.ord <= ch <= '9'.ord ||
+      'A'.ord <= ch <= 'Z'.ord ||
+      ch == '.'.ord
+    end
+
+    private def normalize_char(ch)
+      if 'A'.ord <= ch <= 'Z'.ord
+        return (ch - 'A'.ord + 'a'.ord).unsafe_chr
+      end
+      ch.unsafe_chr
+    end
+
     def iso_populate_directory(allocator : StackAllocator? = nil)
       @dir_populated = true
       sector = if allocator
@@ -159,12 +172,13 @@ module ISO9660FS
                 else
                   Slice(UInt8).malloc 2048
                 end
-      Serial.print "extent length: ", @extent_length, '\n'
+      # Serial.print "extent length: ", @extent_length, '\n'
       remaining = @extent_length
       sector_offset = 0
+      builder = String::Builder.new
       while remaining > 0
-        fs.device.read_sector(sector.to_unsafe, @extent_start + sector_offset.to_u64)
-        Serial.print "sector: ", @extent_start + sector_offset.to_u64, '\n'
+        fs.device.read_sector(sector.to_unsafe, @extent_start.to_u64 + sector_offset.to_u64)
+        # Serial.print "sector: ", @extent_start + sector_offset.to_u64, '\n'
 
         b_offset = 0
         byte_size = Math.min(remaining, 2048)
@@ -177,12 +191,27 @@ module ISO9660FS
             next
           end
 
-          unless header.value.flags.includes?(Data::Flags::Hidden)
-            name = String.new(NullTerminatedSlice.new(name))
+          if !header.value.flags.includes?(Data::Flags::Hidden) &&
+              valid_char?(name[0])
+
+            builder.reset
+
+            slice = NullTerminatedSlice.new(name, byte_size - b_offset)
+            slice.each do |ch|
+              if ch == ';'.ord
+                break
+              elsif valid_char?(ch)
+                builder << normalize_char(ch)
+              else
+                break
+              end
+            end
+
+            name = builder.to_s
             node = add_child Node.new(@fs, name,
                                       header.value.flags.includes?(Data::Flags::Directory),
-                                      header.value.extent_start.lsb.to_u64,
-                                      header.value.extent_length.lsb.to_u64)
+                                      header.value.extent_start.lsb,
+                                      header.value.extent_length.lsb)
             node.parent = self
           end
 
@@ -219,7 +248,7 @@ module ISO9660FS
       extent_start = sector.value.root_entry.extent_start.lsb
       extent_length = sector.value.root_entry.extent_length.lsb
 
-      root = Node.new self, nil, true, extent_start.to_u64, extent_length.to_u64
+      root = Node.new self, nil, true, extent_start, extent_length
       root.iso_populate_directory
       @root = root
     end
