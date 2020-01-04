@@ -123,15 +123,16 @@ module Fat16FS
 
   class Node < VFS::Node
     include FatCache
+    include VFS::Enumerable(Node)
 
     @parent : Node? = nil
     property parent
 
-    @next_node : Node? = nil
-    property next_node
-
     @name : String? = nil
     property name
+
+    @next_node : Node? = nil
+    property next_node
 
     @first_child : Node? = nil
 
@@ -161,32 +162,6 @@ module Fat16FS
       if directory
         @attributes |= VFS::Node::Attributes::Directory
       end
-    end
-
-    # children
-    def each_child(&block)
-      if directory? && !@dir_populated
-        return
-      end
-      node = first_child
-      while !node.nil?
-        yield node.not_nil!
-        node = node.next_node
-      end
-    end
-
-    def add_child(child : Node)
-      if @first_child.nil?
-        # first node
-        child.next_node = nil
-        @first_child = child
-      else
-        # middle node
-        child.next_node = @first_child
-        @first_child = child
-      end
-      child.parent = self
-      child
     end
 
     # read
@@ -484,8 +459,6 @@ module Fat16FS
 
     def initialize(@device : Ata::Device,
                    partition : MBR::Data::PartitionTable, idx : Int)
-      Console.print "initializing FAT16 filesystem\n"
-
       abort "device must be ATA" if @device.type != Ata::Device::Type::Ata
 
       builder = String::Builder.new

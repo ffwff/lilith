@@ -3,6 +3,42 @@ require "./async.cr"
 module VFS
   extend self
 
+  module Enumerable(T)
+    def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
+      return unless directory?
+      each_child do |node|
+        if node.name == path
+          return node
+        end
+      end
+    end
+
+    def each_child(&block)
+      if directory? && !@dir_populated
+        return
+      end
+      node = first_child
+      while !node.nil?
+        yield node.not_nil!
+        node = node.next_node
+      end
+    end
+
+    def add_child(child : T)
+      if @first_child.nil?
+        # first node
+        child.next_node = nil
+        @first_child = child
+      else
+        # middle node
+        child.next_node = @first_child
+        @first_child = child
+      end
+      child.parent = self
+      child
+    end
+  end
+
   abstract class Node
     enum Buffering
       Unbuffered

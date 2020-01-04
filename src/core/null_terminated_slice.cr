@@ -9,7 +9,7 @@ struct NullTerminatedSlice
   end
 
   def [](idx : Int)
-    abort "NullTerminatedSlice: out of range" if idx > @size || idx < 0
+    abort "NullTerminatedSlice: out of range" unless 0 <= idx < @size
     @buffer[idx]
   end
 

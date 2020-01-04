@@ -461,8 +461,8 @@ module Ata
           @can_dma = true
         end
         if capacity = Ata.get_atapi_capacity disk_port
-          @size, blocks = capacity
-          Serial.print "size: ", size, '\n'
+          size, blocks = capacity
+          @size = size.to_u64
         else
           return false
         end

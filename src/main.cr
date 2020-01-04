@@ -113,6 +113,7 @@ private def init_boot_device
       end
     elsif device.type == Ata::Device::Type::Atapi
       fs = ISO9660FS::FS.new device
+      RootFS.append(fs)
     end
   end
 
