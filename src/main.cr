@@ -75,9 +75,9 @@ private def init_fs_with_main(fs)
     when VFS_OK
       # ignored
     when VFS_WAIT
-      abort "TODO: wait for vfs to pull resources"
+      panic "TODO: wait for vfs to pull resources"
     else
-      abort "error populating device"
+      panic "error populating device"
     end
   end
   fs.root.each_child do |node|
@@ -94,30 +94,31 @@ private def init_boot_device
   # file systems
   main_bin : VFS::Node? = nil
   Ide.devices.each do |device|
-    if (mbr = MBR.read(device))
-      Console.print "found MBR header...\n"
-      mbr.to_unsafe.value.partitions.each_with_index do |partition, idx|
-        case partition.type
-        when 0
-          # skipped
-        when Fat16FS::MBR_TYPE
-          fs = Fat16FS::FS.new device, partition, idx
-          if (found_main = init_fs_with_main(fs)) && !main_bin
-            RootFS.root_device = fs
-            main_bin = found_main
+    if device.type == Ata::Device::Type::Ata
+      MBR.read(device) do |mbr|
+        mbr.partitions.each_with_index do |partition, idx|
+          case partition.type
+          when 0
+            # skipped
+          when Fat16FS::MBR_TYPE
+            fs = Fat16FS::FS.new device, partition, idx
+            if (found_main = init_fs_with_main(fs)) && !main_bin
+              RootFS.root_device = fs
+              main_bin = found_main
+            end
+          else
+            Serial.print "unknown MBR partition type: ", partition.type, "\n"
           end
-        else
-          Serial.print "unknown MBR partition type: ", partition.type, "\n"
         end
       end
+    elsif device.type == Ata::Device::Type::Atapi
+      fs = ISO9660FS::FS.new device
     end
   end
 
   # load main.bin
   if main_bin.nil?
-    Console.print "no main detected.\n"
-    while true
-    end
+    panic "no main detected.\n"
   else
     Console.print "executing main...\n"
 
@@ -130,7 +131,7 @@ private def init_boot_device
 
     case main_bin.not_nil!.spawn(udata)
     when VFS_ERR
-      abort "unable to load main!"
+      panic "unable to load main!"
     when VFS_WAIT
       RootFS.root_device.not_nil!.queue.not_nil!
         .enqueue(VFS::Message.new(udata, main_bin))

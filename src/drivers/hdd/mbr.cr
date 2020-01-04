@@ -22,11 +22,12 @@ module MBR
     end
   end
 
-  def read(device)
-    mbr = Box(Data::MBR).new
-    device.read_sector(mbr.to_unsafe.as(UInt8*), 0)
-    return nil unless mbr.to_unsafe.value.header[0] == 0x55 &&
-                      mbr.to_unsafe.value.header[1] == 0xaa
-    mbr
+  @@mbr = uninitialized Data::MBR
+
+  def read(device, &block)
+    device.read_sector(pointerof(@@mbr).as(UInt8*), 0)
+    return nil unless @@mbr.header[0] == 0x55 &&
+                      @@mbr.header[1] == 0xaa
+    yield @@mbr
   end
 end

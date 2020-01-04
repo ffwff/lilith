@@ -480,9 +480,10 @@ module Fat16FS
     getter device
 
     @name = ""
-    getter name
+    getter name : String
 
-    def initialize(@device : Ata::Device, partition, idx)
+    def initialize(@device : Ata::Device,
+                   partition : MBR::Data::PartitionTable, idx : Int)
       Console.print "initializing FAT16 filesystem\n"
 
       abort "device must be ATA" if @device.type != Ata::Device::Type::Ata

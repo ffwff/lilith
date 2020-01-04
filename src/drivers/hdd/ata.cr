@@ -2,9 +2,9 @@ module Ata
   extend self
 
   # T13/1699-D Revision 3f
-  # 7.16 IDENTIFY DEVICE, pg 90
   # also see ftp://ftp.seagate.com/acrobat/reference/111-1c.pdf
   lib Data
+    # 7.16 IDENTIFY DEVICE, pg 90
     @[Packed]
     struct AtaIdentify
       flags : UInt16
@@ -103,6 +103,7 @@ module Ata
 
   # atapi commands
   ATAPI_CMD_READ  = 0xA8u8
+  ATAPI_READ_CAPACITY = 0x25u8
   ATAPI_CMD_EJECT = 0x1Bu8
 
   # identifiers
@@ -148,8 +149,6 @@ module Ata
   # directions
   DIR_READ  = 0x00
   DIR_WRITE = 0x01
-
-  SCSI_PACKET_SIZE = 12
 
   DISK_PORT_PRIMARY   = 0x1F0u16
   CMD_PORT_PRIMARY    = 0x3F6u16
@@ -287,7 +286,7 @@ module Ata
     return unless wait(bus, true)
 
     # SCSI packet
-    packet = uninitialized UInt8[SCSI_PACKET_SIZE]
+    packet = uninitialized UInt8[12]
     packet[0] = ATAPI_CMD_READ
     packet[1] = 0x0u8
     packet[2] = ((sector >> 24) & 0xFF).to_u8
@@ -301,12 +300,54 @@ module Ata
     packet[10] = 0x0u8
     packet[11] = 0x0u8
 
-    (SCSI_PACKET_SIZE // 2).times do |i|
+    (packet.size // 2).times do |i|
       X86.outw bus, packet.to_unsafe.as(UInt16*)[i]
     end
 
     # read alternate status and ignore it
     X86.inb(bus + REG_ALTSTATUS)
+  end
+
+  private def htonl(l : UInt32) : UInt32
+    ( (((l) & 0xFF) << 24) | (((l) & 0xFF00) << 8) | (((l) & 0xFF0000) >> 8) | (((l) & 0xFF000000) >> 24))
+  end
+
+  def get_atapi_capacity(bus)
+    # SCSI packet
+    packet = uninitialized UInt8[12]
+    packet[0] = ATAPI_READ_CAPACITY
+    packet[1] = 0x0u8
+    packet[2] = 0x0u8
+    packet[3] = 0x0u8
+    packet[4] = 0x0u8
+    packet[5] = 0x0u8
+    packet[6] = 0x0u8
+    packet[7] = 0x0u8
+    packet[8] = 0x0u8
+    packet[9] = 0x0u8
+    packet[10] = 0x0u8
+    packet[11] = 0x0u8
+
+    X86.outb(bus + REG_FEATURES, 0x00)
+    X86.outb(bus + REG_LBA1, 0x08)
+    X86.outb(bus + REG_LBA2, 0x08)
+    X86.outb(bus + REG_COMMAND, CMD_PACKET)
+
+    (packet.size // 2).times do |i|
+      X86.outw bus, packet.to_unsafe.as(UInt16*)[i]
+    end
+
+    # read alternate status and ignore it
+    X86.inb(bus + REG_ALTSTATUS)
+
+    return unless wait bus, true
+
+    data = uninitialized UInt16[4]
+    data.size.times do |i|
+      data[i] = X86.inw(bus)
+    end
+    lba, blocks = data.to_unsafe.as(UInt32*)
+    {htonl(lba), htonl(blocks)}
   end
 
   def flush_dma
@@ -354,11 +395,8 @@ module Ata
     @type = Type::Ata
     getter type
 
-    def irq
-      @primary ? 14 : 15
-    end
+    @size = 0u64
 
-    # NOTE: idx must be between 0..3
     def initialize(@primary = true, @slave = false)
     end
 
@@ -407,18 +445,6 @@ module Ata
         end
       end
 
-      # name for the device
-      builder = String::Builder.new
-      case @type
-      when Type::Ata
-        builder << "hd"
-        builder << Ide.next_hd_idx
-      when Type::Atapi
-        builder << "cdrom"
-        builder << Ide.next_cdrom_idx
-      end
-      @name = builder.to_s
-
       256.times do |i|
         identify.to_unsafe[i] = X86.inw disk_port
       end
@@ -434,7 +460,25 @@ module Ata
         if (identify.value.capabilities[0] & (1 << 10)) != 0
           @can_dma = true
         end
+        if capacity = Ata.get_atapi_capacity disk_port
+          @size, blocks = capacity
+          Serial.print "size: ", size, '\n'
+        else
+          return false
+        end
       end
+
+      # name for the device
+      builder = String::Builder.new
+      case @type
+      when Type::Ata
+        builder << "hd"
+        builder << Ide.next_hd_idx
+      when Type::Atapi
+        builder << "cdrom"
+        builder << Ide.next_cdrom_idx
+      end
+      @name = builder.to_s
 
       true
     end
