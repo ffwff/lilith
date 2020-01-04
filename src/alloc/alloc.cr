@@ -175,9 +175,12 @@ module Allocator
       ptr.address - @header.address - alignment_padding - BitArray.malloc_size(@blocks)*4*2 - sizeof(Data::PoolHeader)
     end
 
-    def align(block : Void*)
+    def make_markable(block : Void*)
       rem = relative_addr(block) & (@block_size - 1)
-      Pointer(Void).new(block.address - rem.to_u64)
+      new_ptr = Pointer(Void).new(block.address - rem.to_u64)
+      return nil if block_marked?(block)
+      mark_block(block, true)
+      new_ptr
     end
 
     # Gets the corresponding index for the block.
@@ -288,17 +291,16 @@ module Allocator
   end
 
   # Rounds a pointer to the nearest block in a pool
-  #
-  # FIXME: this doesn't work unless we NoInline it
-  @[NoInline]
-  def align(ptr : Void*) : Void*?
+  def make_markable(ptr : Void*) : Void*?
     return unless @@start_addr <= ptr.address < @@placement_addr
     addr = ptr.address & 0xFFFF_FFFF_FFFF_F000
     magic = Pointer(USize).new(addr).value
     if magic == Data::MAGIC || magic == Data::MAGIC_ATOMIC
       hdr = Pointer(Data::PoolHeader).new(addr)
-      Pool.new(hdr).align ptr
+      Pool.new(hdr).make_markable ptr
     elsif magic == Data::MAGIC_MMAP
+      hdr = Pointer(Data::MmapHeader).new(addr)
+      return if hdr.value.marked == 1
       Pointer(Void).new(addr + sizeof(Data::MmapHeader))
     end
   end

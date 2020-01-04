@@ -137,8 +137,7 @@ module GC
 
   # pushes a node to the current gray stack
   private def push_gray(ptr : Void*)
-    if ptr = Allocator.align(ptr)
-      return if Allocator.marked?(ptr)
+    if ptr = Allocator.make_markable(ptr)
       Allocator.mark ptr
       return if Allocator.atomic?(ptr)
       abort "unable to push gray" if @@curr_grays_idx == GRAY_SIZE - 1
@@ -149,8 +148,7 @@ module GC
 
   # pushes a node to the opposite gray stack
   private def push_opposite_gray(ptr : Void*)
-    if ptr = Allocator.align(ptr)
-      return if Allocator.marked?(ptr)
+    if ptr = Allocator.make_markable(ptr)
       Allocator.mark ptr
       return if Allocator.atomic?(ptr)
       abort "unable to push gray" if @@opp_grays_idx == GRAY_SIZE - 1
