@@ -521,11 +521,15 @@ module Ata
           end
         when Type::Atapi
           while retries < MAX_RETRIES
+            Ata.interrupted = false
             Ata.read_atapi sector, disk_port, slave
             # poll
             unless Ata.wait_atapi(disk_port)
               retries += 1
               next
+            end
+            while !Ata.interrupted
+              asm("pause")
             end
             # read from sector
             l0 = l1 = 0
