@@ -198,9 +198,7 @@ module ISO9660FS
 
             slice = NullTerminatedSlice.new(name, byte_size - b_offset)
             slice.each do |ch|
-              if ch == ';'.ord
-                break
-              elsif valid_char?(ch)
+              if valid_char?(ch)
                 builder << normalize_char(ch)
               else
                 break
