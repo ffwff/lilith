@@ -5,7 +5,7 @@ A POSIX-like x86-64 kernel and userspace written in Crystal.
 
 ## Screenshot
 
-![screenshot](https://raw.githubusercontent.com/ffwff/lilith/master/img/screenshot23.png "screenshot of lilith")
+![screenshot](https://raw.githubusercontent.com/ffwff/lilith/master/img/05012020.png "screenshot of lilith")
 
 ## Building
 
