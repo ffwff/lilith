@@ -142,17 +142,17 @@ class ProcFS::ProcessStatusNode < VFS::Node
     writer = SliceWriter.new(slice, offset.to_i32)
     pp = @parent.process
 
-    SliceWriter.fwrite? writer, "Name: "
-    SliceWriter.fwrite? writer, pp.name.not_nil!
-    SliceWriter.fwrite? writer, "\n"
-    SliceWriter.fwrite? writer, "State: "
-    SliceWriter.fwrite? writer, pp.sched_data.status
-    SliceWriter.fwrite? writer, "\n"
+    writer << "Name: "
+    writer << pp.name.not_nil!
+    writer << "\n"
+    writer << "State: "
+    writer << pp.sched_data.status
+    writer << "\n"
 
     unless pp.kernel_process?
-      SliceWriter.fwrite? writer, "MemUsed: "
-      SliceWriter.fwrite? writer, pp.udata.memory_used
-      SliceWriter.fwrite? writer, " kB\n"
+      writer << "MemUsed: "
+      writer << pp.udata.memory_used
+      writer << " kB\n"
     end
 
     writer.offset
@@ -179,8 +179,8 @@ class ProcFS::ProcessMmapNode < VFS::Node
     pp = @parent.process
 
     pp.udata.mmap_list.each do |node|
-      SliceWriter.fwrite? writer, node
-      SliceWriter.fwrite? writer, "\n"
+      writer << node
+      writer << "\n"
     end
 
     writer.offset
@@ -205,17 +205,17 @@ class ProcFS::MemInfoNode < VFS::Node
            process : Multiprocessing::Process? = nil) : Int32
     writer = SliceWriter.new(slice, offset.to_i32)
 
-    SliceWriter.fwrite? writer, "MemTotal: "
-    SliceWriter.fwrite? writer, (Paging.usable_physical_memory // 1024)
-    SliceWriter.fwrite? writer, " kB\n"
+    writer << "MemTotal: "
+    writer << (Paging.usable_physical_memory // 1024)
+    writer << " kB\n"
 
-    SliceWriter.fwrite? writer, "MemUsed: "
-    SliceWriter.fwrite? writer, (FrameAllocator.used_blocks * (0x1000 // 1024))
-    SliceWriter.fwrite? writer, " kB\n"
+    writer << "MemUsed: "
+    writer << (FrameAllocator.used_blocks * (0x1000 // 1024))
+    writer << " kB\n"
 
-    SliceWriter.fwrite? writer, "HeapSize: "
-    SliceWriter.fwrite? writer, (Allocator.pages_allocated * (0x1000 // 1024))
-    SliceWriter.fwrite? writer, " kB\n"
+    writer << "HeapSize: "
+    writer << (Allocator.pages_allocated * (0x1000 // 1024))
+    writer << " kB\n"
 
     writer.offset
   end
@@ -239,9 +239,9 @@ class ProcFS::CPUInfoNode < VFS::Node
            process : Multiprocessing::Process? = nil) : Int32
     writer = SliceWriter.new(slice, offset.to_i32)
 
-    SliceWriter.fwrite? writer, "Model name: "
-    SliceWriter.fwrite? writer, X86::CPUID.brand
-    SliceWriter.fwrite? writer, "\n"
+    writer << "Model name: "
+    writer << X86::CPUID.brand
+    writer << "\n"
 
     writer.offset
   end

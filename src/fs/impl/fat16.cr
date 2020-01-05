@@ -515,10 +515,10 @@ module Fat16FS
     protected def process
       while true
         if (msg = @queue.not_nil!.dequeue)
-          fat16_node = msg.vfs_node.as!(Node)
+          node = msg.vfs_node.as!(Node)
           case msg.type
           when VFS::Message::Type::Read
-            fat16_node.read_buffer(msg.slice_size,
+            node.read_buffer(msg.slice_size,
               msg.file_offset.to_u32,
               allocator: @process_allocator) do |buffer|
               msg.respond(buffer)
@@ -529,7 +529,7 @@ module Fat16FS
             msg.unawait
           when VFS::Message::Type::Spawn
             udata = msg.udata.not_nil!
-            case (retval = ElfReader.load_from_kernel_thread(fat16_node, @process_allocator.not_nil!))
+            case (retval = ElfReader.load_from_kernel_thread(node, @process_allocator.not_nil!))
             when ElfReader::Result
               retval = retval.as(ElfReader::Result)
               pid = Multiprocessing::Process.spawn_user_drv(udata, retval)
@@ -546,7 +546,7 @@ module Fat16FS
           when VFS::Message::Type::PopulateDirectory
             Idt.switch_processes = false
             # FIXME: don't disable interrupts once we can scan driver thread stacks
-            fat16_node.fat_populate_directory(allocator: @process_allocator)
+            node.fat_populate_directory(allocator: @process_allocator)
             msg.unawait_rewind
             Idt.switch_processes = true
           end

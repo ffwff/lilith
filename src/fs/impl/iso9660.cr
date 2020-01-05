@@ -249,7 +249,34 @@ module ISO9660FS
       root = Node.new self, nil, true, extent_start, extent_length
       root.iso_populate_directory
       @root = root
+
+      # setup process-local variables
+      @process_allocator =
+        StackAllocator.new(Pointer(Void).new(Multiprocessing::KERNEL_HEAP_INITIAL))
+      @process = Multiprocessing::Process
+        .spawn_kernel("[Fat16FS]",
+          ->(ptr : Void*) { ptr.as(FS).process },
+          self.as(Void*),
+          stack_pages: 4) do |process|
+        Paging.alloc_page(Multiprocessing::KERNEL_HEAP_INITIAL, true, false, 2)
+      end
+
+      @queue = VFS::Queue.new(@process)
     end
+
+    # queue
+    getter queue
+
+    protected def process
+      while true
+        if (msg = @queue.not_nil!.dequeue)
+          node = msg.vfs_node.as!(Node)
+        else
+          Multiprocessing.sleep_disable_gc
+        end
+      end
+    end
+
   end
 
 end

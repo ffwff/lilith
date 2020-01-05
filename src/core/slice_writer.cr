@@ -5,12 +5,6 @@ class SliceWriter
     @offset = 0
   end
 
-  macro fwrite?(writer, data)
-    unless ({{ writer }} << {{ data }})
-      return writer.offset
-    end
-  end
-
   def putc(ch)
     if @skip > 0
       @skip -= 1
