@@ -139,6 +139,67 @@ module ISO9660FS
       end
     end
 
+    def size
+      @extent_length
+    end
+
+    def read_buffer(read_size = 0, offset : UInt32 = 0, allocator : StackAllocator? = nil, &block)
+      return if directory?
+
+      # check arguments
+      if read_size == 0
+        read_size = size
+      elsif read_size < 0
+        return
+      end
+      if offset + read_size > size
+        read_size = size - offset
+      end
+
+      # buffer
+      file_buffer = if allocator.nil?
+                       Slice(UInt8).malloc(2048)
+                     else
+                       Slice(UInt8).new(allocator.not_nil!.malloc(2048).as(UInt8*), 2048)
+                     end
+      sector = @extent_start.to_u64 + offset.div_ceil(2048).to_u64
+      offset_bytes = offset % 2048
+      remaining_bytes = read_size
+
+      # read them file
+      begin
+        while remaining_bytes > 0
+          # read the sector
+          retval = fs.device.read_sector(file_buffer.to_unsafe, sector)
+          unless retval
+            Serial.print "unable to read from device, returning garbage!"
+            remaining_bytes = 0
+            break
+          end
+
+          # yield the read buffer
+          cur_buffer = Slice(UInt8).new(file_buffer.to_unsafe + offset_bytes,
+                Math.min(file_buffer.size - offset_bytes, remaining_bytes.to_i32))
+          yield cur_buffer
+          offset += cur_buffer.size
+          remaining_bytes -= cur_buffer.size
+          offset_bytes = 0
+        end
+      ensure
+        if allocator
+          allocator.not_nil!.clear
+        end
+      end
+    end
+
+    def read(read_size = 0, offset : UInt32 = 0, allocator : StackAllocator? = nil, &block)
+      read_buffer(read_size, offset, allocator) do |buffer|
+        buffer.each do |byte|
+          yield byte
+        end
+      end
+    end
+
     def populate_directory : Int32
       if Ide.locked?
         VFS_WAIT
@@ -271,6 +332,17 @@ module ISO9660FS
       while true
         if (msg = @queue.not_nil!.dequeue)
           node = msg.vfs_node.as!(Node)
+          case msg.type
+          when VFS::Message::Type::Read
+            node.read_buffer(msg.slice_size,
+              msg.file_offset.to_u32,
+              allocator: @process_allocator) do |buffer|
+              msg.respond(buffer)
+            end
+            msg.unawait
+          when VFS::Message::Type::Spawn
+          when VFS::Message::Type::PopulateDirectory
+          end
         else
           Multiprocessing.sleep_disable_gc
         end

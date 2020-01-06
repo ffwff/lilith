@@ -233,15 +233,17 @@ module Fat16FS
       last_cluster = 0
       begin
         while remaining_bytes > 0 && cluster < 0xFFF8
-          sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
-          retval = fs.device.read_sector(cluster_buffer.to_unsafe, sector, fs.sectors_per_cluster)
-          unless retval
-            Serial.print "unable to read from device, returning garbage!"
-            remaining_bytes = 0
-            break
-          end
-
           if offset_bytes <= cluster_buffer.size
+            # read the sector
+            sector = ((cluster.to_u64 - 2) * fs.sectors_per_cluster) + fs.data_sector
+            retval = fs.device.read_sector(cluster_buffer.to_unsafe, sector, fs.sectors_per_cluster)
+            unless retval
+              Serial.print "unable to read from device, returning garbage!"
+              remaining_bytes = 0
+              break
+            end
+
+            # yield the read buffer
             cur_buffer = Slice(UInt8).new(cluster_buffer.to_unsafe + offset_bytes,
               Math.min(cluster_buffer.size - offset_bytes, remaining_bytes.to_i32))
             yield cur_buffer
@@ -523,9 +525,6 @@ module Fat16FS
               allocator: @process_allocator) do |buffer|
               msg.respond(buffer)
             end
-            msg.unawait
-          when VFS::Message::Type::Write
-            # TODO
             msg.unawait
           when VFS::Message::Type::Spawn
             udata = msg.udata.not_nil!
