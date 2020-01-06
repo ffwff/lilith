@@ -36,6 +36,7 @@ double erfc(double x);
 double floor(double arg);
 double ceil(double arg);
 double round(double arg);
+double trunc(double arg);
 
 double fmod(double, double);
 

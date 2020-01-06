@@ -140,6 +140,9 @@ private def internal_gprintf(format : UInt8*, args : VaList, &block)
           # numeric values
           decimal = float.to_i64
           fractional = ((float - decimal) * 100000000).to_i64
+          if fractional < 0
+            fractional *= -1
+          end
 
           str, size = printf_int(decimal)
           return written if (retval = yield Tuple.new(str.to_unsafe, size.to_i32)) == 0
