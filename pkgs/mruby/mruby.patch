@@ -1,20 +1,35 @@
 diff --git a/build_config.rb b/build_config.rb
-index 751317c7..7e9bf1c5 100644
+index c0c079c8..f9d2a23f 100644
 --- a/build_config.rb
 +++ b/build_config.rb
-@@ -125,6 +125,17 @@ MRuby::Build.new('test') do |conf|
+@@ -125,6 +125,32 @@ MRuby::Build.new('test') do |conf|
    conf.gembox 'default'
  end
  
-+MRuby::CrossBuild.new('lilith') do |conf|
-+  toolchain :gcc
++crossbuild = ENV["CROSSBUILD"]
++if crossbuild == "lilith32"
++  MRuby::CrossBuild.new('lilith32') do |conf|
++    toolchain :gcc
 +
-+  conf.cc.command = "i386-elf-lilith-gcc"
-+  conf.cc.flags << "-g -m32"
-+  conf.linker.command = "i386-elf-lilith-gcc"
-+  conf.linker.flags << "-m32"
-+
-+  conf.gembox 'default'
++    conf.cc.command = "i386-elf-lilith-gcc"
++    conf.cc.flags << "-g -m32"
++    conf.linker.command = "i386-elf-lilith-gcc"
++    conf.linker.flags << "-m32"
++  
++    conf.gembox 'default'
++  end
++elsif crossbuild == "lilith64"
++  MRuby::CrossBuild.new('lilith64') do |conf|
++    toolchain :gcc
++  
++    conf.cc.command = "x86_64-elf-lilith-gcc"
++    conf.cc.flags << "-g"
++    conf.linker.command = "x86_64-elf-lilith-gcc"
++    
++    conf.gembox 'default'
++  end
++else
++  raise "CROSSBUILD env not defined or isn't lilith32/lilith64"
 +end
 +
  #MRuby::Build.new('bench') do |conf|
