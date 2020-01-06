@@ -51,7 +51,7 @@ module PS2
     # sample rate to 100
     mouse_write 0xF3
     ack
-    mouse_write 100
+    mouse_write 200
     ack
 
     # enable mouse
