@@ -153,15 +153,6 @@ class G::WindowDecoration < G::Widget
   @win_key_pressed = false
 
   def mouse_event(ev : G::MouseEvent)
-    if (main_widget = @main_widget) && !@win_key_pressed
-      main_widget.mouse_event ev
-      if main_widget.contains_point?(ev.relx, ev.rely)
-        @app.not_nil!.client << Wm::IPC.cursor_update_request_message(Wm::IPC::Data::CursorType::Default)
-        @last_mouse_x = -1
-        @last_mouse_y = -1
-        return
-      end
-    end
     if ev.modifiers.includes?(Wm::IPC::Data::MouseEventModifiers::LeftButton)
       close = G::Sprites.close.not_nil!
       if @close_x <= ev.relx <= (@close_x + close.width) &&
@@ -175,6 +166,18 @@ class G::WindowDecoration < G::Widget
           @app.not_nil!.client << Wm::IPC.cursor_update_request_message(Wm::IPC::Data::CursorType::Move)
           @app.not_nil!.move(delta_x, delta_y)
         end
+        @last_mouse_x = ev.x
+        @last_mouse_y = ev.y
+        return
+      end
+    end
+    if (main_widget = @main_widget) && !@win_key_pressed
+      main_widget.mouse_event ev
+      if main_widget.contains_point?(ev.relx, ev.rely)
+        @app.not_nil!.client << Wm::IPC.cursor_update_request_message(Wm::IPC::Data::CursorType::Default)
+        @last_mouse_x = -1
+        @last_mouse_y = -1
+        return
       end
     end
     @last_mouse_x = ev.x
