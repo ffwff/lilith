@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 for dir in ../userspace/applications/* ../userspace/libraries/*; do
     if [[ ! -e $(basename $dir) ]]; then

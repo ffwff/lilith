@@ -1,7 +1,7 @@
 NPROC ?= $(shell nproc)
 ARCH ?= x86_64-elf-lilith
 
-all: build_binutils build_gcc build_libc
+all: build_binutils build_gcc
 
 binutils:
 	git clone https://github.com/bminor/binutils-gdb binutils
@@ -47,8 +47,8 @@ build_gcc: gcc
 	make install
 
 # libc
-build_libc: ../libc
-	cd ../libc && \
+build_libc: ../libraries/libc
+	cd ../libraries/libc && \
 	make -j$(NPROC) RELEASE=$(RELEASE) && \
 	make install \
 		LIBDIR=$(shell pwd)/tools/lib/gcc/i386-elf-lilith/8.3.0/ \

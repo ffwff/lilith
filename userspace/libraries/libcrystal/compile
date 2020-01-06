@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 crystal_target=`echo $opt_arch | sed 's/-[^-]*$//g'`
 script_path=$(dirname $(realpath $0))
