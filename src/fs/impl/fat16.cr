@@ -499,7 +499,7 @@ module Fat16FS
       @process_allocator =
         StackAllocator.new(Pointer(Void).new(Multiprocessing::KERNEL_HEAP_INITIAL))
       @process = Multiprocessing::Process
-        .spawn_kernel("[Fat16FS]",
+        .spawn_kernel("[fat16fs]",
           ->(ptr : Void*) { ptr.as(FS).process },
           self.as(Void*),
           stack_pages: 4) do |process|
