@@ -50,21 +50,19 @@ rdx, rcx, rbx, rax : UInt64
   @@locked = false
   class_getter locked
 
-  @@frame = Pointer(Data::Registers).null
-  class_getter frame
-
   def lock
     # NOTE: we disable process switching because
     # other processes might do another syscall
     # while the current syscall is still being processed
     @@locked = true
+    GC.needs_scan_kernel_stack = true
     Idt.switch_processes = false
     Idt.enable
   end
 
   def unlock
-    @@frame = Pointer(Data::Registers).null
     @@locked = false
+    GC.needs_scan_kernel_stack = false
     Idt.switch_processes = true
     Idt.disable
   end
@@ -229,7 +227,6 @@ rdx, rcx, rbx, rax : UInt64
   end
 
   def handler(frame : Syscall::Data::Registers*)
-    @@frame = frame
     process = Multiprocessing::Scheduler.current_process.not_nil!
     # Serial.print "syscall ", fv.rax, " from ", Multiprocessing::Scheduler.current_process.not_nil!.pid, "\n"
 
@@ -247,11 +244,9 @@ rdx, rcx, rbx, rax : UInt64
           process.phys_user_pg_struct = Paging.real_pdpt.address
         end
       when SC_PROCESS_CREATE_DRV
-        result = Pointer(ElfReader::Result).new(fv.rbx)
+        result = Pointer(ElfReader::Result).new(fv.rbx).value
         udata = Pointer(Void).new(fv.rdx).as(Multiprocessing::Process::UserData)
-        Idt.disable do
-          process = Multiprocessing::Process.spawn_user(udata, result.value)
-        end
+        process = Multiprocessing::Process.spawn_user(udata, result)
         fv.rax = process.pid
       when SC_SLEEP
         process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
