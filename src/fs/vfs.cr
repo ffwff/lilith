@@ -14,7 +14,7 @@ module VFS
     end
 
     def each_child(&block)
-      if directory? && !@dir_populated
+      if directory? && !dir_populated
         return
       end
       node = first_child
@@ -36,6 +36,18 @@ module VFS
       end
       child.parent = self
       child
+    end
+
+    def remove_child(node : T)
+      if node == @first_child
+        @first_child = node.next_node
+      end
+      unless node.prev_node.nil?
+        node.prev_node.not_nil!.next_node = node.next_node
+      end
+      unless node.next_node.nil?
+        node.next_node.not_nil!.prev_node = node.prev_node
+      end
     end
   end
 

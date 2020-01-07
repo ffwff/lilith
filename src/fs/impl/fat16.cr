@@ -327,15 +327,6 @@ module Fat16FS
 
     @lookup_cache : Hash(String, VFS::Node)? = nil
 
-    def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
-      return unless directory?
-      each_child do |node|
-        if node.name == path
-          return node
-        end
-      end
-    end
-
     def read(slice : Slice, offset : UInt32,
              process : Multiprocessing::Process? = nil) : Int32
       unless directory?

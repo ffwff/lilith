@@ -10,20 +10,13 @@ module KbdFS
   end
 
   class Node < VFS::Node
+    include VFS::Enumerable(VFS::Node)
+
     getter fs : VFS::FS, raw_node, first_child
 
     def initialize(@fs : FS)
       @raw_node = @first_child = RawNode.new(fs)
-    end
-
-    def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
-      node = @first_child
-      while !node.nil?
-        if node.not_nil!.name == path
-          return node
-        end
-        node = node.next_node
-      end
+      @attributes |= VFS::Node::Attributes::Directory
     end
 
     def read(slice : Slice, offset : UInt32,

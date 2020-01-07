@@ -200,6 +200,14 @@ module ISO9660FS
       end
     end
 
+    def read(slice : Slice, offset : UInt32,
+             process : Multiprocessing::Process? = nil) : Int32
+      if offset >= size
+        return VFS_EOF
+      end
+      VFS_WAIT
+    end
+
     def populate_directory : Int32
       if Ide.locked?
         VFS_WAIT

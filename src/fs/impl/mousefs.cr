@@ -18,26 +18,13 @@ module MouseFS
   end
 
   class Node < VFS::Node
+    include VFS::Enumerable(VFS::Node)
+
     getter fs : VFS::FS, first_child
 
     def initialize(@fs : FS)
       @first_child = RawNode.new(fs)
-    end
-
-    def each_child(&block)
-      node = first_child
-      while !node.nil?
-        yield node.not_nil!
-        node = node.next_node
-      end
-    end
-
-    def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
-      each_child do |node|
-        if node.name == path
-          return node
-        end
-      end
+      @attributes |= VFS::Node::Attributes::Directory
     end
 
     def read(slice : Slice, offset : UInt32,
