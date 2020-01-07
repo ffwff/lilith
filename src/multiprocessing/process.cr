@@ -135,10 +135,10 @@ module Multiprocessing
       # working directory
       property cwd, cwd_node
 
-      # argv
+      # Array of arguments.
       property argv
 
-      # whether this process is a 64-bit or 32-bit process
+      # Whether this process is a 64-bit or 32-bit process
       @is64 = false
       property is64
 
@@ -150,7 +150,7 @@ module Multiprocessing
         end
       end
 
-      # environment variables
+      # Hashmap of environment variables.
       getter environ
 
       # how much memory we're using (in kb)
@@ -160,12 +160,12 @@ module Multiprocessing
 
       def initialize(@argv : Array(String),
                      @cwd : String, @cwd_node : VFS::Node,
-                     @environ = Array(EnvVar).new(0))
+                     @environ : Hash(String, String) = Hash(String, String).new)
         @fds = Array(FileDescriptor?).new 4
         @mmap_list = MemMapList.new
       end
 
-      # add a file descriptor and return it
+      # Finds a free file descriptor, add it and return the index.
       def install_fd(node : VFS::Node, attrs) : Int32
         i = 0
         while i < @fds.size
@@ -179,12 +179,12 @@ module Multiprocessing
         @fds.size.to_i32 - 1
       end
 
-      # gets a file descriptor or nil if it isn't opened
+      # Gets a file descriptor or nil if it isn't opened.
       def get_fd(i : Int32) : FileDescriptor?
         @fds[i]?
       end
 
-      # closes a file descriptor
+      # Closes a file descriptor, returning true if the file descriptor exists.
       def close_fd(i : Int32) : Bool
         return false unless 0 <= i < @fds.size
         return false if @fds[i].nil?
@@ -193,27 +193,23 @@ module Multiprocessing
         true
       end
 
-      # gets an environment variable by key
+      # Gets an environment variable by key.
       def getenv(key)
-        @environ.each do |env|
-          return env.not_nil!.value if env.not_nil!.key == key
-        end
+        @environ[key]?
       end
 
-      # set or override an environment variable
+      # Sets or override an environment variable.
       def setenv(key, value, override = false)
-        @environ.each do |env|
-          if env.not_nil!.key == key
-            return false unless override
-            env.not_nil!.value = value
-            return true
-          end
+        if @environ[key]?
+          return false unless override
+          @environ[key] = value
+        else
+          @environ[key] = value
         end
-        @environ.push(EnvVar.new(key, value))
         true
       end
 
-      # set wait timeout by microseconds
+      # Set wait timeout by microseconds
       def wait_usecs(usecs : UInt32)
         if usecs == (-1).to_u32
           @wait_end = 0
@@ -222,6 +218,7 @@ module Multiprocessing
         end
       end
 
+      # :ditto:
       def wait_usecs(usecs : UInt64)
         if usecs == (-1).to_u64
           @wait_end = 0
@@ -231,7 +228,7 @@ module Multiprocessing
       end
     end
 
-    # kernel mode process data
+    # Kernel mode process data.
     class KernelData
       @stack_pages = 0
       property stack_pages
@@ -241,6 +238,11 @@ module Multiprocessing
 
       def initialize(@stack_pages : Int32)
       end
+    end
+
+    # Checks if the process is removed.
+    def removed?
+      @sched_data.nil?
     end
 
     def initialize(@name : String?, @pdata : UserData | KernelData, &on_setup_paging : Process -> _)
@@ -331,6 +333,7 @@ module Multiprocessing
       Idt.enable
     end
 
+    # Switches to the process from startup bootstrap.
     def initial_switch
       Multiprocessing::Scheduler.current_process = self
       abort "page dir is nil" if @phys_pg_struct == 0
@@ -344,7 +347,7 @@ module Multiprocessing
       Kernel.ksyscall_switch(pointerof(@frame))
     end
 
-    # new register frame for multitasking
+    # Creates a new register frame.
     def new_frame
       abort "may only call new_frame once" if @frame_initialized
 
@@ -356,7 +359,7 @@ module Multiprocessing
         frame.cs = KERNEL_CS_SEGMENT
         frame.ss = KERNEL_DS_SEGMENT
         frame.ds = KERNEL_DS_SEGMENT
-      else
+      elsif user_process?
         frame.rflags = USER_RFLAGS
         if udata.is64
           frame.cs = USER_CS64_SEGMENT
@@ -367,12 +370,16 @@ module Multiprocessing
           frame.ss = USER_DS_SEGMENT
           frame.ds = USER_DS_SEGMENT
         end
+      else
+        Serial.print @name, ' ', as(Void*), '\n'
+        abort "no process data?"
       end
 
       @frame = frame
       @frame_initialized = true
     end
 
+    # Creates a new register frame from a syscall frame.
     def new_frame_from_syscall(syscall_frame : Syscall::Data::Registers*)
       frame = Idt::Data::Registers.new
 
@@ -416,8 +423,9 @@ module Multiprocessing
       @frame = frame
     end
 
-    # spawn user process and move the lower-half of the current the address space
-    # to the newly-spawned user process
+    # Spawn user process and move the lower-half of the current the address space
+    # to the newly-spawned user process. This is called whenever a user process
+    # is spawned from a kernel process (typically a file system driver).
     def self.spawn_user(udata : UserData, result : ElfReader::Result)
       udata.is64 = result.is64
       udata.memory_used = result.memory_used
@@ -489,7 +497,8 @@ module Multiprocessing
       retval
     end
 
-    # spawn kernel process with optional argument
+    # Spawn a kernel process with the instruction pointer starting at specific function.
+    # An optional `arg` pointer can be passed which `rdi` will be set to.
     def self.spawn_kernel(name : String, function, arg : Void*? = nil, stack_pages = 1, &block)
       Multiprocessing::Process.new(name, KernelData.new(stack_pages)) do |process|
         stack_start = Paging.aligned_floor(process.initial_sp) - (stack_pages - 1) * 0x1000
@@ -506,12 +515,12 @@ module Multiprocessing
       end
     end
 
-    # spawn kernel process with optional argument
+    # :ditto:
     def self.spawn_kernel(name : String, function, arg : Void*? = nil, stack_pages = 1)
       spawn_kernel(name, function, arg, stack_pages) { }
     end
 
-    # deinitialize
+    # Removes a process from existence.
     def remove(remove_proc? = true)
       Multiprocessing.n_process -= 1
       @prev_process.not_nil!.next_process = @next_process
@@ -548,11 +557,7 @@ module Multiprocessing
       end
     end
 
-    def removed?
-      @sched_data.nil?
-    end
-
-    # write address to page without switching tlb to the process' pdpt
+    # Write a byte to a virtual address without switching TLB to the process' page directory.
     def write_to_virtual(virt_ptr : UInt8*, byte : UInt8)
       return false if @phys_pg_struct == 0
 
@@ -577,7 +582,7 @@ module Multiprocessing
       true
     end
 
-    # get physical page where the address belongs to
+    # Gets the physical address for the virtual address in the process' address space.
     def physical_page_for_address(virt_addr : UInt64)
       return if @phys_pg_struct == 0
       return if !kernel_process? && virt_addr > Paging::PDPT_SIZE
@@ -596,7 +601,6 @@ module Multiprocessing
       Pointer(UInt8).new(Paging.mt_addr(pt.value.pages[page_idx]))
     end
 
-    # debugging
     def to_s(io)
       io.print "Process {\n"
       io.print " pid: ", @pid, ", \n"
@@ -615,7 +619,7 @@ module Multiprocessing
     end
   end
 
-  # sleep from kernel thread
+  # Puts the calling kernel thread to sleep
   @[NoInline]
   def sleep
     retval = 0u64
@@ -626,14 +630,13 @@ module Multiprocessing
     retval
   end
 
-  # sleep from kernel thread and disable GC
+  # Puts the calling kernel thread to sleep and disables GC scanning for the process
   def sleep_disable_gc
     Multiprocessing::Scheduler.current_process.not_nil!.kdata.gc_enabled = false
     sleep
     Multiprocessing::Scheduler.current_process.not_nil!.kdata.gc_enabled = true
   end
 
-  # iteration
   def each
     process = @@first_process
     while !process.nil?
