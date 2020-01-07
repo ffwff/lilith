@@ -320,50 +320,86 @@ module GC
       end
     end
 
-    def scan_interrupt
-      conservative_scan Kernel.int_stack_start.address, Kernel.int_stack_end.address
-      @@needs_scan_interrupt = false
+    private def scan_frame_registers(frame)
+      {% for register in ["rax", "rbx", "rcx", "rdx",
+                          "r8", "r9", "r10", "r11", "rsi", "rdi",
+                          "r12", "r13", "r14", "r15"] %}
+        ptr = Pointer(Void).new(frame.value.{{ register.id }})
+        push_gray ptr
+      {% end %}
     end
 
     @@needs_scan_kernel_threads = false
+
+    @@needs_scan_kernel_stack = false
+    class_setter needs_scan_kernel_stack
+
     @@needs_scan_interrupt = false
     class_setter needs_scan_interrupt
   {% end %}
 
   private def unlocked_cycle
     # Serial.print "---\n"
-    case @@state
-    when State::ScanRoot
-      scan_globals
-      scan_registers
-      scan_stack
-      {% if flag?(:kernel) %}
-        @@needs_scan_kernel_threads = true
-      {% end %}
-      @@state = State::ScanGray
-      false
-    when State::ScanGray
-      scan_gray_nodes
-      swap_grays
-      {% if flag?(:kernel) %}
-        if @@needs_scan_interrupt
-          scan_interrupt
-          return false
+    {% if flag?(:kernel) %}
+      case @@state
+      when State::ScanRoot
+        scan_globals
+        scan_registers
+        scan_stack
+        @@state = State::ScanGray
+        @@needs_scan_kernel_stack = false
+        false
+      when State::ScanGray
+        scan_gray_nodes
+        swap_grays
+        if @@needs_scan_kernel_stack
+          if @@needs_scan_interrupt && Idt.last_frame
+            # we're in an interrupt which came from a syscall
+            scan_frame_registers Idt.last_frame
+          end
+          conservative_scan @@stack_start.address,
+                            @@stack_end.address
+          @@needs_scan_kernel_stack = false
         end
-        if gray_empty? && !@@needs_scan_kernel_threads
+        if @@needs_scan_interrupt
+          conservative_scan Kernel.int_stack_start.address,
+            Kernel.int_stack_end.address
+          @@needs_scan_interrupt = false
+        end
+        if gray_empty? &&
+           !@@needs_scan_kernel_threads
           @@state = State::Sweep
         end
-      {% else %}
+        false
+      when State::Sweep
+        Allocator.sweep
+        @@state = State::ScanRoot
+        @@needs_scan_kernel_threads = true
+        @@needs_scan_interrupt = true
+        @@needs_scan_kernel_stack = false
+        true
+      end
+    {% else %}
+      case @@state
+      when State::ScanRoot
+        scan_globals
+        scan_registers
+        scan_stack
+        @@state = State::ScanGray
+        false
+      when State::ScanGray
+        scan_gray_nodes
+        swap_grays
         if gray_empty?
           @@state = State::Sweep
         end
-      {% end %}
-      false
-    when State::Sweep
-      Allocator.sweep
-      @@state = State::ScanRoot
-      true
-    end
+        false
+      when State::Sweep
+        Allocator.sweep
+        @@state = State::ScanRoot
+        true
+      end
+    {% end %}
   end
 
   private def unlocked_full_cycle
@@ -373,15 +409,19 @@ module GC
   end
 
   # Tries to do at most 16 GC cycles, stopping upon a sweep stage.
+  @[NoInline]
   def full_cycle
     @@spinlock.with do
+      return unless @@enabled
       unlocked_full_cycle
     end
   end
 
   # Tries to do a non stop-the-world cycle.
+  @[NoInline]
   def non_stw_cycle
     @@spinlock.with do
+      return unless @@enabled
       if @@state != State::ScanRoot
         unlocked_cycle
       end
@@ -392,7 +432,7 @@ module GC
 
   # Allocates an object and marks it gray.
   #
-  # NOTE: this must be NoInline which forces the compiler to store the callee's local variables inside a stack frame.
+  # NOTE: this must be NoInline which forces the compiler to store the caller's local variables inside a stack frame.
   @[NoInline]
   def unsafe_malloc(size : UInt64, atomic = false)
     @@spinlock.with do

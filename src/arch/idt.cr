@@ -157,14 +157,14 @@ rdx, rcx, rbx, rax : UInt64
     abort "IF is set" if (check & 0x200) != 0
   end
 
-  @@last_rsp = 0u64
-  class_property last_rsp
+  @@last_frame = Pointer(Idt::Data::Registers).null
+  class_getter last_frame
 
   @@switch_processes = false
   class_property switch_processes
 
   private def handle_unmasked(frame : Idt::Data::Registers*)
-    @@last_rsp = frame.value.userrsp
+    @@last_frame = frame
     PIC.eoi frame.value.int_no
 
     if @@irq_handlers[frame.value.int_no].pointer.null?
