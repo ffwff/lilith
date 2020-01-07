@@ -46,18 +46,18 @@ module Paging
   @@usable_physical_memory = 0u64
   class_getter usable_physical_memory
 
-  # identity-mapped virtual address of the page directory pointer table for user processes
+  # Identity-mapped virtual address of the page directory pointer table for user processes
   @@current_pdpt = Pointer(Data::PDPTable).null
-  # identity-mapped virtual address of the page directory pointer table for kernel processes
+  # Identity-mapped virtual address of the page directory pointer table for kernel processes
   @@current_kernel_pdpt = Pointer(Data::PDPTable).null
 
-  # linear address of the page directory pointer table
+  # Linear address of the page directory pointer table
   def current_pdpt
     new_addr = @@current_pdpt.address & ~Paging::IDENTITY_MASK
     Pointer(Data::PDPTable).new(new_addr)
   end
 
-  # lower-half page directory pointer table for kernel processes
+  # Lower-half page directory pointer table for kernel processes
   def real_pdpt
     pml4_addr = @@pml4_table.address | Paging::IDENTITY_MASK
     pml4_table = Pointer(Data::PML4Table).new pml4_addr
@@ -65,13 +65,16 @@ module Paging
     Pointer(Data::PDPTable).new(new_addr)
   end
 
-  # linear address of the page directory pointer table
+  # Linear address of the page directory pointer table
   def current_kernel_pdpt
     new_addr = @@current_kernel_pdpt.address & ~Paging::IDENTITY_MASK
     Pointer(Data::PDPTable).new(new_addr)
   end
 
-  # map user page directory pointer table
+  # Maps user page directory pointer table.
+  #
+  # NOTE: this must be NoInline because in changes the address space
+  # in a way that the compiler doesn't recognize.
   @[NoInline]
   def current_pdpt=(x)
     if x.null?
@@ -91,7 +94,10 @@ module Paging
     pml4_table.value.pdpt[0] = x.address | PT_MASK
   end
 
-  # map kernel page directory pointer table
+  # Maps kernel page directory pointer table.
+  #
+  # NOTE: this must be NoInline because in changes the address space
+  # in a way that the compiler doesn't recognize.
   @[NoInline]
   def current_kernel_pdpt=(x)
     new_addr = x.address | Paging::IDENTITY_MASK
@@ -105,6 +111,7 @@ module Paging
 
   @@pml4_table = Pointer(Data::PML4Table).null
 
+  # Initializes table from bootstrap code.
   def init_table(
     text_start : Void*, text_end : Void*,
     data_start : Void*, data_end : Void*,
@@ -228,6 +235,7 @@ module Paging
     flush
   end
 
+  # Calculate page table indexes from a virtual address.
   def page_layer_indexes(addr : UInt64)
     pdpt_idx = (addr >> 39) & (0x200 - 1)
     dir_idx = (addr >> 30) & (0x200 - 1)
@@ -236,14 +244,16 @@ module Paging
     {pdpt_idx.to_i32, dir_idx.to_i32, table_idx.to_i32, page_idx.to_i32}
   end
 
-  # state
+  # Flushes the page
+  #
+  # NOTE: this must be NoInline because in changes the address space
+  # in a way that the compiler doesn't recognize. 
   @[NoInline]
   def flush
     asm("mov $0, %cr3" :: "r"(@@pml4_table) : "volatile", "memory")
   end
 
-  # allocate page when pg is enabled
-  # returns page address
+  # Allocates a page after bootstrapping has been completed.
   def alloc_page(virt_addr_start : UInt64, rw : Bool, user : Bool,
                  npages : USize = 1, phys_addr_start : UInt64 = 0,
                  execute = false) : UInt64
@@ -313,6 +323,7 @@ module Paging
     virt_addr_start
   end
 
+  # Allocates a page from a kernel thread.
   @[NoInline]
   def alloc_page_drv(virt_addr_start : UInt64, rw : Bool, user : Bool,
                         npages : USize = 1,
@@ -330,6 +341,7 @@ module Paging
     retval
   end
 
+  # Removes a virtual address from memory.
   def remove_page(virt_addr : UInt64)
     pdpt_idx, dir_idx, table_idx, page_idx = page_layer_indexes(virt_addr)
 
@@ -351,7 +363,7 @@ module Paging
     true
   end
 
-  # (de)allocate page directories for processes
+  # Allocate page directory pointer table for a process
   def alloc_process_pdpt
     # claim frame for page directory
     pdpt = Pointer(Data::PDPTable).new(FrameAllocator.claim_with_addr)
@@ -362,6 +374,7 @@ module Paging
     pdpt.address
   end
 
+  # Deallocate page directory pointer table and containing pages for a process
   def free_process_pdpt(pdtpa : UInt64, free_pdpta? : Bool = true)
     pdpt = Pointer(Data::PDPTable).new(mt_addr pdtpa)
     # Serial.print "pdpt: ", pdpt, '\n'
@@ -401,7 +414,7 @@ module Paging
   PG_USER_BIT  = 1u64 << 2u64
   NX_BIT       = 1u64 << 63u64
 
-  # page creation
+  # Creates a page
   private def page_create(rw : Bool, user : Bool, phys : UInt64,
                           execute : Bool) : UInt64
     page = 0x1u64
@@ -418,24 +431,24 @@ module Paging
     page
   end
 
-  # page aligned address
+  # Page-align an address to an address higher than it.
   def aligned(x : UInt64) : UInt64
     aligned_floor(x) + 0x1000
   end
 
-  # floored page aligned address
+  # Page-align an address to an address equal or lower than it.
   def aligned_floor(addr : UInt64)
     addr & 0xFFFF_FFFF_FFFF_F000u64
   end
 
-  # table address
-  private def t_addr(addr : UInt64)
+  # Table address
+  def t_addr(addr : UInt64)
     addr & 0xFFFF_FFFF_F000u64
   end
 
-  # mapped table address
+  # Mapped table address
   def mt_addr(addr : UInt64)
-    (addr & 0xFFFF_FFFF_F000u64) | Paging::IDENTITY_MASK
+    t_addr(addr) | Paging::IDENTITY_MASK
   end
 
   # identity map pages at init
@@ -474,7 +487,7 @@ module Paging
     alloc_page_init(rw, user, phys_addr, virt_addr, execute: execute)
   end
 
-  # userspace address checking
+  # Checks if a page in the current address exists.
   def check_user_addr(ptr : Void*)
     # FIXME: check for kernel/unmapped pages
     pdpt_idx, dir_idx, table_idx, page_idx = page_layer_indexes(ptr.address)
@@ -494,7 +507,7 @@ module Paging
     pt.value.pages[page_idx] != 0
   end
 
-  # translate virtual to physical address
+  # Translates a virtual address to physical address
   def virt_to_phys_address(ptr : Void*)
     pdpt_idx, dir_idx, table_idx, page_idx = page_layer_indexes(ptr.address)
     offset = ptr.address & 0xFFF
