@@ -37,6 +37,9 @@ class Hash(K, V) < Markable
     end
   end
 
+  protected def initialize(@entries : Pointer(Entry(K, V)), @size, @occupied)
+  end
+
   def get_key_with_hasher(key, hasher)
     return if @size == 0
     idx = key.hash(hasher).result & (@size - 1)
@@ -177,6 +180,12 @@ class Hash(K, V) < Markable
         idx += 1
       end
     end
+  end
+
+  def clone
+    new_entries = Pointer(Entry(K, V)).malloc_atomic(@size)
+    memcpy(new_entries.as(UInt8*), @entries.as(UInt8*), (sizeof(Entry(K, V)) * @size).to_usize)
+    Hash.new(new_entries, @size, @occupied)
   end
   
   @[NoInline]
