@@ -228,6 +228,7 @@ module ISO9660FS
     end
 
     def iso_populate_directory(allocator : StackAllocator? = nil)
+      return if @dir_populated
       @dir_populated = true
       sector = if allocator
                   Slice(UInt8).mmalloc_a 2048, allocator.not_nil!

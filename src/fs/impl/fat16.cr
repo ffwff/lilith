@@ -268,6 +268,7 @@ module Fat16FS
     end
 
     def fat_populate_directory(allocator : StackAllocator? = nil)
+      return if @dir_populated
       @dir_populated = true
       @lookup_cache = LookupCache.new
 
@@ -527,11 +528,8 @@ module Fat16FS
             end
             @process_allocator.not_nil!.clear
           when VFS::Message::Type::PopulateDirectory
-            Idt.switch_processes = false
-            # FIXME: don't disable interrupts once we can scan driver thread stacks
             node.fat_populate_directory(allocator: @process_allocator)
             msg.unawait_rewind
-            Idt.switch_processes = true
           end
         else
           Multiprocessing.sleep_disable_gc

@@ -411,6 +411,18 @@ rdx, rcx, rbx, rax : UInt64
       if fd.cur_child_end
         sysret(0)
       elsif fd.cur_child.nil?
+        if !fd.node.not_nil!.dir_populated
+          vfs_node = fd.node.not_nil!
+          case vfs_node.populate_directory
+          when VFS_OK
+            # ignored
+          when VFS_WAIT
+            vfs_node.fs.queue.not_nil!
+              .enqueue(VFS::Message.new(vfs_node, process))
+            process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
+            Multiprocessing::Scheduler.switch_process(frame)
+          end
+        end
         if (child = fd.node.not_nil!.first_child).nil?
           sysret(ENOENT)
         end
