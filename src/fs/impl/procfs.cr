@@ -17,6 +17,7 @@ module ProcFS
     def initialize(@process : Multiprocessing::Process?, @parent : Node, @fs : FS,
                    @prev_node : ProcessNode? = nil,
                    @next_node : ProcessNode? = nil)
+      @attributes |= VFS::Node::Attributes::Directory
       @name = process.pid.to_s
       add_child(ProcessStatusNode.new(self, @fs))
       unless process.kernel_process?
@@ -27,6 +28,7 @@ module ProcFS
     def initialize(@parent : Node, @fs : FS,
                    @prev_node : ProcessNode? = nil,
                    @next_node : ProcessNode? = nil)
+      @attributes |= VFS::Node::Attributes::Directory
       @name = "kernel"
       add_child(MemInfoNode.new(self, @fs))
       add_child(CPUInfoNode.new(self, @fs))
@@ -48,6 +50,7 @@ module ProcFS
     getter fs : VFS::FS, raw_node, first_child
 
     def initialize(@fs : FS)
+      @attributes |= VFS::Node::Attributes::Directory
       @lookup_cache = LookupCache.new
       add_child(ProcessNode.new(self, @fs))
     end
