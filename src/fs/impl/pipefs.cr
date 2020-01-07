@@ -4,14 +4,10 @@ module PipeFS
   extend self
 
   class Node < VFS::Node
+    include VFS::Child(Node)
+
     getter! name : String
     getter fs : VFS::FS
-
-    @next_node : PipeFS::Node? = nil
-    property next_node
-
-    @prev_node : PipeFS::Node? = nil
-    property prev_node
 
     def initialize(@name : String,
                    @m_pid,
@@ -65,7 +61,7 @@ module PipeFS
 
     def remove : Int32
       return VFS_ERR if removed?
-      @parent.remove_child self unless anonymous?
+      @parent.as!(Root).remove_child self unless anonymous?
       @pipe.deinit_buffer
       @attributes |= VFS::Node::Attributes::Removed
       VFS_OK
@@ -151,7 +147,7 @@ module PipeFS
   end
 
   class Root < VFS::Node
-    include VFS::Enumerable(PipeFS::Node)
+    include VFS::Enumerable(Node)
 
     getter fs : VFS::FS
     getter first_child
@@ -172,11 +168,7 @@ module PipeFS
       node = PipeFS::Node.new(String.new(name),
         process.not_nil!.pid,
         self, fs)
-      node.next_node = @first_child
-      unless @first_child.nil?
-        @first_child.not_nil!.prev_node = node
-      end
-      @first_child = node
+      add_child node
       node
     end
   end

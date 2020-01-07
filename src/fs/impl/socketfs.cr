@@ -3,14 +3,10 @@ require "./pipe/circular_buffer.cr"
 module SocketFS
   extend self
   class Node < VFS::Node
+    include VFS::Child(Node)
+
     getter! name : String, listen_node
     getter fs : VFS::FS
-
-    @next_node : Node? = nil
-    property next_node
-
-    @prev_node : Node? = nil
-    property prev_node
 
     def initialize(@name : String, @parent : Root, @fs : FS)
       @listen_node = ListenNode.new self, @fs
@@ -30,20 +26,13 @@ module SocketFS
     include VFS::Enumerable(Node)
     getter fs : VFS::FS
 
-    @first_child : Node? = nil
-    getter first_child
-
     def initialize(@fs : FS)
       @attributes |= VFS::Node::Attributes::Directory
     end
 
     def create(name : Slice, process : Multiprocessing::Process? = nil, options : Int32 = 0) : VFS::Node?
       node = Node.new(String.new(name), self, fs)
-      node.next_node = @first_child
-      unless @first_child.nil?
-        @first_child.not_nil!.prev_node = node
-      end
-      @first_child = node
+      add_child node
       node
     end
   end

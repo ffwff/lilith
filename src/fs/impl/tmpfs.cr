@@ -14,74 +14,19 @@ module TmpFS
 
   end
 
-  class Root < VFS::Node
-    getter fs : VFS::FS
-    
-    def initialize(@fs : FS)
-    end
-
-    def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
-      each_child do |node|
-        return node if node.name == path
-      end
-    end
-
-    def create(name : Slice, process : Multiprocessing::Process? = nil, options : Int32 = 0) : VFS::Node?
-      each_child do |node|
-        return if node.name == name
-      end
-      node = Node.new(String.new(name), self, fs)
-      node.next_node = @first_child
-      unless @first_child.nil?
-        @first_child.not_nil!.prev_node = node
-      end
-      @first_child = node
-      node
-    end
-
-    def remove(node : Node)
-      if node == @first_child
-        @first_child = node.next_node
-      end
-      unless node.prev_node.nil?
-        node.prev_node.not_nil!.next_node = node.next_node
-      end
-      unless node.next_node.nil?
-        node.next_node.not_nil!.prev_node = node.prev_node
-      end
-    end
-
-    @first_child : Node? = nil
-    getter first_child
-
-    def each_child(&block)
-      node = @first_child
-      while !node.nil?
-        yield node.not_nil!
-        node = node.next_node
-      end
-    end
-  end
-
   class Node < VFS::Node
+    include VFS::Child(Node)
+
     getter! name : String, fs : VFS::FS
     getter size
 
-    @next_node : Node? = nil
-    property next_node
-
-    @prev_node : Node? = nil
-    property prev_node
-
-    def initialize(@name : String, @parent : Root, @fs : FS)
+    def initialize(@name : String, @fs : FS)
     end
 
     @first_page = Pointer(Data::TmpFSPage).null
     @last_page = Pointer(Data::TmpFSPage).null
     @npages = 0
     @size = 0
-    
-    # page operations
     
     private def append_frame
       if @first_page.null?
@@ -128,8 +73,6 @@ module TmpFS
       end
     end
 
-    # file operations
-
     def remove : Int32
       return VFS_ERR if removed?
       if @mmap_count > 0
@@ -148,7 +91,7 @@ module TmpFS
         page = next_page
       end
 
-      @parent.remove self
+      @parent.as!(Root).remove_child self
       @attributes |= VFS::Node::Attributes::Removed
       VFS_OK
     end
@@ -248,6 +191,22 @@ module TmpFS
         i += 0x1000
       end
       VFS_OK
+    end
+  end
+
+
+  class Root < VFS::Node
+    include VFS::Enumerable(Node)
+    getter fs : VFS::FS
+    
+    def initialize(@fs : FS)
+      @attributes |= VFS::Node::Attributes::Directory
+    end
+
+    def create(name : Slice, process : Multiprocessing::Process? = nil, options : Int32 = 0) : VFS::Node?
+      node = Node.new(String.new(name), fs)
+      add_child node
+      node
     end
   end
 

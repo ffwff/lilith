@@ -3,7 +3,21 @@ require "./async.cr"
 module VFS
   extend self
 
+  module Child(T)
+    @parent : VFS::Node? = nil
+    property parent
+
+    @next_node : T? = nil
+    property next_node
+
+    @prev_node : T? = nil
+    property prev_node
+  end
+
   module Enumerable(T)
+    @first_child : T? = nil
+    getter first_child
+
     def open(path : Slice, process : Multiprocessing::Process? = nil) : VFS::Node?
       return unless directory?
       each_child do |node|
@@ -26,27 +40,29 @@ module VFS
 
     def add_child(child : T)
       if @first_child.nil?
-        # first node
-        child.next_node = nil
+        if child.responds_to?(:next_node=)
+          child.next_node = nil
+        end
         @first_child = child
       else
-        # middle node
-        child.next_node = @first_child
+        if child.responds_to?(:next_node=)
+          child.next_node = @first_child
+        end
         @first_child = child
       end
       child.parent = self
       child
     end
 
-    def remove_child(node : T)
-      if node == @first_child
-        @first_child = node.next_node
+    def remove_child(child : T)
+      if child == @first_child
+        @first_child = child.next_node
       end
-      unless node.prev_node.nil?
-        node.prev_node.not_nil!.next_node = node.next_node
+      if node = child.prev_node
+        node.next_node = child.next_node
       end
-      unless node.next_node.nil?
-        node.next_node.not_nil!.prev_node = node.prev_node
+      if node = child.next_node
+        node.prev_node = child.prev_node
       end
     end
   end

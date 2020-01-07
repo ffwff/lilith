@@ -17,31 +17,9 @@ module MouseFS
     end
   end
 
-  class Node < VFS::Node
-    include VFS::Enumerable(VFS::Node)
-
-    getter fs : VFS::FS, first_child
-
-    def initialize(@fs : FS)
-      @first_child = RawNode.new(fs)
-      @attributes |= VFS::Node::Attributes::Directory
-    end
-
-    def read(slice : Slice, offset : UInt32,
-             process : Multiprocessing::Process? = nil) : Int32
-      x, y, _ = fs.mouse.flush
-
-      writer = SliceWriter.new(slice)
-      writer << x
-      writer << ','
-      writer << y
-      writer << '\n'
-
-      writer.offset
-    end
-  end
-
   class RawNode < VFS::Node
+    include VFS::Child(RawNode)
+
     getter fs : VFS::FS
 
     def initialize(@fs : FS)
@@ -68,6 +46,32 @@ module MouseFS
 
     def available?(process : Multiprocessing::Process) : Bool
       fs.mouse.available
+    end
+  end
+
+
+  class Node < VFS::Node
+    include VFS::Enumerable(RawNode)
+
+    getter fs : VFS::FS, first_child
+
+    def initialize(@fs : FS)
+      @raw_node = RawNode.new(fs)
+      add_child @raw_node
+      @attributes |= VFS::Node::Attributes::Directory
+    end
+
+    def read(slice : Slice, offset : UInt32,
+             process : Multiprocessing::Process? = nil) : Int32
+      x, y, _ = fs.mouse.flush
+
+      writer = SliceWriter.new(slice)
+      writer << x
+      writer << ','
+      writer << y
+      writer << '\n'
+
+      writer.offset
     end
   end
 

@@ -123,18 +123,11 @@ module Fat16FS
 
   class Node < VFS::Node
     include FatCache
+    include VFS::Child(Node)
     include VFS::Enumerable(Node)
-
-    @parent : Node? = nil
-    property parent
 
     @name : String? = nil
     property name
-
-    @next_node : Node? = nil
-    property next_node
-
-    @first_child : Node? = nil
 
     def first_child
       if directory? && !@dir_populated

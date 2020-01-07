@@ -9,13 +9,50 @@ module KbdFS
     end
   end
 
-  class Node < VFS::Node
-    include VFS::Enumerable(VFS::Node)
+  class RawNode < VFS::Node
+    include VFS::Child(RawNode)
 
-    getter fs : VFS::FS, raw_node, first_child
+    getter fs : VFS::FS
 
     def initialize(@fs : FS)
-      @raw_node = @first_child = RawNode.new(fs)
+    end
+
+    def name
+      "raw"
+    end
+
+    @ch = 0
+    @modifiers = 0
+    @packet_available = false
+    property ch, modifiers, packet_available
+
+    def read(slice : Slice, offset : UInt32,
+             process : Multiprocessing::Process? = nil) : Int32
+      @packet_available = false
+      packet = uninitialized Data::Packet
+      packet.ch = @ch
+      packet.modifiers = @modifiers
+      @ch = 0
+      @modifiers = 0
+      size = Math.min slice.size, sizeof(Data::Packet)
+      memcpy(slice.to_unsafe, pointerof(packet).as(UInt8*), size.to_usize)
+      size
+    end
+
+    def available?(process : Multiprocessing::Process) : Bool
+      @packet_available
+    end
+  end
+
+
+  class Node < VFS::Node
+    include VFS::Enumerable(RawNode)
+
+    getter fs : VFS::FS, raw_node
+
+    def initialize(@fs : FS)
+      @raw_node = RawNode.new(fs)
+      add_child @raw_node
       @attributes |= VFS::Node::Attributes::Directory
     end
 
@@ -56,39 +93,6 @@ module KbdFS
       else
         -1
       end
-    end
-  end
-
-  class RawNode < VFS::Node
-    getter fs : VFS::FS
-
-    def initialize(@fs : FS)
-    end
-
-    def name
-      "raw"
-    end
-
-    @ch = 0
-    @modifiers = 0
-    @packet_available = false
-    property ch, modifiers, packet_available
-
-    def read(slice : Slice, offset : UInt32,
-             process : Multiprocessing::Process? = nil) : Int32
-      @packet_available = false
-      packet = uninitialized Data::Packet
-      packet.ch = @ch
-      packet.modifiers = @modifiers
-      @ch = 0
-      @modifiers = 0
-      size = Math.min slice.size, sizeof(Data::Packet)
-      memcpy(slice.to_unsafe, pointerof(packet).as(UInt8*), size.to_usize)
-      size
-    end
-
-    def available?(process : Multiprocessing::Process) : Bool
-      @packet_available
     end
   end
 
