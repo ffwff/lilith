@@ -1,5 +1,6 @@
-# lilith
-
+<p align="center">
+<img alt="Redox" width="346" src="https://github.com/DefunctLizard/lilith/blob/master/img/lilith-logo.png.png?raw=true">
+</p>
 
 A POSIX-like x86-64 kernel and userspace written in Crystal.
 
