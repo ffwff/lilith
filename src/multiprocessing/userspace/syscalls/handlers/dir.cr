@@ -2,8 +2,8 @@ module Syscall::Handlers
   extend self
 
   def readdir(args : Syscall::Arguments)
-    fd = pudata.get_fd(arg[0].to_i32) || return EBADFD
-    retval = checked_pointer(Syscall::Data::DirentArgument32, arg[1]) || return EFAULT
+    fd = args.process.udata.get_fd(args[0].to_i32) || return EBADFD
+    retval = checked_pointer(Syscall::Data::DirentArgument32, args[1]) || return EFAULT
     if fd.cur_child_end
       return 0
     elsif fd.cur_child.nil?
@@ -14,9 +14,9 @@ module Syscall::Handlers
           # ignored
         when VFS_WAIT
           vfs_node.fs.queue.not_nil!
-            .enqueue(VFS::Message.new(vfs_node, process))
-          process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
-          Multiprocessing::Scheduler.switch_process(frame)
+            .enqueue(VFS::Message.new(vfs_node, args.process))
+          args.process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
+          Multiprocessing::Scheduler.switch_process(args.frame)
         end
       end
       if (child = fd.node.not_nil!.first_child).nil?
@@ -53,15 +53,15 @@ module Syscall::Handlers
   end
 
   def getcwd(args : Syscall::Arguments)
-    if arg[0] == 0
-      return pudata.cwd.size
+    if args[0] == 0
+      return args.process.udata.cwd.size
     end
-    str = checked_slice(arg(0), arg(1)) || return EFAULT
+    str = checked_slice(args[0], args[1]) || return EFAULT
     if str.size > SC_PATH_MAX
       return EINVAL
     end
     idx = 0
-    pudata.cwd.each_byte do |ch|
+    args.process.udata.cwd.each_byte do |ch|
       break if idx == str.size - 1
       str[idx] = ch
       idx += 1
@@ -71,18 +71,20 @@ module Syscall::Handlers
   end
 
   def chdir(args : Syscall::Arguments)
-    path = checked_slice(arg(0), arg(1)) || return EFAULT
-    if (t = append_paths path, pudata.cwd, pudata.cwd_node).nil?
-      ENOENT
-    else
-      cwd, vfs_node = t.not_nil!
+    path = checked_slice(args[0], args[1]) || return EFAULT
+    if tuple = Syscall::Path.append_paths path,
+                            args.process.udata.cwd,
+                            args.process.udata.cwd_node
+      cwd, vfs_node = tuple
       if !vfs_node.nil?
-        pudata.cwd = cwd
-        pudata.cwd_node = vfs_node.not_nil!
+        args.process.udata.cwd = cwd
+        args.process.udata.cwd_node = vfs_node.not_nil!
         0
       else
         EINVAL
       end
+    else
+      ENOENT
     end
   end
 

@@ -3,23 +3,25 @@ module Syscall::Handlers
 
   def spawn(args : Syscall::Arguments)
     path = checked_slice(args[0], args[1]) || return EFAULT
-    startup_info = checked_pointer(Syscall::Data::SpawnStartupInfo32, arg(2))
-    if pudata.is64
+    startup_info = checked_pointer(Syscall::Data::SpawnStartupInfo32, args[2])
+    if args.process.udata.is64
       argv = checked_pointer(UInt64, args[3]) || return EFAULT
     else
       argv = checked_pointer(UInt32, args[3]) || return EFAULT
     end
 
     # search in path env
-    vfs_node = unless (path_env = pudata.getenv("PATH")).nil?
-      # TODO: parse multiple paths
-      unless (dir = parse_path_into_vfs(path_env.byte_slice, process, frame)).nil?
-        parse_path_into_vfs path, process, frame, dir
-      end
-    end
+    vfs_node = if path_env = args.process.udata.getenv("PATH")
+                 # TODO: parse multiple paths
+                 if dir = Syscall::Path.parse_path_into_vfs(path_env.byte_slice, args)
+                   Syscall::Path.parse_path_into_vfs path, args, cw_node: dir
+                 end
+               end
+
     # search binary in cwd
     if vfs_node.nil?
-      vfs_node = parse_path_into_vfs path, process, frame, pudata.cwd_node
+      vfs_node = Syscall::Path.parse_path_into_vfs path, args,
+                          cw_node: args.process.udata.cwd_node
     end
 
     if vfs_node.nil?
@@ -32,41 +34,41 @@ module Syscall::Handlers
         if argv[i] == 0
           break
         end
-        # FIXME: check for size of NullTerminatedSlice
-        arg = NullTerminatedSlice.new(try(checked_pointer(UInt8, argv[i].to_u64), EFAULT))
+        argp = checked_pointer(UInt8, argv[i].to_u64) || return EFAULT
+        arg = NullTerminatedSlice.new(argp, SC_SPAWN_MAX_ARGLEN)
         pargv.push String.new(arg)
         i += 1
       end
 
       udata = Multiprocessing::Process::UserData
         .new(pargv,
-          pudata.cwd.clone,
-          pudata.cwd_node,
-          pudata.environ.clone)
+          args.process.udata.cwd.clone,
+          args.process.udata.cwd_node,
+          args.process.udata.environ.clone)
       udata.pgid = args.process.udata.pgid
 
       # copy file descriptors 0, 1, 2
       if !startup_info.nil?
         startup_info = startup_info.not_nil!
         if (fd = args.process.udata.fds[startup_info.value.stdin]?)
-          args.udata.fds.push fd.clone(0)
+          args.process.udata.fds.push fd.clone(0)
         else
-          args.udata.fds.push nil
+          args.process.udata.fds.push nil
         end
         if (fd = args.process.udata.fds[startup_info.value.stdout]?)
-          args.udata.fds.push fd.clone(1)
+          args.process.udata.fds.push fd.clone(1)
         else
-          args.udata.fds.push nil
+          args.process.udata.fds.push nil
         end
         if (fd = args.process.udata.fds[startup_info.value.stderr]?)
-          args.udata.fds.push fd.clone(2)
+          args.process.udata.fds.push fd.clone(2)
         else
-          args.udata.fds.push nil
+          args.process.udata.fds.push nil
         end
       else
         3.times do |i|
           if (fd = args.process.udata.fds[i])
-            args.udata.fds.push fd.clone(i)
+            args.process.udata.fds.push fd.clone(i)
           end
           i += 1
         end
@@ -77,9 +79,9 @@ module Syscall::Handlers
       case retval
       when VFS_WAIT
         vfs_node.fs.queue.not_nil!
-          .enqueue(VFS::Message.new(udata, vfs_node, process))
+          .enqueue(VFS::Message.new(udata, vfs_node, args.process))
         args.process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
-        Multiprocessing::Scheduler.switch_process(frame)
+        Multiprocessing::Scheduler.switch_process(args.frame)
       else
         return retval
       end
@@ -103,16 +105,22 @@ module Syscall::Handlers
       if cprocess.nil?
         return EINVAL
       else
-        args.frame.value.rax = pid
+        args.retval = pid
         args.process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitProcess
-        pudata.wait_object = cprocess
-        Multiprocessing::Scheduler.switch_process(frame)
+        args.process.udata.wait_object = cprocess
+        Multiprocessing::Scheduler.switch_process(args.frame)
       end
     end
   end
 
   def exit(args : Syscall::Arguments)
     Multiprocessing::Scheduler.switch_process_and_terminate
+  end
+
+  def getenv(args : Syscall::Arguments)
+  end
+
+  def setenv(args : Syscall::Arguments)
   end
 
 end

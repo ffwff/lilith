@@ -1,4 +1,4 @@
-module Syscalls
+module Syscall
 
   struct Arguments
     getter frame, process
@@ -7,17 +7,25 @@ module Syscalls
                    @process : Multiprocessing::Process)
     end
 
-    def sysret(code)
+    def retval=(code)
       @frame.value.rax = code
     end
 
-    def [](num)
-      {%
-        arg_registers = [
-          "rbx", "rdx", "rdi", "rsi", "r8",
-        ]
-      %}
-      fv.{{ arg_registers[num].id }}
+    def [](idx)
+      case idx
+      when 0
+        @frame.value.rbx
+      when 1
+        @frame.value.rdx
+      when 2
+        @frame.value.rdi
+      when 3
+        @frame.value.rsi
+      when 4
+        @frame.value.r8
+      else
+        abort "unknown syscall argument index"
+      end
     end
   end
 

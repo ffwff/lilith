@@ -17,14 +17,14 @@ module Syscall::Handlers
     lo = args[1].to_u32
     timeout = hi.to_u64 << 32 | lo.to_u64
     if timeout == 0
-      sysret(0)
+      return 0
     elsif timeout == (-1).to_u64
-      process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
+      args.process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
     else
-      process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::Sleep
-      pudata.wait_usecs timeout
+      args.process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::Sleep
+      args.process.udata.wait_usecs timeout
     end
-    Multiprocessing::Scheduler.switch_process(frame)
+    Multiprocessing::Scheduler.switch_process(args.frame)
   end
 
 end

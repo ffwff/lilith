@@ -2,7 +2,7 @@ module Syscall::Path
   extend self
 
   # Splits a path into segments delimited by /
-  private def parse_path_into_segments(path, &block)
+  def parse_path_into_segments(path, &block)
     i = 0
     pslice_start = 0
     while i < path.size

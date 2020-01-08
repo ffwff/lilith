@@ -625,7 +625,7 @@ module Multiprocessing
     retval = 0u64
     asm("syscall"
             : "={rax}"(retval)
-            : "{rax}"(SC_SLEEP)
+            : "{rax}"(SC_SLEEP_DRV)
             : "cc", "memory", "{rcx}", "{r11}", "{rdi}", "{rsi}")
     retval
   end

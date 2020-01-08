@@ -8,8 +8,8 @@ module Syscall::Handlers
       args.frame.value.r9,
       execute: args.frame.value.r10 != 0
     )
-    if virt_addr <= Paging::PDPT_SIZE && process.phys_user_pg_struct == 0u64
-      process.phys_user_pg_struct = Paging.real_pdpt.address
+    if virt_addr <= Paging::PDPT_SIZE && args.process.phys_user_pg_struct == 0u64
+      args.process.phys_user_pg_struct = Paging.real_pdpt.address
     end
     page
   end
@@ -22,8 +22,8 @@ module Syscall::Handlers
   end
 
   def sleep_drv(args : Syscall::Arguments)
-    process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
-    Multiprocessing::Scheduler.switch_process(frame)
+    args.process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
+    Multiprocessing::Scheduler.switch_process(args.frame)
   end
 
 end
