@@ -49,7 +49,7 @@ module Syscall::Handlers
     if fd.cur_child.nil?
       fd.cur_child_end = true
     end
-    0
+    1
   end
 
   def getcwd(args : Syscall::Arguments)

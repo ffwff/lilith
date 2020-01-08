@@ -3,7 +3,8 @@ module Syscall::Handlers
 
   def open(args : Syscall::Arguments)
     path = checked_slice(args[0], args[1]) || return EFAULT
-    vfs_node = Syscall::Path.parse_path_into_vfs(path, args) || return ENOENT
+    vfs_node = Syscall::Path.parse_path_into_vfs(path, args,
+          cw_node: args.process.udata.cwd_node) || return ENOENT
     args.process.udata.install_fd(vfs_node.not_nil!,
       FileDescriptor::Attributes.new(args[2].to_i32))
   end
@@ -11,7 +12,9 @@ module Syscall::Handlers
   def create(args : Syscall::Arguments)
     path = checked_slice(args[0], args[1]) || return EFAULT
     options = args[2].to_i32
-    vfs_node = Syscall::Path.parse_path_into_vfs(path, args, create: true, create_options: options) || return ENOENT
+    vfs_node = Syscall::Path.parse_path_into_vfs(path, args,
+          cw_node: args.process.udata.cwd_node,
+          create: true, create_options: options) || return ENOENT
     args.process.udata.install_fd(vfs_node.not_nil!,
       FileDescriptor::Attributes.new(options))
   end
@@ -22,7 +25,8 @@ module Syscall::Handlers
 
   def remove(args : Syscall::Arguments)
     path = checked_slice(args[0], args[1]) || return EFAULT
-    vfs_node = Syscall::Path.parse_path_into_vfs(path, args) || return ENOENT
+    vfs_node = Syscall::Path.parse_path_into_vfs(path, args,
+          cw_node: args.process.udata.cwd_node) || return ENOENT
     vfs_node.remove
   end
 

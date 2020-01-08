@@ -201,13 +201,6 @@ class String
     end
   end
 
-  def clone
-    (String.new(bytesize) { |buffer|
-      memcpy(buffer, to_unsafe, bytesize.to_usize)
-      {bytesize, size}
-    }).not_nil!
-  end
-
   def size
     @length
   end

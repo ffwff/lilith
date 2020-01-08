@@ -28,21 +28,20 @@ module Syscall::Handlers
       return ENOENT
     else
       # argv
-      pargv = Array(String).new 0
+      pargv = Array(String).new
       i = 0
       while i < SC_SPAWN_MAX_ARGS
         if argv[i] == 0
           break
         end
         argp = checked_pointer(UInt8, argv[i].to_u64) || return EFAULT
-        arg = NullTerminatedSlice.new(argp, SC_SPAWN_MAX_ARGLEN)
-        pargv.push String.new(arg)
+        pargv.push String.new(NullTerminatedSlice.new(argp, SC_SPAWN_MAX_ARGLEN))
         i += 1
       end
 
       udata = Multiprocessing::Process::UserData
         .new(pargv,
-          args.process.udata.cwd.clone,
+          args.process.udata.cwd,
           args.process.udata.cwd_node,
           args.process.udata.environ.clone)
       udata.pgid = args.process.udata.pgid
@@ -50,25 +49,17 @@ module Syscall::Handlers
       # copy file descriptors 0, 1, 2
       if !startup_info.nil?
         startup_info = startup_info.not_nil!
-        if (fd = args.process.udata.fds[startup_info.value.stdin]?)
-          args.process.udata.fds.push fd.clone(0)
-        else
-          args.process.udata.fds.push nil
-        end
-        if (fd = args.process.udata.fds[startup_info.value.stdout]?)
-          args.process.udata.fds.push fd.clone(1)
-        else
-          args.process.udata.fds.push nil
-        end
-        if (fd = args.process.udata.fds[startup_info.value.stderr]?)
-          args.process.udata.fds.push fd.clone(2)
-        else
-          args.process.udata.fds.push nil
-        end
+        {% for idx, fd in {0 => "stdin", 1 => "stdout", 2 => "stderr"} %}
+          if fd = args.process.udata.fds[startup_info.value.{{ fd.id }}]?
+            udata.fds.push fd.clone({{ idx }})
+          else
+            udata.fds.push nil
+          end
+        {% end %}
       else
         3.times do |i|
-          if (fd = args.process.udata.fds[i])
-            args.process.udata.fds.push fd.clone(i)
+          if fd = args.process.udata.fds[i]?
+            udata.fds.push fd.clone(i)
           end
           i += 1
         end
