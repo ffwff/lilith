@@ -105,7 +105,7 @@ module Syscall::Handlers
       if cprocess.nil?
         return EINVAL
       else
-        args.retval = pid
+        args.primary_arg = pid
         args.process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitProcess
         args.process.udata.wait_object = cprocess
         Multiprocessing::Scheduler.switch_process(args.frame)
@@ -118,9 +118,11 @@ module Syscall::Handlers
   end
 
   def getenv(args : Syscall::Arguments)
+    EINVAL
   end
 
   def setenv(args : Syscall::Arguments)
+    EINVAL
   end
 
 end

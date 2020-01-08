@@ -7,7 +7,11 @@ module Syscall
                    @process : Multiprocessing::Process)
     end
 
-    def retval=(code)
+    def primary_arg
+      @frame.value.rax
+    end
+
+    def primary_arg=(code)
       @frame.value.rax = code
     end
 

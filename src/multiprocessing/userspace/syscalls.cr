@@ -38,10 +38,9 @@ module Syscall
     # syscall handlers for kernel processes
     if process.kernel_process?
       {% for syscall in %w(mmap_drv process_create_drv sleep_drv) %}
-        if frame.value.rax == SC_{{ syscall.upcase.id }}
-          if retval = Syscall::Handlers.{{ syscall.id }} args
-            frame.value.rax = retval
-          end
+        if args.primary_arg == SC_{{ syscall.upcase.id }}
+          args.primary_arg = Syscall::Handlers.{{ syscall.id }} args
+          unlock
           return Kernel.ksyscall_sc_ret_driver(frame)
         end
       {% end %}
@@ -53,14 +52,13 @@ module Syscall
                          seek getcwd chdir sbrk readdir waitpid
                          ioctl mmap time sleep getenv setenv create
                          truncate waitfd remove munmap) %}
-      if frame.value.rax == SC_{{ syscall.upcase.id }}
-        if retval = Syscall::Handlers.{{ syscall.id }} args
-          frame.value.rax = retval
-        end
+      if args.primary_arg == SC_{{ syscall.upcase.id }}
+        args.primary_arg = Syscall::Handlers.{{ syscall.id }} args
         return
       end
     {% end %}
-    frame.value.rax = EINVAL
+
+    args.primary_arg = EINVAL
   end
 end
 

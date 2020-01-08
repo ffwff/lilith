@@ -376,7 +376,7 @@ module Multiprocessing::Scheduler
     frame.value = current_process.frame
   end
 
-  def switch_process(frame : Syscall::Data::Registers*)
+  def switch_process(frame : Syscall::Data::Registers*) : NoReturn
     Syscall.unlock
     current_process = switch_process_save_and_load do |process|
       process.new_frame_from_syscall frame
@@ -384,7 +384,7 @@ module Multiprocessing::Scheduler
     Kernel.ksyscall_switch(current_process.frameptr)
   end
 
-  def switch_process_and_terminate
+  def switch_process_and_terminate : NoReturn
     Syscall.unlock
     current_process = switch_process_save_and_load(true) { }
     Kernel.ksyscall_switch(current_process.frameptr)
