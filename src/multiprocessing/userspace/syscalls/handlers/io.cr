@@ -11,13 +11,13 @@ module Syscall::Handlers
   def create(args : Syscall::Arguments)
     path = checked_slice(args[0], args[1]) || return EFAULT
     options = args[2].to_i32
-    vfs_node = Syscall::Path.parse_path_into_vfs(path, args, create_options: options) || return ENOENT
+    vfs_node = Syscall::Path.parse_path_into_vfs(path, args, create: true, create_options: options) || return ENOENT
     args.process.udata.install_fd(vfs_node.not_nil!,
       FileDescriptor::Attributes.new(options))
   end
 
   def close(args : Syscall::Arguments)
-    args.process.udata.close_fd(args[0].to_i32) ? 1 : 0
+    args.process.udata.close_fd(args[0].to_i32) ? 1 : -1
   end
 
   def remove(args : Syscall::Arguments)
@@ -33,7 +33,7 @@ module Syscall::Handlers
 
   def read(args : Syscall::Arguments)
     fd = args.process.udata.get_fd(args[0].to_i32) || return EBADFD
-    if fd.attrs.includes?(FileDescriptor::Attributes::Read)
+    if !fd.attrs.includes?(FileDescriptor::Attributes::Read)
       return EBADFD
     elsif args[2] == 0u64
       return 0
