@@ -372,6 +372,12 @@ module GC
         end
         false
       when State::Sweep
+        if @@needs_scan_kernel_stack || 
+           @@needs_scan_interrupt
+          # we need to rescan the kernel/interrupt stack
+          @@state = State::ScanGray
+          return unlocked_cycle
+        end
         Allocator.sweep
         @@state = State::ScanRoot
         @@needs_scan_kernel_threads = true
