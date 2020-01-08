@@ -319,8 +319,6 @@ module Fat16FS
       end
     end
 
-    @lookup_cache : Hash(String, VFS::Node)? = nil
-
     def read(slice : Slice, offset : UInt32,
              process : Multiprocessing::Process? = nil) : Int32
       unless directory?
