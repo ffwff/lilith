@@ -8,6 +8,8 @@ module HDA
 
   @@corb = Pointer(UInt32).null
   class_getter corb
+  @@corb_idx = 0
+  @@corb_size = 0x0
   
   def corb_phys
     @@corb.address & ~Paging::IDENTITY_MASK
@@ -21,9 +23,6 @@ module HDA
   def rirb_phys
     @@rirb.address & ~Paging::IDENTITY_MASK
   end
-
-  @@corb_idx = 0
-  @@corb_size = 0x0
 
   private def word_reg(offset)
     (@@registers + offset).as(UInt16*)
@@ -71,10 +70,15 @@ module HDA
 
   GET_PARAMETER = 0xF00u32
   GET_STREAM_FORMAT = 0xA00u32
+  GET_CONFIG_DEFAULT = 0xF1Cu32
+
+  SET_PIN_WIDGET_CONTROL = 0x707u32
 
   PAR_NODE_COUNT = 0x04u32
   PAR_FUNCTION_TYPE = 0x05u32
   PAR_WIDGET_CAP = 0x09u32
+
+  PINCTL_OUT_EN = 1u32 << 6u32
 
   def rirb_wp
     @@registers[RIRBWP]
@@ -115,6 +119,10 @@ module HDA
       ((@data >> 8) & 0b111) + 1
     end
 
+    def sample
+      (sample_base * sample_multiplier) // sample_divisor
+    end
+
     def bps
       case (@data >> 4) & 0b11
       when 0b000
@@ -135,6 +143,44 @@ module HDA
     def channels
       @data & 0b1111
     end
+
+    def to_s(io)
+      io.print "PCM, " if pcm?
+      io.print sample, "kHz, "
+      io.print bps, "-bit, "
+      io.print channels, " channels"
+    end
+  end
+
+  struct DACNode
+    @idx : Int32
+    getter idx
+
+    @codec : Int32
+    getter codec
+
+    def initialize(@idx : Int32, @codec : Int32)
+    end
+
+    def stream_format
+      StreamFormat.new(HDA.push_corb_and_read(HDA.corb_entry(0, GET_STREAM_FORMAT, @idx.to_u32, @codec.to_u32)).to_u32)
+    end
+  end
+
+
+  struct OutNode
+    @idx : Int32
+    getter idx
+
+    @codec : Int32
+    getter codec
+
+    def initialize(@idx : Int32, @codec : Int32)
+    end
+
+    def enable
+      HDA.push_corb_and_read HDA.corb_entry(PINCTL_OUT_EN, SET_PIN_WIDGET_CONTROL, @idx.to_u32, @codec.to_u32)
+    end
   end
 
   class Codec
@@ -142,9 +188,12 @@ module HDA
     getter idx
 
     @afg_node = 0
-    @output_node = 0
+    @dac_node : DACNode
+    @out_node : OutNode
 
     def initialize(@idx : Int32)
+      @dac_node = DACNode.new(0, @idx)
+      @out_node = OutNode.new(0, @idx)
     end
 
     def function_type(nidx)
@@ -155,8 +204,12 @@ module HDA
       HDA.push_corb_and_read(HDA.corb_entry(PAR_WIDGET_CAP, GET_PARAMETER, nidx, @idx.to_u32))
     end
 
+    def config_default(nidx)
+      HDA.push_corb_and_read(HDA.corb_entry(0, GET_CONFIG_DEFAULT, nidx, @idx.to_u32))
+    end
+
     def node_count(nidx = 0u32)
-      response = HDA.push_corb_and_read HDA.corb_entry(PAR_NODE_COUNT, GET_PARAMETER, nidx, @idx.to_u32)
+      response = HDA.push_corb_and_read HDA.corb_entry(PAR_NODE_COUNT, GET_PARAMETER, nidx.to_u32, @idx.to_u32)
       start_node = (response >> 16) & 0xFF
       total_nodes = response & 0xFF
       {start_node, total_nodes}
@@ -176,7 +229,7 @@ module HDA
           Serial.print "nidx: ", nidx, '\n'
           type = function_type(nidx)
           if type == 0x01
-            retidx = nidx
+            retidx = nidx.to_i32
             break
           end
         end
@@ -192,13 +245,23 @@ module HDA
         total_widgets.times do |i|
           nidx = (start_widget + i).to_u32
           cap = widget_capability(nidx)
-          if ((cap >> 20) & 0b111) == 0x0
-            Serial.print "output: ", nidx, '\n'
-            @output_node = nidx
+          type = ((cap >> 20) & 0b111)
+          Serial.print "cap: ", cap, " id: ", (cap >> 20) & 0b111, '\n'
+          case type
+          when 0x0
+            @dac_node = DACNode.new(nidx.to_i32, @idx)
+            Serial.print "format: ", @dac_node.stream_format, '\n'
+          when 0x4
+            config = config_default(nidx)
+            ctype = (config >> 20) & 0b1111
+            if ctype == 0
+              @out_node = OutNode.new(nidx.to_i32, @idx)
+            end
           end
-          Serial.print "cap: ", cap, '\n'
         end
       end
+
+      @out_node.enable
     end
   end
 
@@ -271,13 +334,13 @@ module HDA
     supported_size = (@@registers[CORBSIZE] & 0b11110000) >> 4
     case supported_size
     when 1
-      @@corb_size = 8
+      @@corb_size = 2
       @@registers[CORBSIZE] = 0b1
     when 2
-      @@corb_size = 64
+      @@corb_size = 16
       @@registers[CORBSIZE] = 0b10
     when 4
-      @@corb_size = 1024
+      @@corb_size = 256
       @@registers[CORBSIZE] = 0b100
     else
       abort "unhandled CORB size capability"
@@ -287,13 +350,13 @@ module HDA
     supported_size = (@@registers[RIRBSIZE] & 0b11110000) >> 4
     case supported_size
     when 1
-      @@rirb_size = 8
+      @@rirb_size = 2
       @@registers[RIRBSIZE] = 0b1
     when 2
-      @@rirb_size = 64
+      @@rirb_size = 16
       @@registers[RIRBSIZE] = 0b10
     when 4
-      @@rirb_size = 1024
+      @@rirb_size = 256
       @@registers[RIRBSIZE] = 0b100
     else
       abort "unhandled RIRB size capability"
