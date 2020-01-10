@@ -69,8 +69,8 @@ struct Int
     x - (x >> 1)
   end
 
-  def hash
-    Hasher.hash self
+  def hash(hasher)
+    hasher.hash self
   end
 
   # format

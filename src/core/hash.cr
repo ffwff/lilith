@@ -197,7 +197,7 @@ class Hash(K, V) < Markable
         {% unless K < Int || K < Struct %}
           yield entry.key.as(Void*)
         {% end %}
-        {% unless K < Int || K < Struct %}
+        {% unless V < Int || V < Struct %}
           yield entry.value.as(Void*)
         {% end %}
       end
