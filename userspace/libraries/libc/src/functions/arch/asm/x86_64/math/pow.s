@@ -14,4 +14,4 @@ pow: # x ^ y = 2 ^(y*log2(x))
   fscale
   fstpl -8(%rsp)
   movq -8(%rsp), %xmm0
-  hlt
+  ret
