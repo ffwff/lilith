@@ -1,6 +1,19 @@
 module HDA
   extend self
 
+  lib Data
+    @[Packed]
+    struct BufferDescriptorEntry
+      address : UInt64
+      length : UInt32
+      extra : UInt32
+    end
+
+    struct BufferDescriptorList
+      entries : BufferDescriptorEntry[256]
+    end
+  end
+
   @@bus = 0u32
   @@device = 0u32
   @@func = 0u32
@@ -24,11 +37,17 @@ module HDA
     @@rirb.address & ~Paging::IDENTITY_MASK
   end
 
-  private def word_reg(offset)
-    (@@registers + offset).as(UInt16*)
+  @@bdl = Pointer(Data::BufferDescriptorList).null
+  class_getter bdl
+  @@bdl_idx = 0x0
+  @@bdl_size = 0x0
+
+  def bdl_phys
+    @@bdl.address & ~Paging::IDENTITY_MASK
   end
 
-  private def long_reg(offset)
+  private def word_reg(offset)
+    (@@registers + offset).as(UInt16*)
   end
 
   private def read_word(offset)
@@ -68,10 +87,14 @@ module HDA
   RINTCNT   = 0x5A
   RIRBWP    = 0x58
 
+  BDLLBASE  = 0x98
+  BDLUBASE  = 0x9C
+
   GET_PARAMETER = 0xF00u32
   GET_STREAM_FORMAT = 0xA00u32
   GET_CONFIG_DEFAULT = 0xF1Cu32
 
+  SET_CHANNEL_STREAMID = 0x706u32
   SET_PIN_WIDGET_CONTROL = 0x707u32
 
   PAR_NODE_COUNT = 0x04u32
@@ -181,6 +204,11 @@ module HDA
     def enable
       HDA.push_corb_and_read HDA.corb_entry(PINCTL_OUT_EN, SET_PIN_WIDGET_CONTROL, @idx.to_u32, @codec.to_u32)
     end
+
+    def stream_id=(id)
+      HDA.push_corb_and_read HDA.corb_entry(((id.to_u32 & 0x0F) << 4) | 0x0,
+                                            SET_CHANNEL_STREAMID, @idx.to_u32, @codec.to_u32)
+    end
   end
 
   class Codec
@@ -262,6 +290,7 @@ module HDA
       end
 
       @out_node.enable
+      @out_node.stream_id = 0
     end
   end
 
@@ -279,6 +308,8 @@ module HDA
     zero_page @@corb.as(UInt8*)
     @@rirb = Pointer(UInt64).new(FrameAllocator.claim_with_addr | Paging::IDENTITY_MASK)
     zero_page @@rirb.as(UInt8*)
+    @@bdl = Pointer(Data::BufferDescriptorList).new(FrameAllocator.claim_with_addr | Paging::IDENTITY_MASK)
+    zero_page @@bdl.as(UInt8*)
     @@registers = Pointer(UInt8).new(phys | Paging::IDENTITY_MASK)
     Paging.alloc_page(@@registers.address, true, false, 4, phys)
 
@@ -330,6 +361,10 @@ module HDA
     write_long RIRBLBASE, (rirb_phys & 0xFFFF_FFFFu64).to_u32
     write_long RIRBUBASE, (rirb_phys >> 32).to_u32
 
+    # set bdl address
+    write_long BDLLBASE, (bdl_phys & 0xFFFF_FFFFu64).to_u32
+    write_long BDLUBASE, (bdl_phys >> 32).to_u32
+
     # set CORB size
     supported_size = (@@registers[CORBSIZE] & 0b11110000) >> 4
     case supported_size
@@ -378,6 +413,8 @@ module HDA
     while (read_long(CCORBRP) >> 15) == 1
       # wait until bit 15 is set
     end
+
+    # setup the buffer descriptor list
 
     codecs[0].init_device
 

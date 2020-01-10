@@ -1,6 +1,6 @@
 .global fabsl
 .type fabsl,@function
 fabsl:
-	fldt 8(%rsp)
-	fabs
-	ret
+  fldt 8(%rsp)
+  fabs
+  ret
