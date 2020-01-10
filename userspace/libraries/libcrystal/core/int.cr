@@ -17,7 +17,6 @@ struct Int
     self * -1
   end
 
-  # unsafe math
   def //(other)
     self.unsafe_div other
   end
@@ -34,7 +33,6 @@ struct Int
     self.unsafe_shr other
   end
 
-  # math
   def ~
     self ^ -1
   end
@@ -57,7 +55,6 @@ struct Int
     (self + (other - 1)) // other
   end
 
-  # bit manips
   def find_first_zero : Int
     Intrinsics.counttrailing32(~self.to_i32, true)
   end
@@ -80,7 +77,6 @@ struct Int
     x - (x >> 1)
   end
 
-  # format
   private BASE = "0123456789abcdefghijklmnopqrstuvwxyz"
 
   private def each_digit(base = 10, &block)
@@ -102,6 +98,10 @@ struct Int
       break if i == 0
       i -= 1
     end
+  end
+
+  def hash(hasher)
+    hasher.hash self
   end
 
   def to_s(base : Int = 10)

@@ -89,6 +89,10 @@ struct Slice(T)
     copy_to target.to_unsafe, target.size
   end
 
+  def hash(hasher)
+    hasher.hash self
+  end
+
   def to_s(io)
     io.print "Slice(", @buffer, " ", @size, ")"
   end
