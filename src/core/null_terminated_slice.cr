@@ -10,7 +10,7 @@ struct NullTerminatedSlice
 
   def initialize(@buffer : UInt8*, max : Int32)
     @size = 0
-    until @buffer[@size] == 0 && @size < max
+    while @buffer[@size] != 0 && @size < max
       @size += 1
     end
   end
