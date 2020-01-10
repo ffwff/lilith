@@ -1,6 +1,6 @@
 require "socket"
 
-server = IPCSocket.new("test").not_nil!
+server = IPCSocket.new("test").unwrap!
 server.puts "test"
 IO::Select.wait server, UInt32::MAX
 bytes = Bytes.new 128

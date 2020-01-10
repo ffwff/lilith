@@ -3,7 +3,7 @@ if ARGV.size == 0
 else
   dir = Dir.new(ARGV[0])
 end
-if dir
+if dir = dir.ok?
   dir.each_child do |filename|
     puts filename
   end

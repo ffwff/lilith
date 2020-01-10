@@ -1,17 +1,19 @@
 require "./file.cr"
 
 class Dir
-  def self.new(path)
+  alias Result = ::Result(Dir, IO::Error)
+
+  def self.new(path) : Result
     fd = LibC.open(path, LibC::O_RDONLY)
-    if fd < 0
-      nil
+    if fd >= 0
+      Result.new(Dir.new(fd))
     else
-      Dir.new fd
+      Result.new(IO::Error.new(fd))
     end
   end
 
   def self.open(path, &block)
-    if dir = new path
+    if dir = new(path).ok?
       yield dir
       dir.close
     end
@@ -37,14 +39,14 @@ class Dir
     LibC.chdir path.to_unsafe
   end
 
-  def self.current : String?
+  def self.current : ::Result(String, IO::Error)
     unless dir = LibC.getcwd(nil, 0)
-      # TODO: errno
-      return nil
+      # FIXME: errno
+      return ::Result(String, IO::Error).new(IO::Error::InvalidArgument)
     end
 
     dir_str = String.new(dir)
     LibC.free(dir.as(Void*))
-    dir_str
+    ::Result(String, IO::Error).new(dir_str)
   end
 end

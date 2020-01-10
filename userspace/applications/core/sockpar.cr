@@ -1,6 +1,6 @@
 require "socket"
 
-server = IPCServer.new("test").not_nil!
+server = IPCServer.new("test").unwrap!
 Process.new("sockchd",
   input: Process::Redirect::Inherit,
   output: Process::Redirect::Inherit,

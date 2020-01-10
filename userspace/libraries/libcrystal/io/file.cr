@@ -1,7 +1,9 @@
 require "./stdio.cr"
 
 class File < IO::FileDescriptor
-  def self.new(filename : String, mode : String = "r") : File?
+  alias Result = ::Result(File, IO::Error)
+
+  def self.new(filename : String, mode : String = "r") : Result
     open_mode = case mode
                 when "r"
                   LibC::O_RDONLY
@@ -10,16 +12,18 @@ class File < IO::FileDescriptor
                 when "rw"
                   LibC::O_RDWR | LibC::O_CREAT
                 else
-                  return nil
+                  return Result.new(IO::Error::InvalidArgument)
                 end
     fd = LibC.open(filename.to_unsafe, open_mode)
     if fd >= 0
-      File.new fd
+      Result.new(File.new(fd))
+    else
+      Result.new(IO::Error.new(fd))
     end
   end
 
   def self.open(filename : String, mode : String = "r", &block)
-    if file = File.new filename, mode
+    if file = new(filename, mode).ok?
       retval = yield file
       file.close
       retval

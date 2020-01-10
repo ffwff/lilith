@@ -1,3 +1,3 @@
-pipe = IO::Pipe.new("test", "w").not_nil!
+pipe = IO::Pipe.new("test", "w").unwrap!
 pipe.unbuffered_write "helloworld".byte_slice
 Process.new "pipechd"

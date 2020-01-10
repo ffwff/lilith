@@ -1,6 +1,8 @@
 class IO::Pipe < IO::FileDescriptor
-  SC_IOCTL_PIPE_CONF_FLAGS = 6
-  SC_IOCTL_PIPE_CONF_PID   = 7
+  alias Result = ::Result(IO::Pipe, IO::Error)
+
+  private SC_IOCTL_PIPE_CONF_FLAGS = 6
+  private SC_IOCTL_PIPE_CONF_PID   = 7
 
   @[Flags]
   enum Flags : UInt32
@@ -13,9 +15,9 @@ class IO::Pipe < IO::FileDescriptor
     G_Write  = 1 << 6
   end
 
-  def self.new(name, mode, flags = Flags::None, pid : Int32? = nil)
+  def self.new(name, mode, flags = Flags::None, pid : Int32? = nil) : Result
     name.each_char do |char|
-      return nil if char == '/'
+      return Result.new(IO::Error::InvalidArgument) if char == '/'
     end
     open_mode = case mode
                 when "r"
@@ -31,7 +33,7 @@ class IO::Pipe < IO::FileDescriptor
                 when "rwa"
                   LibC::O_RDONLY | LibC::O_WRONLY | LibC::C_ANON
                 else
-                  return nil
+                  return Result.new(IO::Error::InvalidArgument)
                 end
     filename = "/pipes/" + name
     fd = LibC.create(filename.to_unsafe, open_mode)
@@ -42,10 +44,12 @@ class IO::Pipe < IO::FileDescriptor
       else
         file.flags = Flags::G_Write | Flags::G_Read
       end
-      if !pid.nil?
-        file.pid = pid.not_nil!
+      if pid
+        file.pid = pid
       end
-      file
+      Result.new(file)
+    else
+      Result.new(IO::Error.new(fd))
     end
   end
 

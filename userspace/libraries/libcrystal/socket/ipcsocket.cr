@@ -1,26 +1,34 @@
 class IPCSocket < IO::FileDescriptor
+  alias Result = ::Result(IPCSocket, IO::Error)
+  
   def initialize(@fd)
     self.buffer_size = 0
   end
 
-  def self.new(name : String)
+  def self.new(name : String) : Result
     filename = "/sockets/" + name + "/-"
     fd = LibC.create(filename.to_unsafe, LibC::O_RDWR)
     if fd >= 0
-      new fd
+      Result.new(new(fd))
+    else
+      Result.new(IO::Error.new(fd))
     end
   end
 end
 
 class IPCServer < IPCSocket
-  def self.new(name : String)
+  alias Result = ::Result(IPCServer, IO::Error)
+
+  def self.new(name : String) : Result
     name.each_char do |char|
-      return nil if char == '/'
+      return Result.new(IO::Error::InvalidArgument) if char == '/'
     end
     filename = "/sockets/" + name + "/listen"
     fd = LibC.create(filename, LibC::O_RDONLY)
     if fd >= 0
-      new fd
+      Result.new(new(fd))
+    else
+      Result.new(IO::Error.new(fd))
     end
   end
 

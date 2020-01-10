@@ -23,7 +23,7 @@ def interpret_line(line)
   if argv[0] == "cd"
     if argv[1]?
       Dir.cd argv[1]
-      Adam.cwd = Dir.current.not_nil!
+      Adam.cwd = Dir.current.unwrap!
     end
   else
     cmd = argv.shift.not_nil!
@@ -35,7 +35,7 @@ def interpret_line(line)
     if proc = Process.new(cmd, argv,
          input: Process::Redirect::Inherit,
          output: Process::Redirect::Inherit,
-         error: Process::Redirect::Inherit)
+         error: Process::Redirect::Inherit).ok?
       proc.wait if wait
     else
       print "unable to spawn ", cmd, '\n'
@@ -43,7 +43,7 @@ def interpret_line(line)
   end
 end
 
-Adam.cwd = Dir.current.not_nil!
+Adam.cwd = Dir.current.unwrap!
 while true
   print Adam.cwd, "> "
   interpret_line getline

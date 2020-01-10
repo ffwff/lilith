@@ -1,4 +1,14 @@
 class Process
+  enum Error
+    FaultingAddress = -2
+    FileNotFound = -3
+    BadFileDescriptor = -4
+    UnableToExecute = -5
+    InvalidArgument = 0
+  end
+
+  alias Result = ::Result(Process, Error)
+
   private def initialize(@pid : LibC::Pid)
   end
 
@@ -13,7 +23,7 @@ class Process
   def self.new(command : String, argv = nil,
                input : Stdio = Redirect::Close,
                output : Stdio = Redirect::Close,
-               error : Stdio = Redirect::Close)
+               error : Stdio = Redirect::Close) : Result
     nargv = argv ? (1 + argv.size) : 1
     spawn_argv = Array(UInt8*).build(nargv + 1) do |buffer|
       buffer[0] = command.to_unsafe
@@ -35,9 +45,9 @@ class Process
       command.to_unsafe,
       spawn_argv.to_unsafe)
     if pid < 0
-      nil
+      Result.new(new(pid))
     else
-      new pid
+      Result.new(Error.new(pid))
     end
   end
 

@@ -3,7 +3,7 @@ if ARGV.size < 1
   exit 1
 end
 
-if (file = File.new(ARGV[0]))
+if (file = File.new(ARGV[0]).ok?)
   buffer = uninitialized UInt8[4096]
   while (size = file.read(buffer.to_slice)) > 0
     STDOUT.write buffer.to_slice[0, size]
