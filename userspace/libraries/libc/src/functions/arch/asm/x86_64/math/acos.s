@@ -10,8 +10,10 @@ acos:
   mulsd %xmm0, %xmm0
   subsd %xmm0, %xmm2
   sqrtsd %xmm0, %xmm0
+  # acos(x)
   movq %xmm0, -8(%rsp)
   fldl -8(%rsp)
+  fabs
   fpatan
   fstpl -8(%rsp)
   movq -8(%rsp), %xmm0
