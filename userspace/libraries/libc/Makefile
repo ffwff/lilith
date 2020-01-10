@@ -43,7 +43,7 @@ libm.a: $(MATH_SRC) $(MATH_OBJ)
 	FREESTANDING=1 $(CR) build $(CRFLAGS) src/main.cr -o .build/libc.cr
 
 .build/asm/%.o: src/functions/arch/asm/$(CPU)/%.s
-	$(AS) -o $@ $^
+	$(AS) -o $@ $^ -Isrc/functions/arch/asm/$(CPU) 
 
 .build/asm/%.o: src/functions/arch/asm/$(CPU)/math/%.s
 	$(AS) -o $@ $^
