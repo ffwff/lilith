@@ -10,7 +10,7 @@ pow: # x ^ y = 2 ^(y*log2(x))
   fld %st(1)
   fprem
   f2xm1
-  fadd
+  faddp
   fscale
   fstpl -8(%rsp)
   movq -8(%rsp), %xmm0

@@ -38,27 +38,19 @@ fun isalpha(ch : LibC::Int) : LibC::Int
 end
 
 fun isgraph(ch : LibC::Int) : LibC::Int
-  # TODO
-  abort
-  0
+  ((0x20 <= ch <= 0x7e) && ch != ' '.ord).to_int
 end
 
 fun ispunct(ch : LibC::Int) : LibC::Int
-  # TODO
-  abort
-  0
+  ((isgraph(ch) == 1) && (isalpha(ch) == 1)).to_int
 end
 
 fun iscntrl(ch : LibC::Int) : LibC::Int
-  # TODO
-  abort
-  0
+  ((0x00 <= ch <= 0x1F) || ch == 0x7F).to_int
 end
 
 fun isxdigit(ch : LibC::Int) : LibC::Int
-  # TODO
-  abort
-  0
+  ((isdigit(ch) == 1)  || ('a'.ord <= ch <= 'f'.ord) || ('A'.ord <= ch <= 'F'.ord)).to_int
 end
 
 fun isalnum(ch : LibC::Int) : LibC::Int
