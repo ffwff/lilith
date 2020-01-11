@@ -8,9 +8,8 @@ struct Pointer(T)
   end
 
   def to_s(io)
-    io.print "[0x"
+    io.print "0x"
     self.address.to_s io, 16
-    io.print "]"
   end
 
   def null?
