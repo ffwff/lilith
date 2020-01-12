@@ -244,10 +244,7 @@ class String
 
   def ==(other : Slice(UInt8))
     return false unless bytesize == other.size
-    bytesize.times do |i|
-      return false if to_unsafe[i] != other.to_unsafe[i]
-    end
-    true
+    memcmp(to_unsafe, other.to_unsafe, bytesize) == 0
   end
 
   def ===(other)
