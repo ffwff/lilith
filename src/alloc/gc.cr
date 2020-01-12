@@ -311,7 +311,7 @@ module GC
       if @@needs_scan_kernel_threads
         if threads = Multiprocessing.kernel_threads
           threads.each do |thread|
-            next unless thread.frame_initialized && thread.kdata.gc_enabled
+            next unless thread.frame_initialized# && thread.kdata.gc_enabled
             scan_kernel_thread_registers thread
             scan_kernel_thread_stack thread
           end
@@ -330,12 +330,24 @@ module GC
     end
 
     @@needs_scan_kernel_threads = false
+    class_setter needs_scan_kernel_threads
 
     @@needs_scan_kernel_stack = false
     class_setter needs_scan_kernel_stack
 
     @@needs_scan_interrupt = false
     class_setter needs_scan_interrupt
+
+    @[NoInline]
+    def scan_current_kernel_process
+      Idt.disable(true) do
+        @@spinlock.with do
+          return unless @@enabled
+          scan_registers
+          scan_stack
+        end
+      end
+    end
   {% end %}
 
   private def unlocked_cycle
@@ -347,42 +359,38 @@ module GC
         scan_registers
         scan_stack
         @@state = State::ScanGray
+        @@needs_scan_kernel_threads = true
+        @@needs_scan_interrupt = false
         @@needs_scan_kernel_stack = false
         false
       when State::ScanGray
         scan_gray_nodes
         swap_grays
-        if @@needs_scan_kernel_stack
-          if @@needs_scan_interrupt && Idt.last_frame
-            # we're in an interrupt which came from a syscall
-            scan_frame_registers Idt.last_frame
-          end
-          conservative_scan @@stack_start.address,
-                            @@stack_end.address
-          @@needs_scan_kernel_stack = false
-        end
         if @@needs_scan_interrupt
+          scan_frame_registers Idt.last_frame
           conservative_scan Kernel.int_stack_start.address,
             Kernel.int_stack_end.address
           @@needs_scan_interrupt = false
         end
-        if gray_empty? &&
-           !@@needs_scan_kernel_threads
+        if @@needs_scan_kernel_stack
+          conservative_scan @@stack_start.address,
+                            @@stack_end.address
+          @@needs_scan_kernel_stack = false
+        end
+        if gray_empty?
           @@state = State::Sweep
         end
         false
       when State::Sweep
         if @@needs_scan_kernel_stack || 
-           @@needs_scan_interrupt
+           @@needs_scan_interrupt ||
+           @@needs_scan_kernel_threads
           # we need to rescan the kernel/interrupt stack
           @@state = State::ScanGray
           return unlocked_cycle
         end
         Allocator.sweep
         @@state = State::ScanRoot
-        @@needs_scan_kernel_threads = true
-        @@needs_scan_interrupt = true
-        @@needs_scan_kernel_stack = false
         true
       end
     {% else %}

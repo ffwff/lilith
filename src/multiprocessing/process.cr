@@ -260,77 +260,75 @@ module Multiprocessing
         end
       end
 
-      Idt.disable
+      Idt.disable(true) do
+        @fxsave_region = Pointer(UInt8).malloc_atomic(FXSAVE_SIZE)
+        memcpy(@fxsave_region, Multiprocessing.fxsave_region_base, FXSAVE_SIZE)
 
-      @fxsave_region = Pointer(UInt8).malloc_atomic(FXSAVE_SIZE)
-      memcpy(@fxsave_region, Multiprocessing.fxsave_region_base, FXSAVE_SIZE)
-
-      # create vmm map and save old vmm map
-      last_pg_struct = Pointer(Paging::Data::PDPTable).null
-      page_struct = Paging.alloc_process_pdpt
-      if kernel_process?
-        last_pg_struct = Paging.current_kernel_pdpt
-        Paging.current_kernel_pdpt = Pointer(Paging::Data::PDPTable).new page_struct
-      else
-        last_pg_struct = Paging.current_pdpt
-        Paging.current_pdpt = Pointer(Paging::Data::PDPTable).new page_struct
-      end
-      Paging.flush
-      @phys_pg_struct = page_struct
-
-      # setup process
-      unless yield self
-        # unable to setup, bailing
+        # create vmm map and save old vmm map
+        last_pg_struct = Pointer(Paging::Data::PDPTable).null
+        page_struct = Paging.alloc_process_pdpt
         if kernel_process?
-          abort "unable to set up kernel process"
-        end
-        unless last_pg_struct.null?
-          Paging.current_pdpt = last_pg_struct
-          Paging.flush
-        end
-        Idt.enable
-        Multiprocessing.n_process -= 1
-        Multiprocessing.pids -= 1
-        return
-      end
-
-      # append to linked list
-      if Multiprocessing.first_process.nil?
-        Multiprocessing.first_process = self
-        Multiprocessing.last_process = self
-      else
-        Multiprocessing.last_process.not_nil!.next_process = self
-        @prev_process = Multiprocessing.last_process
-        Multiprocessing.last_process = self
-      end
-
-      # restore vmm map
-      unless last_pg_struct.null?
-        if kernel_process?
-          Paging.current_kernel_pdpt = last_pg_struct
+          last_pg_struct = Paging.current_kernel_pdpt
+          Paging.current_kernel_pdpt = Pointer(Paging::Data::PDPTable).new page_struct
         else
-          Paging.current_pdpt = last_pg_struct
+          last_pg_struct = Paging.current_pdpt
+          Paging.current_pdpt = Pointer(Paging::Data::PDPTable).new page_struct
         end
         Paging.flush
-      end
+        @phys_pg_struct = page_struct
 
-      # append to procfs
-      if Multiprocessing.procfs
-        Multiprocessing.procfs.not_nil!.root.not_nil!.create_for_process(self)
-      end
-
-      # append to scheduler
-      @sched_data = Scheduler.append_process self
-
-      # append to kernel thread
-      if kernel_process?
-        if Multiprocessing.kernel_threads.nil?
-          Multiprocessing.kernel_threads = Array(Process).new
+        # setup process
+        unless yield self
+          # unable to setup, bailing
+          if kernel_process?
+            abort "unable to set up kernel process"
+          end
+          unless last_pg_struct.null?
+            Paging.current_pdpt = last_pg_struct
+            Paging.flush
+          end
+          Idt.enable
+          Multiprocessing.n_process -= 1
+          Multiprocessing.pids -= 1
+          return
         end
-        Multiprocessing.kernel_threads.not_nil!.push self
-      end
 
-      Idt.enable
+        # append to linked list
+        if Multiprocessing.first_process.nil?
+          Multiprocessing.first_process = self
+          Multiprocessing.last_process = self
+        else
+          Multiprocessing.last_process.not_nil!.next_process = self
+          @prev_process = Multiprocessing.last_process
+          Multiprocessing.last_process = self
+        end
+
+        # restore vmm map
+        unless last_pg_struct.null?
+          if kernel_process?
+            Paging.current_kernel_pdpt = last_pg_struct
+          else
+            Paging.current_pdpt = last_pg_struct
+          end
+          Paging.flush
+        end
+
+        # append to procfs
+        if Multiprocessing.procfs
+          Multiprocessing.procfs.not_nil!.root.not_nil!.create_for_process(self)
+        end
+
+        # append to kernel thread
+        if kernel_process?
+          if Multiprocessing.kernel_threads.nil?
+            Multiprocessing.kernel_threads = Array(Process).new
+          end
+          Multiprocessing.kernel_threads.not_nil!.push self
+        end
+
+        # append to scheduler
+        @sched_data = Scheduler.append_process self
+      end
     end
 
     # Switches to the process from startup bootstrap.
@@ -632,9 +630,11 @@ module Multiprocessing
 
   # Puts the calling kernel thread to sleep and disables GC scanning for the process
   def sleep_disable_gc
-    Multiprocessing::Scheduler.current_process.not_nil!.kdata.gc_enabled = false
+    GC.scan_current_kernel_process
+    kdata = Multiprocessing::Scheduler.current_process.not_nil!.kdata
+    kdata.gc_enabled = false
     sleep
-    Multiprocessing::Scheduler.current_process.not_nil!.kdata.gc_enabled = true
+    kdata.gc_enabled = true
   end
 
   def each
