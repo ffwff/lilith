@@ -199,6 +199,13 @@ class String
     LibC.strncmp(to_unsafe, str.to_unsafe, str.bytesize) == 0
   end
 
+  def includes?(ch : Char)
+    each_char do |char|
+      return true if char == ch
+    end
+    false
+  end
+
   def size
     @length
   end

@@ -6,6 +6,7 @@ class IPCSocket < IO::FileDescriptor
   end
 
   def self.new(name : String) : Result
+    return Result.new(IO::Error::InvalidArgument) if name.includes?('/')
     filename = "/sockets/" + name + "/-"
     fd = LibC.create(filename.to_unsafe, LibC::O_RDWR)
     if fd >= 0
@@ -35,7 +36,7 @@ class IPCServer < IPCSocket
   def accept?
     fd : Int32 = 0
     if unbuffered_read(Bytes.new(pointerof(fd).as(UInt8*), sizeof(Int32))) <= 0
-      return nil
+      return
     end
     if fd >= 0
       IPCSocket.new fd

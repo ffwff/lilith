@@ -6,7 +6,7 @@ class IO::FileDescriptor < IO
 
   getter fd
 
-  def initialize(@fd : LibC::Int, blocking = false)
+  def initialize(@fd : LibC::Int)
   end
 
   def close

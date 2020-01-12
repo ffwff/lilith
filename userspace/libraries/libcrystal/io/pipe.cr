@@ -16,9 +16,7 @@ class IO::Pipe < IO::FileDescriptor
   end
 
   def self.new(name, mode, flags = Flags::None, pid : Int32? = nil) : Result
-    name.each_char do |char|
-      return Result.new(IO::Error::InvalidArgument) if char == '/'
-    end
+    return Result.new(IO::Error::InvalidArgument) if name.includes?('/')
     open_mode = case mode
                 when "r"
                   LibC::O_RDONLY
