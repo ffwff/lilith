@@ -185,15 +185,18 @@ rdx, rcx, rbx, rax : UInt64
   end
 
   def handle(frame : Idt::Data::Registers*)
-    GC.needs_scan_interrupt = true
     @@status_mask = true
     @@last_frame = frame
+    GC.needs_scan_interrupt = true
 
     handle_unmasked frame
 
+    if Syscall.locked
+      GC.needs_scan_kernel_stack = true
+    end
+    GC.needs_scan_interrupt = false
     @@last_frame = Pointer(Idt::Data::Registers).null
     @@status_mask = false
-    GC.needs_scan_interrupt = false
   end
 
   private def handle_exception_unmasked(frame : Idt::Data::ExceptionRegisters*)
@@ -245,15 +248,18 @@ rdx, rcx, rbx, rax : UInt64
   end
 
   def handle_exception(frame : Idt::Data::ExceptionRegisters*)
-    GC.needs_scan_interrupt = true
     @@status_mask = true
     @@last_frame = frame
+    GC.needs_scan_interrupt = true
 
     handle_exception_unmasked frame
 
+    if Syscall.locked
+      GC.needs_scan_kernel_stack = true
+    end
+    GC.needs_scan_interrupt = false
     @@last_frame = Pointer(Idt::Data::Registers).null
     @@status_mask = false
-    GC.needs_scan_interrupt = false
   end
 
   def halt_processor
