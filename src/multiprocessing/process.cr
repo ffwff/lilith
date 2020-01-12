@@ -500,7 +500,7 @@ module Multiprocessing
     def self.spawn_kernel(name : String, function, arg : Void*? = nil, stack_pages = 1, &block)
       Multiprocessing::Process.new(name, KernelData.new(stack_pages)) do |process|
         stack_start = Paging.aligned_floor(process.initial_sp) - (stack_pages - 1) * 0x1000
-        stack = Paging.alloc_page(stack_start, true, false, npages: stack_pages.to_u64)
+        stack = Paging.alloc_page(stack_start, true, false, npages: stack_pages.to_usize)
         process.initial_ip = function.pointer.address
 
         yield process

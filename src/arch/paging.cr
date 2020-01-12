@@ -31,6 +31,7 @@ module Paging
 
   KERNEL_PDPT_POINTER = 0xFFFF_8800_0000_0000u64
   KERNEL_PDPT_IDX     = page_layer_indexes(KERNEL_PDPT_POINTER)[0]
+  BIG_ALLOCATOR_START = 0xFFFF_8810_0000_0000u64
 
   # present, us, rw, global
   # PT_MASK_GLOBAL = 0x107

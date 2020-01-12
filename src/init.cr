@@ -47,7 +47,7 @@ fun kmain(mboot_magic : UInt32, mboot_header : Multiboot::MultibootInfo*)
 
   # gc
   Console.print "initializing kernel garbage collector...\n"
-  Allocator.init(Kernel.int_stack_end.address + 0x1000)
+  Allocator.init(Kernel.int_stack_end.address + 0x1000, Paging::BIG_ALLOCATOR_START)
   GC.init Kernel.stack_start, Kernel.stack_end
 
   LibCrystalMain.__crystal_main(0, Pointer(UInt8*).null)

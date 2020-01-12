@@ -16,7 +16,7 @@ module Syscall::Handlers
         end
       end
       npages = incr // 0x1000
-      Paging.alloc_page(mmap_heap.end_addr, true, true, npages: npages.to_u64)
+      Paging.alloc_page(mmap_heap.end_addr, true, true, npages: npages.to_usize)
       mmap_heap.size += incr
     elsif incr == 0 && mmap_heap.size == 0u64
       if !mmap_heap.next_node.nil?
