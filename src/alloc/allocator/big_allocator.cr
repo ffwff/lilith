@@ -48,7 +48,7 @@ module Allocator::Big
     pool_size = sizeof(Data::MmapHeader) + bytes.to_usize
     abort "pool size must be <= 0x1000" if pool_size > Data::MAX_POOL_SIZE
 
-    npages = (pool_size + 0x1000 - 1) // 0x1000
+    npages = pages_for(pool_size)
 
     if page = @@empty_pages
       addr = page.address
@@ -66,7 +66,7 @@ module Allocator::Big
     hdr.value.magic = Data::MAGIC_MMAP
     hdr.value.marked = 0
     hdr.value.atomic = atomic ? 1 : 0
-    hdr.value.size = pool_size
+    hdr.value.size = (npages * 0x1000) - sizeof(Data::MmapHeader)
 
     (hdr + 1).as(Void*)
   end
@@ -98,7 +98,21 @@ module Allocator::Big
   end
 
   def block_size_for_ptr(ptr)
-    Data::MAX_ALLOC_SIZE
+    page = Pointer(Data::MmapHeader).new(ptr.address & MASK)
+    page.value.size.to_i32
+  end
+
+  def resize(ptr : Void*, newsize : Int)
+    pool_size = sizeof(Data::MmapHeader) + newsize.to_usize
+    abort "pool size must be <= 0x1000" if pool_size > Data::MAX_POOL_SIZE
+
+    hdr = Pointer(Data::MmapHeader).new(ptr.address & MASK)
+    old_npages = pages_for(hdr.value.size)
+    npages = pages_for(pool_size) 
+
+    if npages > old_npages
+      alloc_page(hdr.address + old_npages * 0x1000, old_npages - npages)
+    end
   end
 
   def sweep
@@ -106,8 +120,8 @@ module Allocator::Big
     while addr < @@placement_addr.to_u64
       hdr = Pointer(Data::MmapHeader).new(addr)
       if hdr.value.magic == Data::MAGIC_MMAP
-        if hdr.value.marked == 1
-          npages = (hdr.value.size + 0x1000 - 1) // 0x1000
+        if hdr.value.marked == 0
+          npages = pages_for(hdr.value.size)
           if npages > 1
             dealloc_page(hdr.address + 0x1000, npages - 1)
           end
@@ -121,6 +135,10 @@ module Allocator::Big
       end
       addr += Data::MAX_POOL_SIZE
     end
+  end
+
+  private def pages_for(x)
+    (x + 0x1000 - 1) // 0x1000
   end
 
   {% if flag?(:kernel) %}

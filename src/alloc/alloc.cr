@@ -25,6 +25,14 @@ module Allocator
     end
   end
 
+  def resize(ptr : Void*, newsize) : Bool
+    if Big.contains_ptr? ptr
+      Big.resize ptr, newsize
+      return true
+    end
+    false
+  end
+
   def atomic?(ptr) : Bool
     if Small.contains_ptr? ptr
       Small.atomic? ptr
