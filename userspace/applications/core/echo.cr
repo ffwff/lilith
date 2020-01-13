@@ -1,9 +1,7 @@
-i = 0
-ARGV.each do |args|
+ARGV.each_with_index do |args, idx|
   print args
-  unless i == ARGV.size - 1
+  unless idx == ARGV.size - 1
     print " "
   end
-  i += 1
 end
 print "\n"

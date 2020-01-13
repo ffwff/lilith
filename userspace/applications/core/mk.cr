@@ -3,4 +3,4 @@ if ARGV.size < 1
   exit 1
 end
 
-file = File.new(ARGV[0], "w").not_nil!
+File.new(ARGV[0], "w")
