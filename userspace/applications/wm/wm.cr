@@ -181,7 +181,7 @@ module Wm::Server
 
     def initialize(@socket, @x, @y, width, height, @alpha : Bool)
       @wid = Server.next_wid
-      @bitmap_file = File.new("/tmp/wm-bm:" + @wid.to_s, "rw").not_nil!
+      @bitmap_file = File.new("/tmp/wm-bm:" + @wid.to_s, "rw").unwrap!
       @bitmap_file.truncate width * height * 4
       @bitmap = Painter::Bitmap.new(width, height, @bitmap_file.map_to_memory(prot: LibC::MmapProt::Read).as(UInt32*))
     end
@@ -302,7 +302,7 @@ module Wm::Server
   end
 
   def init
-    unless (@@fb = File.new("/fb0", "r"))
+    unless @@fb = File.new("/fb0", "r").ok?
       abort "unable to open /fb0"
     end
     @@dirty_rects = Array(DirtyRect).new
@@ -322,7 +322,7 @@ module Wm::Server
     LibC._ioctl STDOUT.fd, LibC::TIOCGSTATE, 0
 
     # communication pipe
-    if @@ipc = IPCServer.new("wm")
+    if @@ipc = IPCServer.new("wm").ok?
       selector << ipc
     else
       abort "unable to create communication pipe"
@@ -332,14 +332,14 @@ module Wm::Server
     @@windows.push Background.new(0x000066cc)
 
     # keyboard
-    if (@@kbd = File.new("/kbd/raw", "r"))
+    if @@kbd = File.new("/kbd/raw", "r").ok?
       selector << kbd
     else
       abort "unable to open /kbd/raw"
     end
 
     # mouse
-    if (@@mouse = File.new("/mouse/raw", "r"))
+    if @@mouse = File.new("/mouse/raw", "r").ok?
       selector << mouse
     else
       abort "unable to open /mouse/raw"

@@ -13,7 +13,7 @@ class G::Application
   @selector_timeout : UInt64
 
   def initialize
-    @client = Wm::Client.new.not_nil!
+    @client = Wm::Client.new.unwrap!
     @selector = IO::Select.new
     @selector << @client.socket
 

@@ -3,14 +3,15 @@ require "socket"
 class Wm::Client
   getter socket
 
+  alias Result = ::Result(Wm::Client, IO::Error)
+
   def initialize(@socket : IPCSocket)
   end
 
-  def self.new
-    if (socket = IPCSocket.new("wm")).nil?
-      return nil
+  def self.new : Result
+    IPCSocket.new("wm").map do |socket|
+      new socket
     end
-    new socket
   end
 
   def <<(msg)

@@ -6,7 +6,7 @@ class Wm::Window
   def initialize(@wid : Int32, @client : Wm::Client,
                  @x : Int32 = 0, @y : Int32 = 0,
                  @width : Int32 = 0, @height : Int32 = 0)
-    @bitmap_file = File.new("/tmp/wm-bm:" + @wid.to_s, "w").not_nil!
+    @bitmap_file = File.new("/tmp/wm-bm:" + @wid.to_s, "w").unwrap!
     @bitmap = Pointer(UInt32).null
   end
 
