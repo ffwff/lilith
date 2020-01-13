@@ -630,7 +630,6 @@ module Multiprocessing
 
   # Puts the calling kernel thread to sleep and disables GC scanning for the process
   def sleep_disable_gc
-    GC.scan_current_kernel_process
     kdata = Multiprocessing::Scheduler.current_process.not_nil!.kdata
     kdata.gc_enabled = false
     sleep

@@ -160,6 +160,9 @@ rdx, rcx, rbx, rax : UInt64
   @@last_frame = Pointer(Idt::Data::Registers).null
   class_getter last_frame
 
+  @@locked = false
+  class_getter locked
+
   @@switch_processes = false
   class_property switch_processes
 
@@ -185,18 +188,15 @@ rdx, rcx, rbx, rax : UInt64
   end
 
   def handle(frame : Idt::Data::Registers*)
+    @@locked = true
     @@status_mask = true
     @@last_frame = frame
-    GC.needs_scan_interrupt = true
 
     handle_unmasked frame
 
-    if Syscall.locked
-      GC.needs_scan_kernel_stack = true
-    end
-    GC.needs_scan_interrupt = false
     @@last_frame = Pointer(Idt::Data::Registers).null
     @@status_mask = false
+    @@locked = false
   end
 
   private def handle_exception_unmasked(frame : Idt::Data::ExceptionRegisters*)
@@ -248,18 +248,15 @@ rdx, rcx, rbx, rax : UInt64
   end
 
   def handle_exception(frame : Idt::Data::ExceptionRegisters*)
+    @@locked = true
     @@status_mask = true
     @@last_frame = frame
-    GC.needs_scan_interrupt = true
 
     handle_exception_unmasked frame
 
-    if Syscall.locked
-      GC.needs_scan_kernel_stack = true
-    end
-    GC.needs_scan_interrupt = false
     @@last_frame = Pointer(Idt::Data::Registers).null
     @@status_mask = false
+    @@locked = false
   end
 
   def halt_processor

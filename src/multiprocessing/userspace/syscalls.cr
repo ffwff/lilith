@@ -19,14 +19,12 @@ module Syscall
     # other processes might do another syscall
     # while the current syscall is still being processed
     @@locked = true
-    GC.needs_scan_kernel_stack = true
     Idt.switch_processes = false
     Idt.enable
   end
 
   def unlock
     @@locked = false
-    GC.needs_scan_kernel_stack = false
     Idt.switch_processes = true
     Idt.disable
   end

@@ -307,44 +307,12 @@ module GC
     end
 
     # NOTE: must be called from context switching
-    def scan_kernel_threads_if_necessary
-      if @@needs_scan_kernel_threads
-        if threads = Multiprocessing.kernel_threads
-          threads.each do |thread|
-            next unless thread.frame_initialized# && thread.kdata.gc_enabled
-            scan_kernel_thread_registers thread
-            scan_kernel_thread_stack thread
-          end
-        end
-        @@needs_scan_kernel_threads = false
-      end
-    end
-
-    private def scan_frame_registers(frame)
-      {% for register in ["rax", "rbx", "rcx", "rdx",
-                          "r8", "r9", "r10", "r11", "rsi", "rdi",
-                          "r12", "r13", "r14", "r15"] %}
-        ptr = Pointer(Void).new(frame.value.{{ register.id }})
-        push_gray ptr
-      {% end %}
-    end
-
-    @@needs_scan_kernel_threads = false
-    class_setter needs_scan_kernel_threads
-
-    @@needs_scan_kernel_stack = false
-    class_setter needs_scan_kernel_stack
-
-    @@needs_scan_interrupt = false
-    class_setter needs_scan_interrupt
-
-    @[NoInline]
-    def scan_current_kernel_process
-      Idt.disable(true) do
-        @@spinlock.with do
-          return unless @@enabled
-          scan_registers
-          scan_stack
+    private def scan_kernel_threads
+      if threads = Multiprocessing.kernel_threads
+        threads.each do |thread|
+          next unless thread.frame_initialized# && thread.kdata.gc_enabled
+          scan_kernel_thread_registers thread
+          scan_kernel_thread_stack thread
         end
       end
     end
@@ -359,35 +327,28 @@ module GC
         scan_registers
         scan_stack
         @@state = State::ScanGray
-        @@needs_scan_kernel_threads = true
-        @@needs_scan_interrupt = false
-        @@needs_scan_kernel_stack = false
         false
       when State::ScanGray
         scan_gray_nodes
         swap_grays
-        if @@needs_scan_interrupt
-          scan_frame_registers Idt.last_frame
-          conservative_scan Kernel.int_stack_start.address,
-            Kernel.int_stack_end.address
-          @@needs_scan_interrupt = false
-        end
-        if @@needs_scan_kernel_stack
-          conservative_scan @@stack_start.address,
-                            @@stack_end.address
-          @@needs_scan_kernel_stack = false
-        end
         if gray_empty?
           @@state = State::Sweep
         end
         false
       when State::Sweep
-        if @@needs_scan_kernel_stack || 
-           @@needs_scan_interrupt ||
-           @@needs_scan_kernel_threads
-          # we need to rescan the kernel/interrupt stack
+        # NOTE: this stops the world
+        scan_kernel_threads
+        if Syscall.locked
+          conservative_scan @@stack_start.address,
+                            @@stack_end.address
+        end
+        if Idt.locked
+          conservative_scan Kernel.int_stack_start.address,
+                            Kernel.int_stack_end.address
+        end
+        unless gray_empty?
           @@state = State::ScanGray
-          return unlocked_cycle
+          return false
         end
         Allocator.sweep
         @@state = State::ScanRoot
@@ -472,6 +433,10 @@ module GC
     return ptr if oldsize >= size
 
     @@spinlock.with do
+      if Allocator.resize(ptr, size)
+        return ptr
+      end
+
       newptr = Allocator.malloc(size, Allocator.atomic?(ptr))
       memcpy newptr.as(UInt8*), ptr.as(UInt8*), oldsize.to_usize
       push_gray newptr
