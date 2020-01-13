@@ -33,6 +33,14 @@ struct Result(T, E)
   def err?
     @data.as?(E)
   end
+
+  def map(&block: T -> U) forall U
+    if @data.is_a?(T)
+      Result(U, E).new(yield @data.as!(T))
+    else
+      Result(U, E).new(@data.as!(E))
+    end
+  end
 end
 
 macro try?(result)
