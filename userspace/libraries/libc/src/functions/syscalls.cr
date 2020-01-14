@@ -194,12 +194,6 @@ fun sbrk(increment : LibC::SizeT) : Void*
   Pointer(Void).new(lilith_syscall(SC_SBRK, increment).to_u64)
 end
 
-# time
-fun time(tloc : Void*) : LibC::UInt
-  # TODO
-  0u32
-end
-
 # stat
 fun stat(path : UInt8*, statbuf : Void*) : LibC::Int
   # TODO
@@ -219,4 +213,9 @@ end
 fun rename(oldpath : UInt8*, newpath : UInt8*) : LibC::Int
   # TODO
   -1
+end
+
+fun system(command : UInt8*) : LibC::Int
+  # TODO
+  0
 end

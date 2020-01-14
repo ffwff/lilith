@@ -183,6 +183,14 @@ end
 
 # Arrays
 struct StaticArray(T, N)
+  macro [](*args)
+    %array = uninitialized StaticArray(typeof({{*args}}), {{args.size}})
+    {% for arg, i in args %}
+      %array.to_unsafe[{{i}}] = {{arg}}
+    {% end %}
+    %array
+  end
+
   def to_unsafe : Pointer(T)
     pointerof(@buffer)
   end

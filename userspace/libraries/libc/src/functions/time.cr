@@ -162,6 +162,14 @@ fun localtime(time_t : LibC::TimeT*) : LibC::Tm*
   Time.tm_p
 end
 
+fun time(tloc : LibC::TimeT*) : LibC::TimeT
+  retval = _sys_time
+  unless tloc.null?
+    tloc.value = retval
+  end
+  retval
+end
+
 fun clock : LibC::ClockT
   # TODO
   0.to_ulonglong
