@@ -1,8 +1,9 @@
-module Serial 
+module Serial
   extend self
   include OutputDriver
 
   private PORT = 0x3F8
+
   def init_device
     X86.outb((PORT + 1).to_u16, 0x00u8) # Disable all interrupts
     X86.outb((PORT + 3).to_u16, 0x80u8) # Enable DLAB (set baud rate divisor)

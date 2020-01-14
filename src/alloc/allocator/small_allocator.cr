@@ -77,8 +77,9 @@ module Allocator::Small
       nfree : USize
     end
 
-    MAGIC_MMAP = 0x47727532
+    MAGIC_MMAP    = 0x47727532
     MAX_MMAP_SIZE = 0x1000 - sizeof(MmapHeader)
+
     struct MmapHeader
       magic : USize
       marked : USize
@@ -86,6 +87,7 @@ module Allocator::Small
     end
 
     MAGIC_EMPTY = 0
+
     struct EmptyHeader
       magic : USize
       next_page : EmptyHeader*
@@ -248,7 +250,7 @@ module Allocator::Small
   MIN_SIZE_TO_ALIGN = 128
 
   # Binary log of the smallest size the allocator can allocate.
-  MIN_POW2          =   5
+  MIN_POW2 = 5
 
   # Sizes of a small pool, according to its `@idx`.
   SIZES = StaticArray[32, 64, 128, 256, 512, 1024]

@@ -2,9 +2,10 @@ module Allocator::Big
   extend self
 
   lib Data
-    MAGIC_MMAP = 0x47727533
-    MAX_POOL_SIZE = 32768
+    MAGIC_MMAP     = 0x47727533
+    MAX_POOL_SIZE  =      32768
     MAX_ALLOC_SIZE = MAX_POOL_SIZE - sizeof(Data::MmapHeader)
+
     struct MmapHeader
       magic : USize
       marked : USize
@@ -13,6 +14,7 @@ module Allocator::Big
     end
 
     MAGIC_EMPTY = 0
+
     struct EmptyHeader
       magic : USize
       next_page : EmptyHeader*
@@ -53,7 +55,7 @@ module Allocator::Big
     if page = @@empty_pages
       addr = page.address
       if npages > 1
-        alloc_page(addr + 0x1000, npages.to_usize-1)
+        alloc_page(addr + 0x1000, npages.to_usize - 1)
       end
       @@empty_pages = page.value.next_page
     else
@@ -108,7 +110,7 @@ module Allocator::Big
 
     hdr = Pointer(Data::MmapHeader).new(ptr.address & MASK)
     old_npages = pages_for(hdr.value.size)
-    npages = pages_for(pool_size) 
+    npages = pages_for(pool_size)
 
     if npages > old_npages
       alloc_page(hdr.address + old_npages * 0x1000, old_npages - npages)

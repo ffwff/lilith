@@ -38,6 +38,7 @@ module FrameAllocator
     end
 
     @lock = Spinlock.new
+
     def lock
       @lock.with do
         yield

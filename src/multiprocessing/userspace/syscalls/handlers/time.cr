@@ -26,5 +26,4 @@ module Syscall::Handlers
     end
     Multiprocessing::Scheduler.switch_process(args.frame)
   end
-
 end

@@ -248,7 +248,7 @@ module Paging
   # Flushes the page
   #
   # NOTE: this must be NoInline because in changes the address space
-  # in a way that the compiler doesn't recognize. 
+  # in a way that the compiler doesn't recognize.
   @[NoInline]
   def flush
     asm("mov $0, %cr3" :: "r"(@@pml4_table) : "volatile", "memory")
@@ -327,8 +327,8 @@ module Paging
   # Allocates a page from a kernel thread.
   @[NoInline]
   def alloc_page_drv(virt_addr_start : UInt64, rw : Bool, user : Bool,
-                        npages : USize = 1,
-                        execute : Bool = false) : UInt64
+                     npages : USize = 1,
+                     execute : Bool = false) : UInt64
     retval = 0u64
     asm("syscall"
             : "={rax}"(retval)

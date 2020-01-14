@@ -83,5 +83,4 @@ module Allocator
     Small.sweep
     Big.sweep
   end
-
 end

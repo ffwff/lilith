@@ -184,5 +184,4 @@ module PipeFS
       @root = PipeFS::Root.new self
     end
   end
-
 end

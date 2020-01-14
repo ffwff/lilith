@@ -34,7 +34,7 @@ struct Result(T, E)
     @data.as?(E)
   end
 
-  def map(&block: T -> U) forall U
+  def map(&block : T -> U) forall U
     if @data.is_a?(T)
       Result(U, E).new(yield @data.as!(T))
     else

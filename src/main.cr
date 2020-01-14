@@ -17,7 +17,7 @@ lib Kernel
   fun ksetup_fxsave_region_base
 end
 
-MAIN_PATH = "drv"
+MAIN_PATH    = "drv"
 MAIN_PROGRAM = "main"
 
 private def init_arch
@@ -150,4 +150,3 @@ init_arch
 init_hardware
 init_rootfs
 init_boot_device
-

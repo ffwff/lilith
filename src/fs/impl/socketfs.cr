@@ -2,6 +2,7 @@ require "./pipe/circular_buffer.cr"
 
 module SocketFS
   extend self
+
   class Node < VFS::Node
     include VFS::Child(Node)
 
@@ -192,5 +193,4 @@ module SocketFS
       @root = Root.new self
     end
   end
-
 end

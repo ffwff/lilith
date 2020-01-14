@@ -18,4 +18,3 @@ lib LibC
   fun strftime(s : LibC::UString, max : LibC::SizeT,
                format : LibC::UString, tm : LibC::Tm*) : LibC::SizeT
 end
-

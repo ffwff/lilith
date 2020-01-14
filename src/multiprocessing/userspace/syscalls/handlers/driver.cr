@@ -25,5 +25,4 @@ module Syscall::Handlers
     args.process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
     Multiprocessing::Scheduler.switch_process(args.frame)
   end
-
 end

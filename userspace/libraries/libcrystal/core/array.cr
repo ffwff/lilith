@@ -11,6 +11,7 @@ class Array(T) < Markable
   protected setter size
 
   @buffer = Pointer(T).null
+
   def to_unsafe
     @buffer
   end

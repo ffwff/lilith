@@ -270,7 +270,6 @@ rdx, rcx, rbx, rax : UInt64
       asm("hlt")
     end
   end
-
 end
 
 fun kirq_handler(frame : Idt::Data::Registers*)

@@ -21,7 +21,7 @@ module Syscall::Handlers
     # search binary in cwd
     if vfs_node.nil?
       vfs_node = Syscall::Path.parse_path_into_vfs path, args,
-                          cw_node: args.process.udata.cwd_node
+        cw_node: args.process.udata.cwd_node
     end
 
     if vfs_node.nil?
@@ -115,5 +115,4 @@ module Syscall::Handlers
   def setenv(args : Syscall::Arguments)
     EINVAL
   end
-
 end

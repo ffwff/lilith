@@ -9,8 +9,8 @@ module X86
     asm("rdtscp
          shl $$32, %rdx
          or %rdx, %rax"
-        : "={rax}"(tsc)
-        :: "{rcx}", "{rdx}")
+            : "={rax}"(tsc)
+            :: "{rcx}", "{rdx}")
     tsc
   end
 
@@ -22,8 +22,7 @@ module X86
       asm("hlt")
     end
     newts = rdtscp
-    @@usecs_per_tsc = (Time.usecs_since_boot-old_usecs).to_f32 / (newts-ts).to_f32 
+    @@usecs_per_tsc = (Time.usecs_since_boot - old_usecs).to_f32 / (newts - ts).to_f32
     Serial.print "us: ", (1.0f32/@@usecs_per_tsc).to_i32, '\n'
   end
-
 end

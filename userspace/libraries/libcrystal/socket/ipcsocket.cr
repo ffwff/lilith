@@ -1,6 +1,6 @@
 class IPCSocket < IO::FileDescriptor
   alias Result = ::Result(IPCSocket, IO::Error)
-  
+
   def initialize(@fd)
     self.buffer_size = 0
   end

@@ -1,12 +1,12 @@
 # A simple dynamic array, see [Crystal's documentation](https://crystal-lang.org/api/0.32.1/Array.html) for more detail.
 class Array(T) < Markable
-
   @size = 0
   @capacity = 0
   getter size, capacity
   protected setter size
 
   @buffer : T* = Pointer(T).null
+
   def to_unsafe
     @buffer
   end

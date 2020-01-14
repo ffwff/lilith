@@ -97,7 +97,7 @@ class String
       header.value = {String::TYPE_ID, bytesize, length}
       @buffer.as(String)
     end
-    
+
     def reset
       @buffer = Pointer(UInt8).null
       @capacity = 0

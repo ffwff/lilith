@@ -23,7 +23,7 @@ module HDA
   class_getter corb
   @@corb_idx = 0
   @@corb_size = 0x0
-  
+
   def corb_phys
     @@corb.address & ~Paging::IDENTITY_MASK
   end
@@ -66,11 +66,11 @@ module HDA
     (@@registers + offset).as(UInt32*).value = value
   end
 
-  GCTL      = 0x08
-  INTCTL    = 0x20
-  INTSTS    = 0x24
-  WAKEEN    = 0x0C
-  STATESTS  = 0x0E
+  GCTL     = 0x08
+  INTCTL   = 0x20
+  INTSTS   = 0x24
+  WAKEEN   = 0x0C
+  STATESTS = 0x0E
 
   CORBLBASE = 0x40
   CORBUBASE = 0x44
@@ -87,19 +87,19 @@ module HDA
   RINTCNT   = 0x5A
   RIRBWP    = 0x58
 
-  BDLLBASE  = 0x98
-  BDLUBASE  = 0x9C
+  BDLLBASE = 0x98
+  BDLUBASE = 0x9C
 
-  GET_PARAMETER = 0xF00u32
-  GET_STREAM_FORMAT = 0xA00u32
+  GET_PARAMETER      = 0xF00u32
+  GET_STREAM_FORMAT  = 0xA00u32
   GET_CONFIG_DEFAULT = 0xF1Cu32
 
-  SET_CHANNEL_STREAMID = 0x706u32
+  SET_CHANNEL_STREAMID   = 0x706u32
   SET_PIN_WIDGET_CONTROL = 0x707u32
 
-  PAR_NODE_COUNT = 0x04u32
+  PAR_NODE_COUNT    = 0x04u32
   PAR_FUNCTION_TYPE = 0x05u32
-  PAR_WIDGET_CAP = 0x09u32
+  PAR_WIDGET_CAP    = 0x09u32
 
   PINCTL_OUT_EN = 1u32 << 6u32
 
@@ -190,7 +190,6 @@ module HDA
     end
   end
 
-
   struct OutNode
     @idx : Int32
     getter idx
@@ -207,7 +206,7 @@ module HDA
 
     def stream_id=(id)
       HDA.push_corb_and_read HDA.corb_entry(((id.to_u32 & 0x0F) << 4) | 0x0,
-                                            SET_CHANNEL_STREAMID, @idx.to_u32, @codec.to_u32)
+        SET_CHANNEL_STREAMID, @idx.to_u32, @codec.to_u32)
     end
   end
 
@@ -265,7 +264,7 @@ module HDA
         retidx
       end || return
 
-      Serial.print  "afg group: ", @afg_node, '\n'
+      Serial.print "afg group: ", @afg_node, '\n'
 
       begin
         start_widget, total_widgets = node_count @afg_node
@@ -316,7 +315,6 @@ module HDA
     Serial.print @@registers, '\n'
     Serial.print @@corb, '\n'
     Serial.print @@rirb, '\n'
-
 
     # reset the device
     write_long GCTL, 0x0
@@ -451,7 +449,7 @@ module HDA
     end
     HDA.rirb[HDA.rirb_wp]
   end
-  
+
   @@rirb_updated = false
   class_getter rirb_updated
 
@@ -466,5 +464,4 @@ module HDA
   def pci_device?(vendor_id, device_id)
     vendor_id == 0x8086 && device_id == 0x2668
   end
-
 end

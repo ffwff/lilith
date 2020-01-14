@@ -52,7 +52,7 @@ class ConsoleFS::FS < VFS::FS
         ->(ptr : Void*) { ptr.as(ConsoleFS::FS).process },
         self.as(Void*),
         stack_pages: 2) do |process|
-    end
+      end
     @queue = VFS::Queue.new(@process)
   end
 

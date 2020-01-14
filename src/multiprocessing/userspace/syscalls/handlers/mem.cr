@@ -123,5 +123,4 @@ module Syscall::Handlers
     end
     EINVAL
   end
-
 end

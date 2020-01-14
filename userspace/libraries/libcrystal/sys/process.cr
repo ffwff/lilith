@@ -1,10 +1,10 @@
 class Process
   enum Error
-    FaultingAddress = -2
-    FileNotFound = -3
+    FaultingAddress   = -2
+    FileNotFound      = -3
     BadFileDescriptor = -4
-    UnableToExecute = -5
-    InvalidArgument = 0
+    UnableToExecute   = -5
+    InvalidArgument   =  0
   end
 
   alias Result = ::Result(Process, Error)

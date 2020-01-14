@@ -110,5 +110,4 @@ module Syscall::Path
 
     {builder.to_s, vfs_node}
   end
-
 end

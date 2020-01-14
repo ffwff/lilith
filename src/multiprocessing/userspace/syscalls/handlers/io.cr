@@ -4,7 +4,7 @@ module Syscall::Handlers
   def open(args : Syscall::Arguments)
     path = checked_slice(args[0], args[1]) || return EFAULT
     vfs_node = Syscall::Path.parse_path_into_vfs(path, args,
-          cw_node: args.process.udata.cwd_node) || return ENOENT
+      cw_node: args.process.udata.cwd_node) || return ENOENT
     args.process.udata.install_fd(vfs_node.not_nil!,
       FileDescriptor::Attributes.new(args[2].to_i32))
   end
@@ -13,8 +13,8 @@ module Syscall::Handlers
     path = checked_slice(args[0], args[1]) || return EFAULT
     options = args[2].to_i32
     vfs_node = Syscall::Path.parse_path_into_vfs(path, args,
-          cw_node: args.process.udata.cwd_node,
-          create: true, create_options: options) || return ENOENT
+      cw_node: args.process.udata.cwd_node,
+      create: true, create_options: options) || return ENOENT
     args.process.udata.install_fd(vfs_node.not_nil!,
       FileDescriptor::Attributes.new(options))
   end
@@ -26,7 +26,7 @@ module Syscall::Handlers
   def remove(args : Syscall::Arguments)
     path = checked_slice(args[0], args[1]) || return EFAULT
     vfs_node = Syscall::Path.parse_path_into_vfs(path, args,
-          cw_node: args.process.udata.cwd_node) || return ENOENT
+      cw_node: args.process.udata.cwd_node) || return ENOENT
     vfs_node.remove
   end
 
@@ -49,14 +49,14 @@ module Syscall::Handlers
       vfs_node = fd.node.not_nil!
       vfs_node.queue.not_nil!
         .enqueue(VFS::Message.new(VFS::Message::Type::Read,
-        str, args.process, fd, vfs_node))
+          str, args.process, fd, vfs_node))
       args.process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
       Multiprocessing::Scheduler.switch_process(args.frame)
     when VFS_WAIT
       vfs_node = fd.node.not_nil!
       vfs_node.fs.queue.not_nil!
         .enqueue(VFS::Message.new(VFS::Message::Type::Read,
-        str, args.process, fd, vfs_node))
+          str, args.process, fd, vfs_node))
       args.process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
       Multiprocessing::Scheduler.switch_process(args.frame)
     else
@@ -81,14 +81,14 @@ module Syscall::Handlers
       vfs_node = fd.not_nil!.node.not_nil!
       vfs_node.queue.not_nil!
         .enqueue(VFS::Message.new(VFS::Message::Type::Write,
-        str, args.process, fd, vfs_node))
+          str, args.process, fd, vfs_node))
       args.process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
       Multiprocessing::Scheduler.switch_process(args.frame)
     when VFS_WAIT
       vfs_node = fd.not_nil!.node.not_nil!
       vfs_node.fs.queue.not_nil!
         .enqueue(VFS::Message.new(VFS::Message::Type::Write,
-        str, args.process, fd, vfs_node))
+          str, args.process, fd, vfs_node))
       args.process.sched_data.status = Multiprocessing::Scheduler::ProcessData::Status::WaitIo
       Multiprocessing::Scheduler.switch_process(args.frame)
     else

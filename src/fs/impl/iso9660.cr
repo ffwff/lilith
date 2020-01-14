@@ -151,10 +151,10 @@ module ISO9660FS
 
       # buffer
       file_buffer = if allocator.nil?
-                       Slice(UInt8).malloc(2048)
-                     else
-                       Slice(UInt8).new(allocator.not_nil!.malloc(2048).as(UInt8*), 2048)
-                     end
+                      Slice(UInt8).malloc(2048)
+                    else
+                      Slice(UInt8).new(allocator.not_nil!.malloc(2048).as(UInt8*), 2048)
+                    end
       sector = @extent_start.to_u64 + offset.div_ceil(2048).to_u64
       offset_bytes = offset % 2048
       remaining_bytes = read_size
@@ -172,7 +172,7 @@ module ISO9660FS
 
           # yield the read buffer
           cur_buffer = Slice(UInt8).new(file_buffer.to_unsafe + offset_bytes,
-                Math.min(file_buffer.size - offset_bytes, remaining_bytes.to_i32))
+            Math.min(file_buffer.size - offset_bytes, remaining_bytes.to_i32))
           yield cur_buffer
           offset += cur_buffer.size
           remaining_bytes -= cur_buffer.size
@@ -216,8 +216,8 @@ module ISO9660FS
 
     private def valid_char?(ch)
       '0'.ord <= ch <= '9'.ord ||
-      'A'.ord <= ch <= 'Z'.ord ||
-      ch == '.'.ord
+        'A'.ord <= ch <= 'Z'.ord ||
+        ch == '.'.ord
     end
 
     private def normalize_char(ch)
@@ -231,10 +231,10 @@ module ISO9660FS
       return if @dir_populated
       @dir_populated = true
       sector = if allocator
-                  Slice(UInt8).mmalloc_a 2048, allocator.not_nil!
-                else
-                  Slice(UInt8).malloc 2048
-                end
+                 Slice(UInt8).mmalloc_a 2048, allocator.not_nil!
+               else
+                 Slice(UInt8).malloc 2048
+               end
       # Serial.print "extent length: ", @extent_length, '\n'
       remaining = @extent_length
       sector_offset = 0
@@ -247,7 +247,7 @@ module ISO9660FS
         byte_size = Math.min(remaining, 2048)
         while b_offset < byte_size
           header = (sector.to_unsafe + b_offset).as(Data::DirectoryEntryHeader*)
-          name = (header+1).as(UInt8*)
+          name = (header + 1).as(UInt8*)
 
           if header.value.length == 0
             b_offset += 1
@@ -255,8 +255,7 @@ module ISO9660FS
           end
 
           if !header.value.flags.includes?(Data::Flags::Hidden) &&
-              valid_char?(name[0])
-
+             valid_char?(name[0])
             builder.reset
 
             slice = Slice.new(name, header.value.name_length.to_i32)
@@ -270,9 +269,9 @@ module ISO9660FS
 
             name = builder.to_s
             node = add_child Node.new(@fs, name,
-                                      header.value.flags.includes?(Data::Flags::Directory),
-                                      header.value.extent_start.lsb,
-                                      header.value.extent_length.lsb)
+              header.value.flags.includes?(Data::Flags::Directory),
+              header.value.extent_start.lsb,
+              header.value.extent_length.lsb)
             node.parent = self
           end
 
@@ -321,8 +320,8 @@ module ISO9660FS
           ->(ptr : Void*) { ptr.as(FS).process },
           self.as(Void*),
           stack_pages: 4) do |process|
-        Paging.alloc_page(Multiprocessing::KERNEL_HEAP_INITIAL, true, false, 2)
-      end
+          Paging.alloc_page(Multiprocessing::KERNEL_HEAP_INITIAL, true, false, 2)
+        end
 
       @queue = VFS::Queue.new(@process)
     end
@@ -350,7 +349,5 @@ module ISO9660FS
         end
       end
     end
-
   end
-
 end

@@ -1,7 +1,7 @@
 class Hash(K, V) < Markable
-
   struct Entry(K, V)
     getter hash, key, value
+
     def initialize(@hash : UInt64, @key : K, @value : V)
     end
 
@@ -67,7 +67,7 @@ class Hash(K, V) < Markable
         @occupied += 1
         return idx
       elsif @entries[idx].key == key
-        return idx 
+        return idx
       end
       idx += 1
     end
@@ -187,7 +187,7 @@ class Hash(K, V) < Markable
     LibC.memcpy(new_entries, @entries, (sizeof(Entry(K, V)) * @size).to_usize)
     Hash.new(new_entries, @size, @occupied)
   end
-  
+
   @[NoInline]
   def mark(&block : Void* ->)
     yield @entries.as(Void*)
@@ -203,5 +203,4 @@ class Hash(K, V) < Markable
       end
     end
   end
-
 end

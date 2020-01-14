@@ -48,9 +48,9 @@ module Syscall
 
     # syscall handlers for user processes
     {% for syscall in %w(open read write fattr spawn close exit
-                         seek getcwd chdir sbrk readdir waitpid
-                         ioctl mmap time sleep getenv setenv create
-                         truncate waitfd remove munmap) %}
+                        seek getcwd chdir sbrk readdir waitpid
+                        ioctl mmap time sleep getenv setenv create
+                        truncate waitfd remove munmap) %}
       if syscall_no == SC_{{ syscall.upcase.id }}
         args.primary_arg = Syscall::Handlers.{{ syscall.id }}(args).to_u64
         return

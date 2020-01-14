@@ -99,10 +99,21 @@ module Multiprocessing
 
     @pdata : (UserData | KernelData)? = nil
 
-    def udata; @pdata.as!(UserData); end
-    def kdata; @pdata.as!(KernelData); end
-    def user_process?; @pdata.is_a?(UserData); end
-    def kernel_process?; @pdata.is_a?(KernelData); end
+    def udata
+      @pdata.as!(UserData)
+    end
+
+    def kdata
+      @pdata.as!(KernelData)
+    end
+
+    def user_process?
+      @pdata.is_a?(UserData)
+    end
+
+    def kernel_process?
+      @pdata.is_a?(KernelData)
+    end
 
     getter name
 

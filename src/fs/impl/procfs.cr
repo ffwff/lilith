@@ -81,7 +81,7 @@ module ProcFS
     end
 
     def remove_child(node : ProcessNode)
-      if cache = @lookup_cache 
+      if cache = @lookup_cache
         cache.delete node.name.not_nil!
       end
       if node == @first_child
@@ -237,5 +237,4 @@ module ProcFS
       @root = Node.new self
     end
   end
-
 end

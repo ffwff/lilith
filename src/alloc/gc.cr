@@ -42,6 +42,7 @@ end
 class Markable
   {% if flag?(:record_markable) %}
     @markable : UInt64 = 0u64
+
     def markable?
       @markable == 0
     end
@@ -53,7 +54,7 @@ class Markable
       begin
         retval = yield
       ensure
-        @markable = 0u64 
+        @markable = 0u64
         # perform a non stw cycle here so the gray stack
         # doesn't get clogged with write barrier'd classes
         GC.non_stw_cycle
@@ -62,10 +63,11 @@ class Markable
     end
   {% else %}
     @markable = true
+
     def markable?
       @markable
     end
-    
+
     # Activates the write barrier for the markable object.
     def write_barrier(&block)
       abort "multiple write barriers" if !markable?
@@ -90,7 +92,7 @@ class Markable
 end
 
 # A simple hybrid conservtive-precise incremental garbage collector.
-# The GC uses the tri-color marking algorithm, storing whether or not 
+# The GC uses the tri-color marking algorithm, storing whether or not
 # the object is marked in the `Allocator` pool's metadata bitmap.
 # Gray nodes are stored in two internal fixed-size gray stacks (a front and a back stack),
 # one of which is scanned each cycle (after root nodes have been scanned).
@@ -101,7 +103,7 @@ end
 # as this cycle usually has long pause times. Once every root has been marked,
 # they are pushed into the gray stack, adn the collector transitions into
 # the gray-scanning cycle.
-# 
+#
 # The collector then pops and scans each object in the front stack, precisely marking every
 # pointer contained within the object (based on marking data exposed by the compiler
 # in the `__crystal_malloc_type_offsets`), pushing the newly marked pointer into the back gray
@@ -257,7 +259,7 @@ module GC
         end
       else
         {% if flag?(:record_markable) %}
-          Serial.print "not markable: ", ptr,'\n'
+          Serial.print "not markable: ", ptr, '\n'
         {% end %}
         Allocator.mark ptr, false
         push_opposite_gray ptr
@@ -340,11 +342,11 @@ module GC
         scan_kernel_threads
         if Syscall.locked
           conservative_scan @@stack_start.address,
-                            @@stack_end.address
+            @@stack_end.address
         end
         if Idt.locked
           conservative_scan Kernel.int_stack_start.address,
-                            Kernel.int_stack_end.address
+            Kernel.int_stack_end.address
         end
         unless gray_empty?
           @@state = State::ScanGray

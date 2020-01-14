@@ -287,7 +287,7 @@ module Multiprocessing::Scheduler
     unless process.frame_initialized
       process.new_frame
     end
-    
+
     # switch page directory
     if process.kernel_process?
       Paging.current_pdpt = Pointer(Paging::Data::PDPTable)

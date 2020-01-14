@@ -64,7 +64,7 @@ module TmpFS
               process : Multiprocessing::Process? = nil) : Int32
       return VFS_ERR if removed?
       return VFS_EOF if offset > @size
-      
+
       if offset == @size
         truncate(@size.to_i32 + offset.to_i32 + slice.size.to_i32)
       end
@@ -84,7 +84,7 @@ module TmpFS
       end
       foffset
     end
-    
+
     def truncate(size : Int32) : Int32
       npages = size.div_ceil 0x1000
       if @frames.nil?
@@ -103,7 +103,7 @@ module TmpFS
       end
       @size
     end
-    
+
     @mmap_count = 0
 
     def mmap(node : MemMapList::Node, process : Multiprocessing::Process) : Int32
@@ -114,9 +114,9 @@ module TmpFS
           break if idx == npages
           phys = frame.address & ~Paging::IDENTITY_MASK
           Paging.alloc_page(node.addr + idx * 0x1000,
-                node.attr.includes?(MemMapList::Node::Attributes::Write),
-                true, 1, phys,
-                execute: node.attr.includes?(MemMapList::Node::Attributes::Execute))
+            node.attr.includes?(MemMapList::Node::Attributes::Write),
+            true, 1, phys,
+            execute: node.attr.includes?(MemMapList::Node::Attributes::Execute))
         end
         VFS_OK
       else
@@ -129,22 +129,21 @@ module TmpFS
       abort "unimplemented"
       return 0
       {% if false %}
-      i = addr
-      end_addr = i + size
-      while i < end_addr
-        Paging.remove_page(i)
-        i += 0x1000
-      end
-      VFS_OK
+        i = addr
+        end_addr = i + size
+        while i < end_addr
+          Paging.remove_page(i)
+          i += 0x1000
+        end
+        VFS_OK
       {% end %}
     end
   end
 
-
   class Root < VFS::Node
     include VFS::Enumerable(Node)
     getter fs : VFS::FS
-    
+
     def initialize(@fs : FS)
       @attributes |= VFS::Node::Attributes::Directory
     end

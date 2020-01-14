@@ -1,5 +1,4 @@
 module Syscall
-
   struct Arguments
     getter frame, process
 
@@ -32,5 +31,4 @@ module Syscall
       end
     end
   end
-
 end

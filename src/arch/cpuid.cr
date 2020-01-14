@@ -23,12 +23,13 @@ module X86
       4.times do |i|
         code = 0x80000002u32 + i.to_u32
         o = i * 4
-        brandp[o], brandp[o+1], brandp[o+2], brandp[o+3] = cpuid(code)
+        brandp[o], brandp[o + 1], brandp[o + 2], brandp[o + 3] = cpuid(code)
       end
       brand
     end
 
     @@brand : String? = nil
+
     def brand
       return @@brand if @@brand
       @@brand = String.new(brand_buffer)

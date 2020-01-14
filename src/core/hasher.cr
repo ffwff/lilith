@@ -1,7 +1,6 @@
 struct Hasher
-
   C = 0xc6a4a7935bd1e995u64
-  R = 47u64
+  R =                 47u64
 
   @@seed = 0xdeadbeefdeadbeefu64
 
@@ -44,8 +43,8 @@ struct Hasher
     @hash ^= (ptr[4].to_u64 << 32u64) if rem >= 5
     @hash ^= (ptr[3].to_u64 << 24u64) if rem >= 4
     @hash ^= (ptr[2].to_u64 << 16u64) if rem >= 3
-    @hash ^= (ptr[1].to_u64 << 8u64)  if rem >= 2
-    @hash ^= ptr[0].to_u64            if rem >= 1
+    @hash ^= (ptr[1].to_u64 << 8u64) if rem >= 2
+    @hash ^= ptr[0].to_u64 if rem >= 1
     @hash *= C
   end
 
@@ -56,5 +55,4 @@ struct Hasher
   def hash(str : String)
     hash(str.byte_slice)
   end
-
 end

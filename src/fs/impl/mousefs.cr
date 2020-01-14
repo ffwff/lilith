@@ -49,7 +49,6 @@ module MouseFS
     end
   end
 
-
   class Node < VFS::Node
     include VFS::Enumerable(RawNode)
 

@@ -73,8 +73,8 @@ module Syscall::Handlers
   def chdir(args : Syscall::Arguments)
     path = checked_slice(args[0], args[1]) || return EFAULT
     if tuple = Syscall::Path.append_paths path,
-                            args.process.udata.cwd,
-                            args.process.udata.cwd_node
+         args.process.udata.cwd,
+         args.process.udata.cwd_node
       cwd, vfs_node = tuple
       if !vfs_node.nil?
         args.process.udata.cwd = cwd
@@ -87,5 +87,4 @@ module Syscall::Handlers
       ENOENT
     end
   end
-
 end

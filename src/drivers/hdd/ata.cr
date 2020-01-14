@@ -48,7 +48,7 @@ module Ata
       pio_no_flow : UInt16
       pio_iordy : UInt16
       unused5 : UInt16[2]
-      packet_ns : UInt16 
+      packet_ns : UInt16
       service_ns : UInt16
       unused6 : UInt16
       queue_depth : UInt16
@@ -102,9 +102,9 @@ module Ata
   CMD_IDENTIFY        = 0xECu8
 
   # atapi commands
-  ATAPI_CMD_READ  = 0xA8u8
+  ATAPI_CMD_READ      = 0xA8u8
   ATAPI_READ_CAPACITY = 0x25u8
-  ATAPI_CMD_EJECT = 0x1Bu8
+  ATAPI_CMD_EJECT     = 0x1Bu8
 
   # identifiers
   IDENT_DEVICETYPE   =   0
@@ -309,7 +309,7 @@ module Ata
   end
 
   private def htonl(l : UInt32) : UInt32
-    ( (((l) & 0xFF) << 24) | (((l) & 0xFF00) << 8) | (((l) & 0xFF0000) >> 8) | (((l) & 0xFF000000) >> 24))
+    ((((l) & 0xFF) << 24) | (((l) & 0xFF00) << 8) | (((l) & 0xFF0000) >> 8) | (((l) & 0xFF000000) >> 24))
   end
 
   def get_atapi_capacity(bus)
@@ -549,7 +549,6 @@ module Ata
     end
   end
 end
-
 
 module Ide
   extend self

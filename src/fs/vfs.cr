@@ -243,7 +243,7 @@ module RootFS
     end
     lookup_cache.delete name
   end
-  
+
   def find_root(name)
     if name == MAIN_PATH
       @@root_device.not_nil!.root
