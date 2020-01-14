@@ -50,7 +50,7 @@ fun iscntrl(ch : LibC::Int) : LibC::Int
 end
 
 fun isxdigit(ch : LibC::Int) : LibC::Int
-  ((isdigit(ch) == 1)  || ('a'.ord <= ch <= 'f'.ord) || ('A'.ord <= ch <= 'F'.ord)).to_int
+  ((isdigit(ch) == 1) || ('a'.ord <= ch <= 'f'.ord) || ('A'.ord <= ch <= 'F'.ord)).to_int
 end
 
 fun isalnum(ch : LibC::Int) : LibC::Int

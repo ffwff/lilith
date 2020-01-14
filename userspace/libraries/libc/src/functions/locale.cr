@@ -21,42 +21,39 @@ lib LibC
   end
 end
 
-protected module Locale
-  @@current_locale = uninitialized LibC::LConv
-  @@flag = false
+module Locale
+  extend self
+
+  @@current_locale = LibC::LConv.new(
+    decimal_point: ".",
+    thousands_sep: "",
+    grouping: "",
+    int_curr_symbol: "",
+    currency_symbol: "",
+    mon_decimal_point: "",
+    mon_thousands_sep: "",
+    mon_grouping: "",
+    positive_sign: "+",
+    negative_sign: "-",
+    int_frac_digits: 255,
+    frac_digits: 255,
+    p_cs_precedes: 0,
+    p_sep_by_space: 0,
+    n_cs_precedes: 0,
+    n_sep_by_space: 0,
+    p_sign_posn: 0,
+    n_sign_posn: 0
+  )
 
   def locale_ptr
     pointerof(@@current_locale)
   end
-
-  def init_locale
-    return if @@flag
-    @@flag = true
-    l = @@current_locale = uninitialized LibC::LConv
-    l.decimal_point   = "."
-    l.thousands_sep   = ""
-    l.grouping        = ""
-    l.int_curr_symbol = ""
-    l.int_frac_digits = ""
-    l.currency_symbol = ""
-    l.mon_decimal_point = ""
-    l.mon_grouping    = ""
-    l.positive_sign   = "+"
-    l.negative_sign   = "-"
-    l.int_frac_digits = 255
-    l.frac_digits     = 255
-    l.p_cs_precedes   = 0
-    l.p_sep_by_space  = 0
-    l.p_sign_posn     = 0
-    l.n_sign_posn     = 0
-  end
 end
 
 fun localeconv : LibC::LConv*
-  Locale.init_locale
   Locale.locale_ptr
 end
 
 fun setlocale(category : LibC::Int, locale : UInt8*) : UInt8*
-  Pointer(Void).new(0)
+  Pointer(UInt8).new(0)
 end
