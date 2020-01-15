@@ -8,10 +8,6 @@ module HDA
       length : UInt32
       extra : UInt32
     end
-
-    struct BufferDescriptorList
-      entries : BufferDescriptorEntry[256]
-    end
   end
 
   @@bus = 0u32
@@ -37,13 +33,11 @@ module HDA
     @@rirb.address & ~Paging::IDENTITY_MASK
   end
 
-  @@bdl = Pointer(Data::BufferDescriptorList).null
+  @@bdl = Slice(Data::BufferDescriptorEntry).null
   class_getter bdl
-  @@bdl_idx = 0x0
-  @@bdl_size = 0x0
 
   def bdl_phys
-    @@bdl.address & ~Paging::IDENTITY_MASK
+    @@bdl.to_unsafe.address & ~Paging::IDENTITY_MASK
   end
 
   private def word_reg(offset)
@@ -62,10 +56,28 @@ module HDA
     (@@registers + offset).as(UInt32*).value
   end
 
-  private def write_long(offset, value : UInt32)
+  def write_long(offset, value : UInt32)
     (@@registers + offset).as(UInt32*).value = value
   end
 
+  @@input_streams = 0
+  @@output_streams = 0
+  @@bidi_streams = 0
+  class_getter input_streams, output_streams, bidi_streams
+
+  def istream_idx(idx)
+    idx
+  end
+
+  def ostream_idx(idx)
+    @@input_streams + idx
+  end
+
+  def bstream_idx(idx)
+    @@input_streams + @@output_streams + idx
+  end
+
+  GCAP     = 0x0
   GCTL     = 0x08
   INTCTL   = 0x20
   INTSTS   = 0x24
@@ -87,8 +99,14 @@ module HDA
   RINTCNT   = 0x5A
   RIRBWP    = 0x58
 
-  BDLLBASE = 0x98
-  BDLUBASE = 0x9C
+  STCTL   = 0x0
+  STCBL   = 0x8
+  STLBASE = 0x18
+  STUBASE = 0x1C
+
+  def st_reg(stream, register)
+    0x80 + stream * 0x20 + register
+  end
 
   GET_PARAMETER      = 0xF00u32
   GET_STREAM_FORMAT  = 0xA00u32
@@ -288,8 +306,14 @@ module HDA
         end
       end
 
+      HDA.write_long INTCTL, (1u32 << 31u32) | (1u32 << 30u32)
+
       @out_node.enable
-      @out_node.stream_id = 0
+      @out_node.stream_id = HDA.ostream_idx(0)
+
+      HDA.write_long HDA.st_reg(HDA.ostream_idx(0), STCBL), 128
+
+      HDA.write_long HDA.st_reg(HDA.ostream_idx(0), STCTL), 1u32 << 1u32
     end
   end
 
@@ -307,8 +331,6 @@ module HDA
     zero_page @@corb.as(UInt8*)
     @@rirb = Pointer(UInt64).new(FrameAllocator.claim_with_addr | Paging::IDENTITY_MASK)
     zero_page @@rirb.as(UInt8*)
-    @@bdl = Pointer(Data::BufferDescriptorList).new(FrameAllocator.claim_with_addr | Paging::IDENTITY_MASK)
-    zero_page @@bdl.as(UInt8*)
     @@registers = Pointer(UInt8).new(phys | Paging::IDENTITY_MASK)
     Paging.alloc_page(@@registers.address, true, false, 4, phys)
 
@@ -316,17 +338,13 @@ module HDA
     Serial.print @@corb, '\n'
     Serial.print @@rirb, '\n'
 
+    gcap = read_long(GCAP)
+    @@input_streams = ((gcap >> 12) & 0b1111).to_i32
+    @@output_streams = ((gcap >> 8) & 0b1111).to_i32
+    @@bidi_streams = ((gcap >> 3) & 0b1111).to_i32
+
     # reset the device
-    write_long GCTL, 0x0
-    X86.flush_memory
-    while (read_long(GCTL) & 0x1) != 0
-      # wait until bit 15 is cleared
-    end
     write_long GCTL, 0x1
-    X86.flush_memory
-    while (read_long(GCTL) & 0x1) == 0
-      # wait until bit 15 is cleared
-    end
 
     # intctl
     write_long INTCTL, (1u32 << 31u32) | (1u32 << 30u32)
@@ -359,9 +377,14 @@ module HDA
     write_long RIRBLBASE, (rirb_phys & 0xFFFF_FFFFu64).to_u32
     write_long RIRBUBASE, (rirb_phys >> 32).to_u32
 
+    bdl_page = Pointer(Data::BufferDescriptorEntry).new(FrameAllocator.claim_with_addr | Paging::IDENTITY_MASK)
+    zero_page bdl_page.as(UInt8*)
+    @@bdl = Slice(Data::BufferDescriptorEntry).new(bdl_page, 256)
+    @@bdl[0] = Data::BufferDescriptorEntry.new(address: 0x120000, length: 128, extra: 0x0)
+
     # set bdl address
-    write_long BDLLBASE, (bdl_phys & 0xFFFF_FFFFu64).to_u32
-    write_long BDLUBASE, (bdl_phys >> 32).to_u32
+    write_long st_reg(ostream_idx(0), STLBASE), (bdl_phys & 0xFFFF_FFFFu64).to_u32
+    write_long st_reg(ostream_idx(0), STUBASE), (bdl_phys >> 32).to_u32
 
     # set CORB size
     supported_size = (@@registers[CORBSIZE] & 0b11110000) >> 4
@@ -400,17 +423,7 @@ module HDA
 
     # set the Read Pointer Reset bit
     write_long CCORBRP, 0x8000
-    X86.flush_memory
-    while (read_long(CCORBRP) >> 15) == 0
-      # wait until bit 15 is set
-    end
-
-    X86.flush_memory
     write_long CCORBRP, 0x0
-    X86.flush_memory
-    while (read_long(CCORBRP) >> 15) == 1
-      # wait until bit 15 is set
-    end
 
     # setup the buffer descriptor list
 
