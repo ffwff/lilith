@@ -7,7 +7,9 @@ struct Slice(T)
   end
 
   def self.new(size : Int)
-    new Pointer(T).malloc_atomic(size.to_u64), size.to_i32
+    ptr = Pointer(T).malloc_atomic(size.to_u64)
+    LibC.memset ptr, 0.to_usize, (size*sizeof(T)).to_usize
+    new ptr, size.to_i32
   end
 
   def self.empty

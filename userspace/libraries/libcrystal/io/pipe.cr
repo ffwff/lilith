@@ -51,6 +51,18 @@ class IO::Pipe < IO::FileDescriptor
     end
   end
 
+  def self.exists?(name)
+    return false if name.includes?('/')
+    filename = "/pipes/" + name
+    fd = LibC.open filename, LibC::O_RDONLY
+    if fd < 0
+      false
+    else
+      LibC.close fd
+      true
+    end
+  end
+
   def flags=(flag : Flags)
     LibC._ioctl(fd, SC_IOCTL_PIPE_CONF_FLAGS, flag.value)
   end
