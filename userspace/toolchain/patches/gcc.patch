@@ -1,30 +1,17 @@
 diff --git a/config.sub b/config.sub
-index f2632cd8a2b..f751ee5dcad 100755
+index a318a468685..538b0d39032 100755
 --- a/config.sub
 +++ b/config.sub
-@@ -1391,6 +1391,7 @@ case $os in
+@@ -1339,6 +1339,7 @@ case $os in
  	# Each alternative MUST end in a * to match a version number.
- 	# -sysv* is not here because it comes later, after sysvr4.
- 	-gnu* | -bsd* | -mach* | -minix* | -genix* | -ultrix* | -irix* \
-+	      | -lilith* \
- 	      | -*vms* | -sco* | -esix* | -isc* | -aix* | -cnk* | -sunos | -sunos[34]*\
- 	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
- 	      | -sym* | -kopensolaris* | -plan9* \
-diff --git a/configure b/configure
-index 0601395512f..3b6de345e68 100755
---- a/configure
-+++ b/configure
-@@ -6652,7 +6652,7 @@ fi
- # Check whether --with-gcc-major-version-only was given.
- if test "${with_gcc_major_version_only+set}" = set; then :
-   withval=$with_gcc_major_version_only; if test x$with_gcc_major_version_only = xyes ; then
--        get_gcc_base_ver="sed -e 's/^\([0-9]*\).*\$\$/\1/'"
-+        get_gcc_base_ver="sed -e 's/^\([0-9]*\).*/\1/'"
-       fi
- 
- fi
+ 	# sysv* is not here because it comes later, after sysvr4.
+ 	gnu* | bsd* | mach* | minix* | genix* | ultrix* | irix* \
++		 | lilith* \
+ 	     | *vms* | esix* | aix* | cnk* | sunos | sunos[34]*\
+ 	     | hpux* | unos* | osf* | luna* | dgux* | auroraux* | solaris* \
+ 	     | sym* | kopensolaris* | plan9* \
 diff --git a/fixincludes/mkfixinc.sh b/fixincludes/mkfixinc.sh
-index 0f9648608e9..c5b2478aba2 100755
+index df90720b716..73a2e0bcd50 100755
 --- a/fixincludes/mkfixinc.sh
 +++ b/fixincludes/mkfixinc.sh
 @@ -11,6 +11,7 @@ target=fixinc.sh
@@ -36,10 +23,10 @@ index 0f9648608e9..c5b2478aba2 100755
      i?86-*-mingw32* | \
      x86_64-*-mingw32* | \
 diff --git a/gcc/config.gcc b/gcc/config.gcc
-index 7af8e028104..7320cbe1bfb 100644
+index 2df4b36d190..4ef04ad9ca3 100644
 --- a/gcc/config.gcc
 +++ b/gcc/config.gcc
-@@ -646,6 +646,12 @@ x86_cpus="generic intel"
+@@ -675,6 +675,12 @@ x86_cpus="generic intel"
  
  # Common parts for widely ported systems.
  case ${target} in
@@ -50,9 +37,9 @@ index 7af8e028104..7320cbe1bfb 100644
 +  use_gcc_stdint=wrap
 +  ;;
  *-*-darwin*)
-   tmake_file="t-darwin ${cpu_type}/t-darwin"
+   tmake_file="t-darwin "
    tm_file="${tm_file} darwin.h"
-@@ -938,6 +944,12 @@ case ${target} in
+@@ -1033,6 +1039,12 @@ case ${target} in
  esac
  
  case ${target} in
@@ -64,24 +51,22 @@ index 7af8e028104..7320cbe1bfb 100644
 +    ;;
  aarch64*-*-elf | aarch64*-*-fuchsia* | aarch64*-*-rtems*)
  	tm_file="${tm_file} dbxelf.h elfos.h newlib-stdint.h"
- 	tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-elf-raw.h"
+ 	tm_file="${tm_file} aarch64/aarch64-elf.h aarch64/aarch64-errata.h aarch64/aarch64-elf-raw.h"
 diff --git a/gcc/config/lilith.h b/gcc/config/lilith.h
 new file mode 100644
-index 00000000000..bc6f91981ea
+index 00000000000..73e55026736
 --- /dev/null
 +++ b/gcc/config/lilith.h
-@@ -0,0 +1,28 @@
+@@ -0,0 +1,26 @@
 +/* Useful if you wish to make target-specific GCC changes. */
 +#undef TARGET_LILITH
 +#define TARGET_LILITH 1
 + 
-+/* Default arguments you want when running your
-+   i686-lilith-gcc toolchain */
++/* Default arguments you want when running your i686-lilith-gcc toolchain */
 +#undef LIB_SPEC
 +#define LIB_SPEC "-lc" /* link against C standard library */
 + 
-+/* Files that are linked before user code.
-+   The %s tells GCC to look for these files in the library directory. */
++/* Files that are linked before user code. The %s tells GCC to look for these files in the library directory. */
 +#undef STARTFILE_SPEC
 +#define STARTFILE_SPEC "crt0.o%s crti.o%s crtbegin.o%s"
 + 
@@ -99,12 +84,11 @@ index 00000000000..bc6f91981ea
 +    builtin_assert ("system=unix");   \
 +    builtin_assert ("system=posix");   \
 +  } while(0);
-\ No newline at end of file
 diff --git a/libgcc/config.host b/libgcc/config.host
-index 11b4acaff55..ada813dc895 100644
+index 1ff41592337..13c6a459ad6 100644
 --- a/libgcc/config.host
 +++ b/libgcc/config.host
-@@ -333,6 +333,14 @@ i[34567]86-*-cygwin* | x86_64-*-cygwin*)
+@@ -359,6 +359,14 @@ i[34567]86-*-cygwin* | x86_64-*-cygwin*)
  esac
  
  case ${host} in
