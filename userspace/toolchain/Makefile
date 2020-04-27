@@ -18,7 +18,7 @@ build_binutils: binutils
 gcc:
 	git clone git://gcc.gnu.org/git/gcc.git gcc
 	cd gcc && \
-	git checkout 4ac50a4913e && \
+	git checkout 2a4c59d9aa6 && \
 	patch -p1 < $(PWD)/patches/gcc.patch >/dev/null
 
 build_gcc: gcc
